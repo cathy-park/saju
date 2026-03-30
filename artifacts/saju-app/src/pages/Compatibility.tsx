@@ -50,12 +50,12 @@ import {
 // All UI elements — card bg, graph ring, badge, score accent — derive from here.
 // Keyed by result.finalType only. No other logic is used for colors.
 
-const GRADE_PALETTE: Record<CompatibilityTone, { pastel: string; strong: string; border: string; badgeText: string }> = {
-  "이상적 궁합": { pastel: "#F1E8FF", strong: "#8B5CF6", border: "#C4B5FD", badgeText: "#6D28D9" },
-  "좋은 궁합":   { pastel: "#E6F7EC", strong: "#22C55E", border: "#86EFAC", badgeText: "#15803D" },
-  "노력형 궁합": { pastel: "#E8F1FF", strong: "#3B82F6", border: "#93C5FD", badgeText: "#1D4ED8" },
-  "긴장형 궁합": { pastel: "#FFF1E6", strong: "#F59E0B", border: "#FCD34D", badgeText: "#B45309" },
-  "주의 궁합":   { pastel: "#FFE8E8", strong: "#EF4444", border: "#FCA5A5", badgeText: "#B91C1C" },
+const GRADE_PALETTE: Record<CompatibilityTone, { cardBg: string; pastel: string; strong: string; border: string; badgeText: string }> = {
+  "이상적 궁합": { cardBg: "#FAF7FF", pastel: "#F1E8FF", strong: "#8B5CF6", border: "#C4B5FD", badgeText: "#6D28D9" },
+  "좋은 궁합":   { cardBg: "#F3FBF6", pastel: "#E6F7EC", strong: "#22C55E", border: "#86EFAC", badgeText: "#15803D" },
+  "노력형 궁합": { cardBg: "#F3F8FF", pastel: "#E8F1FF", strong: "#3B82F6", border: "#93C5FD", badgeText: "#1D4ED8" },
+  "긴장형 궁합": { cardBg: "#FFFCF8", pastel: "#FFF1E6", strong: "#F59E0B", border: "#FCD34D", badgeText: "#B45309" },
+  "주의 궁합":   { cardBg: "#FFF7F7", pastel: "#FFE8E8", strong: "#EF4444", border: "#FCA5A5", badgeText: "#B91C1C" },
 };
 
 // ── Score Arc ─────────────────────────────────────────────────────
@@ -511,7 +511,7 @@ export default function Compatibility() {
               {/* ── A. 종합 요약 (result.finalType → palette 단일 출처) ── */}
               <div
                 className="rounded-2xl border-2 p-5"
-                style={{ background: palette.pastel, borderColor: palette.border }}
+                style={{ background: palette.cardBg, borderColor: palette.border }}
               >
                 <div className="flex items-center gap-4">
                   <div className="flex flex-col items-center shrink-0">
