@@ -160,7 +160,7 @@ function PersonCard({
 function EmptyState() {
   return (
     <div className="flex flex-col items-center gap-4 py-14 text-center">
-      <Mascot expression="lonely" size={80} />
+      <Mascot expression="lonely" size={120} />
       <div>
         <p className="font-semibold text-foreground">아직 등록된 상대가 없어요</p>
         <p className="text-sm text-muted-foreground mt-1 max-w-[220px] mx-auto leading-relaxed">

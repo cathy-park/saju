@@ -35,13 +35,20 @@ export interface DbPartnerProfile {
 
 function recordToBirthDate(r: PersonRecord): string {
   const i = r.birthInput;
-  return `${i.year}-${String(i.month).padStart(2, "0")}-${String(i.day).padStart(2, "0")}`;
+  const year = Number(i.year);
+  const month = Number(i.month);
+  const day = Number(i.day);
+  if (!i.year || !i.month || !i.day || isNaN(year) || isNaN(month) || isNaN(day)) {
+    throw new Error(`생년월일 데이터 오류 (year=${i.year}, month=${i.month}, day=${i.day})`);
+  }
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
 function recordToBirthTime(r: PersonRecord): string | null {
   if (r.birthInput.timeUnknown) return null;
-  const h = r.birthInput.hour ?? 0;
-  const m = r.birthInput.minute ?? 0;
+  const h = Number(r.birthInput.hour ?? 0);
+  const m = Number(r.birthInput.minute ?? 0);
+  if (isNaN(h) || isNaN(m)) return null;
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
 

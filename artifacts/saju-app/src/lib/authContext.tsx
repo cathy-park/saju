@@ -80,8 +80,9 @@ async function syncWithSupabase(uid: string, userMeta: SupabaseUser): Promise<vo
     try {
       await upsertMyProfile(uid, local.myProfile);
     } catch (e) {
-      console.error("[auth] push myProfile failed:", e);
-      errors.push("내 사주 저장 실패");
+      const msg = (e as Error)?.message ?? "알 수 없는 오류";
+      console.error("[auth] push myProfile failed:", msg);
+      errors.push(`내 사주 저장 실패 (${msg.substring(0, 80)})`);
     }
   }
 
@@ -94,8 +95,9 @@ async function syncWithSupabase(uid: string, userMeta: SupabaseUser): Promise<vo
     );
     const failed = results.filter((r) => r.status === "rejected");
     if (failed.length > 0) {
-      console.error("[auth] push partners failed:", failed);
-      errors.push(`상대 저장 실패 (${failed.length}명)`);
+      const failMsgs = failed.map((r) => (r as PromiseRejectedResult).reason?.message ?? "?").join("; ");
+      console.error("[auth] push partners failed:", failMsgs);
+      errors.push(`상대 저장 실패 (${failMsgs.substring(0, 80)})`);
     }
   }
 
