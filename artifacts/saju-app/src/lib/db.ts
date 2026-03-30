@@ -82,7 +82,10 @@ export async function fetchMyProfile(userId: string): Promise<PersonRecord | nul
     .order("updated_at", { ascending: false })
     .limit(1)
     .maybeSingle();
-  if (error) { console.error("[db] fetchMyProfile:", error); return null; }
+  if (error) {
+    console.error("[db] fetchMyProfile:", error);
+    throw new Error(error.message);
+  }
   if (!data) return null;
   return dbRowToRecord(data as DbMyProfile);
 }
@@ -100,7 +103,10 @@ export async function upsertMyProfile(userId: string, record: PersonRecord): Pro
     saju_payload: record,
     updated_at: new Date().toISOString(),
   }, { onConflict: "id" });
-  if (error) console.error("[db] upsertMyProfile:", error);
+  if (error) {
+    console.error("[db] upsertMyProfile:", error);
+    throw new Error(error.message);
+  }
 }
 
 // ── Partner Profiles ──────────────────────────────────────────────
@@ -111,7 +117,10 @@ export async function fetchPartnerProfiles(userId: string): Promise<PersonRecord
     .select("*")
     .eq("user_id", userId)
     .order("updated_at", { ascending: false });
-  if (error) { console.error("[db] fetchPartnerProfiles:", error); return []; }
+  if (error) {
+    console.error("[db] fetchPartnerProfiles:", error);
+    throw new Error(error.message);
+  }
   if (!data) return [];
   return (data as DbPartnerProfile[]).map(dbRowToRecord);
 }
@@ -129,12 +138,18 @@ export async function upsertPartnerProfile(userId: string, record: PersonRecord)
     saju_payload: record,
     updated_at: new Date().toISOString(),
   }, { onConflict: "id" });
-  if (error) console.error("[db] upsertPartnerProfile:", error);
+  if (error) {
+    console.error("[db] upsertPartnerProfile:", error);
+    throw new Error(error.message);
+  }
 }
 
 export async function deletePartnerProfile(id: string): Promise<void> {
   const { error } = await supabase.from("partner_profiles").delete().eq("id", id);
-  if (error) console.error("[db] deletePartnerProfile:", error);
+  if (error) {
+    console.error("[db] deletePartnerProfile:", error);
+    throw new Error(error.message);
+  }
 }
 
 // ── Upsert profile record in Supabase's auth.users mirror table ──
@@ -147,5 +162,8 @@ export async function upsertUserProfile(user: { id: string; email?: string | nul
     avatar_url: user.user_metadata?.avatar_url ?? null,
     updated_at: new Date().toISOString(),
   }, { onConflict: "id" });
-  if (error) console.error("[db] upsertUserProfile:", error);
+  if (error) {
+    console.error("[db] upsertUserProfile:", error);
+    throw new Error(error.message);
+  }
 }

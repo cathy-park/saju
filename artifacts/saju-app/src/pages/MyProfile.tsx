@@ -38,17 +38,21 @@ export default function MyProfile() {
   }, [dbSynced]);
 
   async function handleSubmit(input: BirthInput) {
+    let newRecord: PersonRecord;
     try {
       const profile = calculateProfileFromBirth(input);
-      const newRecord: PersonRecord = { ...createRecord(input, profile), maritalStatus: formMarital };
-      saveMyProfile(newRecord);
-      setRecord(newRecord);
-      setEditing(false);
-      if (user) {
-        await upsertMyProfile(user.id, newRecord);
-      }
+      newRecord = { ...createRecord(input, profile), maritalStatus: formMarital };
     } catch (e: unknown) {
       alert("계산 오류: " + ((e as Error)?.message ?? "알 수 없는 오류"));
+      return;
+    }
+    saveMyProfile(newRecord);
+    setRecord(newRecord);
+    setEditing(false);
+    if (user) {
+      upsertMyProfile(user.id, newRecord).catch((e) => {
+        console.error("[MyProfile] upsert failed:", e);
+      });
     }
   }
 

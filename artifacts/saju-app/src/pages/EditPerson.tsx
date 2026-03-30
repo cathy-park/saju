@@ -47,9 +47,10 @@ export default function EditPerson() {
   }
 
   async function handleBirthSubmit(input: BirthInput) {
+    let updated: PersonRecord;
     try {
       const profile = calculateProfileFromBirth(input);
-      const updated: PersonRecord = {
+      updated = {
         ...record!,
         birthInput: input,
         profile,
@@ -58,15 +59,20 @@ export default function EditPerson() {
         maritalStatus,
         updatedAt: new Date().toISOString(),
       };
-      savePerson(updated);
-      if (user) await upsertPartnerProfile(user.id, updated);
-      navigate("/people");
     } catch (e: unknown) {
       alert("계산 오류: " + ((e as Error)?.message ?? "알 수 없는 오류"));
+      return;
     }
+    savePerson(updated);
+    if (user) {
+      upsertPartnerProfile(user.id, updated).catch((e) => {
+        console.error("[EditPerson] upsert failed:", e);
+      });
+    }
+    navigate("/people");
   }
 
-  async function handleManualSave() {
+  function handleManualSave() {
     const updated: PersonRecord = {
       ...record!,
       manualPillars,
@@ -76,7 +82,11 @@ export default function EditPerson() {
     };
     savePerson(updated);
     setRecord(updated);
-    if (user) await upsertPartnerProfile(user.id, updated);
+    if (user) {
+      upsertPartnerProfile(user.id, updated).catch((e) => {
+        console.error("[EditPerson] manual upsert failed:", e);
+      });
+    }
     navigate("/people");
   }
 

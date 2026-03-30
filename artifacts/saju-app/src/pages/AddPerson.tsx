@@ -24,19 +24,23 @@ export default function AddPerson() {
   const [maritalStatus, setMaritalStatus] = useState<MaritalStatus | undefined>(undefined);
 
   async function handleSubmit(input: BirthInput) {
+    let record;
     try {
       const profile = calculateProfileFromBirth(input);
-      const record = createRecord(input, profile);
+      record = createRecord(input, profile);
       record.relationshipType = relType;
       record.maritalStatus = maritalStatus;
-      savePerson(record);
-      if (user) {
-        await upsertPartnerProfile(user.id, record);
-      }
-      navigate("/people");
     } catch (e: unknown) {
       alert("계산 오류: " + ((e as Error)?.message ?? "알 수 없는 오류"));
+      return;
     }
+    savePerson(record);
+    if (user) {
+      upsertPartnerProfile(user.id, record).catch((e) => {
+        console.error("[AddPerson] upsert failed:", e);
+      });
+    }
+    navigate("/people");
   }
 
   return (

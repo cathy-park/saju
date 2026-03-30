@@ -13,6 +13,7 @@ import {
   saveMyProfile,
   savePerson,
 } from "./storage";
+import { toast } from "@/hooks/use-toast";
 
 interface AuthState {
   user: SupabaseUser | null;
@@ -38,54 +39,95 @@ const AuthContext = createContext<AuthState>({
  *
  *  1. Mirror auth.users → profiles table
  *  2. Fetch current DB state for this user
- *  3. If DB is missing a record that exists locally → push it up (handles
- *     cases where a previous migration was skipped or failed silently)
+ *  3. If DB is missing a record that exists locally → push it up
  *  4. Pull the final DB state → overwrite localStorage (DB is source of truth)
+ *
+ * Each step is isolated so one failure doesn't block the rest.
  */
 async function syncWithSupabase(uid: string, userMeta: SupabaseUser): Promise<void> {
-  // 1. Mirror auth user metadata
-  await upsertUserProfile({
-    id: uid,
-    email: userMeta.email,
-    user_metadata: userMeta.user_metadata as Record<string, unknown>,
-  });
+  const errors: string[] = [];
+
+  // 1. Mirror auth user metadata (best-effort)
+  try {
+    await upsertUserProfile({
+      id: uid,
+      email: userMeta.email,
+      user_metadata: userMeta.user_metadata as Record<string, unknown>,
+    });
+  } catch (e) {
+    console.warn("[auth] upsertUserProfile failed:", e);
+  }
 
   // 2. Fetch current DB state
-  const [dbProfile, dbPartners] = await Promise.all([
-    fetchMyProfile(uid),
-    fetchPartnerProfiles(uid),
-  ]);
+  let dbProfile: Awaited<ReturnType<typeof fetchMyProfile>> = null;
+  let dbPartners: Awaited<ReturnType<typeof fetchPartnerProfiles>> = [];
+  try {
+    [dbProfile, dbPartners] = await Promise.all([
+      fetchMyProfile(uid),
+      fetchPartnerProfiles(uid),
+    ]);
+    console.log("[auth] DB fetch: profile=", dbProfile ? "✓" : "none", "partners=", dbPartners.length);
+  } catch (e) {
+    console.error("[auth] DB fetch failed:", e);
+    errors.push("데이터 불러오기 실패");
+  }
 
   // 3. Push local-only data up to DB (fills gaps from failed/skipped migrations)
   const local = loadLocal();
 
   if (!dbProfile && local.myProfile) {
     console.log("[auth] pushing local myProfile to Supabase");
-    await upsertMyProfile(uid, local.myProfile);
+    try {
+      await upsertMyProfile(uid, local.myProfile);
+    } catch (e) {
+      console.error("[auth] push myProfile failed:", e);
+      errors.push("내 사주 저장 실패");
+    }
   }
 
   const dbPartnerIds = new Set(dbPartners.map((p) => p.id));
   const localOnlyPartners = local.people.filter((p) => !dbPartnerIds.has(p.id));
   if (localOnlyPartners.length > 0) {
     console.log(`[auth] pushing ${localOnlyPartners.length} local partner(s) to Supabase`);
-    await Promise.all(localOnlyPartners.map((p) => upsertPartnerProfile(uid, p)));
+    const results = await Promise.allSettled(
+      localOnlyPartners.map((p) => upsertPartnerProfile(uid, p))
+    );
+    const failed = results.filter((r) => r.status === "rejected");
+    if (failed.length > 0) {
+      console.error("[auth] push partners failed:", failed);
+      errors.push(`상대 저장 실패 (${failed.length}명)`);
+    }
   }
 
   // 4. Pull final DB state → overwrite localStorage (DB wins)
-  const [finalProfile, finalPartners] = await Promise.all([
-    fetchMyProfile(uid),
-    fetchPartnerProfiles(uid),
-  ]);
+  try {
+    const [finalProfile, finalPartners] = await Promise.all([
+      fetchMyProfile(uid),
+      fetchPartnerProfiles(uid),
+    ]);
 
-  if (finalProfile) {
-    saveMyProfile(finalProfile);
-    console.log("[auth] synced myProfile from Supabase");
+    if (finalProfile) {
+      saveMyProfile(finalProfile);
+      console.log("[auth] synced myProfile from Supabase ✓");
+    }
+    for (const p of finalPartners) {
+      savePerson(p);
+    }
+    if (finalPartners.length > 0) {
+      console.log(`[auth] synced ${finalPartners.length} partner(s) from Supabase ✓`);
+    }
+  } catch (e) {
+    console.error("[auth] final DB pull failed:", e);
+    errors.push("동기화 마무리 실패");
   }
-  for (const p of finalPartners) {
-    savePerson(p);
-  }
-  if (finalPartners.length > 0) {
-    console.log(`[auth] synced ${finalPartners.length} partner(s) from Supabase`);
+
+  if (errors.length > 0) {
+    toast({
+      title: "클라우드 동기화 오류",
+      description: errors.join(" · "),
+      variant: "destructive",
+    });
+    throw new Error(errors.join(", "));
   }
 }
 
@@ -101,7 +143,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setDbSynced(false);
 
     syncWithSupabase(user.id, user)
-      .catch((err) => console.warn("[auth] DB sync error:", err))
+      .catch((err) => console.warn("[auth] sync completed with errors:", err))
       .finally(() => setDbSynced(true));
   }, [user?.id]);  // eslint-disable-line react-hooks/exhaustive-deps
 
