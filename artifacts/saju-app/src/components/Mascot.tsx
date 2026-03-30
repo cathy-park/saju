@@ -6,6 +6,7 @@ import gyeolHappy from "@assets/gyeol_happy_1774880100277.png";
 import gyeolNeutral from "@assets/gyeol_neutral_1774880100277.png";
 import gyeolWarning from "@assets/gyeol_neutral-1_1774880100277.png";
 import gyeolCalm from "@assets/gyeol_calm_1774880100275.png";
+import gyeolLonely from "@assets/image_25_1774912809743.png";
 
 export type MascotExpression =
   | "default"
@@ -15,7 +16,8 @@ export type MascotExpression =
   | "happy"
   | "neutral"
   | "warning"
-  | "calm";
+  | "calm"
+  | "lonely";
 
 const MASCOT_IMAGES: Record<MascotExpression, string> = {
   default: gyeolDefault,
@@ -26,6 +28,7 @@ const MASCOT_IMAGES: Record<MascotExpression, string> = {
   neutral: gyeolNeutral,
   warning: gyeolWarning,
   calm: gyeolCalm,
+  lonely: gyeolLonely,
 };
 
 export function Mascot({
