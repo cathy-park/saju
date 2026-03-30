@@ -1121,40 +1121,55 @@ export default function Compatibility() {
               <section>
                 <h3 className="text-[13px] font-bold text-foreground mb-2">④ 현재 쌍 적용 결과</h3>
                 <div className="rounded-xl border border-border overflow-hidden text-[12px]">
+
+                  {/* 기준점 */}
                   <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-muted/40">
                     <span className="text-muted-foreground flex-1">기준점</span>
                     <span className="font-bold text-foreground">50점</span>
                   </div>
-                  {result && result.adjustmentSteps.map((step) => {
+
+                  {/* 7가지 조정 항목 (result 단일 객체에서 읽음) */}
+                  {result.adjustmentSteps.map((step) => {
                     const sign = step.delta > 0 ? "+" : "";
                     const color = step.delta > 0 ? "text-green-700" : step.delta < 0 ? "text-red-600" : "text-muted-foreground";
                     return (
-                      <div key={step.category} className="flex items-center gap-2 px-3 py-2 border-b border-border last:border-b-0">
-                        <span className="text-muted-foreground flex-1">{step.category}</span>
-                        <span className={`font-semibold shrink-0 tabular-nums ${color}`}>{sign}{step.delta}점</span>
+                      <div key={step.category} className="border-b border-border last:border-b-0">
+                        <div className="flex items-center gap-2 px-3 pt-2 pb-1">
+                          <span className="text-muted-foreground flex-1">{step.category}</span>
+                          <span className={`font-semibold shrink-0 tabular-nums ${color}`}>{sign}{step.delta}점</span>
+                        </div>
+                        {step.note && (
+                          <p className="px-3 pb-2 text-[11px] text-muted-foreground/70 leading-snug">{step.note}</p>
+                        )}
                       </div>
                     );
                   })}
-                  <div className="flex items-center gap-2 px-3 py-2 border-t border-border bg-muted/40">
-                    <span className="text-muted-foreground flex-1">합계 점수</span>
-                    <span className="font-bold text-foreground">{result?.totalScore ?? "—"}점</span>
+
+                  {/* 기준 합산 점수 (base_score = 50 + 조정 합계) */}
+                  <div className="flex items-center gap-2 px-3 py-2 border-t-2 border-border bg-muted/40">
+                    <span className="text-muted-foreground flex-1">기준 합산 점수</span>
+                    <span className="font-bold text-foreground">{result.baseScore}점</span>
                   </div>
-                  {result && result.structuralSteps.length > 0 && (
+
+                  {/* 구조적 등급 조정 (있을 때만) */}
+                  {result.structuralSteps.length > 0 && (
                     <div className="px-3 py-2 border-t border-border">
-                      <p className="text-muted-foreground mb-1">등급 조정:</p>
+                      <p className="text-muted-foreground mb-1.5 text-[11px] font-semibold uppercase tracking-wide">구조적 등급 조정</p>
                       {result.structuralSteps.map((s) => (
-                        <div key={s.label} className="flex items-center gap-2">
-                          <span className="text-foreground font-semibold">• {s.label}</span>
-                          <span className={s.direction === "up" ? "text-green-700" : "text-red-600"}>
-                            {s.direction === "up" ? "▲ 상향" : "▼ 하향"}
+                        <div key={s.label} className="flex items-center gap-2 mb-0.5">
+                          <span className="text-foreground text-[12px]">• {s.label}</span>
+                          <span className={`text-[12px] font-semibold ${s.direction === "up" ? "text-green-700" : "text-red-600"}`}>
+                            {s.direction === "up" ? "▲ 1단계 상향" : "▼ 1단계 하향"}
                           </span>
                         </div>
                       ))}
                     </div>
                   )}
-                  <div className="flex items-center gap-2 px-3 py-2 border-t border-border bg-muted/40">
+
+                  {/* 최종 등급 (result.finalType — 팝업과 UI 배지 동일 출처) */}
+                  <div className="flex items-center gap-2 px-3 py-2 border-t-2 border-border bg-muted/40">
                     <span className="text-muted-foreground flex-1">최종 등급</span>
-                    <span className={`font-bold ${COMPAT_TONE_COLOR[fullReport.tone as keyof typeof COMPAT_TONE_COLOR]}`}>{fullReport.tone}</span>
+                    <span className={`font-bold ${result.finalColor}`}>{result.finalType}</span>
                   </div>
                 </div>
                 <p className="text-[11px] text-muted-foreground mt-1.5 leading-snug">
