@@ -1,0 +1,173 @@
+Revise the current app.
+
+IMPORTANT:
+The Four Pillars calculation is now working correctly.
+Do NOT change or replace the current calculation engine.
+
+This revision should focus only on:
+1. improving birth time input UX
+2. expanding the Korean manseoryeok report content
+
+==================================================
+1. CHANGE BIRTH TIME INPUT
+==================================================
+
+The current minute input is too limited because it only allows 5-minute steps.
+
+Change the birth time input UI so that:
+
+- hour can be entered directly
+- minute can be entered directly
+- minute supports free numeric input from 0 to 59
+- do not force 5-minute steps
+- keep "출생시간 모름" checkbox
+
+Preferred UX:
+- 출생시: numeric input
+- 출생분: numeric input
+
+Validation:
+- hour: 0~23
+- minute: 0~59
+
+If time unknown is checked:
+- disable hour/minute inputs
+- calculate only year/month/day pillars
+- mark hour pillar as unknown
+
+==================================================
+2. EXPAND THE REPORT CONTENT
+==================================================
+
+Currently the report only shows:
+- 4 pillars
+- five element distribution
+
+This is not enough.
+
+Expand the report into a richer Korean manseoryeok-style report.
+
+Do NOT remove the existing correct Four Pillars output.
+Add more derived sections below it.
+
+==================================================
+3. REQUIRED NEW REPORT SECTIONS
+==================================================
+
+Add these sections to the profile report screen:
+
+A. 사주 4주 표
+Keep current output, but improve visual hierarchy.
+
+B. 오행 분포
+Keep current output, but make it more readable with color-coded bars/cards.
+
+C. 십성 요약
+Show ten-god relationships relative to the day master.
+At minimum, show the ten-god label for:
+- year stem
+- month stem
+- day stem
+- hour stem if available
+
+D. 지지 관계 요약
+Show basic branch relationships inside the chart if available:
+- 합
+- 충
+- 형
+- 파
+- 해
+
+E. 지장간
+Show hidden stems for each branch:
+- 시지
+- 일지
+- 월지
+- 연지
+
+F. 간단 해석 카드
+Create short summary cards such as:
+- 일간 중심 요약
+- 오행 균형 요약
+- 차트 특징 메모
+
+G. 저장 상태 카드
+Show:
+- 자동 계산됨
+- 수정됨 여부
+- 마지막 수정일
+
+==================================================
+4. OPTIONAL IF AVAILABLE FROM CURRENT ENGINE
+==================================================
+
+If the current calculation engine already provides or can easily derive them,
+also show:
+
+- 12운성
+- 기본 신살 일부
+- 신강 / 신약 간이 요약
+
+But do not break the app if these are not available.
+Gracefully hide them if missing.
+
+==================================================
+5. REPORT LAYOUT IMPROVEMENT
+==================================================
+
+The report must not feel like plain text output.
+
+Improve layout using:
+
+- section cards
+- tables
+- badges
+- labels
+- colored chips
+- compact grids
+
+Make the report easier to scan visually.
+
+Use a premium Korean astrology report style:
+- warm ivory background
+- muted brown typography
+- five-element accent colors
+- rounded cards
+- dense but readable layout
+
+==================================================
+6. COMPATIBILITY SCREEN
+==================================================
+
+Do not redesign compatibility logic yet.
+
+But if compatibility result screen currently only shows minimal text,
+also improve its readability using:
+
+- score card
+- summary card
+- day stem relation card
+- day branch relation card
+- spouse palace card
+- five element comparison card
+
+==================================================
+7. IMPORTANT RULES
+==================================================
+
+- do NOT change the working Four Pillars engine
+- do NOT downgrade calculation accuracy
+- do NOT remove manual correction feature
+- do NOT remove saved profiles
+- preserve localStorage compatibility if possible
+
+==================================================
+8. FINAL GOAL
+==================================================
+
+After this revision, the app should feel like:
+
+- a real Korean manseoryeok report app
+- with direct hour/minute input
+- with a richer chart report
+- with much better readability than simple text output

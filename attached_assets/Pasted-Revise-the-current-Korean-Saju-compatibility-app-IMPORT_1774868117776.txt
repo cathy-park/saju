@@ -1,0 +1,338 @@
+Revise the current Korean Saju compatibility app.
+
+IMPORTANT:
+
+The Four Pillars calculation engine is already working correctly.
+Do NOT modify or replace the calculation engine.
+
+This revision must focus on expanding interpretation depth,
+fixing structure issues,
+and making this a premium compatibility-focused Korean Saju app.
+
+==================================================
+SECTION 1 — CHANGE FOUR PILLAR DISPLAY ORDER
+==================================================
+
+Currently pillars display in:
+
+년 / 월 / 일 / 시
+
+Change to traditional Korean reading order:
+
+시 / 일 / 월 / 년
+
+Apply consistently across:
+
+- my profile
+- other person profile
+- compatibility screen
+- summary tables
+
+Column headers:
+
+생시 / 생일 / 생월 / 생년
+
+==================================================
+SECTION 2 — FIX MONTHLY LUCK OFFSET BUG
+==================================================
+
+Monthly luck currently appears shifted by one month.
+
+Fix:
+
+- JS Date month index issue
+- current month selection logic
+- stem-branch mapping alignment
+
+Displayed month luck must match real current month.
+
+==================================================
+SECTION 3 — EXPAND SHINSAL ENGINE SUPPORT
+==================================================
+
+Currently only partial shinsal rules exist.
+
+Expand rule-based detection support for:
+
+도화
+홍염
+역마
+화개
+천을귀인
+문창귀인
+문곡귀인
+천덕귀인
+월덕귀인
+천복귀인
+백호
+괴강
+양인
+금여
+현침
+장성
+반안
+천의성
+태극귀인
+천관귀인
+천주귀인
+천을성
+천형
+천살
+지살
+겁살
+재살
+망신살
+육해살
+
+Apply detection using:
+
+- branch
+- stem
+- day master reference where applicable
+
+==================================================
+SECTION 4 — SHOW SHINSAL PER POSITION
+==================================================
+
+Render structured layout:
+
+시주
+일주
+월주
+연주
+
+If possible split further:
+
+시천간 / 시지
+일천간 / 일지
+월천간 / 월지
+연천간 / 연지
+
+Each position must display:
+
+matched shinsal badges
+
+OR
+
+없음 badge
+
+Never hide empty positions.
+
+==================================================
+SECTION 5 — ADD TODAY'S FORTUNE CARD
+==================================================
+
+Add profile-specific summary card at top of profile detail page.
+
+Title:
+
+오늘의 운세
+
+Use:
+
+대운
+세운
+월운
+일운
+
+Generate:
+
+1-line summary
+3 keyword chips
+luck layer badges
+short guidance sentence
+
+Example chips:
+
+관계운
+문서운
+안정
+변화
+충돌주의
+인연운
+
+Must be deterministic.
+
+No random horoscope text.
+
+==================================================
+SECTION 6 — ADD RELATIONSHIP PROFILE INTERPRETATION
+==================================================
+
+Each person profile must include:
+
+배우자궁 해석
+연애 스타일 요약
+잘 맞는 배우자궁 유형
+보완되는 오행 유형
+관계 주의 포인트
+결혼운 흐름 힌트
+
+Use:
+
+day branch
+day master
+five elements
+ten gods
+
+Generate structured interpretation cards.
+
+==================================================
+SECTION 7 — ADD FULL TEN GOD TABLE
+==================================================
+
+Display ten-god mapping for:
+
+year stem
+month stem
+day stem
+hour stem
+
+Also include hidden stem ten-gods if available.
+
+==================================================
+SECTION 8 — ADD 12 UNSEONG
+==================================================
+
+Calculate and display:
+
+연지
+월지
+일지
+시지
+
+relative to day master.
+
+Show as badge labels.
+
+==================================================
+SECTION 9 — ADD LUCK FLOW SUMMARY PANEL
+==================================================
+
+Add compact flow card:
+
+대운 / 세운 / 월운 / 일운
+
+Display:
+
+current cycle
+cycle meaning label
+
+Example:
+
+대운: 안정 흐름
+세운: 상승 흐름
+월운: 관계 변화
+일운: 감정 기복
+
+==================================================
+SECTION 10 — EXPAND COMPATIBILITY REPORT
+==================================================
+
+Compatibility screen must include:
+
+궁합 종합 요약 카드
+
+일간 관계 해석
+
+배우자궁 비교 해석
+
+천간 관계 카드
+
+지지 관계 카드
+
+오행 보완 관계 카드
+
+연애 스타일 궁합 카드
+
+결혼 안정성 카드
+
+갈등 포인트 카드 (3 bullet points)
+
+잘 맞는 포인트 카드 (3 bullet points)
+
+관계 유지 팁 카드 (3 suggestions)
+
+==================================================
+SECTION 11 — ADD COUPLE TIMING FLOW PANEL
+==================================================
+
+Add timing interpretation using:
+
+each person's Daewoon
+Seun
+Wolun
+
+Display:
+
+현재 인연 흐름
+관계 발전 가능 시기
+주의 시기
+
+Label clearly as guidance.
+
+==================================================
+SECTION 12 — APPLY FULL REPORT TO ALL PROFILES
+==================================================
+
+Currently extended report only appears on my profile.
+
+Apply full report system to:
+
+all saved people profiles
+
+Compatibility must use:
+
+final corrected pillars
+
+==================================================
+SECTION 13 — DESIGN REQUIREMENTS
+==================================================
+
+Maintain premium Korean astrology report layout:
+
+warm ivory background
+
+muted brown typography
+
+five-element accent colors
+
+rounded cards
+
+badge chips
+
+structured hierarchy
+
+No long plain paragraph dumps.
+
+==================================================
+SECTION 14 — IMPORTANT RULES
+==================================================
+
+Do NOT modify Four Pillars engine
+
+Do NOT remove saved profiles
+
+Do NOT remove compatibility logic
+
+Do NOT generate random mystical text
+
+Use deterministic rule-based interpretation
+
+==================================================
+FINAL GOAL
+==================================================
+
+After this revision:
+
+shinsal must appear fully structured
+
+monthly luck must be correct
+
+pillars must display in 시일월년 order
+
+each profile must include relationship interpretation
+
+compatibility screen must become the main value layer of the app
+
+today fortune card must appear at top of profile screen

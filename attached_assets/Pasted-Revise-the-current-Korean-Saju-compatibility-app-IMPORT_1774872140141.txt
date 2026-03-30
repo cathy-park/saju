@@ -1,0 +1,225 @@
+Revise the current Korean Saju compatibility app.
+
+IMPORTANT:
+The current shinsal editing UX is still broken and must be redesigned properly.
+
+Problems:
+1. 배우자운 is awkward because it has both a separate setting toggle and a top interpretation toggle
+2. profile should support marital status instead
+3. shinsal add/delete is still broken
+4. auto-detected incorrect shinsal cannot be removed
+5. manual shinsal still does not work cleanly by position
+
+Fix these issues properly.
+
+==================================================
+1. REMOVE SEPARATE 배우자운 SETTINGS TOGGLE
+==================================================
+
+Do not keep a separate settings toggle only for 배우자운.
+
+Instead:
+Treat 배우자운 exactly like the other interpretation categories.
+
+Use only the top interpretation filter chips:
+
+- 사랑
+- 재물
+- 건강
+- 일/성과
+- 배우자운
+
+No duplicate toggle system.
+
+==================================================
+2. ADD RELATIONSHIP STATUS TO PROFILE
+==================================================
+
+Add a new profile field:
+
+관계 상태
+
+Options:
+- 미혼
+- 연애 중
+- 기혼
+- 비혼
+- 기타
+- 선택 안 함
+
+Use this field to slightly adjust interpretation tone.
+
+Examples:
+
+If 미혼:
+show wording like
+- 인연 흐름
+- 관계 활성 시기
+- 배우자궁 흐름
+
+If 기혼:
+show wording like
+- 관계 유지 흐름
+- 부부 관계 균형
+- 가정운
+- 관계 안정성
+
+Do not use exactly the same wording for all users.
+
+==================================================
+3. REDESIGN SHINSAL DATA STRUCTURE
+==================================================
+
+Do NOT treat shinsal as just a plain combined string list.
+
+Represent each shinsal item as an editable entity.
+
+Required structure:
+
+- id
+- position
+- name
+- source ("auto" or "manual")
+- isRemoved (boolean)
+
+Example:
+{
+  id: "auto-ilji-dohwa",
+  position: "일지",
+  name: "도화",
+  source: "auto",
+  isRemoved: false
+}
+
+This allows:
+- auto shinsal removal
+- manual shinsal add
+- manual shinsal delete
+- position-aware rendering
+
+==================================================
+4. ALLOW REMOVAL OF AUTO-DETECTED SHINSAL
+==================================================
+
+If an automatically detected shinsal is incorrect,
+the user must be able to remove it.
+
+Do NOT make auto shinsal read-only.
+
+When user taps delete on an auto shinsal:
+- do not permanently destroy engine output
+- instead mark that item as isRemoved = true for that profile
+
+This acts as a user override.
+
+Removed auto shinsal must disappear from visible report and interpretation.
+
+==================================================
+5. MAKE MANUAL SHINSAL FULLY POSITION-AWARE
+==================================================
+
+Manual add flow must be:
+
+Step 1:
+select position
+- 시천간
+- 시지
+- 일천간
+- 일지
+- 월천간
+- 월지
+- 연천간
+- 연지
+
+Step 2:
+select shinsal name
+
+Then save as:
+source = "manual"
+
+Render it under the exact selected position.
+
+==================================================
+6. ENABLE DELETE FOR MANUAL SHINSAL
+==================================================
+
+Manual shinsal must also be deletable.
+
+Delete must work immediately:
+- update state
+- update localStorage
+- update interpretation
+- no page reload
+
+==================================================
+7. FINAL SHINSAL MERGE RULE
+==================================================
+
+Visible shinsal for a profile must be:
+
+(all auto shinsal where isRemoved is false)
++
+(all manual shinsal)
+
+Interpretation must use this final visible shinsal list.
+
+This means:
+- removed auto shinsal must not affect interpretation
+- added manual shinsal must affect interpretation
+
+==================================================
+8. ADD SHINSAL EDIT MODE UI
+==================================================
+
+In shinsal section, add edit mode.
+
+Each position block should allow:
+
+- existing badges
+- delete button on each badge
+- + 추가 button for that specific position
+
+Example:
+
+일지
+[도화 (자동) ×]
+[천을귀인 (수동) ×]
+[+ 추가]
+
+This is better than one global add button.
+
+==================================================
+9. PERSIST PER PROFILE
+==================================================
+
+All shinsal overrides must be saved per profile.
+
+Each profile should remember:
+- auto shinsal removed by user
+- manual shinsal added by user
+- position of each item
+
+==================================================
+10. KEEP OTHER APP STRUCTURE SAFE
+==================================================
+
+Do NOT break:
+- Four Pillars engine
+- luck sections
+- compatibility result
+- top interpretation toggle chips
+- saved profiles
+
+==================================================
+11. FINAL GOAL
+==================================================
+
+After this revision:
+
+- 배우자운 is controlled only by the same top interpretation chips as other categories
+- profile includes 관계 상태
+- auto shinsal can be removed
+- manual shinsal can be added by exact position
+- each position has its own + 추가 button
+- both auto and manual shinsal can be deleted
+- interpretation updates based on final edited shinsal

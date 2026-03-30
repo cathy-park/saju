@@ -1,0 +1,155 @@
+Revise the current Korean Saju app.
+
+IMPORTANT:
+The Four Pillars engine is mostly working.
+Do NOT replace the calculation engine.
+This revision should focus on:
+
+1. fixing monthly luck offset bug
+2. expanding shinsal display
+3. adding relationship and marriage-oriented personal report sections
+
+==================================================
+1. FIX MONTHLY LUCK OFFSET BUG
+==================================================
+
+The current monthly luck (월운) is shifted by one month.
+
+Example issue:
+what should appear as April is appearing as March.
+
+Check and fix:
+
+- JavaScript month index handling (0-based vs 1-based)
+- current month selection logic
+- displayed month label
+- monthly stem-branch mapping logic
+
+The displayed current monthly luck must match the actual selected current month.
+
+Do not leave month luck one month behind.
+
+==================================================
+2. EXPAND SHINSAL DISPLAY PER POSITION
+==================================================
+
+Current shinsal output is too limited.
+
+Expand the shinsal report so that shinsal can be shown per chart position.
+
+Display shinsal in 8 positions if possible:
+
+- 시천간
+- 시지
+- 일천간
+- 일지
+- 월천간
+- 월지
+- 연천간
+- 연지
+
+If shinsal is branch-based only, then still visually show it per relevant branch position:
+
+- 시지
+- 일지
+- 월지
+- 연지
+
+Use labeled badge groups inside a “신살” section.
+
+Each position should show:
+- position label
+- matched shinsal badges
+
+Example:
+일지: 도화, 홍염
+월지: 천을귀인
+연지: 역마, 화개
+
+Do not show only a single combined list.
+Make it structured and position-based.
+
+==================================================
+3. ADD PERSONAL RELATIONSHIP / MARRIAGE REPORT
+==================================================
+
+This app is a compatibility app, so each individual profile needs a relationship-oriented report.
+
+Add these sections to each person profile report:
+
+A. 배우자궁 해석
+- use the day branch (일지) as spouse palace
+- explain its general relationship tendency
+- explain strengths / caution points in marriage
+
+B. 잘 맞는 배우자궁 / 관계 포인트
+- generate a simple guidance section:
+  what type of branch or element tends to complement this chart
+- this can be rule-based and simplified
+- do not use random text
+
+C. 결혼운 시기 힌트
+- use Daewoon / current luck structure if available
+- provide simplified hints such as:
+  “30대 중반 이후 관계 안정운이 stronger”
+  “관성 / 재성 흐름이 들어오는 시기에 결혼운이 강화될 수 있음”
+- clearly label as simplified guidance, not absolute prediction
+
+D. 연애/관계 패턴 요약
+- summarize the person’s likely relationship style based on:
+  day master
+  spouse palace
+  five element balance
+  ten-god tendencies if available
+
+==================================================
+4. ADD PROFILE INTERPRETATION CARDS
+==================================================
+
+For each profile, add readable interpretation cards such as:
+
+- 일간 중심 성향
+- 오행 균형 특징
+- 배우자궁 특징
+- 관계 패턴
+- 결혼운 힌트
+
+These must be visible below the technical chart sections.
+
+==================================================
+5. DESIGN THE NEW SECTIONS CLEANLY
+==================================================
+
+Do not append them as long paragraphs.
+
+Use structured cards:
+
+- title
+- short summary
+- bullet points
+- badge highlights
+
+Keep the premium Korean manseoryeok app style.
+
+==================================================
+6. IMPORTANT RULES
+==================================================
+
+- do NOT break existing calculation
+- do NOT remove current report sections
+- do NOT remove compatibility feature
+- do NOT replace saved profile structure
+- use deterministic rule-based text generation
+- avoid mystical or random fortune-teller tone
+
+==================================================
+7. FINAL GOAL
+==================================================
+
+After this revision, each individual profile should feel like:
+
+not only a technical chart report,
+but also a relationship-oriented saju profile
+that supports the app’s compatibility purpose.
+
+And monthly luck must show the correct month.

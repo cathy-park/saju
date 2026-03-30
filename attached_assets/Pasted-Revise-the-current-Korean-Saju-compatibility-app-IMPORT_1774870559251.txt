@@ -1,0 +1,176 @@
+Revise the current Korean Saju compatibility app.
+
+IMPORTANT:
+The current manual shinsal editing UX is incomplete.
+
+Problems:
+1. manually added shinsal cannot be deleted correctly
+2. manually added shinsal are added without position distinction
+3. this makes interpretation inaccurate
+
+Fix the manual shinsal system properly.
+
+==================================================
+1. CHANGE MANUAL SHINSAL DATA STRUCTURE
+==================================================
+
+Do not store manual shinsal as a simple string list.
+
+Instead store each manual shinsal as an object with:
+
+- position
+- name
+- source
+
+Example:
+
+{
+  position: "일지",
+  name: "도화",
+  source: "manual"
+}
+
+Supported positions:
+
+- 시천간
+- 시지
+- 일천간
+- 일지
+- 월천간
+- 월지
+- 연천간
+- 연지
+
+==================================================
+2. ADD POSITION-AWARE MANUAL SHINSAL INPUT
+==================================================
+
+When user taps:
+
++ 신살 추가
+
+Open a modal or bottom sheet with 2-step selection:
+
+Step 1:
+Select position
+
+Options:
+시천간 / 시지 / 일천간 / 일지 / 월천간 / 월지 / 연천간 / 연지
+
+Step 2:
+Select shinsal name
+
+Example options:
+도화
+역마
+화개
+천을귀인
+홍염
+문창귀인
+문곡귀인
+백호
+괴강
+양인
+현침
+귀문관살
+망신살
+
+Only after both are selected, allow save.
+
+==================================================
+3. RENDER MANUAL SHINSAL BY POSITION
+==================================================
+
+In the shinsal report section:
+
+Render manual shinsal under the correct position.
+
+Example:
+
+일지
+- 도화 (수동)
+
+월지
+- 천을귀인 (수동)
+
+Do not render manual shinsal as one undifferentiated global list.
+
+==================================================
+4. ADD DELETE BUTTON FOR EACH MANUAL SHINSAL
+==================================================
+
+Each manual shinsal badge must support deletion.
+
+Example:
+
+도화 (수동) [삭제]
+
+When deleted:
+remove only that exact item
+based on:
+- position
+- name
+- source
+
+Deletion must update UI immediately without page reload.
+
+==================================================
+5. UPDATE INTERPRETATION ENGINE
+==================================================
+
+Interpretation must use:
+
+finalShinsal = autoShinsal + manualShinsal
+
+But now manualShinsal includes position-aware objects.
+
+Interpretation logic must consider:
+- which shinsal
+- where it is attached
+
+Do not ignore position when generating interpretation.
+
+==================================================
+6. SAVE PER PROFILE
+==================================================
+
+Manual shinsal must be saved per profile in localStorage.
+
+Each saved chart should remember:
+- which manual shinsal were added
+- at which positions
+- which were removed
+
+==================================================
+7. OPTIONAL QUALITY OF LIFE
+==================================================
+
+Prevent duplicate manual shinsal at same position.
+
+Example:
+If 일지 도화 already exists manually,
+do not allow another identical manual entry.
+
+==================================================
+8. DO NOT BREAK CURRENT APP
+==================================================
+
+Do NOT change:
+- Four Pillars engine
+- luck system
+- compatibility scoring
+- today fortune cards
+- shinsal bottom sheets
+
+Only improve manual shinsal editing structure.
+
+==================================================
+9. FINAL GOAL
+==================================================
+
+After this revision:
+
+- user can add shinsal with position selection
+- user can delete incorrect manual shinsal
+- manual shinsal render under correct pillar position
+- interpretation updates correctly using position-aware manual shinsal

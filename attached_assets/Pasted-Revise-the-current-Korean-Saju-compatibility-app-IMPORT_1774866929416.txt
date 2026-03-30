@@ -1,0 +1,184 @@
+Revise the current Korean Saju compatibility app.
+
+IMPORTANT:
+Do NOT change the working Four Pillars engine.
+Do NOT remove existing report sections.
+This revision must focus on two things only:
+
+1. full structured shinsal display
+2. much more detailed compatibility report
+
+==================================================
+1. FULL SHINSAL DISPLAY
+==================================================
+
+The current shinsal display is incomplete.
+It only shows some stars, which is not enough.
+
+Fix this so that shinsal is displayed in a fully structured way.
+
+Requirements:
+
+A. Show shinsal by position, not as a partial combined list.
+
+Display shinsal sections for:
+
+- 시주
+- 일주
+- 월주
+- 연주
+
+If possible, split further into:
+- 시천간 / 시지
+- 일천간 / 일지
+- 월천간 / 월지
+- 연천간 / 연지
+
+If shinsal is branch-based only, still show clearly per branch position.
+
+B. Each position must render even if empty.
+If no shinsal exists, show:
+“없음”
+
+C. Expand supported shinsal list.
+At minimum include rule support for commonly used stars such as:
+
+- 도화
+- 홍염
+- 역마
+- 화개
+- 천을귀인
+- 문창귀인
+- 백호
+- 괴강
+- 양인
+- 천덕귀인
+- 월덕귀인
+- 천복귀인
+- 금여
+- 현침
+- 장성
+- 반안
+
+If some are not supported by the current engine,
+add a clean fallback structure so the UI still shows all positions.
+
+D. Create a dedicated “신살 리포트” card section.
+It should be visually scannable with:
+- position labels
+- badge groups
+- empty state label if none
+
+Do not show only a short partial list.
+
+==================================================
+2. MUCH MORE DETAILED COMPATIBILITY REPORT
+==================================================
+
+The compatibility result is still too shallow.
+
+This app is a relationship compatibility app,
+so the compatibility report must be more detailed and interpretation-focused.
+
+Expand the compatibility result screen into a structured report.
+
+Required sections:
+
+A. 궁합 종합 요약 카드
+- score
+- one-line relationship summary
+- overall tone:
+  좋음 / 보완형 / 주의필요 / 기복형 etc.
+
+B. 일간 관계 해석
+- not just relation label
+- explain what this means in relationship dynamics
+
+C. 일지 / 배우자궁 비교 해석
+- explain emotional fit
+- explain marriage compatibility tendency
+- explain stability / friction points
+
+D. 천간 관계 카드
+- show 합 / 충 / 긴장 / 생조 여부
+- explain in Korean what this means
+
+E. 지지 관계 카드
+- show 합 / 충 / 형 / 파 / 해
+- explain where conflict or attraction may occur
+
+F. 오행 보완 관계 카드
+- what each person lacks
+- what the other person complements
+- where imbalance may happen
+
+G. 연애 스타일 궁합
+- compare relationship style of the two charts
+- explain pursuit / expression / stability patterns
+
+H. 결혼 관점 궁합
+- explain whether this is:
+  short-term attraction,
+  practical long-term match,
+  emotionally intense but unstable,
+  delayed-but-stable type, etc.
+
+I. 갈등 포인트 카드
+- 3 bullet points
+
+J. 잘 맞는 포인트 카드
+- 3 bullet points
+
+K. 관계 유지 팁 카드
+- 3 short suggestions
+
+==================================================
+3. PROFILE-TO-COMPATIBILITY CONNECTION
+==================================================
+
+Use the existing personal profile interpretation data
+to enrich compatibility results.
+
+For example, compatibility should consider:
+- each person’s spouse palace traits
+- each person’s relationship pattern
+- each person’s five-element balance
+- each person’s day master tendency
+
+Do not keep compatibility isolated from the personal reports.
+
+==================================================
+4. OUTPUT STYLE
+==================================================
+
+Do not output long plain paragraphs only.
+
+Use:
+- summary cards
+- section cards
+- bullet points
+- badges
+- short interpretation blocks
+
+The result should feel like a premium Korean compatibility report.
+
+==================================================
+5. IMPORTANT RULES
+==================================================
+
+- do NOT change the working Four Pillars engine
+- do NOT remove existing saved profiles
+- do NOT downgrade the current report
+- keep all existing sections
+- only make shinsal more complete and compatibility much richer
+- use deterministic rule-based text, not random mystical filler
+
+==================================================
+6. FINAL GOAL
+==================================================
+
+After this revision:
+
+1. shinsal should no longer look partial or unfinished
+2. compatibility should feel like the main value of the app
+3. the result screen should be much more detailed than the personal chart screen

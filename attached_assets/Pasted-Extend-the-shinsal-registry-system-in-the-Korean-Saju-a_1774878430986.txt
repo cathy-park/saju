@@ -1,0 +1,228 @@
+Extend the shinsal registry system in the Korean Saju app.
+
+IMPORTANT:
+Do NOT modify the Four Pillars engine.
+Do NOT change compatibility logic.
+Only extend and stabilize the shinsal registry and detection system.
+
+==================================================
+PART 1 — ADD MISSING CORE SHINSAL TYPES
+==================================================
+
+Add the following missing essential shinsal types to the registry:
+
+귀인 계열:
+
+학당귀인
+암록
+복성귀인
+국인귀인
+천관귀인
+천복귀인
+천주귀인
+
+살 계열:
+
+양인살
+괴강살
+백호살
+겁살
+재살
+천살
+지살
+반안살
+장성살
+
+These must:
+
+appear in manual add UI
+support position-aware storage
+support interpretation integration
+support auto-detection when rule exists
+
+Example structure:
+
+{
+  name: "학당귀인",
+  category: "귀인",
+  positions: ["년지","월지","일지","시지"],
+  source: "auto or manual"
+}
+
+==================================================
+PART 2 — MAKE REGISTRY POSITION-AWARE
+==================================================
+
+Each shinsal must support position-based assignment:
+
+년간
+년지
+월간
+월지
+일간
+일지
+시간
+시지
+
+Example:
+
+{
+  name: "양인살",
+  position: "일지"
+}
+
+Do NOT store shinsal as global-only labels.
+
+==================================================
+PART 3 — SUPPORT MULTIPLE SAME-NAME SHINSAL PER DIFFERENT POSITION
+==================================================
+
+Allow:
+
+일지 양인살
+월지 양인살
+
+Block only exact duplicates:
+
+일지 양인살 + 일지 양인살
+
+==================================================
+PART 4 — UPDATE MANUAL ADD PANEL LIST
+==================================================
+
+Add new shinsal into grouped UI categories:
+
+귀인 계열:
+
+천을귀인
+문창귀인
+문곡귀인
+학당귀인
+천덕귀인
+월덕귀인
+태극귀인
+금여
+복성귀인
+국인귀인
+암록
+천관귀인
+천복귀인
+천주귀인
+
+활동 이동 계열:
+
+역마
+지살
+천살
+
+관계 감정 계열:
+
+도화
+홍염
+망신
+
+충돌 위험 계열:
+
+양인살
+괴강살
+백호살
+겁살
+
+고립 계열:
+
+고신
+과숙
+
+성취 보호 계열:
+
+반안살
+장성살
+
+Ensure UI shows grouped headers.
+
+==================================================
+PART 5 — ADD INTERPRETATION EFFECT HOOKS
+==================================================
+
+Each added shinsal must influence interpretation logic.
+
+Example:
+
+양인살:
+
+increase wording about:
+
+강한 추진력
+갈등 가능성
+결단력
+직선적 성향
+
+학당귀인:
+
+increase wording about:
+
+학습능력
+연구
+집중력
+지적 성장
+
+암록:
+
+increase wording about:
+
+숨은 재물
+비공식 기회
+보이지 않는 지원
+
+복성귀인:
+
+increase wording about:
+
+보호운
+위기 회복력
+행운 요소
+
+==================================================
+PART 6 — AUTO-DETECTED SHINSAL MUST STILL BE EDITABLE
+==================================================
+
+Auto-detected shinsal must remain editable.
+
+User must be able to:
+
+exclude auto shinsal
+add manual duplicate in another position
+re-enable excluded auto shinsal
+
+Do NOT lock auto-detected entries.
+
+==================================================
+PART 7 — MERGE AUTO + MANUAL VISUAL DUPLICATES
+==================================================
+
+If same shinsal exists:
+
+auto + manual
+
+show:
+
+양인살
+[자동] [수동]
+
+instead of duplicating rows.
+
+==================================================
+PART 8 — FINAL GOAL
+==================================================
+
+After update:
+
+학당귀인 appears in add list
+암록 appears in add list
+양인살 appears in add list
+복성귀인 appears in add list
+국인귀인 appears in add list
+
+All can be assigned per-position
+All affect interpretation
+All appear correctly in report

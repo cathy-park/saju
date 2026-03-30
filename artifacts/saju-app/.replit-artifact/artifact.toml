@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "사주 만세력"
+version = "1.0.0"
+id = "artifacts/saju-app"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 22817
+
+[services.development]
+run = "pnpm --filter @workspace/saju-app run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/saju-app", "run", "build" ]
+publicDir = "artifacts/saju-app/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "22817"
+BASE_PATH = "/"

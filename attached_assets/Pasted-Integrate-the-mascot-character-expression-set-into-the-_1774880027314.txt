@@ -1,0 +1,150 @@
+Integrate the mascot character “결이” expression set into the UI logic.
+
+Use different mascot expressions depending on interpretation context.
+
+Mascot image files available:
+
+gyeol_default.png
+gyeol_excited.png
+gyeol_thinking.png
+gyeol_guiding.png
+gyeol_happy.png
+gyeol_neutral.png
+gyeol_warning.png
+gyeol_calm.png
+
+==================================================
+PART 1 — HOME SCREEN RULES
+==================================================
+
+On Home screen:
+
+default state:
+
+gyeol_default.png
+
+If today flow is positive:
+
+gyeol_excited.png
+
+If today flow is neutral:
+
+gyeol_neutral.png
+
+If today flow contains caution signals:
+
+gyeol_warning.png
+
+==================================================
+PART 2 — INTERPRETATION CARD RULES
+==================================================
+
+When explaining saju structure:
+
+use:
+
+gyeol_thinking.png
+
+Example cases:
+
+five element imbalance explanation
+ten gods explanation
+hidden stems explanation
+
+==================================================
+PART 3 — COMPATIBILITY SCREEN RULES
+==================================================
+
+If compatibility score high:
+
+use:
+
+gyeol_happy.png
+
+If compatibility score medium:
+
+use:
+
+gyeol_neutral.png
+
+If compatibility score low:
+
+use:
+
+gyeol_warning.png
+
+==================================================
+PART 4 — GUIDANCE UI RULES
+==================================================
+
+When guiding user actions:
+
+example:
+
+add partner
+view compatibility
+open report section
+
+use:
+
+gyeol_guiding.png
+
+==================================================
+PART 5 — SUMMARY CARD RULES
+==================================================
+
+When showing daily summary message:
+
+use:
+
+gyeol_calm.png
+
+Example:
+
+오늘의 전체 흐름 메시지
+대운 설명
+세운 설명
+
+==================================================
+PART 6 — EMPTY STATE RULES
+==================================================
+
+If no partner saved yet:
+
+use:
+
+gyeol_guiding.png
+
+Example message:
+
+상대를 추가하면 궁합을 볼 수 있어요
+
+==================================================
+PART 7 — WARNING STATE RULES
+==================================================
+
+If interpretation contains caution signals:
+
+examples:
+
+conflict risk
+movement instability
+relationship tension
+
+use:
+
+gyeol_warning.png
+
+==================================================
+PART 8 — FINAL GOAL
+==================================================
+
+Mascot “결이” should feel like a soft guide across the entire app.
+
+Expressions must change dynamically based on:
+
+daily flow
+compatibility score
+interpretation type
+guidance actions
+warning signals

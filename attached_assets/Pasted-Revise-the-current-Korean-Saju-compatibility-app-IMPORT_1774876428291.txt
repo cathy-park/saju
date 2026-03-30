@@ -1,0 +1,139 @@
+Revise the current Korean Saju compatibility app.
+
+IMPORTANT:
+Do NOT change the working Four Pillars engine.
+This revision should focus only on:
+
+1. fixing incorrect gwiin detection / selection
+2. allowing duplicate gwiin across different positions
+3. enforcing a minimum readable font size in the UI
+
+==================================================
+1. FIX INCORRECT GWIIN OUTPUT
+==================================================
+
+Some gwiin are being displayed even when they should not exist.
+
+Fix this so that:
+- only actually matched gwiin are shown
+- unsupported or uncertain gwiin are not displayed as confirmed
+- if a gwiin rule is not reliable, hide it instead of showing a wrong result
+
+Apply this to:
+- auto-detected gwiin
+- report display
+- bottom sheet explanations
+
+If needed, use the same trust policy already used for shinsal:
+show fewer correct items rather than many incorrect ones.
+
+==================================================
+2. ALLOW SAME GWIIN NAME IN MULTIPLE POSITIONS
+==================================================
+
+Currently duplicate gwiin selection is blocked too aggressively.
+
+This is wrong.
+
+The same gwiin name must be allowed in multiple different positions.
+
+Examples:
+- 일지 천을귀인
+- 월지 천을귀인
+=> both must be allowed
+
+Only block exact duplicates when:
+- same position
+- same name
+- same source
+
+Examples:
+- 일지 천을귀인 + 월지 천을귀인 => allowed
+- 일지 천을귀인 + 일지 천을귀인 => block as duplicate
+
+Apply this to:
+- manual add flow
+- internal duplicate validation
+- rendering
+- interpretation
+
+==================================================
+3. KEEP POSITION-AWARE STRUCTURE
+==================================================
+
+Gwiin and shinsal must remain position-aware.
+
+Each item should still store:
+- id
+- position
+- name
+- source
+
+Do not collapse them into a single combined list.
+
+==================================================
+4. FIX FONT SIZE READABILITY
+==================================================
+
+Some text in the app is too small and inconsistent.
+
+Set a global UI rule:
+
+- no text smaller than 13px anywhere in the app
+
+Apply this to:
+- badges
+- chips
+- helper text
+- metadata labels
+- card subtext
+- bottom sheet content
+- table labels
+- navigation labels if possible without breaking layout
+
+Preferred approach:
+- define a typography scale
+- clamp or standardize minimum font-size to 13px
+- preserve hierarchy, but do not let tiny text become unreadable
+
+Example:
+- body small: 13px minimum
+- badge text: 13px minimum
+- helper text: 13px minimum
+
+==================================================
+5. PRESERVE CLEAN VISUAL HIERARCHY
+==================================================
+
+Even with minimum 13px size:
+- keep strong hierarchy
+- use spacing, weight, and color to distinguish importance
+- do not rely on tiny text for hierarchy
+
+==================================================
+6. DO NOT BREAK CURRENT FEATURES
+==================================================
+
+Do NOT change:
+- Four Pillars engine
+- pillar display order
+- marital status logic
+- luck flow cards
+- compatibility logic
+- manual shinsal add/delete/exclude structure
+
+Only fix:
+- incorrect gwiin output
+- duplicate validation rules
+- font size consistency
+
+==================================================
+7. FINAL GOAL
+==================================================
+
+After this revision:
+
+- false gwiin should disappear
+- the same gwiin can exist in multiple different positions
+- exact duplicate in the same position is still blocked
+- all text remains readable with minimum 13px font size

@@ -1,0 +1,132 @@
+import { Switch, Route, Router as WouterRouter, Link, useLocation } from "wouter";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Toaster } from "@/components/ui/toaster";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { AuthProvider } from "@/lib/authContext";
+import { useSupabaseSync } from "@/hooks/useSupabaseSync";
+import Home from "@/pages/Home";
+import MyProfile from "@/pages/MyProfile";
+import PeopleList from "@/pages/PeopleList";
+import AddPerson from "@/pages/AddPerson";
+import EditPerson from "@/pages/EditPerson";
+import PersonDetail from "@/pages/PersonDetail";
+import Compatibility from "@/pages/Compatibility";
+import AuthCallback from "@/pages/AuthCallback";
+import NotFound from "@/pages/not-found";
+import { Home as HomeIcon, User, Users } from "lucide-react";
+import { AuthBar } from "@/components/AuthBar";
+import { useCallback, useState } from "react";
+
+const queryClient = new QueryClient();
+
+function BottomNav() {
+  const [location] = useLocation();
+
+  const tabs = [
+    { href: "/",       label: "홈",    icon: HomeIcon, exact: true  },
+    { href: "/saju",   label: "내 사주", icon: User,    exact: false },
+    { href: "/people", label: "상대",  icon: Users,   exact: false },
+  ];
+
+  return (
+    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background/97 backdrop-blur border-t border-border/50 supports-[backdrop-filter]:bg-background/90">
+      <div className="max-w-lg mx-auto">
+        <div className="flex items-center h-[60px] px-2">
+          {tabs.map(({ href, label, icon: Icon, exact }) => {
+            const isActive = exact
+              ? location === "/"
+              : location === href || location.startsWith(href + "/");
+            return (
+              <Link key={href} href={href} className="flex-1">
+                <button
+                  className={`w-full h-12 flex flex-col items-center justify-center gap-0.5 rounded-xl transition-all ${
+                    isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <div className={`p-1.5 rounded-xl transition-all duration-200 ${isActive ? "bg-primary/10" : ""}`}>
+                    <Icon
+                      className={`h-[20px] w-[20px] transition-all ${
+                        isActive ? "stroke-[2.4px]" : "stroke-[1.8px]"
+                      }`}
+                    />
+                  </div>
+                  <span
+                    className={`text-[10.5px] leading-none ${
+                      isActive ? "font-bold" : "font-medium"
+                    }`}
+                  >
+                    {label}
+                  </span>
+                </button>
+              </Link>
+            );
+          })}
+        </div>
+      </div>
+    </nav>
+  );
+}
+
+function AppHeader() {
+  return (
+    <div className="sticky top-0 z-40 bg-white border-b border-[#F0EDE8]">
+      <div className="max-w-lg mx-auto px-5 h-14 flex items-center justify-between">
+        {/* Brand wordmark */}
+        <div className="flex items-center gap-2">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M3 12C3 12 5.5 7 8.5 7C11.5 7 12.5 17 15.5 17C18.5 17 21 12 21 12"
+              stroke="hsl(12,72%,50%)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+          <span className="text-[18px] font-bold text-foreground tracking-tight" style={{ fontFamily: "'Pretendard Variable', 'Pretendard', sans-serif" }}>
+            나의 흐름
+          </span>
+        </div>
+        <AuthBar />
+      </div>
+    </div>
+  );
+}
+
+function SyncedApp() {
+  const [, setRefreshKey] = useState(0);
+  const handleSynced = useCallback(() => setRefreshKey(k => k + 1), []);
+  useSupabaseSync(handleSynced);
+
+  return (
+    <>
+      <AppHeader />
+      <main className="pb-[60px]">
+        <Switch>
+          <Route path="/auth/callback"           component={AuthCallback} />
+          <Route path="/"                        component={Home} />
+          <Route path="/saju"                    component={MyProfile} />
+          <Route path="/people"                  component={PeopleList} />
+          <Route path="/people/add"              component={AddPerson} />
+          <Route path="/people/:id/edit"         component={EditPerson} />
+          <Route path="/people/:id"              component={PersonDetail} />
+          <Route path="/compatibility"           component={Compatibility} />
+          <Route path="/compatibility/:personId" component={Compatibility} />
+          <Route                                 component={NotFound} />
+        </Switch>
+      </main>
+      <BottomNav />
+    </>
+  );
+}
+
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <AuthProvider>
+          <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+            <SyncedApp />
+          </WouterRouter>
+        </AuthProvider>
+        <Toaster />
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+}
+
+export default App;

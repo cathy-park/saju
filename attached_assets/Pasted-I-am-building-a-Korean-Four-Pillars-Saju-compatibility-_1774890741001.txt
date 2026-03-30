@@ -1,0 +1,94 @@
+I am building a Korean Four Pillars (Saju) compatibility analysis app.
+
+The core Saju calculation engine (Four Pillars, Five Elements distribution, Ten Gods, Luck cycles) is already correct and should NOT be modified.
+
+I want to redesign ONLY the compatibility scoring logic layer.
+
+Please implement a structured compatibility scoring system with weighted rules.
+
+Design a compatibility scoring model using:
+
+1. Heavenly Stem relationship (천간 생극)
+2. Earthly Branch relationship (지지 합 / 충 / 형 / 파 / 원진 / 해)
+3. Day Master interaction (일간 관계)
+4. Spouse palace interaction (일지 관계)
+5. Five-element balance complementarity (오행 보완도)
+6. Shared branch presence
+7. Conflict density score
+
+Each factor must have weighted scoring.
+
+Use this scoring structure:
+
+Positive weights:
+
+Six Harmony (육합): +15
+Three Harmony (삼합): +12
+Half Harmony (반합): +8
+Same Earthly Branch: +5
+Heavenly Stem Combination (천간합): +6
+Generating relationship (상생): +10
+Element complementarity: +8
+
+Negative weights:
+
+Clash (충): −12
+Punishment (형): −8
+Break (파): −6
+Harm (해): −5
+Wonjin (원진): −7
+Multiple conflicts overlap penalty: −10 additional
+
+Then compute total compatibility score between 0 and 100.
+
+After scoring:
+
+Assign compatibility type:
+
+80–100 → Harmony Type (조화형 궁합)
+65–79 → Stable Complementary Type (보완형 궁합)
+50–64 → Effort-Based Type (노력형 궁합)
+35–49 → Tension Type (긴장형 궁합)
+0–34 → Conflict Type (충돌형 궁합)
+
+Important rule:
+
+If both harmony AND conflict structures exist together,
+label result as:
+
+"Mixed Dynamic Compatibility Type (혼합형 궁합)"
+
+instead of harmony type.
+
+Then generate explanation output in Korean with this structure:
+
+1. Compatibility summary
+2. Strengths
+3. Risk factors
+4. Communication advice
+5. Long-term relationship outlook
+
+Tone rules:
+
+Do not over-optimistically label mid-range scores as ideal compatibility.
+
+Always balance positive and negative interpretations.
+
+Example:
+
+If score = 58
+
+Label:
+
+노력형 궁합 또는 혼합형 궁합
+
+NOT 이상적 궁합.
+
+Return structured JSON output:
+
+score
+compatibility_type
+positive_factors[]
+risk_factors[]
+relationship_advice[]
+long_term_outlook

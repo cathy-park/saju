@@ -1,0 +1,646 @@
+// ── 사주 궁합 점수 계산 엔진 ─────────────────────────────────────────────
+// 기준점 50 + 7가지 가중 조정 → 0-100 클램프 후 등급 결정
+// 구조적 조정(상향/하향)은 등급 티어에만 영향을 미치며 점수 숫자는 변경 없음
+
+import type { PersonRecord } from "./storage";
+import { getFinalPillars } from "./storage";
+import type { FiveElementCount } from "./sajuEngine";
+import { computeBranchRelations } from "./branchRelations";
+import { getTenGod } from "./tenGods";
+
+// ── 기초 상수 ─────────────────────────────────────────────────────────────
+
+const STEM_ELEMENT: Record<string, keyof FiveElementCount> = {
+  갑: "목", 을: "목", 병: "화", 정: "화",
+  무: "토", 기: "토", 경: "금", 신: "금",
+  임: "수", 계: "수",
+};
+const BRANCH_ELEMENT: Record<string, keyof FiveElementCount> = {
+  자: "수", 축: "토", 인: "목", 묘: "목",
+  진: "토", 사: "화", 오: "화", 미: "토",
+  신: "금", 유: "금", 술: "토", 해: "수",
+};
+const STEM_YIN_YANG: Record<string, "양" | "음"> = {
+  갑: "양", 병: "양", 무: "양", 경: "양", 임: "양",
+  을: "음", 정: "음", 기: "음", 신: "음", 계: "음",
+};
+const GENERATING: ReadonlyArray<readonly [keyof FiveElementCount, keyof FiveElementCount]> = [
+  ["목", "화"], ["화", "토"], ["토", "금"], ["금", "수"], ["수", "목"],
+];
+const CONTROLLING: ReadonlyArray<readonly [keyof FiveElementCount, keyof FiveElementCount]> = [
+  ["목", "토"], ["토", "수"], ["수", "화"], ["화", "금"], ["금", "목"],
+];
+
+// ── 지지 관계 lookup tables (독립적 — branchRelations.ts와 별도) ──────────
+
+const SIX_HAP: [string, string][] = [
+  ["자", "축"], ["인", "해"], ["묘", "술"], ["진", "유"], ["사", "신"], ["오", "미"],
+];
+const CHUNG_PAIRS: [string, string][] = [
+  ["자", "오"], ["축", "미"], ["인", "신"], ["묘", "유"], ["진", "술"], ["사", "해"],
+];
+const HYEONG_MAP: Record<string, string[]> = {
+  인: ["사"], 사: ["신"], 신: ["인"],
+  축: ["술"], 술: ["미"], 미: ["축"],
+  자: ["묘"], 묘: ["자"],
+};
+const PA_PAIRS: [string, string][] = [
+  ["자", "유"], ["묘", "오"], ["진", "축"], ["술", "미"],
+];
+const HAE_PAIRS: [string, string][] = [
+  ["자", "미"], ["축", "오"], ["인", "사"], ["묘", "진"], ["신", "해"], ["유", "술"],
+];
+const WONJIN_PAIRS: [string, string][] = [
+  ["자", "미"], ["축", "오"], ["인", "유"], ["묘", "신"], ["진", "해"], ["사", "술"],
+];
+const HALF_TRIAD_GROUPS: string[][] = [
+  ["인", "오", "술"], ["사", "유", "축"],
+  ["신", "자", "진"], ["해", "묘", "미"],
+];
+
+function pairMatch(a: string, b: string, pairs: [string, string][]): boolean {
+  return pairs.some(([x, y]) => (a === x && b === y) || (a === y && b === x));
+}
+
+function getBranchRels(b1: string, b2: string): string[] {
+  const rels: string[] = [];
+  if (pairMatch(b1, b2, SIX_HAP))   rels.push("합");
+  if (pairMatch(b1, b2, CHUNG_PAIRS)) rels.push("충");
+  if (HYEONG_MAP[b1]?.includes(b2)) rels.push("형");
+  if (pairMatch(b1, b2, PA_PAIRS))   rels.push("파");
+  if (pairMatch(b1, b2, HAE_PAIRS))  rels.push("해");
+  if (pairMatch(b1, b2, WONJIN_PAIRS)) rels.push("원진");
+  const halfTriad = HALF_TRIAD_GROUPS.some(g => g.includes(b1) && g.includes(b2));
+  if (halfTriad && !rels.includes("합")) rels.push("반합");
+  return rels;
+}
+
+// ── Tone (5등급) ──────────────────────────────────────────────────────────
+
+export type CompatibilityTone =
+  | "이상적 궁합" | "좋은 궁합" | "노력형 궁합" | "긴장형 궁합" | "주의 궁합";
+
+export const COMPAT_TONE_COLOR: Record<CompatibilityTone, string> = {
+  "이상적 궁합": "text-purple-700",
+  "좋은 궁합":   "text-green-700",
+  "노력형 궁합": "text-blue-600",
+  "긴장형 궁합": "text-orange-600",
+  "주의 궁합":   "text-red-600",
+};
+
+// ascending: index 0 = worst, 4 = best
+const TONE_TIERS: CompatibilityTone[] =
+  ["주의 궁합", "긴장형 궁합", "노력형 궁합", "좋은 궁합", "이상적 궁합"];
+
+export function gradeFromScore(score: number): CompatibilityTone {
+  if (score >= 80) return "이상적 궁합";
+  if (score >= 68) return "좋은 궁합";
+  if (score >= 55) return "노력형 궁합";
+  if (score >= 40) return "긴장형 궁합";
+  return "주의 궁합";
+}
+
+function shiftTier(base: CompatibilityTone, delta: number): CompatibilityTone {
+  const idx = TONE_TIERS.indexOf(base);
+  return TONE_TIERS[Math.max(0, Math.min(TONE_TIERS.length - 1, idx + delta))];
+}
+
+// ── 반환 타입 ─────────────────────────────────────────────────────────────
+
+export interface AdjustmentStep {
+  category: string;
+  delta: number;
+  note: string;
+}
+
+export interface StructuralTierStep {
+  label: string;
+  direction: "up" | "down";
+}
+
+export interface CompatibilityResult {
+  baseScore: number;
+  adjustmentSteps: AdjustmentStep[];
+
+  baseType: CompatibilityTone;
+  structuralSteps: StructuralTierStep[];
+  finalType: CompatibilityTone;
+  finalColor: string;
+
+  // backward compat
+  totalScore: number;
+  score: number;
+  grade: string;
+  clashCount: number;
+
+  keywords: string[];
+  summary: string;
+  strengths: string[];
+  cautions: string[];
+  advice: string[];
+  longTermOutlook: string;
+
+  domains: {
+    emotionalConnection: number;
+    communication: number;
+    values: number;
+    problemSolving: number;
+  };
+
+  details: { title: string; description: string; isPositive: boolean }[];
+  elementBalance: { person1: FiveElementCount; person2: FiveElementCount };
+
+  // legacy subscores — kept for clipboard / external callers
+  subscores: {
+    dayMaster: number;
+    spousePalace: number;
+    branchInteraction: number;
+    elementComplementarity: number;
+    tenGodRelation: number;
+    monthBranch: number;
+    yongshin: number;
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+//  1. 일간 관계 delta  (−12 ~ +15)
+// ═══════════════════════════════════════════════════════════════════════
+function scoreDayMasterDelta(s1: string, s2: string): { delta: number; note: string } {
+  if (!s1 || !s2) return { delta: 0, note: "일간 정보 없음" };
+  const e1 = STEM_ELEMENT[s1];
+  const e2 = STEM_ELEMENT[s2];
+  if (!e1 || !e2) return { delta: 0, note: "오행 미상" };
+
+  if (GENERATING.some(([a, b]) => a === e1 && b === e2))
+    return { delta: +15, note: `${s1}(${e1}) → ${s2}(${e2}) 상생` };
+  if (GENERATING.some(([a, b]) => a === e2 && b === e1))
+    return { delta: +12, note: `${s2}(${e2}) → ${s1}(${e1}) 상생 (피생)` };
+  if (e1 === e2)
+    return { delta: +8, note: `${s1}·${s2} 동일 오행 (비화)` };
+  if (CONTROLLING.some(([a, b]) => a === e1 && b === e2))
+    return { delta: -10, note: `${s1}(${e1}) → ${s2}(${e2}) 상극` };
+  if (CONTROLLING.some(([a, b]) => a === e2 && b === e1))
+    return { delta: -12, note: `${s2}(${e2}) → ${s1}(${e1}) 상극 (피극)` };
+
+  return { delta: +4, note: `${s1}·${s2} 간접 관계` };
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+//  2. 배우자궁(일지) delta  (−18 ~ +18)
+// ═══════════════════════════════════════════════════════════════════════
+function scoreSpousePalaceDelta(b1: string, b2: string): { delta: number; note: string; spousePalaceClash: boolean; spousePalaceTensions: string[] } {
+  if (!b1 || !b2) return { delta: 0, note: "일지 정보 없음", spousePalaceClash: false, spousePalaceTensions: [] };
+  const rels = getBranchRels(b1, b2);
+  const tensions: string[] = rels.filter(r => ["형","해","원진"].includes(r));
+  const hasClash = rels.includes("충");
+
+  if (rels.includes("합"))
+    return { delta: +18, note: `${b1}·${b2} 지지합`, spousePalaceClash: false, spousePalaceTensions: tensions };
+  if (rels.includes("반합"))
+    return { delta: +12, note: `${b1}·${b2} 반합`, spousePalaceClash: false, spousePalaceTensions: tensions };
+  if (hasClash)
+    return { delta: -18, note: `${b1}·${b2} 충`, spousePalaceClash: true, spousePalaceTensions: tensions };
+  if (rels.includes("원진"))
+    return { delta: -9, note: `${b1}·${b2} 원진`, spousePalaceClash: false, spousePalaceTensions: tensions };
+  if (rels.includes("형"))
+    return { delta: -8, note: `${b1}·${b2} 형`, spousePalaceClash: false, spousePalaceTensions: tensions };
+  if (rels.includes("해"))
+    return { delta: -7, note: `${b1}·${b2} 해`, spousePalaceClash: false, spousePalaceTensions: tensions };
+  if (rels.includes("파"))
+    return { delta: -6, note: `${b1}·${b2} 파`, spousePalaceClash: false, spousePalaceTensions: tensions };
+
+  return { delta: +6, note: `${b1}·${b2} 무관`, spousePalaceClash: false, spousePalaceTensions: [] };
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+//  3. 월지 교차 delta  (−12 ~ +12)
+// ═══════════════════════════════════════════════════════════════════════
+function scoreMonthBranchDelta(m1: string, m2: string): { delta: number; note: string; monthClash: boolean } {
+  if (!m1 || !m2) return { delta: 0, note: "월지 정보 없음", monthClash: false };
+  const rels = getBranchRels(m1, m2);
+
+  if (rels.includes("합"))   return { delta: +12, note: `월지 ${m1}·${m2} 합`, monthClash: false };
+  if (rels.includes("반합")) return { delta: +8,  note: `월지 ${m1}·${m2} 반합`, monthClash: false };
+  if (rels.includes("충"))   return { delta: -12, note: `월지 ${m1}·${m2} 충`, monthClash: true };
+  if (rels.some(r => ["형","해","원진"].includes(r)))
+    return { delta: -6, note: `월지 ${m1}·${m2} ${rels.filter(r => ["형","해","원진"].includes(r)).join("·")}`, monthClash: false };
+  if (rels.includes("파"))   return { delta: -4, note: `월지 ${m1}·${m2} 파`, monthClash: false };
+
+  return { delta: +4, note: `월지 ${m1}·${m2} 무관`, monthClash: false };
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+//  4. 지지 전체 교차 delta  (−15 ~ +15 cap)
+// ═══════════════════════════════════════════════════════════════════════
+function scoreBranchInteractionDelta(
+  br1: string[], br2: string[],
+): { delta: number; note: string; clashCount: number } {
+  let raw = 0;
+  let clashCount = 0;
+  const seen = new Set<string>();
+
+  for (const a of br1) {
+    for (const b of br2) {
+      const key = [a, b].sort().join(",");
+      if (seen.has(key)) continue;
+      const rels = getBranchRels(a, b);
+      const newRels = rels.filter(r => {
+        const rk = `${r}|${key}`;
+        if (seen.has(rk)) return false;
+        seen.add(rk);
+        return true;
+      });
+      for (const r of newRels) {
+        if (r === "합")   raw += 4;
+        if (r === "반합") raw += 5;
+        if (r === "충")   { raw -= 5; clashCount++; }
+        if (r === "형")   raw -= 4;
+        if (r === "파")   raw -= 3;
+        if (r === "해")   raw -= 3;
+        if (r === "원진") raw -= 4;
+      }
+    }
+  }
+
+  const delta = Math.max(-15, Math.min(15, raw));
+  const note = raw !== 0
+    ? `지지 교차: 총 ${raw > 0 ? "+" : ""}${raw}점 (충 ${clashCount}회, 캡 ±15)`
+    : "지지 교차 관계 없음";
+  return { delta, note, clashCount };
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+//  5. 오행 보완도 delta  (−8 ~ +12)
+// ═══════════════════════════════════════════════════════════════════════
+function scoreElementComplementarityDelta(el1: FiveElementCount, el2: FiveElementCount): { delta: number; note: string } {
+  const all: Array<keyof FiveElementCount> = ["목", "화", "토", "금", "수"];
+  const total1 = all.reduce((s, e) => s + el1[e], 0) || 1;
+  const total2 = all.reduce((s, e) => s + el2[e], 0) || 1;
+  const r1: Record<string, number> = {};
+  const r2: Record<string, number> = {};
+  for (const e of all) { r1[e] = el1[e] / total1; r2[e] = el2[e] / total2; }
+
+  let raw = 0;
+  for (const e of all) {
+    if (r1[e] <= 0.10 && r2[e] >= 0.25) raw += 4;  // partner fills my deficiency
+    if (r2[e] <= 0.10 && r1[e] >= 0.25) raw += 3;  // I fill partner's deficiency
+    if (r1[e] <= 0.05 && r2[e] <= 0.05) raw -= 3;  // both deficient
+    if (r1[e] >= 0.35 && r2[e] >= 0.35) raw -= 2;  // both over-amplify
+  }
+
+  const delta = Math.max(-8, Math.min(12, raw));
+  const note = delta >= 4 ? "오행 상호 보완 구조 양호"
+    : delta <= -4 ? "오행 공동 결핍 또는 과잉"
+    : "오행 보완 보통";
+  return { delta, note };
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+//  6. 십성 궁합 delta  (−8 ~ +12)
+// ═══════════════════════════════════════════════════════════════════════
+function scoreTenGodDelta(s1: string, s2: string): { delta: number; note: string } {
+  if (!s1 || !s2) return { delta: 0, note: "일간 정보 없음" };
+  const tg12 = getTenGod(s1, s2);
+  const tg21 = getTenGod(s2, s1);
+
+  const MAP: Record<string, number> = {
+    정재: 12, 정인: 12, 식신: 10,
+    정관: 8,  편재: 8,  편인: 6,
+    비견: 2,  상관: -4, 편관: -6, 겁재: -8,
+  };
+
+  const s12 = tg12 ? (MAP[tg12] ?? 2) : 0;
+  const s21 = tg21 ? (MAP[tg21] ?? 2) : 0;
+  const raw = Math.round((s12 + s21) / 2);
+  const delta = Math.max(-8, Math.min(12, raw));
+  const note = tg12 && tg21 ? `${tg12} ↔ ${tg21}` : tg12 ? tg12 : "십성 관계 없음";
+  return { delta, note };
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+//  7. 용신 보완 delta  (−5 ~ +10)
+// ═══════════════════════════════════════════════════════════════════════
+function scoreYongshinDelta(
+  yData1: { type: string; elements: string[] }[] | undefined,
+  el2: FiveElementCount,
+  yData2: { type: string; elements: string[] }[] | undefined,
+  el1: FiveElementCount,
+): { delta: number; note: string } {
+  const elToKey = (e: string): keyof FiveElementCount | null => {
+    const MAP: Record<string, keyof FiveElementCount> = {
+      목: "목", 화: "화", 토: "토", 금: "금", 수: "수",
+    };
+    return MAP[e] ?? null;
+  };
+
+  const evalYong = (data: { type: string; elements: string[] }[] | undefined, partner: FiveElementCount): number => {
+    if (!data || data.length === 0) return 0;
+    let val = 0;
+    for (const { type, elements } of data) {
+      for (const el of elements) {
+        const k = elToKey(el);
+        if (!k || partner[k] === undefined) continue;
+        const partnerHas = partner[k] > 0;
+        if (type === "용신" && partnerHas)  val += 10;
+        if (type === "희신" && partnerHas)  val += 6;
+        if (type === "기신" && partnerHas)  val -= 5;
+      }
+    }
+    return val;
+  };
+
+  const v1 = evalYong(yData1, el2);
+  const v2 = evalYong(yData2, el1);
+  const raw = v1 !== 0 || v2 !== 0 ? Math.round((v1 + v2) / 2) : 0;
+  const delta = Math.max(-5, Math.min(10, raw));
+
+  const note = delta > 5 ? "상대가 내 용신/희신을 지지"
+    : delta < -2 ? "상대가 내 기신을 강화"
+    : yData1 || yData2 ? "용신 보완 보통"
+    : "용신 정보 없음";
+  return { delta, note };
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+//  구조적 등급 조정 (tier shift)
+// ═══════════════════════════════════════════════════════════════════════
+interface StructuralFlags {
+  dayMasterSupportive: boolean;
+  spousePalaceClash: boolean;
+  spousePalaceMultiTension: boolean;
+  branchClashCount: number;
+  monthBranchClash: boolean;
+}
+
+function computeStructuralSteps(
+  flags: StructuralFlags,
+  spouseDelta: number,
+): { steps: StructuralTierStep[]; netDelta: number } {
+  const steps: StructuralTierStep[] = [];
+  let net = 0;
+
+  // +1 up: dayMasterSupportive + spouse palace is not negative
+  if (flags.dayMasterSupportive && spouseDelta >= 0) {
+    steps.push({ label: "일간상생 + 배우자궁 비충", direction: "up" });
+    net += 1;
+  }
+  // −1: spouse palace clash
+  if (flags.spousePalaceClash) {
+    steps.push({ label: "배우자궁 충", direction: "down" });
+    net -= 1;
+  }
+  // −1: spouse palace has multiple tension relations (원진/해/형 ≥2)
+  if (flags.spousePalaceMultiTension) {
+    steps.push({ label: "배우자궁 복합 긴장(원진·해·형 중복)", direction: "down" });
+    net -= 1;
+  }
+  // −1: 2+ cross branch clashes
+  if (flags.branchClashCount >= 2) {
+    steps.push({ label: `지지 충 ${flags.branchClashCount}회`, direction: "down" });
+    net -= 1;
+  }
+  // −1: month branch clash
+  if (flags.monthBranchClash) {
+    steps.push({ label: "월지 충", direction: "down" });
+    net -= 1;
+  }
+
+  return { steps, netDelta: Math.max(-2, Math.min(2, net)) };
+}
+
+// ── 도메인 점수 (보조 지표) ────────────────────────────────────────────
+
+function buildDomains(
+  e1: FiveElementCount, e2: FiveElementCount,
+  s1: string, s2: string,
+): CompatibilityResult["domains"] {
+  const clamp = (v: number) => Math.max(20, Math.min(95, Math.round(v)));
+  const avg = (a: number, b: number) => (a + b) / 2;
+  return {
+    emotionalConnection: clamp(45 + avg(e1["화"], e2["화"]) * 10 + avg(e1["수"], e2["수"]) * 8),
+    communication:       clamp(45 + avg(e1["목"], e2["목"]) * 12 + (STEM_YIN_YANG[s1] !== STEM_YIN_YANG[s2] ? 8 : 0)),
+    values:              clamp(45 + avg(e1["토"], e2["토"]) * 10 + avg(e1["금"], e2["금"]) * 5),
+    problemSolving:      clamp(45 + avg(e1["금"], e2["금"]) * 12 + avg(e1["토"], e2["토"]) * 6),
+  };
+}
+
+// ── 내러티브 ─────────────────────────────────────────────────────────
+
+function buildNarrative(
+  totalScore: number,
+  s1: string, s2: string,
+  finalType: CompatibilityTone,
+  name1: string, name2: string,
+  hasHarmony: boolean,
+  hasConflict: boolean,
+): { summary: string; strengths: string[]; cautions: string[]; advice: string[]; longTermOutlook: string } {
+  const e1 = STEM_ELEMENT[s1];
+  const e2 = STEM_ELEMENT[s2];
+  const gen12 = GENERATING.some(([a, b]) => a === e1 && b === e2);
+  const gen21 = GENERATING.some(([a, b]) => a === e2 && b === e1);
+  const sameEl = e1 === e2;
+  const yinYangMatch = STEM_YIN_YANG[s1] !== STEM_YIN_YANG[s2];
+  const tg = getTenGod(s1, s2) ?? "";
+
+  const summaryMap: Record<CompatibilityTone, string> = {
+    "이상적 궁합": `${name1}님과 ${name2}님은 서로의 에너지가 자연스럽게 흐르는 이상적인 구조입니다.`,
+    "좋은 궁합":   `두 분의 기운이 큰 마찰 없이 잘 어우러지는 좋은 궁합입니다.`,
+    "노력형 궁합": `두 구조 사이에는 긴장과 조화가 공존합니다. 이해와 노력으로 좋은 관계를 만들 수 있습니다.`,
+    "긴장형 궁합": `에너지 방향의 차이가 있어 충분한 소통과 조율이 필요한 구조입니다.`,
+    "주의 궁합":   `기운의 충돌이 강해 서로 이해하고 맞춰나가는 데 상당한 노력이 요구됩니다.`,
+  };
+
+  const strengths: string[] = [];
+  if (gen12) strengths.push(`${name1}님(${e1})이 ${name2}님(${e2})의 기운을 상생합니다`);
+  if (gen21) strengths.push(`${name2}님(${e2})이 ${name1}님(${e1})을 키워주는 상생 에너지가 있습니다`);
+  if (yinYangMatch) strengths.push("음양이 상반되어 서로를 끌어당기는 자연스러운 인력이 있습니다");
+  if (hasHarmony) strengths.push("지지 합 구조 — 실제 생활 리듬에서 친밀감이 형성되기 쉽습니다");
+  if (sameEl && totalScore >= 55) strengths.push("같은 오행 기운으로 서로의 가치관을 공감하기 쉽습니다");
+  if (["정인", "정재", "식신"].includes(tg)) strengths.push(`${name2}님이 ${name1}님에게 ${tg}로 작용 — 심리적 안정과 신뢰 기반`);
+  if (strengths.length === 0) strengths.push("서로의 차이가 새로운 시각과 자극이 될 수 있습니다");
+
+  const cautions: string[] = [];
+  if (hasConflict) cautions.push("지지 충 구조 — 생활 방식 차이로 반복적 마찰이 생길 수 있습니다");
+  if (!yinYangMatch && totalScore < 65) cautions.push("같은 음양 구조로 경쟁하거나 독립성을 강조하는 경향이 있습니다");
+  if (sameEl && totalScore < 55) cautions.push("같은 오행이 겹쳐 주도권 충돌로 이어질 수 있습니다");
+  if (["편관", "겁재", "상관"].includes(tg)) cautions.push(`${name2}님이 ${name1}님에게 ${tg}로 작용 — 자극과 압박`);
+  if (cautions.length === 0 && totalScore >= 65) cautions.push("구조적 위험 요소는 적지만 의식적인 소통이 항상 필요합니다");
+  if (cautions.length === 0) cautions.push("구조적 약점을 파악하고 미리 패턴을 인식하는 것이 중요합니다");
+
+  const advice: string[] = [
+    totalScore >= 65
+      ? "상대의 일간 에너지를 이해하면 불필요한 오해를 줄일 수 있습니다"
+      : "충돌 상황에서 '틀린 것'이 아니라 '다른 것'임을 인식하는 것이 첫 번째 조율점입니다",
+    hasConflict
+      ? "감정 충돌 직후 즉시 결론 내리기보다 24시간 후 대화하면 효과적입니다"
+      : "두 사람의 에너지가 활성화되는 시간대를 활용한 대화를 시도해보세요",
+    hasHarmony
+      ? "자연스럽게 맞는 영역에서 공통 활동을 늘려 긍정 자원을 쌓아두세요"
+      : "서로의 강점을 인식하고, 약점은 보완하는 역할 분담을 해보세요",
+  ];
+
+  const outlookMap: Record<CompatibilityTone, string> = {
+    "이상적 궁합":  "장기적으로 안정적인 발전 가능성이 높습니다. 서로에 대한 이해가 쌓일수록 관계의 질이 높아집니다.",
+    "좋은 궁합":    "상호 보완의 잠재력이 있습니다. 초반의 어색함이 해소되면 안정적인 관계로 발전할 수 있습니다.",
+    "노력형 궁합":  "지속적인 노력과 상호 이해를 통해 관계를 발전시킬 수 있습니다.",
+    "긴장형 궁합":  "관계 유지에 상당한 에너지가 소모될 수 있습니다. 각자의 독립성을 존중하는 것이 도움이 됩니다.",
+    "주의 궁합":    "구조적 긴장이 강하지만, 이런 관계가 오히려 서로를 변화시키는 촉매가 될 수도 있습니다.",
+  };
+
+  return {
+    summary: summaryMap[finalType],
+    strengths: strengths.slice(0, 3),
+    cautions: cautions.slice(0, 3),
+    advice,
+    longTermOutlook: outlookMap[finalType],
+  };
+}
+
+function buildKeywords(
+  score: number, s1: string, s2: string,
+  hasHarmony: boolean, hasConflict: boolean, clashCount: number,
+): string[] {
+  const e1 = STEM_ELEMENT[s1];
+  const e2 = STEM_ELEMENT[s2];
+  const kw: string[] = [];
+  if (hasHarmony) kw.push("조화 구조");
+  if (hasConflict) kw.push("충돌 요소");
+  if (clashCount >= 2) kw.push(`충 ${clashCount}회`);
+  if (e1 !== e2) kw.push("오행 보완");
+  if (STEM_YIN_YANG[s1] !== STEM_YIN_YANG[s2]) kw.push("음양 조화");
+  if (score >= 65 && !hasConflict) kw.push("안정 기반");
+  if (score < 50) kw.push("노력 필요");
+  return kw.slice(0, 3);
+}
+
+// ── Main export ──────────────────────────────────────────────────────────
+
+export function calculateCompatibilityScore(
+  person1: PersonRecord,
+  person2: PersonRecord,
+): CompatibilityResult {
+  const p1 = getFinalPillars(person1);
+  const p2 = getFinalPillars(person2);
+
+  const s1 = p1.day?.hangul?.[0] ?? "";
+  const s2 = p2.day?.hangul?.[0] ?? "";
+  const b1 = p1.day?.hangul?.[1] ?? "";
+  const b2 = p2.day?.hangul?.[1] ?? "";
+  const m1 = p1.month?.hangul?.[1] ?? "";
+  const m2 = p2.month?.hangul?.[1] ?? "";
+
+  const allBranches = (pillars: ReturnType<typeof getFinalPillars>): string[] =>
+    [pillars.year, pillars.month, pillars.day, pillars.hour]
+      .filter(Boolean)
+      .map((p) => p!.hangul[1])
+      .filter(Boolean);
+
+  const br1 = allBranches(p1);
+  const br2 = allBranches(p2);
+
+  const elemsFromPillars = (pillars: ReturnType<typeof getFinalPillars>): FiveElementCount => {
+    const c: FiveElementCount = { 목: 0, 화: 0, 토: 0, 금: 0, 수: 0 };
+    [pillars.year, pillars.month, pillars.day, pillars.hour].filter(Boolean).forEach((p) => {
+      p!.hangul.split("").forEach((ch) => {
+        const e = STEM_ELEMENT[ch] ?? BRANCH_ELEMENT[ch];
+        if (e) c[e]++;
+      });
+    });
+    return c;
+  };
+
+  const el1 = elemsFromPillars(p1);
+  const el2 = elemsFromPillars(p2);
+
+  // ── Compute 7 adjustment deltas ──
+  const dm   = scoreDayMasterDelta(s1, s2);
+  const sp   = scoreSpousePalaceDelta(b1, b2);
+  const mb   = scoreMonthBranchDelta(m1, m2);
+  const bi   = scoreBranchInteractionDelta(br1, br2);
+  const ec   = scoreElementComplementarityDelta(el1, el2);
+  const tg   = scoreTenGodDelta(s1, s2);
+  const yong = scoreYongshinDelta(
+    person1.manualYongshinData, el2,
+    person2.manualYongshinData, el1,
+  );
+
+  const adjustmentSteps: AdjustmentStep[] = [
+    { category: "일간 관계",      delta: dm.delta,   note: dm.note },
+    { category: "배우자궁(일지)", delta: sp.delta,   note: sp.note },
+    { category: "월지 교차",      delta: mb.delta,   note: mb.note },
+    { category: "지지 전체 교차", delta: bi.delta,   note: bi.note },
+    { category: "오행 보완도",    delta: ec.delta,   note: ec.note },
+    { category: "십성 궁합",      delta: tg.delta,   note: tg.note },
+    { category: "용신 보완",      delta: yong.delta, note: yong.note },
+  ];
+
+  const totalDelta = adjustmentSteps.reduce((acc, s) => acc + s.delta, 0);
+  const baseScore = Math.max(0, Math.min(100, 50 + totalDelta));
+
+  // ── Structural flags ──
+  const flags: StructuralFlags = {
+    dayMasterSupportive: dm.delta > 0,
+    spousePalaceClash: sp.spousePalaceClash,
+    spousePalaceMultiTension: sp.spousePalaceTensions.length >= 2,
+    branchClashCount: bi.clashCount,
+    monthBranchClash: mb.monthClash,
+  };
+
+  const baseType = gradeFromScore(baseScore);
+  const { steps: structuralSteps, netDelta } = computeStructuralSteps(flags, sp.delta);
+  const finalType = shiftTier(baseType, netDelta);
+  const finalColor = COMPAT_TONE_COLOR[finalType];
+
+  // ── Narrative / keywords ──
+  const allRels = computeBranchRelations(br1, br2);
+  const hasHarmonyStructure = allRels.some((r) => r.type === "지지육합" || r.type === "지지삼합" || r.type === "지지방합")
+    || GENERATING.some(([a, t]) => a === STEM_ELEMENT[s1] && t === STEM_ELEMENT[s2])
+    || GENERATING.some(([a, t]) => a === STEM_ELEMENT[s2] && t === STEM_ELEMENT[s1]);
+  const hasConflictStructure = bi.clashCount > 0;
+
+  const narrative = buildNarrative(
+    baseScore, s1, s2, finalType,
+    person1.birthInput.name, person2.birthInput.name,
+    hasHarmonyStructure, hasConflictStructure,
+  );
+  const keywords = buildKeywords(baseScore, s1, s2, hasHarmonyStructure, hasConflictStructure, bi.clashCount);
+  const domains = buildDomains(el1, el2, s1, s2);
+
+  const details: CompatibilityResult["details"] = [
+    { title: "일간 분석",  description: dm.note,   isPositive: dm.delta >= 0 },
+    { title: "배우자궁",   description: sp.note,   isPositive: sp.delta >= 0 },
+    { title: "월지 교차",  description: mb.note,   isPositive: mb.delta >= 0 },
+    { title: "지지 교차",  description: bi.note,   isPositive: bi.delta >= 0 },
+    { title: "오행 보완",  description: ec.note,   isPositive: ec.delta >= 0 },
+    { title: "십성 관계",  description: tg.note,   isPositive: tg.delta >= 0 },
+    { title: "용신 보완",  description: yong.note, isPositive: yong.delta >= 0 },
+  ];
+
+  return {
+    baseScore,
+    adjustmentSteps,
+    baseType,
+    structuralSteps,
+    finalType,
+    finalColor,
+    // backward compat
+    totalScore: baseScore,
+    score: baseScore,
+    grade: finalType,
+    clashCount: bi.clashCount,
+    keywords,
+    ...narrative,
+    domains,
+    details,
+    elementBalance: { person1: el1, person2: el2 },
+    subscores: {
+      dayMaster:              dm.delta,
+      spousePalace:           sp.delta,
+      branchInteraction:      bi.delta,
+      elementComplementarity: ec.delta,
+      tenGodRelation:         tg.delta,
+      monthBranch:            mb.delta,
+      yongshin:               yong.delta,
+    },
+  };
+}

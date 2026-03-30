@@ -1,0 +1,390 @@
+// ── 사주 데이터 클립보드 내보내기 유틸 ─────────────────────────────
+// GPT / Gemini 에 붙여넣기 위한 구조화 텍스트를 생성합니다.
+
+import type { PersonRecord } from "./storage";
+import { getFinalPillars } from "./storage";
+import { buildInterpretSchema, STRENGTH_DISPLAY_LABEL, type StrengthLevel } from "./interpretSchema";
+import { computeBranchRelations } from "./branchRelations";
+import { calculateLuckCycles, calculateShinsalFull } from "./luckCycles";
+import { getTenGod } from "./tenGods";
+import type { CompatibilityResult } from "./compatibilityScore";
+
+// ── 오행 관계 맵 (클립보드 전용) ────────────────────────────────────
+const GENERATES_EL: Record<string, string> = {
+  목: "화", 화: "토", 토: "금", 금: "수", 수: "목",
+};
+const CONTROLS_EL: Record<string, string> = {
+  목: "토", 화: "금", 토: "수", 금: "목", 수: "화",
+};
+const GENERATOR_EL: Record<string, string> = {
+  화: "목", 토: "화", 금: "토", 수: "금", 목: "수",
+};
+const CONTROLLER_EL: Record<string, string> = {
+  목: "금", 화: "수", 토: "목", 금: "화", 수: "토",
+};
+
+const WINTER_BR = ["해", "자", "축"];
+const SUMMER_BR = ["사", "오", "미"];
+
+// ── 천간·지지 → 오행 ────────────────────────────────────────────────────
+const STEM_EL: Record<string, string> = {
+  갑: "목", 을: "목", 병: "화", 정: "화",
+  무: "토", 기: "토", 경: "금", 신: "금",
+  임: "수", 계: "수",
+  인: "목", 묘: "목",
+  사: "화", 오: "화",
+  진: "토", 술: "토", 축: "토", 미: "토",
+  유: "금",
+  해: "수", 자: "수",
+};
+
+// ── 개인 사주 전체 텍스트 빌드 ─────────────────────────────────────
+
+export function buildPersonClipboardText(record: PersonRecord): string {
+  const input = record.birthInput;
+  const pillars = getFinalPillars(record);
+
+  const dayStem   = pillars.day?.hangul?.[0] ?? "";
+  const dayBranch = pillars.day?.hangul?.[1] ?? "";
+  const allBranches = (["year", "month", "day", "hour"] as const)
+    .map((k) => pillars[k]?.hangul?.[1])
+    .filter((b): b is string => !!b);
+  const allStems = (["year", "month", "day", "hour"] as const)
+    .map((k) => pillars[k]?.hangul?.[0])
+    .filter((s): s is string => !!s);
+  const monthBranch = pillars.month?.hangul?.[1] ?? "";
+
+  const counts = record.profile.fiveElementDistribution;
+
+  const schema = buildInterpretSchema(
+    dayStem, counts, monthBranch, dayBranch, allStems, allBranches,
+  );
+
+  const strengthLevel: StrengthLevel = record.manualStrengthLevel
+    ? (record.manualStrengthLevel as StrengthLevel)
+    : schema.strengthLevel;
+
+  const branchRelations = computeBranchRelations(allBranches);
+
+  // ── 구조 지표 계산 ──────────────────────────────────────────────
+  const dmEl    = STEM_EL[dayStem] ?? "";
+  const inseongEl  = GENERATOR_EL[dmEl]   ?? "";  // 인성 원소
+  const sikanEl    = GENERATES_EL[dmEl]   ?? "";  // 식상 원소
+  const jaeEl      = CONTROLS_EL[dmEl]    ?? "";  // 재성 원소
+  const gwansEl    = CONTROLLER_EL[dmEl]  ?? "";  // 관성 원소
+
+  // 득령 (得令): 월지 오행이 일간 또는 인성 원소 계열
+  const monthBranchEl = STEM_EL[monthBranch] ?? "";
+  const deungryeong = monthBranchEl === dmEl || monthBranchEl === inseongEl;
+
+  // 득지 (得地): 일지 오행이 일간 또는 인성 계열
+  const dayBranchEl = STEM_EL[dayBranch] ?? "";
+  const deungjiStr  = dayBranchEl === dmEl || dayBranchEl === inseongEl
+    ? "yes"
+    : dayBranchEl === sikanEl || dayBranchEl === jaeEl || dayBranchEl === gwansEl
+    ? "no"
+    : "partial";
+
+  // 득세 (得勢): 사주 전체에서 비겁/인성 개수 vs 식상/재성/관성 개수
+  const allChars = [...allStems, ...allBranches];
+  const supportCount = allChars.filter(c => { const e = STEM_EL[c]; return e === dmEl || e === inseongEl; }).length;
+  const drainCount   = allChars.filter(c => { const e = STEM_EL[c]; return e === sikanEl || e === jaeEl || e === gwansEl; }).length;
+  const deungseStr   = supportCount > drainCount ? "yes" : supportCount === drainCount ? "partial" : "no";
+
+  // 격국 (格局): 월지 십성 기반
+  const monthTG = dayStem && monthBranch ? getTenGod(dayStem, monthBranch) : null;
+  const geokgukMap: Record<string, string> = {
+    비견: "비겁격(比劫格)", 겁재: "비겁격(比劫格)",
+    식신: "식신격(食神格)", 상관: "상관격(傷官格)",
+    편재: "편재격(偏財格)", 정재: "정재격(正財格)",
+    편관: "편관격(七殺格)", 정관: "정관격(正官格)",
+    편인: "편인격(梟神格)", 정인: "정인격(正印格)",
+  };
+  const geokguk = monthTG ? (geokgukMap[monthTG] ?? `${monthTG}格`) : "불명";
+
+  // 조후 필요 오행 (調候): 계절 기반 온도 보정 원소
+  let johu = "조후 보완 불필요";
+  if (WINTER_BR.includes(monthBranch)) {
+    johu = "병(丙)·정(丁)화 — 한냉 해소 필요";
+  } else if (SUMMER_BR.includes(monthBranch)) {
+    if (["병", "정", "무", "기"].includes(dayStem)) {
+      johu = "임(壬)·계(癸)수 — 조열 해소 필요";
+    } else if (["경", "신"].includes(dayStem)) {
+      johu = "임(壬)수 또는 토(土) — 조열 해소 필요";
+    } else {
+      johu = "수(水) 보완 권장";
+    }
+  }
+
+  // 희신 / 기신 / 구신 — 용신 오행 결정: 수동 설정 우선
+  const FIVE_EL_SET = new Set(["목","화","토","금","수"]);
+  type FiveElStr = "목"|"화"|"토"|"금"|"수";
+  let yongshinEl: FiveElStr = schema.yongshin as FiveElStr;
+  {
+    const ydata = record.manualYongshinData;
+    if (ydata && ydata.length > 0) {
+      const primary = ydata.find(y => y.type.includes("억부")) ?? ydata[0];
+      if (primary && primary.elements.length > 0 && FIVE_EL_SET.has(primary.elements[0])) {
+        yongshinEl = primary.elements[0] as FiveElStr;
+      }
+    } else if (record.manualYongshin) {
+      const match = record.manualYongshin.match(/^[목화토금수]/);
+      if (match && FIVE_EL_SET.has(match[0])) yongshinEl = match[0] as FiveElStr;
+    }
+  }
+  const heeshinEl  = schema.yongshinSecondary ?? "";
+  const isWeak = ["극신약", "태약", "신약"].includes(strengthLevel);
+  const gishinEls = isWeak
+    ? [sikanEl, jaeEl, gwansEl].filter(Boolean)
+    : [dmEl, inseongEl].filter(Boolean);
+  const gushinEls = gishinEls.map(e => GENERATOR_EL[e]).filter(Boolean);
+
+  // 배우자궁 충·합
+  const dayBranchRels = branchRelations.filter(r =>
+    r.description.includes(dayBranch) || r.description.includes("일"),
+  );
+  const spouseClash = dayBranchRels.some(r => ["충", "형", "파", "해", "원진"].includes(r.type));
+  const spouseHarm  = dayBranchRels.some(r => r.type === "합");
+
+  // 지지 관계 카운트
+  const relCount = (type: string) => branchRelations.filter(r => r.type === type).length;
+
+  const shinsalFull = calculateShinsalFull(
+    dayStem, dayBranch,
+    input.month,
+    [
+      { pillar: "년주", stem: pillars.year?.hangul?.[0] ?? "", branch: pillars.year?.hangul?.[1] ?? "" },
+      { pillar: "월주", stem: pillars.month?.hangul?.[0] ?? "", branch: pillars.month?.hangul?.[1] ?? "" },
+      { pillar: "일주", stem: pillars.day?.hangul?.[0] ?? "", branch: pillars.day?.hangul?.[1] ?? "" },
+      { pillar: "시주", stem: pillars.hour?.hangul?.[0] ?? "", branch: pillars.hour?.hangul?.[1] ?? "" },
+    ],
+  );
+
+  const luckCycles = calculateLuckCycles(input, record.profile.computedPillars);
+
+  const currentYear = new Date().getFullYear();
+  const birthYear = input.year;
+  const currentDaewoon = luckCycles.daewoon.find((d) => {
+    const dStart = birthYear + d.startAge;
+    const dEnd   = birthYear + d.endAge;
+    return currentYear >= dStart && currentYear <= dEnd;
+  });
+
+  const lines: string[] = [];
+
+  lines.push(`=== 사주 분석 데이터: ${input.name} ===`);
+  lines.push(`생년월일: ${input.year}년 ${input.month}월 ${input.day}일 (${input.calendarType === "solar" ? "양력" : "음력"})`);
+  if (!input.timeUnknown && input.hour != null) {
+    lines.push(`출생시: ${String(input.hour).padStart(2, "0")}:${String(input.minute ?? 0).padStart(2, "0")}`);
+  } else {
+    lines.push(`출생시: 미상`);
+  }
+  lines.push(`성별: ${input.gender}`);
+  if (input.birthplace) lines.push(`출생지: ${input.birthplace}`);
+  lines.push("");
+
+  // 사주팔자
+  lines.push(`[사주팔자]`);
+  const PILLAR_LABELS: Record<string, string> = { year: "년주", month: "월주", day: "일주", hour: "시주" };
+  for (const key of ["year", "month", "day", "hour"] as const) {
+    const p = pillars[key];
+    if (p) lines.push(`  ${PILLAR_LABELS[key]}: ${p.hangul}  (${p.hanja ?? ""})`);
+  }
+  lines.push("");
+
+  // 일간
+  lines.push(`[일간]`);
+  lines.push(`  ${dayStem}(${STEM_EL[dayStem] ?? ""}일간) — ${STRENGTH_DISPLAY_LABEL[strengthLevel] ?? schema.strengthDisplayLabel} [${strengthLevel}]`);
+  lines.push(`  ${schema.strengthDesc}`);
+  lines.push(`  득령(得令): ${deungryeong ? "O" : "X"}  득지(得地): ${deungjiStr === "yes" ? "O" : deungjiStr === "partial" ? "△" : "X"}  득세(得勢): ${deungseStr === "yes" ? "O" : deungseStr === "partial" ? "△" : "X"}`);
+  lines.push(`  격국(格局): ${geokguk}`);
+  lines.push(`  조후(調候): ${johu}`);
+  lines.push("");
+
+  // 오행 분포
+  lines.push(`[오행 분포]`);
+  const elOrder = ["목", "화", "토", "금", "수"] as const;
+  for (const el of elOrder) {
+    const count = counts[el];
+    const bar = "▓".repeat(count) + "░".repeat(Math.max(0, 4 - count));
+    lines.push(`  ${el}: ${bar} (${count}개)`);
+  }
+  lines.push("");
+
+  // 십성 분포
+  lines.push(`[십성 분포]`);
+  if (dayStem) {
+    const tgCount: Record<string, number> = {};
+    for (const key of ["year", "month", "hour"] as const) {
+      const p = pillars[key];
+      if (!p) continue;
+      for (const ch of [p.hangul[0], p.hangul[1]]) {
+        if (!ch) continue;
+        const tg = getTenGod(dayStem, ch);
+        if (tg) tgCount[tg] = (tgCount[tg] ?? 0) + 1;
+      }
+    }
+    const tgStr = Object.entries(tgCount).map(([tg, c]) => `${tg}×${c}`).join("  ");
+    lines.push(`  ${tgStr || "없음"}`);
+  }
+  lines.push("");
+
+  // 용신
+  lines.push(`[용신]`);
+  const ydata = record.manualYongshinData;
+  if (ydata && ydata.length > 0) {
+    for (const y of ydata) {
+      lines.push(`  ${y.type}: ${y.elements.join(", ")}`);
+    }
+  } else if (record.manualYongshin) {
+    lines.push(`  ${record.manualYongshin}`);
+  } else {
+    lines.push(`  ${schema.yongshinLabel} (자동계산)`);
+    if (schema.yongshinSecondary) lines.push(`  희신(보조): ${schema.yongshinSecondary}`);
+  }
+  lines.push("");
+
+  // 용신 그룹 (희신/기신/구신)
+  lines.push(`[희신 / 기신 / 구신]`);
+  lines.push(`  용신(用神): ${yongshinEl}  (${schema.yongshinTenGodGroup}격, 신뢰도: ${schema.yongshinConfidence})`);
+  lines.push(`  희신(喜神): ${heeshinEl || "없음"}`);
+  lines.push(`  기신(忌神): ${gishinEls.join("·") || "없음"}`);
+  lines.push(`  구신(仇神): ${[...new Set(gushinEls)].join("·") || "없음"}`);
+  lines.push("");
+
+  // 배우자궁
+  lines.push(`[배우자궁 (일지)]`);
+  lines.push(`  일지: ${dayBranch}  충/극: ${spouseClash ? "있음" : "없음"}  합: ${spouseHarm ? "있음" : "없음"}`);
+  lines.push("");
+
+  // 지지 합충형파해
+  lines.push(`[지지 합충형파해]`);
+  const relTypes = ["합", "충", "형", "파", "해", "원진"];
+  const relSummary = relTypes
+    .map(t => `${t}×${relCount(t)}`)
+    .join("  ");
+  lines.push(`  ${relSummary}`);
+  if (branchRelations.length > 0) {
+    for (const rel of branchRelations) {
+      lines.push(`  ${rel.type}: ${rel.description}`);
+    }
+  } else {
+    lines.push("  (없음)");
+  }
+  lines.push("");
+
+  // 신살
+  lines.push(`[신살]`);
+  const allShinsalNames: string[] = [];
+  for (const ps of shinsalFull) {
+    allShinsalNames.push(...ps.stemItems, ...ps.branchItems, ...ps.pillarItems);
+  }
+  const uniqueShinsal = [...new Set(allShinsalNames)].filter(Boolean);
+  if (uniqueShinsal.length > 0) {
+    lines.push(`  ${uniqueShinsal.join("  ")}`);
+  } else {
+    lines.push("  없음");
+  }
+  lines.push("");
+
+  // 운 흐름
+  lines.push(`[운 흐름]`);
+  if (currentDaewoon) {
+    const dStart = birthYear + currentDaewoon.startAge;
+    const dEnd   = birthYear + currentDaewoon.endAge;
+    lines.push(
+      `  현재 대운: ${currentDaewoon.ganZhi.stem}${currentDaewoon.ganZhi.branch}` +
+      ` (${dStart}~${dEnd}년)`,
+    );
+  }
+  if (luckCycles.seun[0]) {
+    lines.push(`  세운 (${luckCycles.seun[0].year}): ${luckCycles.seun[0].ganZhi.stem}${luckCycles.seun[0].ganZhi.branch}`);
+  }
+  lines.push(
+    `  월운: ${luckCycles.wolun.ganZhi.stem}${luckCycles.wolun.ganZhi.branch}` +
+    ` (${luckCycles.wolun.year}년 ${luckCycles.wolun.month}월)`,
+  );
+  lines.push(
+    `  일운: ${luckCycles.ilun.ganZhi.stem}${luckCycles.ilun.ganZhi.branch}` +
+    ` (${luckCycles.ilun.year}년 ${luckCycles.ilun.month}월 ${luckCycles.ilun.day}일)`,
+  );
+  lines.push("");
+
+  lines.push("---");
+  lines.push("이 데이터 기준으로 구조 중심 해석을 해주세요.");
+  lines.push("일반적인 사주 설명은 제외해주세요.");
+
+  return lines.join("\n");
+}
+
+// ── 궁합 분석 전체 텍스트 빌드 ────────────────────────────────────
+
+export function buildCompatibilityClipboardText(
+  person1: PersonRecord,
+  person2: PersonRecord,
+  result: CompatibilityResult,
+): string {
+  const lines: string[] = [];
+  const n1 = person1.birthInput.name;
+  const n2 = person2.birthInput.name;
+
+  lines.push(`=== 사주 궁합 분석 데이터 ===`);
+  lines.push(`${n1} ↔ ${n2}`);
+  lines.push("");
+
+  // 궁합 점수
+  lines.push(`[궁합 점수]`);
+  lines.push(`  총점: ${result.totalScore}/100 — ${result.grade}`);
+  lines.push(`  충(충돌) 횟수: ${result.clashCount}`);
+  if (result.keywords.length > 0) {
+    lines.push(`  키워드: ${result.keywords.join("  ")}`);
+  }
+  lines.push("");
+
+  // 세부 조정 항목
+  lines.push(`[세부 점수 (기준점 50 + 조정)]`);
+  for (const step of result.adjustmentSteps) {
+    const sign = step.delta >= 0 ? "+" : "";
+    lines.push(`  ${step.category.padEnd(12)}: ${sign}${step.delta}  (${step.note})`);
+  }
+  if (result.structuralSteps.length > 0) {
+    lines.push(`  [등급 조정]`);
+    for (const s of result.structuralSteps) {
+      lines.push(`    • ${s.label} → ${s.direction === "up" ? "상향" : "하향"}`);
+    }
+  }
+  lines.push("");
+
+  // 궁합 내러티브
+  lines.push(`[궁합 요약]`);
+  lines.push(`  ${result.summary}`);
+  lines.push("");
+
+  lines.push(`[강점]`);
+  for (const s of result.strengths) lines.push(`  • ${s}`);
+  lines.push("");
+
+  lines.push(`[주의 사항]`);
+  for (const c of result.cautions) lines.push(`  • ${c}`);
+  lines.push("");
+
+  lines.push(`[조언]`);
+  for (const a of result.advice) lines.push(`  • ${a}`);
+  lines.push("");
+
+  lines.push(`[장기 전망]`);
+  lines.push(`  ${result.longTermOutlook}`);
+  lines.push("");
+
+  // 각 사람의 개인 사주 데이터 (간략)
+  for (const person of [person1, person2]) {
+    lines.push(buildPersonClipboardText(person));
+    lines.push("");
+  }
+
+  lines.push("---");
+  lines.push("이 데이터 기준으로 구조 중심 해석을 해주세요.");
+  lines.push("일반적인 사주 설명은 제외해주세요.");
+
+  return lines.join("\n");
+}

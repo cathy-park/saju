@@ -1,0 +1,369 @@
+There are several structural issues in the current Saju engine and UI output.
+
+These issues affect Yongshin calculation accuracy, branch relationship analysis,
+daily fortune generation, and visualization components.
+
+Please review and fix the system according to the following requirements.
+
+
+====================================
+1. CRITICAL ISSUE: Yongshin calculation logic is incorrect
+====================================
+
+Currently the app produces incorrect Yongshin results.
+
+Examples:
+
+Charts that should produce Wood as Yongshin are showing Water
+Charts that should produce Metal/Water are showing Wood
+
+This indicates a structural issue in the Yongshin calculation engine.
+
+Fix Yongshin logic according to traditional 억부용신 rules.
+
+
+Correct Yongshin calculation must follow this sequence:
+
+STEP 1
+Determine Day Master (일간)
+
+STEP 2
+Determine strength level:
+
+신강 / 신약 classification
+
+
+STEP 3
+Select supporting Ten-Gods accordingly:
+
+If weak:
+
+Resource (인성)
+Companion (비겁)
+
+If strong:
+
+Output (식상)
+Wealth (재성)
+
+
+STEP 4
+Convert Ten-Gods into Five Elements RELATIVE TO Day Master
+
+
+IMPORTANT RULE:
+
+Five Elements must always be interpreted relative to the Day Master.
+
+Example:
+
+Wood is NOT always Resource.
+
+Wood is Resource only for Fire Day Masters.
+
+
+Example mapping:
+
+For Fire Day Master:
+
+Wood = Resource
+Fire = Companion
+Earth = Output
+Metal = Wealth
+Water = Officer
+
+
+For Metal Day Master:
+
+Wood = Wealth
+Fire = Officer
+Earth = Resource
+Metal = Companion
+Water = Output
+
+
+DO NOT use fixed element-to-Ten-God mapping tables.
+
+Mapping must always be dynamic per Day Master.
+
+
+
+====================================
+2. DO NOT determine Yongshin using element deficiency percentage
+====================================
+
+Missing element ≠ Yongshin
+
+Element distribution percentages must NOT be used as primary logic.
+
+Day Master balance must be the primary rule.
+
+
+
+====================================
+3. Ensure system is not mixing 조후용신 and 억부용신
+====================================
+
+Primary Yongshin displayed in the app must be:
+
+억부용신
+
+NOT 조후용신
+
+
+
+====================================
+4. Add validation confidence layer to Yongshin output
+====================================
+
+Before assigning Yongshin:
+
+Validate Day Master strength classification reliability
+
+If confidence is low:
+
+Instead of:
+
+Primary Yongshin = Water
+
+Display:
+
+Primary Yongshin candidate = Water
+Secondary support element = Metal
+
+
+
+====================================
+5. Redesign Day Master strength classification logic
+====================================
+
+Current strength classification produces incorrect results.
+
+Strength must prioritize the following hierarchy:
+
+Priority order:
+
+1. Month Branch seasonal power (월지)
+2. Root support inside branches (통근)
+3. Resource support (인성)
+4. Companion support (비겁)
+5. Output leakage (식상)
+6. Wealth drain (재성)
+7. Officer control (관성)
+
+Do NOT determine strength using only Five Element percentage distribution.
+
+
+
+====================================
+6. Branch relationship calculation missing
+====================================
+
+The following branch relationships are not displayed:
+
+합
+충
+형
+파
+해
+원진
+공망
+
+These must be calculated between:
+
+연지
+월지
+일지
+시지
+
+
+Return results in this structure:
+
+branch_relations = [
+  {
+    branch1: "자",
+    branch2: "오",
+    relation: "충"
+  }
+]
+
+Display these relationships inside the original chart section.
+
+
+
+====================================
+7. Void branch (공망) calculation missing
+====================================
+
+Void branch must be calculated using Day Pillar lookup table.
+
+Example:
+
+갑자 → 술 해
+을축 → 술 해
+병인 → 신 유
+정묘 → 신 유
+무진 → 오 미
+기사 → 오 미
+경오 → 진 사
+신미 → 진 사
+임신 → 인 묘
+계유 → 인 묘
+갑술 → 자 축
+을해 → 자 축
+
+Use lookup-table method.
+
+Display result under each pillar:
+
+Example:
+
+Day Branch: 진
+Void: 술 해
+
+
+
+====================================
+8. Daily flow message missing on Home screen
+====================================
+
+Home screen hero section must display:
+
+Today's flow summary sentence
+
+Inputs:
+
+Day Master
+Day Branch
+Today's Pillar
+Current Year Luck
+Current Month Luck
+
+
+Output example:
+
+오늘은 배우고 정리하는 흐름이 자연스럽게 이어지는 날입니다.
+
+
+Also generate domain scores:
+
+관계운
+재물운
+건강운
+일운
+학업운
+
+Display inside hero section.
+
+
+
+====================================
+9. Five-element distribution visualization incorrect
+====================================
+
+Currently displayed as progress bars.
+
+Replace with:
+
+Donut chart visualization
+
+Elements:
+
+Wood
+Fire
+Earth
+Metal
+Water
+
+
+Use color mapping:
+
+Wood = green
+Fire = red
+Earth = yellow
+Metal = gray
+Water = blue
+
+
+Display strongest element inside donut center:
+
+Example:
+
+토(土)
+
+
+
+====================================
+10. Daily fortune calendar missing
+====================================
+
+Implement monthly fortune calendar visualization.
+
+Inputs:
+
+User Day Master
+Current month
+Current year
+
+
+Output:
+
+Daily status:
+
+좋음
+보통
+주의
+
+
+Display color:
+
+좋음 = blue
+보통 = gray
+주의 = red
+
+
+Also display relationship indicators:
+
+합
+충
+형
+파
+해
+공망
+
+
+inside each calendar day.
+
+
+
+====================================
+11. Ensure Ten-God mapping is dynamic
+====================================
+
+Ten-God mapping must always be calculated relative to Day Master.
+
+Do NOT use fixed element mapping tables.
+
+
+
+====================================
+12. Final objective
+====================================
+
+The system must:
+
+Fix Yongshin calculation accuracy
+
+Implement missing branch relationships
+
+Implement void branch calculation
+
+Generate daily flow message
+
+Replace Five-element visualization with donut chart
+
+Add monthly fortune calendar
+
+Ensure Ten-God mapping is dynamic
+
+Ensure Day Master strength classification uses structural support hierarchy instead of percentage-only logic

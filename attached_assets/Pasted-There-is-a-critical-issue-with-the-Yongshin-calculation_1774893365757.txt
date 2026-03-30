@@ -1,0 +1,97 @@
+There is a critical issue with the Yongshin (용신) calculation logic in the app.
+
+Currently Yongshin values are incorrect in multiple cases.
+
+Examples:
+
+- charts that should have Wood as Yongshin are shown as Water
+- charts that should have Metal/Water as Yongshin are shown as Wood
+
+This indicates the system is not calculating Yongshin correctly.
+
+Please redesign the Yongshin calculation engine using proper Day Master-centered logic.
+
+Correct calculation order must be:
+
+STEP 1
+Identify the Day Master (일간)
+
+STEP 2
+Determine Day Master strength (신강 / 신약)
+
+Strength classification must consider:
+
+- Month Branch seasonal influence (월령) — highest priority
+- Root support in branches and hidden stems (통근)
+- Support from Resource and Companion elements (인성 / 비겁)
+- Leakage through Output elements (식상)
+- Drain through Wealth elements (재성)
+- Control from Officer elements (관성)
+
+Do NOT determine strength using only element counts.
+
+Month Branch must have the strongest influence weight.
+
+STEP 3
+Select Yongshin category based on strength:
+
+If Day Master is weak:
+
+Yongshin candidates =
+Resource (인성)
+Companion (비겁)
+
+If Day Master is strong:
+
+Yongshin candidates =
+Output (식상)
+Wealth (재성)
+
+STEP 4
+Convert Ten-Gods to Five Elements RELATIVE TO the Day Master
+
+Important:
+
+Five Elements must always be interpreted relative to the Day Master.
+
+Example:
+
+Wood is Resource only for Fire Day Masters.
+
+Wood is Companion for Wood Day Masters.
+
+Wood is Wealth for Metal Day Masters.
+
+Never assign Ten-God roles globally by element alone.
+
+They must always be relative to the Day Master.
+
+STEP 5
+Select the final Yongshin element from the candidate Ten-Gods based on structural balance priority.
+
+IMPORTANT RULE:
+
+Missing element ≠ Yongshin
+
+Do NOT choose Yongshin based on which element percentage is lowest.
+
+Element deficiency alone cannot determine Yongshin.
+
+STEP 6
+Confirm that the system is NOT mixing the following:
+
+억부용신 (balance-based Yongshin)
+조후용신 (seasonal adjustment Yongshin)
+
+The app must display 억부용신 as the primary Yongshin type.
+
+If 조후용신 is also calculated, it must be labeled separately.
+
+Display format example:
+
+Primary Yongshin:
+목 (억부용신)
+
+Optional secondary:
+
+수 (조후용신)
