@@ -196,14 +196,22 @@ function Dashboard({ record }: { record: PersonRecord }) {
         {/* B. 메인 타이틀 */}
         <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 16 }}>
           <h2 style={{ fontSize: 22, fontWeight: 800, margin: 0, textAlign: "center" }}>
-            <span style={{ color: "hsl(12,72%,50%)" }}>{nickname}</span>
+            <button
+              onClick={() => setShowEditSheet(true)}
+              style={{
+                background: "none", border: "none", padding: 0,
+                cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 4,
+              }}
+            >
+              <span style={{
+                color: "hsl(12,72%,50%)",
+                borderBottom: "1.5px dashed hsl(12,72%,70%)",
+                paddingBottom: 1,
+              }}>{nickname}</span>
+              <Pencil style={{ width: 11, height: 11, color: "#BBBBBB", flexShrink: 0 }} />
+            </button>
             <span style={{ color: "#111" }}>님의 오늘 흐름</span>
           </h2>
-          {user && (
-            <button onClick={() => setShowEditSheet(true)} style={{ padding: 4, background: "none", border: "none", cursor: "pointer", color: "#CCC" }}>
-              <Pencil style={{ width: 11, height: 11 }} />
-            </button>
-          )}
         </div>
 
         {/* C. 말풍선 */}
