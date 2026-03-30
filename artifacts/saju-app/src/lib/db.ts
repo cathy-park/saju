@@ -1,6 +1,5 @@
 import { supabase } from "./supabase";
 import type { PersonRecord } from "./storage";
-import { load as loadLocal, save as saveLocal } from "./storage";
 
 // ── Types ─────────────────────────────────────────────────────────
 
@@ -136,28 +135,6 @@ export async function upsertPartnerProfile(userId: string, record: PersonRecord)
 export async function deletePartnerProfile(id: string): Promise<void> {
   const { error } = await supabase.from("partner_profiles").delete().eq("id", id);
   if (error) console.error("[db] deletePartnerProfile:", error);
-}
-
-// ── Migration: local → Supabase (one-time, on first login) ───────
-
-const MIGRATED_KEY = "saju_migrated_v1";
-
-export async function migrateLocalToSupabase(userId: string): Promise<void> {
-  if (localStorage.getItem(MIGRATED_KEY) === "1") return;
-
-  const local = loadLocal();
-  const tasks: Promise<void>[] = [];
-
-  if (local.myProfile) {
-    tasks.push(upsertMyProfile(userId, local.myProfile));
-  }
-  for (const person of local.people) {
-    tasks.push(upsertPartnerProfile(userId, person));
-  }
-
-  await Promise.all(tasks);
-  localStorage.setItem(MIGRATED_KEY, "1");
-  console.log("[db] local data migrated to Supabase");
 }
 
 // ── Upsert profile record in Supabase's auth.users mirror table ──

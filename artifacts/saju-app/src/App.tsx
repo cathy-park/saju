@@ -2,8 +2,7 @@ import { Switch, Route, Router as WouterRouter, Link, useLocation } from "wouter
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { AuthProvider } from "@/lib/authContext";
-import { useSupabaseSync } from "@/hooks/useSupabaseSync";
+import { AuthProvider, useAuth } from "@/lib/authContext";
 import Home from "@/pages/Home";
 import MyProfile from "@/pages/MyProfile";
 import PeopleList from "@/pages/PeopleList";
@@ -15,7 +14,7 @@ import AuthCallback from "@/pages/AuthCallback";
 import NotFound from "@/pages/not-found";
 import { Home as HomeIcon, User, Users } from "lucide-react";
 import { AuthBar } from "@/components/AuthBar";
-import { useCallback, useState } from "react";
+import { useState, useEffect } from "react";
 
 const queryClient = new QueryClient();
 
@@ -88,14 +87,18 @@ function AppHeader() {
 }
 
 function SyncedApp() {
-  const [, setRefreshKey] = useState(0);
-  const handleSynced = useCallback(() => setRefreshKey(k => k + 1), []);
-  useSupabaseSync(handleSynced);
+  const { dbSynced } = useAuth();
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  // Increment key when sync completes to trigger child re-reads
+  useEffect(() => {
+    if (dbSynced) setRefreshKey((k) => k + 1);
+  }, [dbSynced]);
 
   return (
     <>
       <AppHeader />
-      <main className="pb-[60px]">
+      <main className="pb-[60px]" key={refreshKey}>
         <Switch>
           <Route path="/auth/callback"           component={AuthCallback} />
           <Route path="/"                        component={Home} />

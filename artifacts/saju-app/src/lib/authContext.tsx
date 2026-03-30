@@ -4,16 +4,21 @@ import type { Session } from "@supabase/supabase-js";
 import {
   fetchMyProfile,
   fetchPartnerProfiles,
-  migrateLocalToSupabase,
+  upsertMyProfile,
+  upsertPartnerProfile,
   upsertUserProfile,
 } from "./db";
-import { saveMyProfile, savePerson } from "./storage";
+import {
+  load as loadLocal,
+  saveMyProfile,
+  savePerson,
+} from "./storage";
 
 interface AuthState {
   user: SupabaseUser | null;
   session: Session | null;
   loading: boolean;
-  /** true after the first DB → localStorage sync completes for the current user */
+  /** true after the DB → localStorage sync completes for the current user */
   dbSynced: boolean;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
@@ -28,45 +33,77 @@ const AuthContext = createContext<AuthState>({
   signOut: async () => {},
 });
 
+/**
+ * Smart bidirectional sync on every login:
+ *
+ *  1. Mirror auth.users → profiles table
+ *  2. Fetch current DB state for this user
+ *  3. If DB is missing a record that exists locally → push it up (handles
+ *     cases where a previous migration was skipped or failed silently)
+ *  4. Pull the final DB state → overwrite localStorage (DB is source of truth)
+ */
+async function syncWithSupabase(uid: string, userMeta: SupabaseUser): Promise<void> {
+  // 1. Mirror auth user metadata
+  await upsertUserProfile({
+    id: uid,
+    email: userMeta.email,
+    user_metadata: userMeta.user_metadata as Record<string, unknown>,
+  });
+
+  // 2. Fetch current DB state
+  const [dbProfile, dbPartners] = await Promise.all([
+    fetchMyProfile(uid),
+    fetchPartnerProfiles(uid),
+  ]);
+
+  // 3. Push local-only data up to DB (fills gaps from failed/skipped migrations)
+  const local = loadLocal();
+
+  if (!dbProfile && local.myProfile) {
+    console.log("[auth] pushing local myProfile to Supabase");
+    await upsertMyProfile(uid, local.myProfile);
+  }
+
+  const dbPartnerIds = new Set(dbPartners.map((p) => p.id));
+  const localOnlyPartners = local.people.filter((p) => !dbPartnerIds.has(p.id));
+  if (localOnlyPartners.length > 0) {
+    console.log(`[auth] pushing ${localOnlyPartners.length} local partner(s) to Supabase`);
+    await Promise.all(localOnlyPartners.map((p) => upsertPartnerProfile(uid, p)));
+  }
+
+  // 4. Pull final DB state → overwrite localStorage (DB wins)
+  const [finalProfile, finalPartners] = await Promise.all([
+    fetchMyProfile(uid),
+    fetchPartnerProfiles(uid),
+  ]);
+
+  if (finalProfile) {
+    saveMyProfile(finalProfile);
+    console.log("[auth] synced myProfile from Supabase");
+  }
+  for (const p of finalPartners) {
+    savePerson(p);
+  }
+  if (finalPartners.length > 0) {
+    console.log(`[auth] synced ${finalPartners.length} partner(s) from Supabase`);
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [dbSynced, setDbSynced] = useState(false);
 
-  // ── Sync DB → localStorage whenever the logged-in user changes ──
   useEffect(() => {
     if (!user) { setDbSynced(false); return; }
 
     setDbSynced(false);
-    const uid = user.id;
 
-    (async () => {
-      try {
-        // 1. Mirror auth.users → profiles table
-        await upsertUserProfile({
-          id: uid,
-          email: user.email,
-          user_metadata: user.user_metadata as Record<string, unknown>,
-        });
-
-        // 2. Push any local-only data up to Supabase (one-time migration)
-        await migrateLocalToSupabase(uid);
-
-        // 3. Pull latest profile from DB → overwrite localStorage
-        const [dbProfile, dbPartners] = await Promise.all([
-          fetchMyProfile(uid),
-          fetchPartnerProfiles(uid),
-        ]);
-        if (dbProfile) saveMyProfile(dbProfile);
-        for (const p of dbPartners) savePerson(p);
-      } catch (err) {
-        console.warn("[auth] DB sync error:", err);
-      } finally {
-        setDbSynced(true);
-      }
-    })();
-  }, [user?.id]);   // eslint-disable-line react-hooks/exhaustive-deps
+    syncWithSupabase(user.id, user)
+      .catch((err) => console.warn("[auth] DB sync error:", err))
+      .finally(() => setDbSynced(true));
+  }, [user?.id]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {

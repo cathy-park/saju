@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import {
@@ -183,8 +183,15 @@ export default function PeopleList() {
   const [activeTab, setActiveTab] = useState<TabKey>("전체");
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const { user } = useAuth();
+  const { user, dbSynced } = useAuth();
   const [, navigate] = useLocation();
+
+  // Re-read the people list from localStorage after DB sync completes
+  useEffect(() => {
+    if (dbSynced) {
+      setPeople(getPeople());
+    }
+  }, [dbSynced]);
 
   async function handleDelete(id: string) {
     deletePerson(id);
