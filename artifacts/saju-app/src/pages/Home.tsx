@@ -9,7 +9,7 @@ import { getZodiacFromDayPillar, DEFAULT_ZODIAC } from "@/lib/zodiacAnimal";
 import type { ZodiacInfo } from "@/lib/zodiacAnimal";
 import { ELEMENT_HEX, ELEMENT_TEXT_HEX, charToElement } from "@/lib/element-color";
 import type { FiveElKey } from "@/lib/element-color";
-import gyeolDefault from "@assets/gyeol_default_1774880100276.png";
+import gyeolDefault from "@assets/image_24_1774912053926.png";
 
 const NICK_KEY = "naheuleum_nickname";
 function loadNick(): string  { return localStorage.getItem(NICK_KEY) ?? "사용자"; }
