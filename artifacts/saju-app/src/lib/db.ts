@@ -10,7 +10,7 @@ export interface DbMyProfile {
   gender: string | null;
   birth_date: string;
   birth_time: string | null;
-  birth_calendar_type: string;
+  calendar_type: string;
   birthplace: string | null;
   saju_payload: unknown;
   created_at: string;
@@ -24,7 +24,7 @@ export interface DbPartnerProfile {
   gender: string | null;
   birth_date: string;
   birth_time: string | null;
-  birth_calendar_type: string;
+  calendar_type: string;
   memo: string | null;
   saju_payload: unknown;
   created_at: string;
@@ -69,7 +69,7 @@ function dbRowToRecord(row: DbMyProfile | DbPartnerProfile): PersonRecord {
       hour: timeUnknown ? undefined : h,
       minute: timeUnknown ? undefined : mi,
       timeUnknown,
-      calendarType: (row.birth_calendar_type ?? "solar") as "solar" | "lunar",
+      calendarType: (row.calendar_type ?? "solar") as "solar" | "lunar",
       birthplace: (row as DbMyProfile).birthplace ?? undefined,
       name: row.name,
       gender: (row.gender ?? "남") as "남" | "여",
@@ -105,7 +105,7 @@ export async function upsertMyProfile(userId: string, record: PersonRecord): Pro
     gender: record.birthInput.gender ?? "남",
     birth_date: recordToBirthDate(record),
     birth_time: recordToBirthTime(record),
-    birth_calendar_type: record.birthInput.calendarType ?? "solar",
+    calendar_type: record.birthInput.calendarType ?? "solar",
     birthplace: record.birthInput.birthplace ?? null,
     saju_payload: record,
     updated_at: new Date().toISOString(),
@@ -140,7 +140,7 @@ export async function upsertPartnerProfile(userId: string, record: PersonRecord)
     gender: record.birthInput.gender ?? "남",
     birth_date: recordToBirthDate(record),
     birth_time: recordToBirthTime(record),
-    birth_calendar_type: record.birthInput.calendarType ?? "solar",
+    calendar_type: record.birthInput.calendarType ?? "solar",
     memo: null,
     saju_payload: record,
     updated_at: new Date().toISOString(),
