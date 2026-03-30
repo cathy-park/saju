@@ -9,6 +9,7 @@ import { getZodiacFromDayPillar, DEFAULT_ZODIAC } from "@/lib/zodiacAnimal";
 import type { ZodiacInfo } from "@/lib/zodiacAnimal";
 import { ELEMENT_HEX, ELEMENT_TEXT_HEX, charToElement } from "@/lib/element-color";
 import type { FiveElKey } from "@/lib/element-color";
+import gyeolDefault from "@assets/gyeol_default_1774880100276.png";
 
 const NICK_KEY = "naheuleum_nickname";
 function loadNick(): string  { return localStorage.getItem(NICK_KEY) ?? "사용자"; }
@@ -24,52 +25,83 @@ export default function Home() {
 // ════════════════════════════════════════════════════════════════════
 function Onboarding() {
   return (
-    <div style={{ maxWidth: 480, margin: "0 auto", display: "flex", flexDirection: "column" }}>
+    <div style={{ maxWidth: 480, margin: "0 auto", paddingBottom: 80, background: "#FAFAF8" }}>
+
+      {/* ── Hero (대시보드와 동일한 배경 구조) ── */}
       <div style={{
         backgroundImage: "url('/bg.png')",
         backgroundSize: "cover",
         backgroundPosition: "center bottom",
-        padding: "40px 20px 32px",
+        padding: "22px 20px 0",
         display: "flex", flexDirection: "column", alignItems: "center",
       }}>
-        <div style={{ position: "relative", marginBottom: 20 }}>
-          <div style={{
-            position: "absolute", width: 180, height: 180, borderRadius: "50%",
-            background: `radial-gradient(circle, ${DEFAULT_ZODIAC.glow} 0%, transparent 70%)`,
-            top: "50%", left: "50%", transform: "translate(-50%,-50%)",
-          }} />
-          <img src={DEFAULT_ZODIAC.src} alt="나의 흐름" style={{ width: 130, height: 130, objectFit: "contain", position: "relative" }} />
-        </div>
-        <h1 style={{ fontSize: 24, fontWeight: 700, color: "#111", margin: "0 0 8px" }}>나의 흐름</h1>
-        <p style={{ fontSize: 14, color: "#777", lineHeight: 1.7, textAlign: "center", maxWidth: 240, margin: 0 }}>
-          나와 상대, 오늘의 에너지와 관계를<br />차분하게 이해하는 인사이트 앱
+
+        {/* 날짜 레이블 */}
+        <p style={{ fontSize: 12, fontWeight: 600, color: "#C17D50", margin: "0 0 6px", textAlign: "center", letterSpacing: "0.02em" }}>
+          ✨ 나의 흐름
         </p>
+
+        {/* 메인 타이틀 */}
+        <h2 style={{ fontSize: 22, fontWeight: 800, margin: "0 0 16px", textAlign: "center" }}>
+          <span style={{ color: "hsl(12,72%,50%)" }}>사주</span>
+          <span style={{ color: "#111" }}>로 읽는 오늘의 에너지</span>
+        </h2>
+
+        {/* 말풍선 */}
+        <div style={{
+          background: "rgba(255,255,255,0.92)",
+          borderRadius: 18,
+          padding: "14px 20px",
+          boxShadow: "0 2px 12px rgba(0,0,0,0.07)",
+          maxWidth: 310, width: "100%",
+          position: "relative",
+          textAlign: "center",
+        }}>
+          <p style={{ fontSize: 14, fontWeight: 600, color: "#333", lineHeight: 1.65, margin: 0 }}>
+            안녕하세요! 저는 결이예요 🐰<br />
+            생년월일만 입력하면 오늘의 흐름과<br />
+            나만의 사주 리포트를 바로 확인할 수 있어요.
+          </p>
+          {/* 아래 꼬리 */}
+          <div style={{
+            position: "absolute", bottom: -9, left: "50%", transform: "translateX(-50%)",
+            width: 0, height: 0,
+            borderLeft: "9px solid transparent",
+            borderRight: "9px solid transparent",
+            borderTop: "9px solid rgba(255,255,255,0.92)",
+          }} />
+        </div>
+
+        {/* 결이 기본 캐릭터 */}
+        <div style={{ position: "relative", marginTop: 10, marginBottom: -28, zIndex: 2 }}>
+          <img
+            src={gyeolDefault}
+            alt="결이"
+            style={{ width: 200, height: 200, objectFit: "contain", position: "relative", display: "block" }}
+          />
+        </div>
+
+        {/* 빈 영역 (대시보드의 일진 row 자리) — 높이만 맞춤 */}
+        <div style={{ width: "100%", height: 52, zIndex: 1, position: "relative" }} />
       </div>
 
-      <div className="px-5 pt-5 pb-4 space-y-2.5">
-        {[
-          { icon: "🌅", title: "오늘의 에너지 대시보드", desc: "일진·대운·세운 기반 오늘 흐름과 행동 가이드" },
-          { icon: "🔍", title: "심층 사주 리포트",       desc: "오행·십성·신살·12운성 기반 4탭 분석 리포트" },
-          { icon: "💞", title: "궁합 비교 분석",         desc: "일간 관계·배우자궁·오행 보완 관계 분석" },
-        ].map((f) => (
-          <div key={f.title} style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "14px 16px", background: "#FFF", border: "1px solid #EBEBEB", borderRadius: 16 }}>
-            <span style={{ fontSize: 20, padding: "8px", background: "#F9F9F9", borderRadius: 10 }}>{f.icon}</span>
-            <div>
-              <p style={{ fontSize: 14, fontWeight: 600, color: "#111", margin: 0 }}>{f.title}</p>
-              <p style={{ fontSize: 13, color: "#888", marginTop: 3, lineHeight: 1.55 }}>{f.desc}</p>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div className="px-5 pb-10 space-y-2">
-        <Link href="/saju">
-          <div style={{ background: "hsl(12,72%,50%)", borderRadius: 14, padding: "15px 20px", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
-            <span style={{ fontSize: 15, fontWeight: 700, color: "#FFF" }}>내 사주 등록하고 시작하기</span>
+      {/* ── CTA 버튼 (대시보드와 동일 위치) ── */}
+      <div style={{ padding: "16px 16px 0", display: "flex", gap: 10 }}>
+        <Link href="/saju" style={{ flex: 1 }}>
+          <div style={{ background: "#F6DADA", borderRadius: 50, padding: "14px 18px", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, cursor: "pointer" }}>
+            <span style={{ fontSize: 16 }}>🔍</span>
+            <span style={{ fontSize: 14, fontWeight: 700, color: "#B54848" }}>사주 리포트</span>
           </div>
         </Link>
-        <p style={{ textAlign: "center", fontSize: 12, color: "#AAAAAA" }}>생년월일만 있으면 바로 시작 · 무료</p>
+        <Link href="/compatibility" style={{ flex: 1 }}>
+          <div style={{ background: "#DDD6F5", borderRadius: 50, padding: "14px 18px", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, cursor: "pointer" }}>
+            <span style={{ fontSize: 16 }}>💞</span>
+            <span style={{ fontSize: 14, fontWeight: 700, color: "#6B5BBE" }}>궁합 보기</span>
+          </div>
+        </Link>
       </div>
+
+      <p style={{ textAlign: "center", fontSize: 12, color: "#AAAAAA", marginTop: 12 }}>생년월일만 있으면 바로 시작 · 무료</p>
     </div>
   );
 }
