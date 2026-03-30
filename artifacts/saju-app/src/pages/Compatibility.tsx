@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PillarCard } from "@/components/PillarCard";
-import type { CompatibilityResult } from "@/lib/compatibilityScore";
+import type { CompatibilityResult, CompatibilityTone } from "@/lib/compatibilityScore";
 import { buildFullCompatibilityReport, COMPAT_TONE_COLOR } from "@/lib/compatibilityReport";
 import {
   getMyProfile,
@@ -46,9 +46,21 @@ import {
   getMarriageTimingHint,
 } from "@/lib/relationshipReport";
 
+// ── Grade color palette (single source of truth) ─────────────────
+// All UI elements — card bg, graph ring, badge, score accent — derive from here.
+// Keyed by result.finalType only. No other logic is used for colors.
+
+const GRADE_PALETTE: Record<CompatibilityTone, { pastel: string; strong: string; border: string; badgeText: string }> = {
+  "이상적 궁합": { pastel: "#F1E8FF", strong: "#8B5CF6", border: "#C4B5FD", badgeText: "#6D28D9" },
+  "좋은 궁합":   { pastel: "#E6F7EC", strong: "#22C55E", border: "#86EFAC", badgeText: "#15803D" },
+  "노력형 궁합": { pastel: "#E8F1FF", strong: "#3B82F6", border: "#93C5FD", badgeText: "#1D4ED8" },
+  "긴장형 궁합": { pastel: "#FFF1E6", strong: "#F59E0B", border: "#FCD34D", badgeText: "#B45309" },
+  "주의 궁합":   { pastel: "#FFE8E8", strong: "#EF4444", border: "#FCA5A5", badgeText: "#B91C1C" },
+};
+
 // ── Score Arc ─────────────────────────────────────────────────────
 
-function ScoreArc({ score }: { score: number }) {
+function ScoreArc({ score, accentColor }: { score: number; accentColor: string }) {
   const r = 36;
   const circ = 2 * Math.PI * r;
   const dash = (score / 100) * circ * 0.75;
@@ -56,16 +68,16 @@ function ScoreArc({ score }: { score: number }) {
   return (
     <div className="relative flex items-center justify-center w-24 h-24 mx-auto">
       <svg viewBox="0 0 88 88" className="w-full h-full -rotate-[135deg]">
-        <circle cx="44" cy="44" r={r} fill="none" stroke="#e5e7eb" strokeWidth="7"
+        <circle cx="44" cy="44" r={r} fill="none" stroke="rgba(0,0,0,0.07)" strokeWidth="7"
           strokeDasharray={`${circ * 0.75} ${circ * 0.25}`} strokeLinecap="round" />
         <circle cx="44" cy="44" r={r} fill="none"
-          stroke={score >= 75 ? "#f43f5e" : score >= 55 ? "#f59e0b" : "#9ca3af"}
+          stroke={accentColor}
           strokeWidth="7"
           strokeDasharray={`${dash} ${gap + circ * 0.25}`}
           strokeLinecap="round" />
       </svg>
       <div className="absolute flex flex-col items-center">
-        <span className="text-2xl font-bold leading-none">{score}</span>
+        <span className="text-2xl font-bold leading-none" style={{ color: accentColor }}>{score}</span>
         <span className="text-[13px] text-muted-foreground">점</span>
       </div>
     </div>
@@ -221,15 +233,7 @@ function BulletRow({ text, positive }: { text: string; positive: boolean }) {
   );
 }
 
-// ── Grade styles ──────────────────────────────────────────────────
-
-const GRADE_STYLES: Record<string, { border: string; bg: string; text: string; badge: string }> = {
-  "이상적 궁합": { border: "border-purple-300", bg: "bg-gradient-to-br from-purple-50 to-violet-50", text: "text-purple-700", badge: "bg-purple-100 text-purple-800 border-purple-300" },
-  "좋은 궁합":   { border: "border-green-300",  bg: "bg-gradient-to-br from-green-50 to-emerald-50", text: "text-green-700",  badge: "bg-green-100 text-green-800 border-green-300" },
-  "노력형 궁합": { border: "border-blue-200",   bg: "bg-gradient-to-br from-blue-50 to-sky-50",      text: "text-blue-700",  badge: "bg-blue-100 text-blue-700 border-blue-200" },
-  "긴장형 궁합": { border: "border-orange-200", bg: "bg-orange-50/60",                               text: "text-orange-700", badge: "bg-orange-100 text-orange-700 border-orange-200" },
-  "주의 궁합":   { border: "border-red-200",    bg: "bg-red-50/60",                                  text: "text-red-700",   badge: "bg-red-100 text-red-700 border-red-200" },
-};
+// GRADE_STYLES removed — use GRADE_PALETTE (defined above) for all color logic.
 
 const TEN_GOD_COLOR: Record<string, string> = {
   비견: "bg-green-100 text-green-800", 겁재: "bg-lime-100 text-lime-800",
@@ -381,7 +385,8 @@ export default function Compatibility() {
     ? buildFullCompatibilityReport(p1, p2, mode === "me_other" ? (p2 as PersonRecord & { relationshipType?: RelationshipType }).relationshipType : undefined)
     : null;
   const result: CompatibilityResult | null = fullReport?.scoreResult ?? null;
-  const style = fullReport ? (GRADE_STYLES[fullReport.tone] ?? GRADE_STYLES["노력형 궁합"]) : null;
+  // Derive all colors from result.finalType — single source of truth
+  const palette = result ? (GRADE_PALETTE[result.finalType] ?? GRADE_PALETTE["노력형 궁합"]) : null;
   const myName = p1?.birthInput.name ?? "";
   const otherName = p2?.birthInput.name ?? "";
 
@@ -496,24 +501,34 @@ export default function Compatibility() {
             </div>
           )}
 
-          {result && p1 && p2 && style && fullReport && (() => {
+          {result && p1 && p2 && palette && fullReport && (() => {
             const myPillarsForZodiac = p1 ? getFinalPillars(p1) : null;
             const myZodiac  = getZodiacFromDayPillar(myPillarsForZodiac?.day?.hangul ?? "");
             const otherZodiac = getZodiacFromDayPillar(otherPillarsFull?.day?.hangul ?? "");
             return (
             <div className="space-y-4">
 
-              {/* ── A. 종합 요약 ── */}
-              <div className={`rounded-2xl border-2 ${style.border} ${style.bg} p-5`}>
+              {/* ── A. 종합 요약 (result.finalType → palette 단일 출처) ── */}
+              <div
+                className="rounded-2xl border-2 p-5"
+                style={{ background: palette.pastel, borderColor: palette.border }}
+              >
                 <div className="flex items-center gap-4">
                   <div className="flex flex-col items-center shrink-0">
-                    <ScoreArc score={result.score} />
+                    <ScoreArc score={result.score} accentColor={palette.strong} />
                   </div>
                   <div className="flex-1">
                     <div className="mb-1.5 flex items-center gap-2">
-                      <Badge variant="outline" className={`font-bold text-base px-3 py-0.5 ${style.badge}`}>
-                        {fullReport.tone}
-                      </Badge>
+                      <span
+                        className="inline-flex items-center font-bold text-[15px] px-3 py-1 rounded-full border"
+                        style={{
+                          background: palette.pastel,
+                          borderColor: palette.border,
+                          color: palette.badgeText,
+                        }}
+                      >
+                        {result.finalType}
+                      </span>
                       <button
                         onClick={() => setShowInfoSheet(true)}
                         className="w-5 h-5 rounded-full border border-muted-foreground/40 text-muted-foreground text-[11px] font-bold leading-none flex items-center justify-center hover:bg-muted/60 transition-colors shrink-0"
@@ -1166,10 +1181,13 @@ export default function Compatibility() {
                     </div>
                   )}
 
-                  {/* 최종 등급 (result.finalType — 팝업과 UI 배지 동일 출처) */}
+                  {/* 최종 등급 (result.finalType → palette.badgeText — 팝업과 배지 동일 출처) */}
                   <div className="flex items-center gap-2 px-3 py-2 border-t-2 border-border bg-muted/40">
                     <span className="text-muted-foreground flex-1">최종 등급</span>
-                    <span className={`font-bold ${result.finalColor}`}>{result.finalType}</span>
+                    <span
+                      className="font-bold"
+                      style={{ color: palette?.badgeText }}
+                    >{result.finalType}</span>
                   </div>
                 </div>
                 <p className="text-[11px] text-muted-foreground mt-1.5 leading-snug">
