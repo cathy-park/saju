@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Link } from "wouter";
 import { getMyProfile } from "@/lib/storage";
 import { getTodayFortuneCard, getTenGodFortune } from "@/lib/todayFortune";
+import { buildLifeFlowInsights } from "@/lib/lifeFlowInsight";
 import type { PersonRecord } from "@/lib/storage";
 import { Pencil } from "lucide-react";
 import { useAuth } from "@/lib/authContext";
@@ -149,6 +150,7 @@ function NicknameSheet({ value, onSave, onClose }: {
 function Dashboard({ record }: { record: PersonRecord }) {
   const { user } = useAuth();
   const fortune = getTodayFortuneCard(record);
+  const lifeFlow = buildLifeFlowInsights(record);
   const [showEditSheet, setShowEditSheet] = useState(false);
   const [showLuckSheet, setShowLuckSheet] = useState(false);
   const [nickname, setNickname] = useState(() => user ? loadNick() : "사용자");
@@ -287,6 +289,48 @@ function Dashboard({ record }: { record: PersonRecord }) {
           )}
         </div>
       </div>
+
+      {/* ══════════════════════════════════════════
+          오늘의 전체 흐름 카드
+      ══════════════════════════════════════════ */}
+      {lifeFlow && (
+        <div style={{ padding: "14px 16px 0" }}>
+          <div style={{ background: "#FFF", border: "1px solid #E8E4FC", borderRadius: 16, padding: "14px 16px", position: "relative", overflow: "hidden" }}>
+            {/* 배경 그라데이션 포인트 */}
+            <div style={{ position: "absolute", top: -20, right: -20, width: 80, height: 80, background: "radial-gradient(circle, rgba(99,102,241,0.08) 0%, transparent 70%)", pointerEvents: "none" }} />
+
+            {/* 제목 */}
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+              <span style={{ fontSize: 13, fontWeight: 800, color: "#6366F1" }}>✦ 오늘의 전체 흐름</span>
+            </div>
+
+            {/* 전체 텍스트 */}
+            <p style={{ fontSize: 13, color: "#333", lineHeight: 1.6, margin: "0 0 6px", fontWeight: 500 }}>
+              {lifeFlow.overall.fullText}
+            </p>
+
+            {/* 활동 방향 */}
+            {lifeFlow.overall.activityFlow && (
+              <p style={{ fontSize: 12, color: "#6366F1", margin: "0 0 10px", fontWeight: 600 }}>
+                {lifeFlow.overall.activityFlow}
+              </p>
+            )}
+
+            {/* 감정 흐름 + 결정 타이밍 2칸 */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              {[
+                { label: "감정 흐름", text: lifeFlow.overall.emotional },
+                { label: "결정 타이밍", text: lifeFlow.overall.decisionTiming },
+              ].map(({ label, text }) => (
+                <div key={label} style={{ background: "#F7F6FE", borderRadius: 10, padding: "9px 11px" }}>
+                  <p style={{ fontSize: 10, fontWeight: 700, color: "#8B8FCC", margin: "0 0 4px", letterSpacing: "0.03em" }}>{label}</p>
+                  <p style={{ fontSize: 12, color: "#444", margin: 0, lineHeight: 1.5 }}>{text}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ══════════════════════════════════════════
           4 MINI STATUS CARDS (horizontal scroll)
