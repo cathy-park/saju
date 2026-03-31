@@ -867,14 +867,15 @@ function TenGodDistributionSection({
           const [s1, s2] = TG_SUB_PAIRS[g];
           const p1 = detailed[s1] ?? 0;
           const p2 = detailed[s2] ?? 0;
+          const isDominant = g === dominantGroup;
           return (
-            <div key={g}>
+            <div key={g} className={`rounded-xl px-2 py-1 transition-colors ${isDominant ? `${c.bg} border border-current/10` : ""}`}>
               <button
                 onClick={() => onTap(g, pct)}
-                className="w-full flex items-center gap-3 text-left hover:bg-muted/30 rounded px-1 py-0.5 transition-colors"
+                className="w-full flex items-center gap-3 text-left hover:bg-black/5 rounded px-1 py-0.5 transition-colors"
               >
-                <span className="w-10 text-[13px] font-semibold shrink-0">{g}</span>
-                <div className="flex-1 h-2.5 bg-muted rounded-full overflow-hidden">
+                <span className={`w-10 text-[13px] font-semibold shrink-0 ${isDominant ? c.text : ""}`}>{g}</span>
+                <div className="flex-1 h-2.5 bg-muted/60 rounded-full overflow-hidden">
                   <div className={`h-full rounded-full ${c.bar}`} style={{ width: `${pct}%` }} />
                 </div>
                 <span className={`text-[13px] font-bold whitespace-nowrap text-right px-2 py-0.5 rounded-full border ${c.bg} ${c.text}`}>
