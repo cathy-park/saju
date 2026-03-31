@@ -1664,6 +1664,25 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
         <CoreInsightChips dayStem={dayStem} fiveElement={effectiveFiveElements} />
       )}
 
+      {/* ── 시주 모드 토글 (탭 바 위, 출생 시간 있을 때만) ── */}
+      {hasHourPillar && (
+        <div className="flex items-center gap-1.5 bg-muted/30 border border-border rounded-xl p-1">
+          {(["포함", "제외", "비교"] as const).map((m) => (
+            <button
+              key={m}
+              onClick={() => setHourMode(m)}
+              className={`flex-1 py-1.5 text-[12px] font-semibold rounded-lg transition-all active:scale-95 ${
+                hourMode === m
+                  ? "bg-background text-foreground shadow-sm border border-border/50"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              시주 {m}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* ── 탭 바 ── */}
       <div className="flex rounded-xl border border-border bg-muted/30 p-1 gap-1">
         {(["원국", "성향", "운세", "해석"] as const).map((tab) => (
@@ -1684,25 +1703,6 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
       {/* ── 탭 1: 원국 ── */}
       {reportTab === "원국" && (
         <div className="space-y-3">
-
-          {/* ── 시주 모드 토글 (출생 시간 있을 때만) ── */}
-          {hasHourPillar && (
-            <div className="flex items-center gap-1.5 bg-muted/30 border border-border rounded-xl p-1">
-              {(["포함", "제외", "비교"] as const).map((m) => (
-                <button
-                  key={m}
-                  onClick={() => setHourMode(m)}
-                  className={`flex-1 py-1.5 text-[12px] font-semibold rounded-lg transition-all active:scale-95 ${
-                    hourMode === m
-                      ? "bg-background text-foreground shadow-sm border border-border/50"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  시주 {m}
-                </button>
-              ))}
-            </div>
-          )}
 
           {/* 사주팔자 — 항상 표시 */}
           <PillarTable
@@ -1742,22 +1742,30 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
                   </div>
                 }
               >
-                <div className="space-y-3">
+                {(() => {
+                    const allTgTotal = Object.values(displayCounts).reduce((s, c) => s + c, 0) || 1;
+                    return (
+                  <div className="space-y-3">
                   {Object.entries(TEN_GOD_GROUPS).map(([group, members]) => {
-                    const total = members.reduce((s, tg) => s + (displayCounts[tg] ?? 0), 0);
+                    const groupCount = members.reduce((s, tg) => s + (displayCounts[tg] ?? 0), 0);
+                    const groupPct = Math.round((groupCount / allTgTotal) * 100);
                     return (
                       <div key={group}>
                         <div className="flex items-center justify-between mb-1">
                           <span className="text-[12px] font-bold text-foreground">{group}</span>
-                          <span className="text-[12px] text-muted-foreground">{total}개</span>
+                          <span className="text-[12px] font-semibold text-muted-foreground">{groupPct}%</span>
                         </div>
                         <div className="grid grid-cols-2 gap-1">
-                          {members.map((tg) => (
+                          {members.map((tg) => {
+                            const cnt = displayCounts[tg as TenGod] ?? 0;
+                            const pct = Math.round((cnt / allTgTotal) * 100);
+                            return (
                             <div key={tg} className={`flex items-center justify-between rounded-lg px-2.5 py-1.5 ${TEN_GOD_COLOR[tg as TenGod]}`}>
                               <span className="text-[13px] font-bold">{tg}</span>
-                              <span className="text-[13px] font-semibold">{displayCounts[tg as TenGod] ?? 0}</span>
+                              <span className="text-[13px] font-semibold">{pct}%</span>
                             </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       </div>
                     );
@@ -1767,7 +1775,9 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
                       ✎ 직접 편집된 십성 — 오행 분포가 십성 기준으로 재계산됩니다
                     </p>
                   )}
-                </div>
+                  </div>
+                    );
+                  })()}
               </AccSection>
             );
           })()}
