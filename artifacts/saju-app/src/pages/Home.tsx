@@ -412,17 +412,17 @@ function Dashboard({ record }: { record: PersonRecord }) {
                 </div>
                 <div style={{ display: "flex", gap: 3, flexWrap: "wrap" }}>
                   {layer.tenGod && (
-                    <span style={{ fontSize: 9, fontWeight: 700, background: "rgba(99,102,241,0.10)", color: "#6366F1", borderRadius: 20, padding: "2px 6px" }}>
+                    <span className="daewoon-tengod-tag" style={{ fontSize: 9, fontWeight: 700, background: "rgba(99,102,241,0.10)", color: "#6366F1", borderRadius: 20, padding: "2px 6px" }}>
                       천:{layer.tenGod}
                     </span>
                   )}
                   {layer.branchTenGod && (
-                    <span style={{ fontSize: 9, fontWeight: 700, background: "rgba(20,184,166,0.10)", color: "#0F9B8E", borderRadius: 20, padding: "2px 6px" }}>
+                    <span className="daewoon-tengod-tag" style={{ fontSize: 9, fontWeight: 700, background: "rgba(20,184,166,0.10)", color: "#0F9B8E", borderRadius: 20, padding: "2px 6px" }}>
                       지:{layer.branchTenGod}
                     </span>
                   )}
                   {layer.twelveStage && (
-                    <span style={{ fontSize: 9, fontWeight: 700, background: "rgba(120,120,120,0.10)", color: "#666", borderRadius: 20, padding: "2px 6px" }}>
+                    <span className="daewoon-tengod-tag" style={{ fontSize: 9, fontWeight: 700, background: "rgba(120,120,120,0.10)", color: "#666", borderRadius: 20, padding: "2px 6px" }}>
                       {layer.twelveStage}
                     </span>
                   )}

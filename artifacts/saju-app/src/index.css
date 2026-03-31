@@ -348,3 +348,7 @@
   .chip-lavender { background: var(--chip-lavender-bg); color: var(--chip-lavender-fg); }
   .chip-sky      { background: var(--chip-sky-bg);      color: var(--chip-sky-fg); }
 }
+
+@media (max-width: 369px) {
+  .daewoon-tengod-tag { display: none !important; }
+}
