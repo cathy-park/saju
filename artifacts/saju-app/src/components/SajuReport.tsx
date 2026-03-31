@@ -2172,6 +2172,54 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
       {reportTab === "원국" && (
         <div className="space-y-3">
 
+          {/* ── 시주 비교 카드 (비교 모드일 때 원국 위에 표시) ── */}
+          {hasHourPillar && hourMode === "비교" && (
+            <div className="rounded-xl border border-violet-200 bg-violet-50/40 px-3 py-3 space-y-2.5">
+              <div className="flex items-center gap-3">
+                {/* 시주 글자 */}
+                <div className="shrink-0 text-center">
+                  <p className="text-[10px] font-bold text-violet-500 uppercase tracking-wide mb-0.5">시주</p>
+                  <div className="flex gap-0.5">
+                    {hourStem && <span className={`text-xl font-bold ${ELEMENT_COLORS[STEM_ELEMENT[hourStem] ?? ""] ?? ""}`}>{hourStem}</span>}
+                    {hourBranch && <span className={`text-xl font-bold ${ELEMENT_COLORS[STEM_ELEMENT[hourBranch] ?? ""] ?? ""}`}>{hourBranch}</span>}
+                  </div>
+                  <div className="flex gap-0.5 mt-0.5 justify-center flex-wrap">
+                    {hourStemTg && <span className={`text-[10px] font-bold px-1 py-0.5 rounded ${TEN_GOD_COLOR[hourStemTg as TenGod] ?? "bg-muted"}`}>{hourStemTg}</span>}
+                    {hourBranchTg && <span className={`text-[10px] font-bold px-1 py-0.5 rounded ${TEN_GOD_COLOR[hourBranchTg as TenGod] ?? "bg-muted"}`}>{hourBranchTg}</span>}
+                  </div>
+                </div>
+                <div className="flex-1 min-w-0 space-y-1.5">
+                  <p className="text-[11px] font-bold text-violet-600">시주 포함·제외 비교</p>
+                  {/* 오행 변화 */}
+                  {fiveElDiffBase.length > 0 ? (
+                    <div className="flex flex-wrap gap-1">
+                      {fiveElDiffBase.map(({ el, withHour, withoutHour, delta }) => (
+                        <div key={el} className="flex items-center gap-0.5 rounded-lg border border-border bg-white px-2 py-0.5">
+                          <span className="text-[12px] font-bold" style={{ color: (ELEMENT_TEXT_HEX as Record<string, string>)[el] ?? undefined }}>{el}</span>
+                          <span className="text-[11px] text-muted-foreground">{withoutHour}→{withHour}</span>
+                          <span className={`text-[10px] font-bold ${delta > 0 ? "text-emerald-600" : "text-rose-500"}`}>{delta > 0 ? `+${delta}` : delta}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-[11px] text-muted-foreground">오행 변화 없음</p>
+                  )}
+                  {/* 신살 변화 */}
+                  {(shinsalDiffBase.added.length > 0 || shinsalDiffBase.removed.length > 0) && (
+                    <div className="flex flex-wrap gap-1">
+                      {shinsalDiffBase.removed.map((n) => (
+                        <span key={`rem-${n}`} className={`text-[11px] font-bold px-1.5 py-0.5 rounded-full border line-through opacity-50 ${SHINSAL_COLOR[n] ?? "bg-muted text-muted-foreground border-border"}`}>{n}</span>
+                      ))}
+                      {shinsalDiffBase.added.map((n) => (
+                        <span key={`add-${n}`} className={`text-[11px] font-bold px-1.5 py-0.5 rounded-full border ${SHINSAL_COLOR[n] ?? "bg-muted text-muted-foreground border-border"}`}>+{n}</span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* 사주팔자 — 항상 표시 */}
           <PillarTable
             pillars={pillarData}
