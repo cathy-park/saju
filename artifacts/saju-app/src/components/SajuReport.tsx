@@ -838,27 +838,6 @@ function TenGodDistributionSection({
 
   return (
     <div className="space-y-3">
-      {/* Summary chips — horizontal scroll */}
-      <div className="overflow-x-auto -mx-1 px-1 py-1" style={{ scrollbarWidth: "none", msOverflowStyle: "none" as "none" }}>
-        <div className="flex gap-2 min-w-max">
-          {groups.map((g) => {
-            const pct = topLevel[g];
-            const c = TG_GROUP_COLORS[g];
-            const isTop = g === dominantGroup;
-            return (
-              <button
-                key={g}
-                onClick={() => onTap(g, pct)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[13px] font-bold cursor-pointer transition-all active:scale-95 hover:shadow-sm ${c.bg} ${c.text} ${isTop ? "ring-2 ring-offset-1 ring-current" : ""}`}
-              >
-                <span>{g}</span>
-                <span className="font-normal opacity-60">{pct}%</span>
-                <span className="text-[13px] opacity-50 ml-0.5">▸</span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
       {/* Bar rows with sub-categories */}
       <div className="space-y-3">
         {groups.map((g) => {
