@@ -201,8 +201,15 @@ const RULES: InterpretRule[] = [
     id: "R09",
     name: "극신강: 독립·사업형 에너지",
     category: "신강약",
-    condition: (ctx) => getStrIdx(ctx.strengthLevel) >= 5,
-    conditions: (ctx) => [`일간 강도: ${ctx.strengthLevel} (매우 강)`],
+    // NOTE: 강도만으로 "조직보다 독립"을 단정하면 과잉 일반화로 보일 수 있어,
+    // 비겁(자아/독립) 에너지까지 함께 강할 때만 발동합니다.
+    condition: (ctx) =>
+      getStrIdx(ctx.strengthLevel) >= 5 &&
+      STRONG(ctx.tenGodRatios["비겁"] ?? 0),
+    conditions: (ctx) => [
+      `일간 강도: ${ctx.strengthLevel} (매우 강)`,
+      `비겁 비율 ${Math.round((ctx.tenGodRatios["비겁"] ?? 0) * 100)}% (강)`,
+    ],
     interpretation: (ctx) =>
       `일간 에너지가 극도로 강해 조직 생활보다 독립적인 환경이 어울립니다. 자기 주도성이 매우 높아 사업·창업·전문직에서 강점을 발휘합니다. 용신(${ctx.effectiveYongshin})으로 과잉 에너지를 생산적으로 흘려보내는 것이 핵심입니다.`,
   },

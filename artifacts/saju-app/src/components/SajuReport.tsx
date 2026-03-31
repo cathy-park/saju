@@ -2793,7 +2793,7 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                             ))}
                             {isEmpty && <span className="text-[13px] text-muted-foreground opacity-50">없음</span>}
                             <button onClick={() => setPickerForPosition(pos)}
-                              className="text-[13px] font-bold px-2 py-0.5 rounded-full border border-dashed border-blue-300 text-blue-500 hover:bg-blue-50 transition-colors">+ 추가</button>
+                              className="text-[13px] font-bold px-2 py-0.5 rounded-full border border-dashed border-border/70 text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors">+ 추가</button>
                           </div>
                         )}
                       </div>
@@ -2822,7 +2822,7 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                     <DialogHeader>
                       <DialogTitle className="text-base">신살 추가</DialogTitle>
                       <p className="text-[13px] text-muted-foreground mt-1">
-                        <span className="font-bold text-blue-600">{pickerForPosition}</span>에 추가할 신살을 선택하세요
+                        <span className="font-bold text-foreground">{pickerForPosition}</span>에 추가할 신살을 선택하세요
                       </p>
                     </DialogHeader>
                     <div className="space-y-4 pt-1">

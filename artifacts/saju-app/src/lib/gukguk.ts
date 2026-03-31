@@ -195,7 +195,6 @@ export function detectStructurePatterns(
 
   const hasSiksin  = has("식신");
   const hasSangkwan = has("상관");
-  const hasSikSang = hasSiksin || hasSangkwan;
   const hasPyeonJae = has("편재");
   const hasJeongJae = has("정재");
   const hasJae      = hasPyeonJae || hasJeongJae;
@@ -206,11 +205,14 @@ export function detectStructurePatterns(
   const hasJeongIn   = has("정인");
   const hasIn        = hasPyeonIn || hasJeongIn;
 
-  // 식신생재 (食神生財): 식상 → 재성
-  if (hasSikSang && hasJae) {
+  // 식신생재 (食神生財): 식신 → 재성
+  // NOTE: "식상(식신·상관)생재"로 과잉 판정되면,
+  // 십성 분포에서 식신이 0인데도 "식신생재"가 뜨는 불일치가 발생할 수 있습니다.
+  // 따라서 본 패턴은 "식신"이 실제로 존재할 때만 발동합니다.
+  if (hasSiksin && hasJae) {
     patterns.push({
       name: "식신생재 (食神生財)",
-      description: "식상(식신·상관)이 재성을 생하는 구조입니다. 재능과 노력으로 재물을 만드는 힘이 강합니다.",
+      description: "식신이 재성을 생하는 구조입니다. 재능과 노력으로 재물을 만드는 힘이 강합니다.",
       type: "상생",
     });
   }
