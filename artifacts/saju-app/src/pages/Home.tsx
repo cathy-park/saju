@@ -336,6 +336,13 @@ function Dashboard({ record }: { record: PersonRecord }) {
               ))}
             </div>
 
+            {/* 오늘 운세 보러가기 버튼 */}
+            <button
+              onClick={goToTodayFortune}
+              style={{ display: "block", width: "100%", marginTop: 14, padding: "13px 0", borderRadius: 12, background: "linear-gradient(135deg,#6366F1,#8B5CF6)", color: "#FFF", fontSize: 14, fontWeight: 800, border: "none", cursor: "pointer", letterSpacing: "0.02em" }}
+            >
+              오늘 운세 보러가기 →
+            </button>
           </div>
         </div>
       )}
