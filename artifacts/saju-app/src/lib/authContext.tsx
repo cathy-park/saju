@@ -72,13 +72,21 @@ async function syncWithSupabase(uid: string, userMeta: SupabaseUser): Promise<vo
     errors.push("데이터 불러오기 실패");
   }
 
-  // 3. Push local-only data up to DB (fills gaps from failed/skipped migrations)
+  // 3. Push local data to DB when:
+  //    (a) DB has no profile yet, OR
+  //    (b) DB profile exists but local is NEWER (last edited more recently on this device)
   const local = loadLocal();
 
-  if (!dbProfile && local.myProfile) {
-    console.log("[auth] pushing local myProfile to Supabase");
+  const localNewer =
+    local.myProfile &&
+    dbProfile &&
+    local.myProfile.id === dbProfile.id &&
+    local.myProfile.updatedAt > dbProfile.updatedAt;
+
+  if ((local.myProfile && !dbProfile) || localNewer) {
+    console.log("[auth] pushing local myProfile to Supabase", localNewer ? "(local is newer)" : "(DB missing)");
     try {
-      await upsertMyProfile(uid, local.myProfile);
+      await upsertMyProfile(uid, local.myProfile!);
     } catch (e) {
       const msg = (e as Error)?.message ?? "알 수 없는 오류";
       console.error("[auth] push myProfile failed:", msg);
@@ -162,7 +170,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    // Re-sync when the user switches back to this tab/window
+    // so cross-device edits are reflected immediately.
+    function handleVisibility() {
+      if (document.visibilityState === "visible") {
+        supabase.auth.getSession().then(({ data: { session } }) => {
+          const u = session?.user ?? null;
+          if (u) {
+            setDbSynced(false);
+            syncWithSupabase(u.id, u)
+              .catch((err) => console.warn("[auth] visibility sync error:", err))
+              .finally(() => setDbSynced(true));
+          }
+        });
+      }
+    }
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    return () => {
+      subscription.unsubscribe();
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
   }, []);
 
   const signInWithGoogle = async () => {

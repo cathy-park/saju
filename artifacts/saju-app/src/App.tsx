@@ -68,7 +68,7 @@ function BottomNav() {
 
 function AppHeader() {
   return (
-    <div className="sticky top-0 z-40 bg-white border-b border-[#F0EDE8]">
+    <div className="fixed top-0 left-0 right-0 z-40 bg-background/97 backdrop-blur border-b border-[#F0EDE8] supports-[backdrop-filter]:bg-background/90">
       <div className="max-w-lg mx-auto px-5 h-14 flex items-center justify-between">
         {/* Brand wordmark */}
         <div className="flex items-center gap-2">
@@ -98,7 +98,7 @@ function SyncedApp() {
   return (
     <>
       <AppHeader />
-      <main className="pb-[60px]" key={refreshKey}>
+      <main className="pt-14 pb-[60px]" key={refreshKey}>
         <Switch>
           <Route path="/auth/callback"           component={AuthCallback} />
           <Route path="/"                        component={Home} />

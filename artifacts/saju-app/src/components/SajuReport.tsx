@@ -2039,7 +2039,7 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
       {reportTab === "해석" && dayStem && lifeFlowData && (
         <div className="space-y-3">
           {/* 해석 서브탭 */}
-          <div className="overflow-x-auto -mx-1 px-1 pb-1">
+          <div className="overflow-x-auto -mx-1 px-1 pb-1" style={{ scrollbarWidth: "none", msOverflowStyle: "none" as "none" }}>
             <div className="flex gap-1.5 min-w-max">
               {INTERPRET_TABS.map(({ key, icon }) => {
                 const active = interpretTab === key;

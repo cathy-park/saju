@@ -12,6 +12,7 @@ import {
   type PersonRecord,
   type MaritalStatus,
 } from "@/lib/storage";
+import { toast } from "@/hooks/use-toast";
 import { getFinalPillars } from "@/lib/storage";
 import { getZodiacFromDayPillar } from "@/lib/zodiacAnimal";
 import { useAuth } from "@/lib/authContext";
@@ -41,7 +42,22 @@ export default function MyProfile() {
     let newRecord: PersonRecord;
     try {
       const profile = calculateProfileFromBirth(input);
-      newRecord = { ...createRecord(input, profile), maritalStatus: formMarital };
+      if (record) {
+        // Editing existing profile — preserve the same ID so Supabase UPSERT
+        // matches by ID and updates the row rather than inserting a duplicate.
+        const now = new Date().toISOString();
+        newRecord = {
+          ...record,
+          birthInput: input,
+          profile,
+          maritalStatus: formMarital,
+          manualPillars:      {},
+          manualFiveElements: undefined,
+          updatedAt: now,
+        };
+      } else {
+        newRecord = { ...createRecord(input, profile), maritalStatus: formMarital };
+      }
     } catch (e: unknown) {
       alert("계산 오류: " + ((e as Error)?.message ?? "알 수 없는 오류"));
       return;
@@ -50,9 +66,18 @@ export default function MyProfile() {
     setRecord(newRecord);
     setEditing(false);
     if (user) {
-      upsertMyProfile(user.id, newRecord).catch((e) => {
-        console.error("[MyProfile] upsert failed:", e);
-      });
+      try {
+        await upsertMyProfile(user.id, newRecord);
+        console.log("[MyProfile] upsertMyProfile ✓ id=", newRecord.id);
+      } catch (e) {
+        const msg = (e as Error)?.message ?? "알 수 없는 오류";
+        console.error("[MyProfile] upsert failed:", msg);
+        toast({
+          title: "클라우드 저장 실패",
+          description: `로컬에는 저장되었지만 클라우드 동기화에 실패했습니다: ${msg.substring(0, 80)}`,
+          variant: "destructive",
+        });
+      }
     }
   }
 

@@ -289,26 +289,27 @@ function Dashboard({ record }: { record: PersonRecord }) {
       </div>
 
       {/* ══════════════════════════════════════════
-          4 MINI STATUS CARDS
+          4 MINI STATUS CARDS (horizontal scroll)
       ══════════════════════════════════════════ */}
-      <div style={{ padding: "14px 16px 0" }}>
-        <div style={{ display: "flex", gap: 6 }}>
+      <div style={{ padding: "14px 16px 0", overflowX: "auto", WebkitOverflowScrolling: "touch" as "touch" }}>
+        <div style={{ display: "flex", gap: 6, minWidth: "max-content", paddingBottom: 2 }}>
           {fortune.domainFortunes.map((d) => {
             const bs = domainLevelBadge[d.level];
             return (
               <div key={d.domain} style={{
-                flex: 1, background: "#FFF", border: "1px solid #EBEBEB",
-                borderRadius: 12, padding: "8px 8px",
-                display: "flex", alignItems: "center", justifyContent: "space-between", gap: 4,
+                flexShrink: 0, background: "#FFF", border: "1px solid #EBEBEB",
+                borderRadius: 12, padding: "8px 10px",
+                display: "flex", alignItems: "center", gap: 6,
               }}>
                 <span style={{ fontSize: 11, fontWeight: 700, color: "#111", whiteSpace: "nowrap" }}>{d.icon} {d.domain}</span>
-                <span style={{ fontSize: 10, fontWeight: 700, background: bs.bg, color: bs.color, borderRadius: 20, padding: "2px 6px", whiteSpace: "nowrap" }}>
+                <span style={{ fontSize: 10, fontWeight: 700, background: bs.bg, color: bs.color, borderRadius: 20, padding: "2px 7px", whiteSpace: "nowrap" }}>
                   {bs.icon} {d.label}
                 </span>
               </div>
             );
           })}
         </div>
+        <style>{`.domain-scroll::-webkit-scrollbar{display:none}`}</style>
       </div>
 
       {/* ══════════════════════════════════════════
