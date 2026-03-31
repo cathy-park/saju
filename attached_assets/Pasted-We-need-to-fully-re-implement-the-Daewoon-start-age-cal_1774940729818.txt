@@ -1,0 +1,102 @@
+We need to fully re-implement the Daewoon start age (대운수) calculation logic from scratch.
+
+Current problem:
+The latest fix made one profile return the expected value 6,
+but another profile that used to correctly return 1 is now also returning 6.
+That means the Daewoon start age logic is still fundamentally wrong or over-generalized.
+
+This is no longer a patch issue.
+Please replace the current Daewoon start age calculation with a clean, standard-rule implementation.
+
+==================================================
+[1] Rebuild Daewoon start age logic from scratch
+==================================================
+
+Implement standard Daewoon start age calculation based on:
+
+1. birth datetime
+2. exact solar-term timestamps
+3. forward / backward direction
+4. correct target solar term depending on direction
+5. exact time difference
+6. conversion rule from time difference to Daewoon start age
+
+Do NOT keep patching the old logic if it is structurally unreliable.
+If necessary, replace the current function entirely.
+
+==================================================
+[2] Direction logic must be explicit
+==================================================
+
+Please explicitly compute whether the chart moves forward or backward based on the correct rule.
+
+Do not assume one fixed direction.
+Use:
+- gender
+- yin/yang of the relevant stem used by the rule in the app
+
+And clearly show which direction is chosen.
+
+==================================================
+[3] Solar-term target logic must be explicit
+==================================================
+
+Depending on forward/backward direction,
+the Daewoon start age must use the correct adjacent solar term.
+
+This must not always use:
+- only the next term
+or
+- only the previous term
+
+It must correctly choose the relevant boundary based on the proper rule.
+
+==================================================
+[4] Time difference conversion must be explicit
+==================================================
+
+Please implement and clearly document:
+
+- which exact solar term is selected
+- birth datetime in KST
+- solar term datetime in KST
+- exact time difference in days/hours
+- how that difference is converted into Daewoon start age
+
+Make the formula explicit in code comments.
+
+==================================================
+[5] Add regression tests using multiple known cases
+==================================================
+
+Do not validate with only one profile.
+
+Add at least multiple test cases, including:
+- a case that should return 1
+- a case that should return 6
+- a case near a solar-term boundary
+- a forward case
+- a backward case
+
+The purpose is to prevent “fix one chart, break another” behavior.
+
+==================================================
+[6] Replace old result only if all tests pass
+==================================================
+
+Only adopt the new Daewoon start age result if:
+- the regression test cases behave correctly
+- no previously correct case becomes wrong
+
+==================================================
+[7] Developer report
+==================================================
+
+After implementing, show:
+1. which old logic was wrong
+2. which function was replaced
+3. the final formula used
+4. the chosen direction for each tested case
+5. the selected solar term for each tested case
+6. the final Daewoon start age for each tested case
+7. confirmation that both the “1” case and the “6” case now work correctly

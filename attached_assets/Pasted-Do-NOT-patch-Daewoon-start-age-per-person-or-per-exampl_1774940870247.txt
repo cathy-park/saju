@@ -1,0 +1,92 @@
+Do NOT patch Daewoon start age (대운수) per person or per example case.
+
+I do NOT want case-by-case fixes for specific people.
+I want the Daewoon calculation logic itself to be implemented correctly as a general rule.
+
+Current problem:
+One person now returns the expected value, but another person that used to be correct is now wrong.
+That means the engine is still being adjusted in a fragile way.
+
+This must be solved by implementing the standard Daewoon start age formula as a reusable, general calculation rule.
+
+==================================================
+[1] Rebuild Daewoon start age as a general algorithm
+==================================================
+
+Implement Daewoon start age from first principles using a standard rule-based method.
+
+Inputs:
+- birth date
+- birth time
+- birth timezone
+- gender
+- yin/yang rule needed for forward/backward determination
+- exact solar term timestamps
+
+Outputs:
+- direction (forward/backward)
+- selected reference solar term
+- exact time difference
+- Daewoon start age
+
+Do NOT special-case any individual chart.
+
+==================================================
+[2] No hardcoded person-specific corrections
+==================================================
+
+Do NOT add any logic like:
+- if this birthdate then return 6
+- if this profile then adjust value
+- if this year range then cap differently
+
+No profile-specific or example-specific patching is allowed.
+
+==================================================
+[3] Make the formula explicit in code
+==================================================
+
+Please write clear code comments showing:
+
+1. how forward/backward direction is chosen
+2. whether previous or next solar term is selected
+3. how exact time difference is measured
+4. how that difference is converted into Daewoon start age
+5. how rounding is handled
+
+==================================================
+[4] Add proper regression tests
+==================================================
+
+Use multiple independent test cases.
+
+Not special-casing them, but validating the general formula.
+
+Include cases such as:
+- a chart expected to yield 1
+- a chart expected to yield 6
+- a chart near solar-term boundary
+- both forward and backward direction cases
+
+The purpose is:
+prove the formula works generally,
+not just for one person.
+
+==================================================
+[5] Replace old logic only if the general formula works
+==================================================
+
+Do not keep layering patches on top of the old implementation.
+If the existing structure is unreliable, replace the Daewoon start age calculation function entirely.
+
+==================================================
+[6] Developer report
+==================================================
+
+After implementation, show:
+1. the final general formula used
+2. which old logic was replaced
+3. why the old logic was structurally wrong
+4. the regression test cases used
+5. the result of each test case
+6. confirmation that the solution is general-rule based, not person-specific
