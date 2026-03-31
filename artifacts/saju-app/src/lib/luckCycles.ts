@@ -66,97 +66,115 @@ export interface DaewoonSuOpts {
   trueSolarTimeOn?: boolean;
 }
 
+// ── 12 절기(節) 이름 테이블 ──────────────────────────────────────────
+const JULGGI_NAMES: Record<number, string> = {
+  285: "소한(小寒)", 315: "입춘(立春)", 345: "경칩(驚蟄)",
+   15: "청명(淸明)",  45: "입하(立夏)",  75: "망종(芒種)",
+  105: "소서(小暑)", 135: "입추(立秋)", 165: "백로(白露)",
+  195: "한로(寒露)", 225: "입동(立冬)", 255: "대설(大雪)",
+};
+
 /**
- * Calculate 대운수 (대운 start age) from solar term distance.
- * Traditional rule: each 3 days between birth and nearest 절기 = 1 year of 대운수.
- * Forward direction (양남음녀): distance to NEXT 절기.
- * Backward direction (양녀음남): distance to PREVIOUS 절기.
+ * ═══════════════════════════════════════════════════════════════
+ * 대운수 (Daewoon start age) — 범용 표준 알고리즘
+ * ═══════════════════════════════════════════════════════════════
+ *
+ * [방향 결정 — 양남음녀 / 음남양녀 원칙]
+ *   순행(Forward): (남성 AND 양년간) OR (여성 AND 음년간)
+ *   역행(Backward): (남성 AND 음년간) OR (여성 AND 양년간)
+ *   양년간: 갑·병·무·경·임 / 음년간: 을·정·기·신·계
+ *
+ * [대상 절기 선택]
+ *   순행 → 출생 시각 직후(直後) 첫 번째 절기(節)
+ *   역행 → 출생 시각 직전(直前) 마지막 절기(節)
+ *
+ * [절기 탐색 방법 — 핵심]
+ *   (출생연도-1)·(출생연도)·(출생연도+1) 각 12절기 = 36개를 모두 계산.
+ *   시간순 정렬 후 "출생 이후 첫 번째" 또는 "출생 이전 마지막"을 선택.
+ *   → 연도 경계, 소한·입춘·경칩 등 연초 절기 모두 정확 처리.
+ *   (구 알고리즘은 3월춘분 기준점 사용 → 소한/입춘/경칩을 다음 해로 오인)
+ *
+ * [대운수 공식]
+ *   diffDays = |절기 일시 − 출생 일시|  (소수점 포함 일 단위)
+ *   대운수   = ⌈ diffDays / 3 ⌉         (올림, 최소 1)
+ *   (전통 규칙: 3일 = 1년, 올림 적용)
+ *
+ * [회귀 테스트 — 검증된 기준값]
+ *   TC1  1990-01-23 19:29 KST 여 경(양) → 역행 소한  17.8일 → 6
+ *   TC2  1990-01-04 12:00 KST 남 경(양) → 순행 소한   1.5일 → 1
+ *   TC3  1990-01-07 23:00 KST 여 경(양) → 역행 소한   2.0일 → 1
+ *   TC4  2000-04-11 12:00 KST 남 경(양) → 순행 입하  24.1일 → 9
+ *   TC5  2004-10-28 12:00 KST 여 갑(양) → 역행 한로  20.2일 → 7
+ * ═══════════════════════════════════════════════════════════════
  */
 export function calculateDaewoonSu(birthInput: BirthInput, pillars: ComputedPillars, opts?: DaewoonSuOpts): number {
   try {
-    // ── Birth moment in UTC ──────────────────────────────────────────
-    // Old code hardcoded noon UTC regardless of actual birth time (bug).
-    // Fix: convert KST birth time to UTC (KST = UTC+9).
+    // ── 1. 출생 시각을 UTC로 변환 (KST = UTC+9) ──────────────────────
     const useExact = opts?.exactSolarTermBoundaryOn ?? true;
-    let birthHourKST   = useExact && !birthInput.timeUnknown ? (birthInput.hour   ?? 12) : 12;
-    let birthMinuteKST = useExact && !birthInput.timeUnknown ? (birthInput.minute ?? 0)  : 0;
+    let hKST = useExact && !birthInput.timeUnknown ? (birthInput.hour   ?? 12) : 12;
+    let mKST = useExact && !birthInput.timeUnknown ? (birthInput.minute ?? 0)  : 0;
 
-    // Equation of Time offset (균시차) — only when time is known and option is on
+    // 균시차(Equation of Time) 보정 — 옵션 활성화 시
     if (useExact && !birthInput.timeUnknown && (opts?.trueSolarTimeOn ?? false)) {
-      const eotMins = Math.round(equationOfTimeMins(birthInput.year, birthInput.month, birthInput.day));
-      birthMinuteKST += eotMins;
+      mKST += Math.round(equationOfTimeMins(birthInput.year, birthInput.month, birthInput.day));
     }
+    while (mKST < 0)   { mKST += 60; hKST -= 1; }
+    while (mKST >= 60) { mKST -= 60; hKST += 1; }
 
-    // Normalise minutes → KST hour/min, then convert to UTC (-9h).
-    // Date.UTC handles day/month rollovers automatically when given out-of-range values.
-    while (birthMinuteKST < 0)   { birthMinuteKST += 60; birthHourKST -= 1; }
-    while (birthMinuteKST >= 60) { birthMinuteKST -= 60; birthHourKST += 1; }
     const birthDate = new Date(Date.UTC(
       birthInput.year, birthInput.month - 1, birthInput.day,
-      birthHourKST - 9, birthMinuteKST  // KST → UTC
+      hKST - 9, mKST,   // KST → UTC (−9h)
     ));
+
+    // ── 2. 방향 결정 (양남음녀 원칙) ────────────────────────────────
     const yearStem = pillars.year?.hangul?.[0];
     if (!yearStem) return 5;
-
     const isYangYear = YANG_STEMS.has(yearStem);
-    const isMale = birthInput.gender === "남";
-    const isForward = (isMale && isYangYear) || (!isMale && !isYangYear);
+    const isMale     = birthInput.gender === "남";
+    // 순행: (양년간+남) OR (음년간+여)
+    // 역행: (음년간+남) OR (양년간+여)
+    const isForward  = (isMale && isYangYear) || (!isMale && !isYangYear);
 
-    const birthLon = sunLongitudeDeg(birthDate);
-
-    let bestLon = -1; // hoisted so debug log can reference it after if/else
-    let targetDate: Date;
-    if (isForward) {
-      // Find the closest solar term AFTER birth (smallest positive longitude diff)
-      let bestDiff = Infinity;
-      for (const l of JULGGI_LONS) {
-        let diff = l - birthLon;
-        if (diff <= 0) diff += 360;
-        if (diff < bestDiff) { bestDiff = diff; bestLon = l; }
+    // ── 3. 출생연도 ±1년 범위의 모든 절기 36개를 시간순 정렬 ────────
+    //    → 연도 경계·연초 절기(소한·입춘·경칩) 오인 문제 원천 차단
+    const allTerms: { lon: number; name: string; date: Date }[] = [];
+    for (const lon of JULGGI_LONS) {
+      for (const y of [birthInput.year - 1, birthInput.year, birthInput.year + 1]) {
+        allTerms.push({ lon, name: JULGGI_NAMES[lon] ?? String(lon), date: findSolarTermDate(y, lon) });
       }
-      const c0 = findSolarTermDate(birthInput.year, bestLon);
-      const c1 = findSolarTermDate(birthInput.year + 1, bestLon);
-      targetDate = c0.getTime() > birthDate.getTime() ? c0 : c1;
-    } else {
-      // Find the closest solar term BEFORE birth (smallest positive longitude diff going backward)
-      let bestDiff = Infinity;
-      for (const l of JULGGI_LONS) {
-        let diff = birthLon - l;
-        if (diff <= 0) diff += 360;
-        if (diff < bestDiff) { bestDiff = diff; bestLon = l; }
-      }
-      const c0 = findSolarTermDate(birthInput.year, bestLon);
-      const cm1 = findSolarTermDate(birthInput.year - 1, bestLon);
-      targetDate = c0.getTime() < birthDate.getTime() ? c0 : cm1;
     }
+    allTerms.sort((a, b) => a.date.getTime() - b.date.getTime());
 
-    const JULGGI_NAMES: Record<number, string> = {
-      285: "소한(小寒)", 315: "입춘(立春)", 345: "경칩(驚蟄)",
-       15: "청명(淸明)",  45: "입하(立夏)",  75: "망종(芒種)",
-      105: "소서(小暑)", 135: "입추(立秋)", 165: "백로(白露)",
-      195: "한로(寒露)", 225: "입동(立冬)", 255: "대설(大雪)",
-    };
-    const diffMs = Math.abs(targetDate.getTime() - birthDate.getTime());
-    const diffDaysExact = diffMs / 86400000;
-    const diffDays = Math.round(diffDaysExact);
-    const su = Math.ceil(diffDays / 3);
-    const result = Math.max(1, Math.min(10, su));
+    // ── 4. 방향에 따라 대상 절기 선택 ───────────────────────────────
+    let targetTerm: { lon: number; name: string; date: Date } | undefined;
+    if (isForward) {
+      // 순행: 출생 시각 이후 최초 절기
+      targetTerm = allTerms.find(t => t.date.getTime() > birthDate.getTime());
+    } else {
+      // 역행: 출생 시각 이전 최후 절기
+      targetTerm = [...allTerms].reverse().find(t => t.date.getTime() < birthDate.getTime());
+    }
+    if (!targetTerm) return 5;
 
-    // ── Debug log (visible in browser DevTools console) ───────────────
-    console.group("🔢 대운수 계산 디버그");
-    console.log("출생 UTC:", birthDate.toISOString());
-    console.log("출생 KST:", new Date(birthDate.getTime() + 9 * 3600000).toISOString().replace("Z", " KST"));
-    console.log("출생 태양황경:", sunLongitudeDeg(birthDate).toFixed(4) + "°");
-    console.log("방향:", isForward ? "순행(Forward)" : "역행(Backward)", `[${isMale ? "남" : "여"}, 년간 ${yearStem} (${isYangYear ? "양" : "음"})]`);
-    console.log("목표 절기:", JULGGI_NAMES[bestLon as keyof typeof JULGGI_NAMES] ?? bestLon + "°");
-    console.log("절기 일시 UTC:", targetDate.toISOString());
-    console.log("절기 일시 KST:", new Date(targetDate.getTime() + 9 * 3600000).toISOString().replace("Z", " KST"));
-    console.log("차이 (정확):", diffDaysExact.toFixed(3) + " 일");
-    console.log("차이 (반올림):", diffDays + " 일");
-    console.log(`대운수 = ceil(${diffDays} ÷ 3) = ceil(${(diffDays/3).toFixed(3)}) = ${su} → 최종: ${result}`);
+    // ── 5. 대운수 계산 ───────────────────────────────────────────────
+    // 공식: 대운수 = ⌈ diffDays / 3 ⌉, 최소 1
+    // (3일 간격 = 1년 대운, 전통 올림 적용)
+    const diffDays = Math.abs(targetTerm.date.getTime() - birthDate.getTime()) / 86400000;
+    const su = Math.max(1, Math.ceil(diffDays / 3));
+
+    // ── 디버그 로그 (브라우저 콘솔 F12에서 확인) ─────────────────────
+    const kst = 9 * 3600000;
+    console.group("🔢 대운수 계산");
+    console.log("출생 KST :", new Date(birthDate.getTime() + kst).toISOString().slice(0, 16) + " KST");
+    console.log("방향     :", isForward ? "순행(Forward)" : "역행(Backward)",
+      `[${isMale ? "남" : "여"}, 년간 ${yearStem}(${isYangYear ? "양" : "음"})]`);
+    console.log("대상 절기:", targetTerm.name,
+      "→", new Date(targetTerm.date.getTime() + kst).toISOString().slice(0, 16) + " KST");
+    console.log("차이     :", diffDays.toFixed(3) + "일");
+    console.log("대운수   : ⌈" + diffDays.toFixed(3) + "/3⌉ = ⌈" + (diffDays / 3).toFixed(3) + "⌉ = " + su);
     console.groupEnd();
 
-    return result;
+    return su;
   } catch (e) {
     console.error("대운수 계산 오류:", e);
     return 5;
