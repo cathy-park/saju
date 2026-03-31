@@ -681,23 +681,41 @@ function TenGodDistributionSection({
   dayEl?: FiveElKey;
   allChars: string[];
   effectiveFiveElements: FiveElementCount;
-  onTap: (group: string) => void;
+  onTap: (group: string, pct: number) => void;
 }) {
   const groups = ["비겁", "식상", "재성", "관성", "인성"] as const;
   const { topLevel, detailed } = computeTenGodDistribution(dayStem, dayEl, allChars, effectiveFiveElements);
 
+  const dominantGroup = groups.reduce<string>((max, g) => (topLevel[g] > (topLevel[max] ?? 0) ? g : max), groups[0]);
+  const dominantPct = topLevel[dominantGroup] ?? 0;
+  const dominantColor = TG_GROUP_COLORS[dominantGroup as keyof typeof TG_GROUP_COLORS];
+
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
+      {/* 대표 십성 카드 */}
+      <button
+        onClick={() => onTap(dominantGroup, dominantPct)}
+        className={`w-full flex items-center gap-3 rounded-xl border px-4 py-3 text-left transition-all active:scale-[0.98] hover:shadow-sm ${dominantColor.bg} ${dominantColor.text}`}
+      >
+        <div className="flex-1">
+          <p className="text-[11px] font-bold uppercase tracking-wide opacity-60 mb-0.5">나를 대표하는 기운</p>
+          <p className="text-lg font-bold">{dominantGroup}</p>
+          <p className="text-[12px] opacity-70 mt-0.5">{dominantPct}% · 탭하면 맞춤 해설 보기</p>
+        </div>
+        <div className={`text-2xl font-black opacity-30`}>▸</div>
+      </button>
+
       {/* Summary chips */}
-      <div className="flex flex-wrap gap-2 mb-3">
+      <div className="flex flex-wrap gap-2">
         {groups.map((g) => {
           const pct = topLevel[g];
           const c = TG_GROUP_COLORS[g];
+          const isTop = g === dominantGroup;
           return (
             <button
               key={g}
-              onClick={() => onTap(g)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[13px] font-bold cursor-pointer transition-all active:scale-95 hover:shadow-sm ${c.bg} ${c.text}`}
+              onClick={() => onTap(g, pct)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[13px] font-bold cursor-pointer transition-all active:scale-95 hover:shadow-sm ${c.bg} ${c.text} ${isTop ? "ring-2 ring-offset-1 ring-current" : ""}`}
             >
               <span>{g}</span>
               <span className="font-normal opacity-60">{pct}%</span>
@@ -717,7 +735,7 @@ function TenGodDistributionSection({
           return (
             <div key={g}>
               <button
-                onClick={() => onTap(g)}
+                onClick={() => onTap(g, pct)}
                 className="w-full flex items-center gap-3 text-left hover:bg-muted/30 rounded px-1 py-0.5 transition-colors"
               >
                 <span className="w-10 text-[13px] font-semibold shrink-0">{g}</span>
@@ -2455,20 +2473,9 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
           <AccSection
             title="오행 분포 五行分布"
             titleExtra={
-              <div className="flex items-center gap-1">
-                {manualTenGodCounts && (
-                  <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-bold">십성 파생</span>
-                )}
-                <button
-                  onClick={() => openFiveElEditor(effectiveFiveElements)}
-                  className="flex items-center gap-1 text-[11px] font-semibold text-muted-foreground hover:text-primary border border-border/50 rounded-md px-2 py-1 transition-colors disabled:opacity-40"
-                  disabled={!!manualTenGodCounts}
-                  title={manualTenGodCounts ? "십성 편집이 우선 적용됩니다" : undefined}
-                >
-                  <Edit3 className="h-3 w-3" />
-                  {manualFiveElements && !manualTenGodCounts ? "수정됨" : "수정"}
-                </button>
-              </div>
+              manualTenGodCounts ? (
+                <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-bold">십성 파생</span>
+              ) : undefined
             }
           >
             <FiveElementSection counts={effectiveFiveElements} dayStem={dayStem} />
@@ -3059,8 +3066,8 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
             </DialogContent>
           </Dialog>
 
-          {/* ── 시주 영향 분석 카드 (항상 표시) ── */}
-          {hasHourPillar && (
+          {/* ── 시주 영향 분석 카드 (비교 모드에서만 표시) ── */}
+          {hasHourPillar && hourMode === "비교" && (
             <div className="rounded-xl border border-violet-200 bg-violet-50/40 px-4 py-3.5 space-y-3">
               {/* 헤더: 시주 글자 + 십성 */}
               <div className="flex items-start gap-3">
@@ -3175,18 +3182,7 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
           )}
 
           {/* 오행 균형 */}
-          <AccSection
-            title="오행 균형 五行均衡"
-            titleExtra={
-              <button
-                onClick={() => openFiveElEditor(effectiveFiveElements)}
-                className="flex items-center gap-1 text-[11px] font-semibold text-muted-foreground hover:text-primary border border-border/50 rounded-md px-2 py-1 transition-colors"
-              >
-                <Edit3 className="h-3 w-3" />
-                {manualFiveElements ? "수정됨" : "수정"}
-              </button>
-            }
-          >
+          <AccSection title="오행 균형 五行均衡">
             <div className="rounded-lg border border-sky-100 bg-sky-50/40 px-3 py-2.5">
               <p className="text-sm">{getElementBalanceSummary(effectiveFiveElements)}</p>
             </div>
@@ -3204,7 +3200,7 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
                     dayEl={STEM_ELEMENT[dayStem] as FiveElKey | undefined}
                     allChars={allChars}
                     effectiveFiveElements={effectiveFiveElements}
-                    onTap={(group) => setInfoSheet({ kind: "tengod-group", group, dayStem })}
+                    onTap={(group, pct) => setInfoSheet({ kind: "tengod-group", group, dayStem, pct })}
                   />
                 </div>
                 <div>
@@ -3337,6 +3333,56 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
             </div>
           </div>
 
+          {/* ── 이번주 기운 미니 차트 (도메인 탭에서만 표시) ── */}
+          {(interpretTab === "사랑" || interpretTab === "재물" || interpretTab === "건강" || interpretTab === "일성과") && (() => {
+            const domainMap: Record<string, "관계" | "재물" | "건강" | "일"> = {
+              사랑: "관계", 재물: "재물", 건강: "건강", 일성과: "일",
+            };
+            const domain = domainMap[interpretTab];
+            const now = new Date();
+            const dow = now.getDay();
+            const sunday = new Date(now);
+            sunday.setDate(now.getDate() - dow);
+            const weekDays = Array.from({ length: 7 }, (_, i) => {
+              const d = new Date(sunday);
+              d.setDate(sunday.getDate() + i);
+              return d;
+            });
+            const DAY_LABELS = ["일", "월", "화", "수", "목", "금", "토"];
+            const startLabel = `${weekDays[0].getMonth() + 1}/${weekDays[0].getDate()}`;
+            const endLabel = `${weekDays[6].getMonth() + 1}/${weekDays[6].getDate()}`;
+            return (
+              <div className="rounded-xl border border-indigo-100 bg-gradient-to-br from-indigo-50/50 to-transparent px-3 py-2.5">
+                <p className="text-[11px] font-bold text-indigo-600 uppercase tracking-wide mb-2">
+                  이번주 기운 <span className="font-normal text-indigo-400">({startLabel}~{endLabel})</span>
+                </p>
+                <div className="flex justify-between gap-1">
+                  {weekDays.map((d, i) => {
+                    const fortune = getFortuneForDate(record, d.getFullYear(), d.getMonth() + 1, d.getDate());
+                    const df = fortune.domainFortunes.find((f) => f.domain === domain);
+                    const level = df?.level ?? "neutral";
+                    const emoji = level === "good" ? "☀️" : level === "caution" ? "🌧️" : "⛅";
+                    const isToday = i === dow;
+                    return (
+                      <div
+                        key={i}
+                        className={`flex-1 flex flex-col items-center gap-0.5 rounded-lg py-1.5 ${isToday ? "bg-indigo-100/70 ring-1 ring-indigo-300" : ""}`}
+                      >
+                        <span className={`text-[11px] font-bold ${isToday ? "text-indigo-600" : "text-muted-foreground"}`}>
+                          {DAY_LABELS[i]}
+                        </span>
+                        <span className="text-base leading-none">{emoji}</span>
+                        <span className={`text-[10px] font-semibold ${level === "good" ? "text-emerald-600" : level === "caution" ? "text-orange-500" : "text-muted-foreground"}`}>
+                          {df?.label ?? "보통"}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
+
           {/* ── 사주 구조 분석 (규칙 기반) — 전체 탭 ── */}
           {interpretTab === "전체" && ruleInsights.length > 0 && (
             <Card className="border-violet-100 bg-gradient-to-br from-violet-50/60 to-transparent">
@@ -3362,9 +3408,6 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
                     <p className="text-[13px] text-foreground leading-relaxed">{insight}</p>
                   </div>
                 ))}
-                <p className="text-[11px] text-muted-foreground/60 text-right">
-                  오행·십성 수정 시 자동 재계산됩니다
-                </p>
               </CardContent>
             </Card>
           )}

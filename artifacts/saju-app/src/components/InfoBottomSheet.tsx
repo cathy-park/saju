@@ -488,7 +488,7 @@ export const TG_NATAL_MEANING: Record<string, {
 export type InfoSheetType =
   | { kind: "shinsal"; name: string; source?: "auto" | "manual" }
   | { kind: "luck"; luckType: "대운" | "세운" | "월운" | "일운"; ganZhiStr: string; ganZhiHanja: string; tenGod?: string | null; branchTenGod?: string | null; period?: string; dayStem?: string }
-  | { kind: "tengod-group"; group: string; dayStem?: string }
+  | { kind: "tengod-group"; group: string; dayStem?: string; pct?: number }
   | { kind: "branchRelation"; relationType: RelationType; branches: string[] };
 
 // ── Main InfoBottomSheet Component ────────────────────────────────
@@ -507,7 +507,7 @@ export function InfoBottomSheet({ info, onClose }: InfoBottomSheetProps) {
             <div className="pb-4">
               {info.kind === "shinsal" && <ShinsalSheet name={info.name} source={info.source} />}
               {info.kind === "luck" && <LuckSheet info={info} />}
-              {info.kind === "tengod-group" && <TenGodGroupSheet group={info.group} dayStem={info.dayStem} />}
+              {info.kind === "tengod-group" && <TenGodGroupSheet group={info.group} dayStem={info.dayStem} pct={info.pct} />}
               {info.kind === "branchRelation" && <BranchRelationSheet relationType={info.relationType} branches={info.branches} />}
             </div>
           </div>
@@ -624,9 +624,59 @@ function LuckSheet({ info }: { info: Extract<InfoSheetType, { kind: "luck" }> })
 
 // ── Ten-God Group Sheet ───────────────────────────────────────────
 
-function TenGodGroupSheet({ group, dayStem }: { group: string; dayStem?: string }) {
+const TG_GROUP_PCT_CONTEXT: Record<string, { none: string; weak: string; medium: string; strong: string; veryStrong: string }> = {
+  비겁: {
+    none: "비겁이 없는 사주입니다. 자아를 내세우기보다 타인과 협력하고 배려하는 성향이 강하게 나타납니다. 독립심을 의식적으로 기르는 것이 도움이 됩니다.",
+    weak: "비겁이 약해 협력을 선호하고 타인의 도움을 자연스럽게 받아들입니다. 경쟁보다 공존을 추구하며, 때로 자기 주장이 부족할 수 있습니다.",
+    medium: "균형 잡힌 자아 에너지를 지닙니다. 필요할 때 독립적으로, 필요할 때 협력적으로 유연하게 행동하여 주변과 조화를 이룹니다.",
+    strong: "자주성과 경쟁심이 강합니다. 추진력 있는 리더십을 발휘하지만 고집이 세어질 수 있으므로 타인의 의견을 경청하는 것이 중요합니다.",
+    veryStrong: "비겁이 매우 강한 사주입니다. 독립심이 넘쳐 타인의 조언을 듣기 어렵고 인간관계에서 마찰이 생길 수 있습니다. 협력 의식을 의식적으로 키워야 합니다.",
+  },
+  식상: {
+    none: "식상이 없는 사주입니다. 표현 욕구가 억제되어 있고 창의성보다 실용성을 중시합니다. 말보다 행동으로 보여주는 신중한 성향입니다.",
+    weak: "식상이 약해 표현이 조심스럽고 내향적인 경향이 있습니다. 필요한 순간 창의성을 발휘하지만 감정 표현에 서투를 수 있습니다.",
+    medium: "적절한 창의성과 표현력을 지닙니다. 일상에서 자연스럽게 아이디어를 내고 표현하며 사람들과 소통을 즐깁니다.",
+    strong: "표현력과 창의성이 뛰어납니다. 예술·언론·교육·사업에서 두각을 나타낼 가능성이 높고, 매력적인 언변으로 인기를 얻습니다.",
+    veryStrong: "식상이 매우 강한 사주입니다. 표현 욕구가 과해 분쟁이나 갈등으로 이어질 수 있습니다. 에너지를 생산적인 창작 활동으로 발산하는 것이 좋습니다.",
+  },
+  재성: {
+    none: "재성이 없는 사주입니다. 물질보다 가치·명예·감정을 중시하며, 재물 취득 욕구가 적고 초연한 성향으로 나타납니다.",
+    weak: "재성이 약해 무리한 재물 추구보다 꾸준한 축적을 선호합니다. 소박하지만 안정적인 재물 관리를 하며 현실적인 목표를 세웁니다.",
+    medium: "적절한 재물 감각을 지닙니다. 현실적인 목표를 설정하고 균형 있게 재물을 관리하며 기회가 왔을 때 잘 포착합니다.",
+    strong: "재물에 대한 욕구와 감각이 발달해 있습니다. 사업가 기질이 강하고 경제적 성취를 이룰 가능성이 높습니다.",
+    veryStrong: "재성이 매우 강한 사주입니다. 재물 욕구가 강해 지나친 탐욕이나 손실 위험이 있습니다. 분산 투자와 감정 조절이 필요합니다.",
+  },
+  관성: {
+    none: "관성이 없는 사주입니다. 규율이나 사회적 압박에서 자유로운 삶을 추구합니다. 자기 방식대로 살아가는 성향이 강하고 조직 생활에 제약을 느낍니다.",
+    weak: "관성이 약해 유연한 리더십을 발휘합니다. 큰 책임보다 자신에게 맞는 역할에 집중하는 실용적 태도를 지닙니다.",
+    medium: "적절한 책임감과 원칙을 지닙니다. 조직 생활에 잘 적응하며 신뢰를 얻고, 균형 잡힌 리더십을 발휘합니다.",
+    strong: "명예·지위·규율 의식이 강합니다. 조직에서 자연스럽게 리더 역할을 맡고 사회적 인정을 중요하게 여깁니다.",
+    veryStrong: "관성이 매우 강한 사주입니다. 권위에 대한 집착이 강해 관계가 경직될 수 있습니다. 통제보다 신뢰로 이끄는 리더십을 키우는 것이 중요합니다.",
+  },
+  인성: {
+    none: "인성이 없는 사주입니다. 스스로 배운 경험과 직관에 의존하는 자수성가형입니다. 타인의 보호나 지원에 의존하지 않는 독립적 성향입니다.",
+    weak: "인성이 약해 현장에서 직접 실행하며 배우는 실천형 성향이 강합니다. 이론보다 경험으로 성장하는 타입입니다.",
+    medium: "균형 잡힌 학습 능력과 수용력을 지닙니다. 필요한 지식을 흡수하며 안정적으로 성장하고 지식과 실천의 균형을 잡습니다.",
+    strong: "학습·연구·지식 습득 능력이 뛰어납니다. 학문·교육·종교 분야에서 두각을 나타낼 가능성이 높고 통찰력이 깊습니다.",
+    veryStrong: "인성이 매우 강한 사주입니다. 배움에 집착하거나 현실 실행력이 부족해질 수 있습니다. 지식을 실천으로 연결하는 것이 중요합니다.",
+  },
+};
+
+function getTGGroupPctContext(group: string, pct: number): string {
+  const ctx = TG_GROUP_PCT_CONTEXT[group];
+  if (!ctx) return "";
+  if (pct === 0) return ctx.none;
+  if (pct <= 15) return ctx.weak;
+  if (pct <= 35) return ctx.medium;
+  if (pct <= 55) return ctx.strong;
+  return ctx.veryStrong;
+}
+
+function TenGodGroupSheet({ group, dayStem, pct }: { group: string; dayStem?: string; pct?: number }) {
   const detail = TEN_GOD_GROUPS.find((g) => g.group === group);
   if (!detail) return null;
+
+  const pctContext = pct !== undefined ? getTGGroupPctContext(group, pct) : null;
 
   return (
     <>
@@ -636,11 +686,22 @@ function TenGodGroupSheet({ group, dayStem }: { group: string; dayStem?: string 
           {detail.members.map((m) => (
             <span key={m} className={`text-[13px] font-bold px-2 py-0.5 rounded-full ${getTenGodTw(m, dayStem ?? "")}`}>{m}</span>
           ))}
+          {pct !== undefined && (
+            <span className="ml-auto text-[13px] font-bold text-muted-foreground">{pct}%</span>
+          )}
         </div>
         <DrawerTitle className="text-xl">{detail.title}</DrawerTitle>
         <DrawerDescription>{detail.meaning}</DrawerDescription>
       </DrawerHeader>
       <div className="px-4 space-y-3">
+        {pctContext && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50/60 px-3 py-2.5">
+            <p className="text-[12px] font-bold text-amber-700 uppercase tracking-wide mb-1">
+              내 사주 맞춤 해설 ({pct}%)
+            </p>
+            <p className="text-sm text-foreground leading-relaxed">{pctContext}</p>
+          </div>
+        )}
         <Section label="차트 해석 포인트" content={detail.chartPoint} color="sky" />
         <Section label="관계·연애 측면" content={detail.relationship} color="violet" />
         <Section label="일·직업 측면" content={detail.work} color="teal" />
