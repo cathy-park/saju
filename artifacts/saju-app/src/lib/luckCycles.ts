@@ -538,7 +538,95 @@ export interface PillarShinsal {
   stemItems: string[];
   branchItems: string[];
   pillarItems: string[]; // whole-pillar shinsal (백호, 괴강)
+  triggerInfo: Record<string, string>; // shinsal name → why it fired (for UI)
 }
+
+// ── 형살 (刑殺) ──────────────────────────────────────────────────
+// 삼형살: 인사신 / 축술미 — 세 지지가 모두 사주에 있을 때
+const SAMHYEONG_GROUP_A = new Set(["인", "사", "신"]); // 寅巳申 무은지형
+const SAMHYEONG_GROUP_B = new Set(["축", "술", "미"]); // 丑戌未 무례지형
+// 상형살: 子卯 — 두 지지가 함께 있을 때
+// 자형살: 같은 지지가 2번 이상 — 辰辰, 午午, 酉酉, 亥亥
+const JAJYEONG_BRANCHES = new Set(["진", "오", "유", "해"]);
+
+// ── 고란살 (孤鸞殺): 독수공방 일주 ─────────────────────────────
+// 남:甲寅·戊午·戊子·庚申 / 여:乙巳·丁亥·己亥·癸亥·辛亥·壬子·癸巳 등 다양한 전승 존재
+// 가장 널리 쓰이는 12 고란살 일주
+const GORAN_SET = new Set([
+  "갑인", "을사", "병오", "정해",
+  "무오", "기해", "경자", "신해",
+  "임자", "계사",
+]);
+
+// ── 음양차착살 (陰陽差錯殺) ──────────────────────────────────────
+const EUNYANGCHACHA_SET = new Set([
+  "병자", "병오", "정축", "정미",
+  "무인", "무신", "기묘", "기유",
+  "경진", "경술", "신사", "신해",
+  "임오", "임자", "계미", "계축",
+]);
+
+// ── 학당귀인 (學堂貴人): 일간 기준 지지 ────────────────────────
+const HAKDANG_T: Record<string, string> = {
+  갑: "해", 을: "오", 병: "인", 정: "유",
+  무: "신", 기: "묘", 경: "사", 신: "자",
+  임: "신", 계: "묘",
+};
+
+// ── 천관귀인 (天官貴人): 일간 기준 지지 ────────────────────────
+const CHEONGWAN_T: Record<string, string> = {
+  갑: "미", 을: "진", 병: "유", 정: "유",
+  무: "묘", 기: "자", 경: "오", 신: "축",
+  임: "인", 계: "오",
+};
+
+// ── 천주귀인 (天廚貴人): 일간 기준 지지 ────────────────────────
+const CHEONJU_T: Record<string, string> = {
+  갑: "자", 을: "축", 병: "인", 정: "묘",
+  무: "진", 기: "사", 경: "오", 신: "미",
+  임: "신", 계: "유",
+};
+
+// ── 복성귀인 (福星貴人): 일지 기준 지지 ────────────────────────
+const BOKSEONG_T: Record<string, string> = {
+  자: "사", 축: "인", 인: "해", 묘: "술",
+  진: "유", 사: "신", 오: "미", 미: "오",
+  신: "사", 유: "진", 술: "묘", 해: "인",
+};
+
+// ── 급각살 (急脚殺): 일지 기준 지지 ────────────────────────────
+const GEUPGAK_T: Record<string, string> = {
+  자: "진", 축: "미", 인: "술", 묘: "미",
+  진: "자", 사: "인", 오: "술", 미: "묘",
+  신: "진", 유: "미", 술: "오", 해: "유",
+};
+
+// ── 낙정관살 (落井關殺): 일지 기준 지지 ────────────────────────
+const NAKJEONG_T: Record<string, string> = {
+  자: "묘", 묘: "오", 오: "유", 유: "자",
+  인: "해", 해: "신", 신: "사", 사: "인",
+  축: "진", 진: "미", 미: "술", 술: "축",
+};
+
+// ── 탕화살 (湯火殺): 일지 기준 지지 ────────────────────────────
+const TANGHWA_T: Record<string, string> = {
+  인: "사", 오: "오", 술: "해",
+  사: "인", 유: "인", 축: "사",
+  신: "자", 자: "인", 진: "사",
+  해: "진", 묘: "오", 미: "진",
+};
+
+// ── 단장살 (斷腸殺): 일지 기준 지지 ────────────────────────────
+const DANJANG_T: Record<string, string> = {
+  인: "사", 오: "사", 술: "사",
+  해: "신", 묘: "신", 미: "신",
+  신: "해", 자: "해", 진: "해",
+  사: "인", 유: "인", 축: "인",
+};
+
+// ── 일귀인(日貴人) / 주귀인(晝貴人): 특정 일주 ─────────────────
+// 戊子·戊午·癸卯·癸酉 (야귀/주귀)
+const ILGWIIN_SET = new Set(["무자", "무오", "계묘", "계유"]);
 
 export function calculateShinsalFull(
   dayStem: string,
@@ -548,8 +636,6 @@ export function calculateShinsalFull(
   shinsalMode: "conservative" | "default" | "expanded" = "default"
 ): PillarShinsal[] {
   // 공망 (空亡): void branches from day pillar's 旬 (decade group)
-  // 甲子순→술·해, 甲戌순→신·유, 甲申순→오·미,
-  // 甲午순→진·사, 甲辰순→인·묘, 甲寅순→자·축
   const dayPillarIdx = ganZhiIndex(dayStem, dayBranch);
   const dayZhun = Math.floor(dayPillarIdx / 10);
   const gongmangBranches = [
@@ -557,104 +643,186 @@ export function calculateShinsalFull(
     BRANCHES[(11 - dayZhun * 2 + 12) % 12],
   ];
 
-  const dowhwaTarget = DOWHWA_T[dayBranch] ?? "";
-  const yeongmaTarget = YEONGMA_T[dayBranch] ?? "";
-  const hwagaeTarget = HWAGAE_T[dayBranch] ?? "";
-  const jangseongTarget = JANGSEONG_T[dayBranch] ?? "";
-  const bananTarget = BANAN_T[dayBranch] ?? "";
-  const geobsalTarget = GEOBSAL_T[dayBranch] ?? "";
-  const jaesalTarget = JAESAL_T[dayBranch] ?? "";
+  // ── 일간·일지 기준 단일값 ──────────────────────────────────────
+  const dowhwaTarget   = DOWHWA_T[dayBranch]   ?? "";
+  const yeongmaTarget  = YEONGMA_T[dayBranch]  ?? "";
+  const hwagaeTarget   = HWAGAE_T[dayBranch]   ?? "";
+  const jangseongTarget= JANGSEONG_T[dayBranch]?? "";
+  const bananTarget    = BANAN_T[dayBranch]    ?? "";
+  const geobsalTarget  = GEOBSAL_T[dayBranch]  ?? "";
+  const jaesalTarget   = JAESAL_T[dayBranch]   ?? "";
   const cheonsalTarget = CHEONSAL_T[dayBranch] ?? "";
-  const wolsalTarget = WOLSAL_T[dayBranch] ?? "";
-  const jisalTarget = JISAL_T[dayBranch] ?? "";
-  const mangsinsalTarget = MANGSIN_T[dayBranch] ?? "";
-  const yukhaePairOf = YUKHAE_PAIR[dayBranch] ?? "";
-  const wonjinPairOf = WONJIN_PAIR[dayBranch] ?? "";
-  const amrokTarget = AMROK_T[dayStem] ?? "";
-  const goshinTarget = GOSHIN_T[dayBranch] ?? "";
-  const gwasukTarget = GWASUK_T[dayBranch] ?? "";
-  const guimoonPairOf = GUIMOON_PAIR[dayBranch] ?? "";
-  const cheonbokTarget = CHEONBOK_T[birthMonth] ?? "";
+  const wolsalTarget   = WOLSAL_T[dayBranch]   ?? "";
+  const jisalTarget    = JISAL_T[dayBranch]    ?? "";
+  const mangsinsalTarget=MANGSIN_T[dayBranch]  ?? "";
+  const yukhaePairOf   = YUKHAE_PAIR[dayBranch]?? "";
+  const wonjinPairOf   = WONJIN_PAIR[dayBranch]?? "";
+  const amrokTarget    = AMROK_T[dayStem]      ?? "";
+  const goshinTarget   = GOSHIN_T[dayBranch]   ?? "";
+  const gwasukTarget   = GWASUK_T[dayBranch]   ?? "";
+  const guimoonPairOf  = GUIMOON_PAIR[dayBranch]?? "";
+  const cheonbokTarget = CHEONBOK_T[birthMonth]?? "";
+  const geupgakTarget  = GEUPGAK_T[dayBranch]  ?? "";
+  const nakjeongTarget = NAKJEONG_T[dayBranch]  ?? "";
+  const tanghwaTarget  = TANGHWA_T[dayBranch]   ?? "";
+  const danjangTarget  = DANJANG_T[dayBranch]   ?? "";
+  const bokseongTarget = BOKSEONG_T[dayBranch]  ?? "";
 
-  const chuneulBranches = CHUNEUL_T[dayStem] ?? [];
-  const munchangTarget = MUNCHANG_T[dayStem] ?? "";
-  const mungokTarget = MUNGOK_T[dayStem] ?? "";
-  const gumyeoTarget = GUMYEO_T[dayStem] ?? "";
-  const yanginTarget = YANGIN_T[dayStem] ?? "";
-  const hongyeomTarget = HONGYEOM_T[dayStem] ?? "";
-  const taegeukBranches = TAEGEUK_T[dayStem] ?? [];
-  const cheondukEntry = CHEONDUK_TYPED[birthMonth] ?? null;
-  const woldukChar = WOLDUK_BY_GROUP[dayBranch] ?? "";
+  const chuneulBranches  = CHUNEUL_T[dayStem]  ?? [];
+  const munchangTarget   = MUNCHANG_T[dayStem] ?? "";
+  const mungokTarget     = MUNGOK_T[dayStem]   ?? "";
+  const gumyeoTarget     = GUMYEO_T[dayStem]   ?? "";
+  const yanginTarget     = YANGIN_T[dayStem]   ?? "";
+  const hongyeomTarget   = HONGYEOM_T[dayStem] ?? "";
+  const taegeukBranches  = TAEGEUK_T[dayStem]  ?? [];
+  const hakdangTarget    = HAKDANG_T[dayStem]   ?? "";
+  const cheongwanTarget  = CHEONGWAN_T[dayStem] ?? "";
+  const cheonjuTarget    = CHEONJU_T[dayStem]   ?? "";
+  const cheondukEntry    = CHEONDUK_TYPED[birthMonth] ?? null;
+  const woldukChar       = WOLDUK_BY_GROUP[dayBranch] ?? "";
 
   // Find year branch for 천의성 (year branch +1)
-  const yearPillar = pillars.find((p) => p.pillar === "년주");
-  const yearBranchIdx = yearPillar ? BRANCHES.indexOf(yearPillar.branch) : -1;
-  const cheonuiTarget = yearBranchIdx >= 0 ? BRANCHES[(yearBranchIdx + 1) % 12] : "";
+  const yearPillar   = pillars.find((p) => p.pillar === "년주");
+  const yearBranchIdx= yearPillar ? BRANCHES.indexOf(yearPillar.branch) : -1;
+  const cheonuiTarget= yearBranchIdx >= 0 ? BRANCHES[(yearBranchIdx + 1) % 12] : "";
+
+  // ── 형살 다중주 사전계산 ────────────────────────────────────────
+  const allPillarBranches = pillars.map(p => p.branch).filter(Boolean);
+  const allBranchSet = new Set(allPillarBranches);
+  // 삼형살 인사신 완성 여부
+  const hasSamhyeongA = ["인", "사", "신"].every(b => allBranchSet.has(b));
+  // 삼형살 축술미 완성 여부
+  const hasSamhyeongB = ["축", "술", "미"].every(b => allBranchSet.has(b));
+  // 상형살 자묘 완성 여부
+  const hasSanghyeong = allBranchSet.has("자") && allBranchSet.has("묘");
+  // 자형살: 진/오/유/해가 2번 이상 등장
+  const branchCountMap: Record<string, number> = {};
+  for (const b of allPillarBranches) branchCountMap[b] = (branchCountMap[b] ?? 0) + 1;
+  const jajyeongActive = new Set(
+    Object.entries(branchCountMap)
+      .filter(([b, c]) => JAJYEONG_BRANCHES.has(b) && c >= 2)
+      .map(([b]) => b)
+  );
+  // 고란살 / 음양차착살 (일주 기반)
+  const dayHangul  = dayStem + dayBranch;
+  const isGoranSal = GORAN_SET.has(dayHangul);
+  const isEunyangChacha = EUNYANGCHACHA_SET.has(dayHangul);
+  // 일귀인 (日貴人)
+  const isIlgwiin = ILGWIIN_SET.has(dayHangul);
 
   return pillars.map(({ pillar, stem, branch }) => {
     const branchItems: string[] = [];
-    const stemItems: string[] = [];
-    const pillarItems: string[] = [];
+    const stemItems:  string[] = [];
+    const pillarItems:string[] = [];
+    const triggerInfo: Record<string, string> = {};
     const hangul = stem + branch;
 
+    const addB = (name: string, trigger: string) => {
+      branchItems.push(name);
+      triggerInfo[name] = trigger;
+    };
+    const addS = (name: string, trigger: string) => {
+      stemItems.push(name);
+      triggerInfo[name] = trigger;
+    };
+    const addP = (name: string, trigger: string) => {
+      pillarItems.push(name);
+      triggerInfo[name] = trigger;
+    };
+
     if (branch) {
-      // Branch-based (from day branch)
-      if (branch === dowhwaTarget) branchItems.push("도화");
-      if (branch === hongyeomTarget) branchItems.push("홍염");
-      if (branch === yeongmaTarget) branchItems.push("역마");
-      if (branch === hwagaeTarget) branchItems.push("화개");
-      if (chuneulBranches.includes(branch)) branchItems.push("천을귀인");
-      if (branch === munchangTarget) branchItems.push("문창귀인");
-      if (branch === mungokTarget) branchItems.push("문곡귀인");
-      if (branch === gumyeoTarget) branchItems.push("금여");
-      if (branch === yanginTarget) branchItems.push("양인살");
-      if (branch === jangseongTarget) branchItems.push("장성살");
-      if (branch === bananTarget) branchItems.push("반안살");
-      if (branch === geobsalTarget) branchItems.push("겁살");
-      if (branch === jaesalTarget) branchItems.push("재살");
-      if (branch === cheonsalTarget) branchItems.push("천살");
-      if (branch === wolsalTarget) branchItems.push("월살");
-      if (branch === jisalTarget) branchItems.push("지살");
-      if (branch === mangsinsalTarget) branchItems.push("망신살");
-      if (amrokTarget && branch === amrokTarget) branchItems.push("암록");
-      if (wonjinPairOf && branch !== dayBranch && branch === wonjinPairOf) branchItems.push("원진살");
-      if (taegeukBranches.includes(branch)) branchItems.push("태극귀인");
-      if (branch !== dayBranch && branch === yukhaePairOf) branchItems.push("육해살");
-      // New additions
-      if (goshinTarget && branch === goshinTarget) branchItems.push("고신살");
-      if (gwasukTarget && branch === gwasukTarget) branchItems.push("과숙살");
-      if (guimoonPairOf && branch !== dayBranch && branch === guimoonPairOf) branchItems.push("귀문관살");
-      if (cheonbokTarget && branch === cheonbokTarget) branchItems.push("천복귀인");
-      if (cheonuiTarget && branch === cheonuiTarget && pillar !== "년주") branchItems.push("천의성");
-      // 천문성 (天門星): 술(戌)·해(亥) 지지에 발동 — 하늘 문이 열리는 기운, 영적 감수성·종교적 직관
-      // 보수 모드: 년주·일주에만 적용 (과도발동 방지)
-      // 기본 모드: 4개 기둥 모두 적용 (전통 만세력 기준)
+      // 12신살 계열 (일지 기준)
+      if (branch === dowhwaTarget)    addB("도화",    `일지 ${dayBranch}(日支) 기준 → ${pillar} ${branch}에 도화 발동`);
+      if (branch === hongyeomTarget)  addB("홍염",    `일간 ${dayStem}(日干) 기준 → ${pillar} ${branch}에 홍염 발동`);
+      if (branch === yeongmaTarget)   addB("역마",    `일지 ${dayBranch} 기준 → ${pillar} ${branch}에 역마 발동`);
+      if (branch === hwagaeTarget)    addB("화개",    `일지 ${dayBranch} 기준 → ${pillar} ${branch}에 화개 발동`);
+      if (branch === jangseongTarget) addB("장성살",  `일지 ${dayBranch} 기준 → ${pillar} ${branch}에 장성살 발동`);
+      if (branch === bananTarget)     addB("반안살",  `일지 ${dayBranch} 기준 → ${pillar} ${branch}에 반안살 발동`);
+      if (branch === geobsalTarget)   addB("겁살",    `일지 ${dayBranch} 기준 → ${pillar} ${branch}에 겁살 발동`);
+      if (branch === jaesalTarget)    addB("재살",    `일지 ${dayBranch} 기준 → ${pillar} ${branch}에 재살 발동`);
+      if (branch === cheonsalTarget)  addB("천살",    `일지 ${dayBranch} 기준 → ${pillar} ${branch}에 천살 발동`);
+      if (branch === wolsalTarget)    addB("월살",    `일지 ${dayBranch} 기준 → ${pillar} ${branch}에 월살 발동`);
+      if (branch === jisalTarget)     addB("지살",    `일지 ${dayBranch} 기준 → ${pillar} ${branch}에 지살 발동`);
+      if (branch === mangsinsalTarget)addB("망신살",  `일지 ${dayBranch} 기준 → ${pillar} ${branch}에 망신살 발동`);
+      // 귀인 계열 (일간 기준)
+      if (chuneulBranches.includes(branch)) addB("천을귀인", `일간 ${dayStem} 기준 → ${pillar} ${branch}에 천을귀인 발동`);
+      if (branch === munchangTarget)  addB("문창귀인",`일간 ${dayStem} 기준 → ${pillar} ${branch}에 문창귀인 발동`);
+      if (branch === mungokTarget)    addB("문곡귀인",`일간 ${dayStem} 기준 → ${pillar} ${branch}에 문곡귀인 발동`);
+      if (branch === gumyeoTarget)    addB("금여",    `일간 ${dayStem} 기준 → ${pillar} ${branch}에 금여 발동`);
+      if (branch === yanginTarget)    addB("양인살",  `일간 ${dayStem} 기준 → ${pillar} ${branch}에 양인살 발동`);
+      if (branch === hakdangTarget)   addB("학당귀인",`일간 ${dayStem} 기준 → ${pillar} ${branch}에 학당귀인 발동`);
+      if (branch === cheongwanTarget) addB("천관귀인",`일간 ${dayStem} 기준 → ${pillar} ${branch}에 천관귀인 발동`);
+      if (branch === cheonjuTarget)   addB("천주귀인",`일간 ${dayStem} 기준 → ${pillar} ${branch}에 천주귀인 발동`);
+      if (amrokTarget && branch === amrokTarget) addB("암록", `일간 ${dayStem}의 건록 육합 지지 → ${pillar} ${branch}에 암록 발동`);
+      if (taegeukBranches.includes(branch)) addB("태극귀인", `일간 ${dayStem} 기준 → ${pillar} ${branch}에 태극귀인 발동`);
+      // 쌍(Pair) 기반 신살
+      if (wonjinPairOf && branch !== dayBranch && branch === wonjinPairOf)
+        addB("원진살",    `일지 ${dayBranch}와 ${pillar} ${branch}의 조합으로 원진살 형성`);
+      if (branch !== dayBranch && branch === yukhaePairOf)
+        addB("육해살",    `일지 ${dayBranch}와 ${pillar} ${branch}의 조합으로 육해살 형성`);
+      if (guimoonPairOf && branch !== dayBranch && branch === guimoonPairOf)
+        addB("귀문관살",  `일지 ${dayBranch}와 ${pillar} ${branch}의 조합으로 귀문관살 형성`);
+      // 고신·과숙·천복귀인·천의성
+      if (goshinTarget && branch === goshinTarget)   addB("고신살",   `일지 ${dayBranch} 기준 → ${pillar} ${branch}에 고신살 발동`);
+      if (gwasukTarget && branch === gwasukTarget)   addB("과숙살",   `일지 ${dayBranch} 기준 → ${pillar} ${branch}에 과숙살 발동`);
+      if (cheonbokTarget && branch === cheonbokTarget) addB("천복귀인", `출생월 ${birthMonth}월 기준 → ${pillar} ${branch}에 천복귀인 발동`);
+      if (cheonuiTarget && branch === cheonuiTarget && pillar !== "년주")
+        addB("천의성",    `년지 다음 지지 → ${pillar} ${branch}에 천의성 발동`);
+      if (bokseongTarget && branch === bokseongTarget)
+        addB("복성귀인",  `일지 ${dayBranch} 기준 → ${pillar} ${branch}에 복성귀인 발동`);
+      // 신규 신살
+      if (geupgakTarget && branch === geupgakTarget)
+        addB("급각살",    `일지 ${dayBranch} 기준 → ${pillar} ${branch}에 급각살 발동`);
+      if (nakjeongTarget && branch === nakjeongTarget)
+        addB("낙정관살",  `일지 ${dayBranch} 기준 → ${pillar} ${branch}에 낙정관살 발동`);
+      if (tanghwaTarget && branch === tanghwaTarget)
+        addB("탕화살",    `일지 ${dayBranch} 기준 → ${pillar} ${branch}에 탕화살 발동`);
+      if (danjangTarget && branch === danjangTarget)
+        addB("단장살",    `일지 ${dayBranch} 기준 → ${pillar} ${branch}에 단장살 발동`);
+      // 천문성 (天門星): 술·해 지지
       if (branch === "술" || branch === "해") {
         const allowedByMode = shinsalMode === "conservative"
-          ? (pillar === "년주" || pillar === "일주")
-          : true; // default: all pillars
-        if (allowedByMode) branchItems.push("천문성");
+          ? (pillar === "년주" || pillar === "일주") : true;
+        if (allowedByMode) addB("천문성", `${pillar} ${branch}는 술·해 지지로 천문성 발동`);
       }
-      // 공망 (空亡): void branch — day pillar is excluded (it defines the void)
-      if (pillar !== "일주" && gongmangBranches.includes(branch)) branchItems.push("공망");
+      // 공망 (空亡)
+      if (pillar !== "일주" && gongmangBranches.includes(branch))
+        addB("공망", `일주 ${dayStem}${dayBranch}의 공망 지지(${gongmangBranches.join("·")}) → ${pillar} ${branch}에 공망`);
+      // ── 형살 (刑殺) ──────────────────────────────────────────
+      if (SAMHYEONG_GROUP_A.has(branch) && hasSamhyeongA)
+        addB("삼형살(인사신)", `인(寅)·사(巳)·신(申) 세 지지가 사주에 모두 있어 삼형살 형성`);
+      if (SAMHYEONG_GROUP_B.has(branch) && hasSamhyeongB)
+        addB("삼형살(축술미)", `축(丑)·술(戌)·미(未) 세 지지가 사주에 모두 있어 삼형살 형성`);
+      if ((branch === "자" || branch === "묘") && hasSanghyeong)
+        addB("상형살(자묘)", `자(子)·묘(卯) 두 지지가 사주에 함께 있어 상형살 형성`);
+      if (JAJYEONG_BRANCHES.has(branch) && jajyeongActive.has(branch))
+        addB("자형살", `${branch}(${{진:"辰",오:"午",유:"酉",해:"亥"}[branch]}) 지지가 사주에 2번 이상 나타나 자형살 형성`);
     }
 
     if (stem) {
-      // 천덕귀인: type-aware — stem months check stem only, branch months check branch only
+      // 천덕귀인
       if (cheondukEntry) {
-        if (cheondukEntry.isStem && stem === cheondukEntry.char) stemItems.push("천덕귀인");
-        else if (!cheondukEntry.isStem && branch === cheondukEntry.char) branchItems.push("천덕귀인");
+        if (cheondukEntry.isStem && stem === cheondukEntry.char)
+          addS("천덕귀인", `출생월 ${birthMonth}월 기준 → ${pillar} 천간 ${stem}에 천덕귀인 발동`);
+        else if (!cheondukEntry.isStem && branch === cheondukEntry.char)
+          addB("천덕귀인", `출생월 ${birthMonth}월 기준 → ${pillar} 지지 ${branch}에 천덕귀인 발동`);
       }
-      if (stem === woldukChar) stemItems.push("월덕귀인");
-      // 현침살: needle strokes in stem
-      if (HYEONCHIM_STEMS.has(stem)) stemItems.push("현침살");
+      if (stem === woldukChar) addS("월덕귀인", `일지 ${dayBranch} 오행 그룹 기준 → ${pillar} 천간 ${stem}에 월덕귀인 발동`);
+      if (HYEONCHIM_STEMS.has(stem)) addS("현침살", `${pillar} 천간 ${stem}은 날카로운 획으로 현침살 발동`);
     }
 
-    // Pillar-combo based
-    if (hangul && BAEKHO_SET.has(hangul)) pillarItems.push("백호살");
-    if (hangul && GOEGANG_SET.has(hangul)) pillarItems.push("괴강살");
+    // 일주 기반 신살 (일주에만 표시)
+    if (pillar === "일주") {
+      if (isGoranSal)      addP("고란살",   `일주 ${dayHangul}은 고란살 일주 — 독수공방의 기운`);
+      if (isEunyangChacha) addP("음양차착살",`일주 ${dayHangul}은 음양차착살 일주 — 음양 기운의 착오`);
+      if (isIlgwiin)       addP("일귀인",   `일주 ${dayHangul}은 일귀인 일주 — 자연스러운 귀인의 기운`);
+    }
 
-    return { pillar, stem, branch, stemItems, branchItems, pillarItems };
+    // 일주 전체 패턴 (백호·괴강)
+    if (hangul && BAEKHO_SET.has(hangul)) addP("백호살",  `${pillar} ${hangul}은 백호살 해당 일주`);
+    if (hangul && GOEGANG_SET.has(hangul)) addP("괴강살", `${pillar} ${hangul}은 괴강살 해당 일주`);
+
+    return { pillar, stem, branch, stemItems, branchItems, pillarItems, triggerInfo };
   });
 }
 
@@ -701,20 +869,25 @@ export function calculateShinsal(dayStem: string, dayBranch: string, allBranches
 export const ALL_SHINSAL_NAMES: string[] = [
   // 귀인 계열
   "천을귀인", "문창귀인", "문곡귀인", "학당귀인", "천덕귀인", "월덕귀인",
-  "태극귀인", "금여", "복성귀인", "국인귀인", "암록", "천관귀인", "천복귀인", "천주귀인",
-  "관귀학관",
+  "태극귀인", "금여", "복성귀인", "암록", "천관귀인", "천복귀인", "천주귀인",
+  "관귀학관", "일귀인",
   // 활동·이동 계열
   "역마", "지살", "천살", "월살",
   // 관계·감정 계열
   "도화", "홍염", "망신살", "원진살",
   // 충돌·위험 계열
   "양인살", "괴강살", "백호살", "겁살",
+  // 형살 계열
+  "삼형살(인사신)", "삼형살(축술미)", "상형살(자묘)", "자형살",
   // 고립 계열
-  "고신살", "과숙살",
+  "고신살", "과숙살", "고란살",
+  // 특수 일주 계열
+  "음양차착살",
   // 성취·보호 계열
   "반안살", "장성살",
   // 기타
   "화개", "육해살", "귀문관살", "현침살", "천의성", "천문성", "재살",
+  "급각살", "낙정관살", "탕화살", "단장살",
   // 허(虛) 계열
   "공망",
 ];
@@ -723,8 +896,8 @@ export const SHINSAL_GROUPS: { label: string; names: string[] }[] = [
   {
     label: "귀인 계열",
     names: ["천을귀인", "문창귀인", "문곡귀인", "학당귀인", "천덕귀인", "월덕귀인",
-            "태극귀인", "금여", "복성귀인", "국인귀인", "암록", "천관귀인", "천복귀인", "천주귀인",
-            "관귀학관"],
+            "태극귀인", "금여", "복성귀인", "암록", "천관귀인", "천복귀인", "천주귀인",
+            "관귀학관", "일귀인"],
   },
   {
     label: "활동·이동 계열",
@@ -739,8 +912,12 @@ export const SHINSAL_GROUPS: { label: string; names: string[] }[] = [
     names: ["양인살", "괴강살", "백호살", "겁살"],
   },
   {
-    label: "고립 계열",
-    names: ["고신살", "과숙살"],
+    label: "형살 계열",
+    names: ["삼형살(인사신)", "삼형살(축술미)", "상형살(자묘)", "자형살"],
+  },
+  {
+    label: "고립·특수 계열",
+    names: ["고신살", "과숙살", "고란살", "음양차착살"],
   },
   {
     label: "성취·보호 계열",
@@ -748,7 +925,8 @@ export const SHINSAL_GROUPS: { label: string; names: string[] }[] = [
   },
   {
     label: "기타",
-    names: ["화개", "육해살", "귀문관살", "현침살", "천의성", "천문성", "재살"],
+    names: ["화개", "육해살", "귀문관살", "현침살", "천의성", "천문성", "재살",
+            "급각살", "낙정관살", "탕화살", "단장살"],
   },
   {
     label: "허(虛) 계열",
@@ -803,6 +981,24 @@ export const SHINSAL_DESC: Record<string, string> = {
   천문성: "하늘의 문이 열리는 기운으로 영적 직관과 종교적 감수성이 높아지나, 현실 감각을 함께 유지해야 합니다",
   재살: "재난·사고 위험이 있으니, 이동 중 안전과 건강 관리에 주의하세요",
   공망: "해당 지지가 비어 있어 그 기운이 약화되나, 정신·영적 세계에서는 오히려 선명하게 작용합니다",
+  // 형살 계열
+  "삼형살(인사신)": "寅巳申 세 지지가 모두 사주에 있어 형살이 구성됩니다. 변화와 충돌이 크게 일어날 수 있습니다",
+  "삼형살(축술미)": "丑戌未 세 지지가 모두 사주에 있어 형살이 구성됩니다. 관계에서 갈등과 충돌이 반복될 수 있습니다",
+  "상형살(자묘)": "子·卯 두 지지가 함께 있어 상형살을 이룹니다. 예의와 규범에서의 마찰이 생기기 쉽습니다",
+  자형살: "같은 지지(辰·午·酉·亥)가 중복되어 자형살을 이룹니다. 스스로 상처를 초래하는 경향이 있습니다",
+  // 고립·특수 계열
+  고란살: "독수공방살로 고독과 이별의 기운이 있습니다. 연애·결혼에서 어려움이 있을 수 있으나 독립심이 강합니다",
+  음양차착살: "음양의 기운이 어긋나는 일주로 배우자와의 갈등이나 행로의 엇갈림을 나타냅니다",
+  일귀인: "일귀인(日貴人) 일주로 자연스러운 귀인의 기운이 일상에서 작동합니다",
+  // 기타 신살
+  복성귀인: "위기 회복력이 높아지나, 무모한 도전은 자제하는 것이 좋습니다",
+  천관귀인: "명예 기운이 강해지나, 체면에 집착하면 오히려 역효과를 낼 수 있습니다",
+  천주귀인: "귀인 보호의 기운이나, 수동적 자세는 오히려 기회를 놓칠 수 있습니다",
+  학당귀인: "학습 집중력이 올라가는 시기이나, 지나친 이론 편중에 주의하세요",
+  급각살: "빠른 변화와 급작스러운 사고를 주의해야 합니다. 서두름보다 신중함이 필요합니다",
+  낙정관살: "우물에 빠지는 살로, 함정이나 속임수에 주의가 필요합니다. 충동적 결정을 경계하세요",
+  탕화살: "뜨거운 불과 물의 살로 화상·화재·물 사고에 주의가 필요합니다. 감정 과열에도 주의하세요",
+  단장살: "장이 끊어지는 아픔의 살로 이별·상실·큰 슬픔을 나타냅니다. 관계에서 집착을 내려놓는 연습이 필요합니다",
 };
 
 export const SHINSAL_COLOR: Record<string, string> = {
@@ -853,4 +1049,22 @@ export const SHINSAL_COLOR: Record<string, string> = {
   재살: "bg-orange-50 text-orange-700 border-orange-200",
   // 허(虛) 계열
   공망: "bg-gray-50 text-gray-500 border-gray-200",
+  // 형살 계열
+  "삼형살(인사신)": "bg-red-100 text-red-800 border-red-300",
+  "삼형살(축술미)": "bg-red-100 text-red-800 border-red-300",
+  "상형살(자묘)": "bg-orange-100 text-orange-800 border-orange-300",
+  자형살: "bg-amber-100 text-amber-800 border-amber-300",
+  // 고립·특수 계열
+  고란살: "bg-purple-100 text-purple-800 border-purple-300",
+  음양차착살: "bg-pink-100 text-pink-800 border-pink-300",
+  일귀인: "bg-yellow-50 text-yellow-800 border-yellow-200",
+  // 기타
+  복성귀인: "bg-lime-50 text-lime-700 border-lime-200",
+  천관귀인: "bg-violet-50 text-violet-700 border-violet-200",
+  천주귀인: "bg-purple-50 text-purple-700 border-purple-200",
+  학당귀인: "bg-blue-50 text-blue-700 border-blue-200",
+  급각살: "bg-orange-100 text-orange-700 border-orange-300",
+  낙정관살: "bg-slate-100 text-slate-700 border-slate-300",
+  탕화살: "bg-red-50 text-red-700 border-red-200",
+  단장살: "bg-rose-100 text-rose-800 border-rose-300",
 };

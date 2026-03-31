@@ -500,7 +500,7 @@ export const TG_NATAL_MEANING: Record<string, {
 // ── Bottom Sheet State Hook ───────────────────────────────────────
 
 export type InfoSheetType =
-  | { kind: "shinsal"; name: string; source?: "auto" | "manual" }
+  | { kind: "shinsal"; name: string; source?: "auto" | "manual"; trigger?: string }
   | { kind: "luck"; luckType: "대운" | "세운" | "월운" | "일운"; ganZhiStr: string; ganZhiHanja: string; tenGod?: string | null; branchTenGod?: string | null; period?: string; dayStem?: string }
   | { kind: "tengod-group"; group: string; dayStem?: string; pct?: number }
   | { kind: "branchRelation"; relationType: RelationType; branches: string[] };
@@ -519,7 +519,7 @@ export function InfoBottomSheet({ info, onClose }: InfoBottomSheetProps) {
         {info && (
           <div className="overflow-y-auto" style={{ maxHeight: "calc(85vh - 40px)" }}>
             <div className="pb-4">
-              {info.kind === "shinsal" && <ShinsalSheet name={info.name} source={info.source} />}
+              {info.kind === "shinsal" && <ShinsalSheet name={info.name} source={info.source} trigger={info.trigger} />}
               {info.kind === "luck" && <LuckSheet info={info} />}
               {info.kind === "tengod-group" && <TenGodGroupSheet group={info.group} dayStem={info.dayStem} pct={info.pct} />}
               {info.kind === "branchRelation" && <BranchRelationSheet relationType={info.relationType} branches={info.branches} />}
@@ -533,7 +533,7 @@ export function InfoBottomSheet({ info, onClose }: InfoBottomSheetProps) {
 
 // ── Shinsal Sheet ─────────────────────────────────────────────────
 
-function ShinsalSheet({ name, source }: { name: string; source?: "auto" | "manual" }) {
+function ShinsalSheet({ name, source, trigger }: { name: string; source?: "auto" | "manual"; trigger?: string }) {
   const detail = SHINSAL_DETAIL[name];
   const color = SHINSAL_COLOR[name] ?? "bg-muted text-foreground border-border";
   const shortDesc = SHINSAL_DESC[name] ?? "";
@@ -541,7 +541,7 @@ function ShinsalSheet({ name, source }: { name: string; source?: "auto" | "manua
   return (
     <>
       <DrawerHeader className="text-left pb-2">
-        <div className="flex items-center gap-2 mb-1">
+        <div className="flex items-center gap-2 mb-1 flex-wrap">
           <span className={`text-sm font-bold px-3 py-1 rounded-full border ${color}`}>{name}</span>
           {source === "manual" ? (
             <span className="text-[13px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 border border-blue-200">수동 추가됨</span>
@@ -549,10 +549,17 @@ function ShinsalSheet({ name, source }: { name: string; source?: "auto" | "manua
             <span className="text-[13px] font-bold px-2 py-0.5 rounded-full bg-green-100 text-green-700 border border-green-200">자동 판별됨</span>
           )}
         </div>
-        <DrawerTitle className="text-xl">{name} 神殺</DrawerTitle>
+        <DrawerTitle className="text-xl">{name}</DrawerTitle>
         <DrawerDescription>{shortDesc}</DrawerDescription>
       </DrawerHeader>
       <div className="px-4 space-y-3">
+        {/* 발동 원인 */}
+        {trigger && (
+          <div className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2.5">
+            <p className="text-[11px] font-bold text-sky-600 mb-0.5 uppercase tracking-wide">발동 원인</p>
+            <p className="text-[13px] text-sky-900 leading-relaxed">{trigger}</p>
+          </div>
+        )}
         {detail ? (
           <>
             <Section label="기본 의미" content={detail.meaning} color="sky" />
