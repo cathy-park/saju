@@ -23,11 +23,13 @@ import {
 import {
   type StrengthLevel,
   type YongshinResult,
+  type StrengthResult,
+  computeStrengthResult,
   computeStrengthLevel,
   computeStrengthScore,
   computeYongshinFull,
+  STRENGTH_SHORT_DESC,
 } from "./interpretSchema";
-import { calculateDayMasterStrength, type DayMasterStrengthResult } from "./dayMasterStrength";
 import { applyInterpretationRules, type RuleResult } from "./interpretationRules";
 
 // ── 지장간 오행 증폭 (地藏干 Augmentation) ────────────────────────
@@ -101,8 +103,8 @@ export interface BaseStructure {
   tenGodGroups: Record<string, number>;   // group → raw count (from effectiveFiveElements)
   strengthScore: number;
   strengthLevel: StrengthLevel;
-  /** UI-ready breakdown (득령/득지/득세 기반) */
-  strengthBreakdown: DayMasterStrengthResult;
+  /** Single source of truth for UI */
+  strengthResult: StrengthResult;
   yongshinResult: YongshinResult;
   dayMasterElement: FiveElKey | undefined;
 }
@@ -123,12 +125,21 @@ function computeBaseStructure(input: PipelineInput): BaseStructure {
 
   const strengthScore = computeStrengthScore(dayStem, monthBranch, allStems, allBranches);
   const strengthLevel = computeStrengthLevel(dayStem, effectiveFiveElements, monthBranch, allStems, allBranches);
-  const strengthBreakdown = calculateDayMasterStrength({
-    dayStem,
-    monthBranch,
-    stems: allStems,
-    branches: allBranches,
-  });
+  const strengthResult =
+    computeStrengthResult(dayStem, monthBranch, allStems, allBranches) ??
+    ({
+      score: strengthScore,
+      level: strengthLevel,
+      dayMasterState: (strengthLevel === "중화" ? "balanced" : ["신강", "태강", "극신강"].includes(strengthLevel) ? "strong" : "weak"),
+      reason: {
+        deukryeong: { score: 0, note: monthBranch ? `월지 ${monthBranch}` : "월지 미상" },
+        deukji: { score: 0, note: "지지" },
+        deukse: { score: 0, note: "천간" },
+        adjustments: [],
+      },
+      description: "",
+      explanation: [],
+    } as StrengthResult);
 
   // Use 지장간-augmented element counts for yongshin.
   // This gives a more accurate picture of the qi balance (including 여기/중기 hidden stems)
@@ -141,7 +152,7 @@ function computeBaseStructure(input: PipelineInput): BaseStructure {
     tenGodGroups,
     strengthScore,
     strengthLevel,
-    strengthBreakdown,
+    strengthResult,
     yongshinResult,
     dayMasterElement,
   };
@@ -212,6 +223,15 @@ function computeAdjustedStructure(
     ? (input.manualStrengthLevel as StrengthLevel)
     : base.strengthLevel;
 
+  const effectiveStrengthResult: StrengthResult = {
+    ...base.strengthResult,
+    level: effectiveStrengthLevel,
+    dayMasterState: effectiveStrengthLevel === "중화"
+      ? "balanced"
+      : ["신강", "태강", "극신강"].includes(effectiveStrengthLevel) ? "strong" : "weak",
+    description: STRENGTH_SHORT_DESC[effectiveStrengthLevel] ?? base.strengthResult.description,
+  };
+
   // Recompute yongshin from effective strength level using 지장간-augmented counts
   const _augForRecalc = augmentWithJijanggan(input.effectiveFiveElements, input.allBranches);
   const recalcYongshin = computeYongshinFull(input.dayStem, effectiveStrengthLevel, _augForRecalc);
@@ -252,6 +272,7 @@ function computeAdjustedStructure(
 
   return {
     ...base,
+    strengthResult: effectiveStrengthResult,
     effectiveStrengthLevel,
     effectiveYongshin,
     effectiveYongshinSecondary,

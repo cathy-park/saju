@@ -891,14 +891,13 @@ function TenGodDistributionSection({
 
 // ── Interpretation helpers ─────────────────────────────────────────
 
-function getDayMasterSummary(dayStem: string, counts: FiveElementCount) {
+function getDayMasterSummaryFromStrength(dayStem: string, strengthLevel: StrengthLevel) {
   const el = STEM_ELEMENT[dayStem];
-  if (!el) return "";
-  const total = Object.values(counts).reduce((a, b) => a + b, 0) || 1;
-  const pct = counts[el] / total;
-  if (pct >= 0.4) return `일간 ${dayStem}(${el})이 매우 강합니다. 신강 사주로 활동적이고 자기주장이 강한 편입니다.`;
-  if (pct >= 0.25) return `일간 ${dayStem}(${el})의 기운이 적절합니다. 균형 잡힌 사주입니다.`;
-  return `일간 ${dayStem}(${el})이 약합니다. 신약 사주로 섬세하고 타인과의 관계를 중시하는 경향이 있습니다.`;
+  const elLabel = el ? `(${el})` : "";
+  if (strengthLevel === "중화") return `일간 ${dayStem}${elLabel}의 기운이 균형 잡혀 있습니다.`;
+  if (strengthLevel === "신강" || strengthLevel === "태강" || strengthLevel === "극신강")
+    return `일간 ${dayStem}${elLabel}의 기운이 강한 편입니다. 주도성과 추진력이 장점으로 나타납니다.`;
+  return `일간 ${dayStem}${elLabel}의 기운이 약한 편입니다. 섬세함과 관계 감수성이 강점으로 나타날 수 있습니다.`;
 }
 
 // ── Strength visual graph ─────────────────────────────────────────
@@ -943,25 +942,25 @@ function DayMasterStrengthCard({
   strength,
 }: {
   strength?: {
-    strengthLevel: string;
-    strengthScore: number;
-    strengthExplanation: string[];
+    level: StrengthLevel;
+    score: number;
+    description: string;
+    explanation: string[];
   } | null;
 }) {
-  if (!strength) return null;
-  const lines = strength.strengthExplanation ?? [];
+  if (!strength || !Number.isFinite(strength.score)) return null;
+  const lines = strength.explanation ?? [];
   return (
     <div className="rounded-2xl border px-4 py-4 bg-gradient-to-br from-sky-50/70 to-white border-sky-200 space-y-2.5">
       <div className="flex items-center justify-between">
         <p className="text-[13px] font-bold text-sky-700 tracking-wide">일간 강도</p>
-        <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-sky-100 text-sky-700 border border-sky-200">
-          strengthBreakdown
-        </span>
+        <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-sky-100 text-sky-700 border border-sky-200">자동 계산</span>
       </div>
       <div className="flex items-end gap-2">
-        <p className="text-2xl font-black tracking-tight text-foreground">{strength.strengthLevel}</p>
-        <p className="text-[13px] font-bold text-muted-foreground pb-1">({strength.strengthScore}점)</p>
+        <p className="text-2xl font-black tracking-tight text-foreground">{strength.level}</p>
+        <p className="text-[13px] font-bold text-muted-foreground pb-1">({strength.score}점)</p>
       </div>
+      {strength.description && <p className="text-[12px] text-muted-foreground">{strength.description}</p>}
       {lines.length > 0 ? (
         <ul className="text-[12px] text-foreground/80 list-disc pl-4 space-y-0.5">
           {lines.map((t, i) => (
@@ -2355,6 +2354,33 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
   const ruleInsights = sajuPipelineResult?.interpretation.ruleInsights ?? [];
   const structureType = sajuPipelineResult?.interpretation.structureType ?? "";
   const seasonalNote  = sajuPipelineResult?.interpretation.seasonalNote ?? "";
+  const strengthUnified = sajuPipelineResult?.adjusted?.strengthResult ?? null;
+
+  // Debug helper (opt-in): localStorage.debugStrength === "1"
+  // Logs strength inputs/outputs once per recompute to trace mismatches across tabs.
+  if (typeof window !== "undefined") {
+    try {
+      const on = window.localStorage.getItem("debugStrength") === "1";
+      if (on && strengthUnified) {
+        // eslint-disable-next-line no-console
+        console.log("[strength-debug]", {
+          personId: record.id,
+          pillars: {
+            year: pillars.year?.hangul,
+            month: pillars.month?.hangul,
+            day: pillars.day?.hangul,
+            hour: pillars.hour?.hangul,
+          },
+          effectiveFiveElements,
+          dayStem,
+          monthBranch: pillars.month?.hangul?.[1],
+          allStems,
+          allBranches,
+          strength: strengthUnified,
+        });
+      }
+    } catch { /* ignore */ }
+  }
 
   const pillarData = [
     { label: "생시", hangul: effectivePillars.hour?.hangul ?? "", isUnknown: !effectivePillars.hour || input.timeUnknown || hourMode === "제외" },
@@ -2771,10 +2797,10 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
             </AccSection>
           )}
 
-          {/* 신강/신약 (strengthBreakdown) */}
-          {sajuPipelineResult?.base?.strengthBreakdown && (
+          {/* 신강/신약 (single source: sajuPipelineResult.adjusted.strengthResult) */}
+          {sajuPipelineResult?.adjusted?.strengthResult && (
             <AccSection title="일간 강도">
-              <DayMasterStrengthCard strength={sajuPipelineResult.base.strengthBreakdown} />
+              <DayMasterStrengthCard strength={sajuPipelineResult.adjusted.strengthResult} />
             </AccSection>
           )}
 
@@ -3497,7 +3523,9 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
           {dayStem && (
             <div className="rounded-xl border border-border bg-muted/20 px-4 py-3.5">
               <p className="text-[13px] font-bold text-muted-foreground mb-1.5">일간 성향 · {dayStem}일간</p>
-              <p className="text-sm text-foreground leading-relaxed">{getDayMasterSummary(dayStem, effectiveFiveElements)}</p>
+              <p className="text-sm text-foreground leading-relaxed">
+                {getDayMasterSummaryFromStrength(dayStem, sajuPipelineResult?.adjusted?.effectiveStrengthLevel ?? "중화")}
+              </p>
             </div>
           )}
 
@@ -3800,7 +3828,9 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
               </div>
               <div className="rounded-lg border border-amber-200 bg-amber-50/60 p-3">
                 <p className="text-[13px] font-semibold text-amber-700 mb-1">일간 성향</p>
-                <p className="text-sm">{getDayMasterSummary(dayStem, effectiveFiveElements)}</p>
+                <p className="text-sm">
+                  {getDayMasterSummaryFromStrength(dayStem, sajuPipelineResult?.adjusted?.effectiveStrengthLevel ?? "중화")}
+                </p>
               </div>
               <div className="rounded-lg border border-sky-100 bg-sky-50/40 p-3">
                 <p className="text-[13px] font-semibold text-sky-700 mb-1">오행 균형</p>

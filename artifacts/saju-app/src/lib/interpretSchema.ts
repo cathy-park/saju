@@ -81,6 +81,208 @@ export const STRENGTH_SHORT_DESC: Record<StrengthLevel, string> = {
   극신강: "일간 기운이 극도로 강합니다",
 };
 
+export type DayMasterState = "weak" | "balanced" | "strong";
+
+export interface StrengthReason {
+  deukryeong: { score: number; note: string };
+  deukji: { score: number; note: string };
+  deukse: { score: number; note: string };
+  adjustments: string[];
+}
+
+export interface StrengthResult {
+  score: number;
+  level: StrengthLevel;
+  dayMasterState: DayMasterState;
+  reason: StrengthReason;
+  description: string;
+  explanation: string[];
+}
+
+function toDayMasterState(level: StrengthLevel): DayMasterState {
+  if (level === "중화") return "balanced";
+  if (level === "신강" || level === "태강" || level === "극신강") return "strong";
+  return "weak";
+}
+
+function levelFromScore(score: number): StrengthLevel {
+  if (score < -5)   return "극신약";
+  if (score < -3)   return "태약";
+  if (score < -1.5) return "신약";
+  if (score < 1)    return "중화";
+  if (score < 3)    return "신강";
+  if (score < 5)    return "태강";
+  return "극신강";
+}
+
+/**
+ * Single source of truth for strength:
+ * score + level + explanations are computed once here.
+ *
+ * 득령/득지/득세는 아래와 같이 매핑합니다:
+ * - 득령: 월령(월지) 기여 + 월령충 조정
+ * - 득지: 지지(통근) 기여 + 일반 지지충 조정 + 지장간 보정
+ * - 득세: 천간(비겁/인성 등) 기여
+ */
+export function computeStrengthResult(
+  dayStem: string,
+  monthBranch: string | undefined,
+  allStems: string[],
+  allBranches: string[],
+): StrengthResult | null {
+  const dmEl = STEM_ELEMENT[dayStem] as FiveElKey | undefined;
+  if (!dmEl) return null;
+
+  const genEl  = getGenerator(dmEl);  // 인성 element
+  const sikEl  = GENERATES[dmEl];     // 식상 element (dm generates this)
+  const jaeEl  = CONTROLS[dmEl];      // 재성 element (dm controls this)
+  const gwaEl  = getController(dmEl); // 관성 element (controls dm)
+
+  const adjustments: string[] = [];
+
+  // 1) 득령: 월령 기여
+  let deukryeong = 0;
+  let monthContribRaw = 0;
+  if (monthBranch) {
+    const mEl = STEM_ELEMENT[monthBranch] as FiveElKey | undefined;
+    if (mEl) {
+      monthContribRaw =
+        mEl === dmEl  ? 3
+        : mEl === genEl ? 2.5
+        : mEl === gwaEl ? -2.5
+        : mEl === sikEl ? -1.5
+        : mEl === jaeEl ? -1
+        : 0;
+      deukryeong += monthContribRaw;
+    }
+  }
+
+  // 2) 득지: 지지 기여(본기)
+  let branchContrib = 0;
+  for (const b of allBranches) {
+    const bEl = STEM_ELEMENT[b] as FiveElKey | undefined;
+    if (!bEl) continue;
+    branchContrib +=
+      bEl === dmEl  ? 1.5
+      : bEl === genEl ? 1.5
+      : bEl === gwaEl ? -1.5
+      : bEl === sikEl ? -0.8
+      : bEl === jaeEl ? -0.5
+      : 0;
+  }
+
+  // 3) 득세: 천간 기여 (일간 자체 1회 제외)
+  let stemContrib = 0;
+  for (const s of allStems) {
+    if (s === dayStem) continue;
+    const sEl = STEM_ELEMENT[s] as FiveElKey | undefined;
+    if (!sEl) continue;
+    stemContrib +=
+      sEl === dmEl  ? 1
+      : sEl === genEl ? 1
+      : sEl === gwaEl ? -1
+      : sEl === sikEl ? -0.5
+      : sEl === jaeEl ? -0.3
+      : 0;
+  }
+
+  // 4) 충(沖) 보정: 득령/득지 약화
+  const CHUNG_OPPOSITE: Record<string, string> = {
+    자: "오", 오: "자", 축: "미", 미: "축",
+    인: "신", 신: "인", 묘: "유", 유: "묘",
+    진: "술", 술: "진", 사: "해", 해: "사",
+  };
+
+  // 4a) 월령충: 득령에 반영
+  if (monthBranch) {
+    const mChungPartner = CHUNG_OPPOSITE[monthBranch];
+    const mOtherBranches = allBranches.filter(b => b !== monthBranch);
+    if (mChungPartner && mOtherBranches.includes(mChungPartner) && monthContribRaw !== 0) {
+      const delta = monthContribRaw * 0.4;
+      deukryeong -= delta;
+      adjustments.push(`월령충(${monthBranch}↔${mChungPartner})로 득령 영향 약화`);
+    }
+  }
+
+  // 4b) 일반 지지충: 득지에 반영
+  let nonMonthChungUndo = 0;
+  for (const b of allBranches) {
+    if (b === monthBranch) continue;
+    const partner = CHUNG_OPPOSITE[b];
+    if (!partner || !allBranches.includes(partner)) continue;
+    const bEl = STEM_ELEMENT[b] as FiveElKey | undefined;
+    if (!bEl) continue;
+    const contrib =
+      bEl === dmEl  ? 1.5
+      : bEl === genEl ? 1.5
+      : bEl === gwaEl ? -1.5
+      : bEl === sikEl ? -0.8
+      : bEl === jaeEl ? -0.5
+      : 0;
+    nonMonthChungUndo += contrib * 0.4;
+  }
+  if (nonMonthChungUndo !== 0) {
+    branchContrib -= nonMonthChungUndo;
+    adjustments.push("지지충으로 통근/지지 영향 일부 약화");
+  }
+
+  // 5) 지장간 통근 보정: 득지에 반영
+  let hiddenOverlay = 0;
+  for (const b of allBranches) {
+    const mainEl = STEM_ELEMENT[b] as FiveElKey | undefined;
+    const hiddens = JIJANGGAN[b] ?? [];
+    for (let j = 0; j < hiddens.length; j++) {
+      const w = JZG_W[Math.min(j, JZG_W.length - 1)];
+      if (w === 0) continue;
+      const hEl = STEM_ELEMENT[hiddens[j]] as FiveElKey | undefined;
+      if (!hEl || hEl === mainEl) continue;
+      hiddenOverlay +=
+        hEl === dmEl ? w * 1.5
+        : hEl === genEl ? w * 1.0
+        : hEl === gwaEl ? -w * 1.0
+        : hEl === sikEl ? -w * 0.5
+        : hEl === jaeEl ? -w * 0.3
+        : 0;
+    }
+  }
+  branchContrib += hiddenOverlay;
+
+  const score = Number((deukryeong + branchContrib + stemContrib).toFixed(2));
+  if (!Number.isFinite(score)) return null;
+
+  const level = levelFromScore(score);
+  const dayMasterState = toDayMasterState(level);
+
+  const explanation: string[] = [];
+  if (monthBranch) {
+    if (deukryeong > 0.2) explanation.push(`득령: 월지(${monthBranch}) 기운이 일간(${dmEl})을 돕습니다`);
+    else if (deukryeong < -0.2) explanation.push(`득령: 월지(${monthBranch}) 기운이 일간(${dmEl})에 부담으로 작용합니다`);
+    else explanation.push(`득령: 월지(${monthBranch}) 영향이 크지 않습니다`);
+  }
+  if (branchContrib > 0.3) explanation.push("득지: 지지 통근/지장간 보정으로 일간을 지지합니다");
+  else if (branchContrib < -0.3) explanation.push("득지: 지지 구성에서 소모/제어 기운이 상대적으로 큽니다");
+  else explanation.push("득지: 지지 통근 영향이 크지 않습니다");
+  if (stemContrib > 0.2) explanation.push("득세: 천간에서 비겁·인성의 지지가 있습니다");
+  else if (stemContrib < -0.2) explanation.push("득세: 천간에서 관성·식상·재성의 부담이 있습니다");
+  else explanation.push("득세: 천간 영향이 크지 않습니다");
+
+  const description = STRENGTH_SHORT_DESC[level] ?? "";
+
+  return {
+    score,
+    level,
+    dayMasterState,
+    reason: {
+      deukryeong: { score: Number(deukryeong.toFixed(2)), note: monthBranch ? `월지 ${monthBranch}` : "월지 미상" },
+      deukji: { score: Number(branchContrib.toFixed(2)), note: "지지(통근/지장간/충 보정 포함)" },
+      deukse: { score: Number(stemContrib.toFixed(2)), note: "천간(일간 제외)" },
+      adjustments,
+    },
+    description,
+    explanation,
+  };
+}
+
 // ── Weighted strength scoring ─────────────────────────────────────
 //
 // Model priority (highest → lowest):
@@ -95,125 +297,7 @@ export function computeStrengthScore(
   allStems: string[],
   allBranches: string[],
 ): number {
-  const dmEl = STEM_ELEMENT[dayStem] as FiveElKey | undefined;
-  if (!dmEl) return 0;
-
-  const genEl  = getGenerator(dmEl);  // 인성 element
-  const sikEl  = GENERATES[dmEl];     // 식상 element (dm generates this)
-  const jaeEl  = CONTROLS[dmEl];      // 재성 element (dm controls this)
-  const gwaEl  = getController(dmEl); // 관성 element (controls dm)
-
-  let score = 0;
-
-  // 1. 월령 (month branch) — highest weight
-  if (monthBranch) {
-    const mEl = STEM_ELEMENT[monthBranch] as FiveElKey | undefined;
-    if (mEl) {
-      if (mEl === dmEl)   score += 3;    // 비겁 in season (得令)
-      else if (mEl === genEl) score += 2.5; // 인성 in season
-      else if (mEl === gwaEl) score -= 2.5; // 관성 in season (失令 worst)
-      else if (mEl === sikEl) score -= 1.5; // 식상 in season
-      else if (mEl === jaeEl) score -= 1;   // 재성 in season
-    }
-  }
-
-  // 2. Branch chars — tonggeun bonus (branches have higher weight)
-  for (const b of allBranches) {
-    const bEl = STEM_ELEMENT[b] as FiveElKey | undefined;
-    if (!bEl) continue;
-    if (bEl === dmEl)   score += 1.5;
-    else if (bEl === genEl) score += 1.5;
-    else if (bEl === gwaEl) score -= 1.5;
-    else if (bEl === sikEl) score -= 0.8;
-    else if (bEl === jaeEl) score -= 0.5;
-  }
-
-  // 3. Stem chars (excluding day master stem itself — it IS the reference point)
-  for (const s of allStems) {
-    if (s === dayStem) continue;
-    const sEl = STEM_ELEMENT[s] as FiveElKey | undefined;
-    if (!sEl) continue;
-    if (sEl === dmEl)   score += 1;
-    else if (sEl === genEl) score += 1;
-    else if (sEl === gwaEl) score -= 1;
-    else if (sEl === sikEl) score -= 0.5;
-    else if (sEl === jaeEl) score -= 0.3;
-  }
-
-  // 4. 지지충 약화 보정 (地支沖) — branches in 충 with each other lose 40% effectiveness
-  //
-  // When two branches are in 충 (direct opposition), they clash and weaken each other.
-  // Critically: if the MONTH BRANCH is being 충'd, 得令 (seasonal power) is disrupted.
-  //
-  // Implementation: for each branch in 충, subtract back 40% of what it contributed in step 2.
-  // This is equivalent to scoring it at 60% effectiveness instead of 100%.
-  const CHUNG_OPPOSITE: Record<string, string> = {
-    자: "오", 오: "자", 축: "미", 미: "축",
-    인: "신", 신: "인", 묘: "유", 유: "묘",
-    진: "술", 술: "진", 사: "해", 해: "사",
-  };
-
-  // 4a. 월령충 (月令沖): month branch being 충'd — 得令 power disrupted
-  if (monthBranch) {
-    const mChungPartner = CHUNG_OPPOSITE[monthBranch];
-    const mOtherBranches = allBranches.filter(b => b !== monthBranch);
-    if (mChungPartner && mOtherBranches.includes(mChungPartner)) {
-      const mEl = STEM_ELEMENT[monthBranch] as FiveElKey | undefined;
-      if (mEl) {
-        const mContrib =
-          mEl === dmEl  ? 3 : mEl === genEl ? 2.5 : mEl === gwaEl ? -2.5
-          : mEl === sikEl ? -1.5 : mEl === jaeEl ? -1 : 0;
-        score -= mContrib * 0.4; // undo 40% of month branch (得令 충파)
-      }
-    }
-  }
-
-  // 4b. 일반 지지충 (non-month branches)
-  for (const b of allBranches) {
-    if (b === monthBranch) continue; // already handled above
-    const partner = CHUNG_OPPOSITE[b];
-    if (!partner || !allBranches.includes(partner)) continue;
-    const bEl = STEM_ELEMENT[b] as FiveElKey | undefined;
-    if (!bEl) continue;
-    const contrib =
-      bEl === dmEl  ? 1.5 : bEl === genEl ? 1.5 : bEl === gwaEl ? -1.5
-      : bEl === sikEl ? -0.8 : bEl === jaeEl ? -0.5 : 0;
-    score -= contrib * 0.4; // undo 40% of clashed branch contribution
-  }
-
-  // 5. 지장간 통근 보정 (地藏干 通根 Overlay)
-  //
-  // The branch scoring above uses only the branch's 본기 (main qi) element.
-  // But branches also contain 여기/중기 hidden stems with DIFFERENT elements —
-  // most notably the four earth branches (진술축미) which hide 목/화/수 stems
-  // that can support or drain day masters the surface element doesn't reveal.
-  //
-  // Example corrections:
-  //   술(戌, main=土): hides 정(丁, 火) — partially supports 병(丙) DM
-  //   진(辰, main=土): hides 을(乙, 木), 계(癸, 水) — supports 목 and 수 DMs
-  //   축(丑, main=土): hides 계(癸, 水), 신(辛, 金) — supports 수 and 금 DMs
-  //   미(未, main=土): hides 정(丁, 火), 을(乙, 木) — supports 화 and 목 DMs
-  //   인(寅, main=木): hides 무(戊, 土), 병(丙, 火) —토 DMs get partial root here
-  //   해(亥, main=水): hides 무(戊, 土), 갑(甲, 木) — 토/목 DMs get partial root
-  //
-  // We skip 본기 (weight=0) to avoid double-counting with the main branch score.
-  for (const b of allBranches) {
-    const mainEl = STEM_ELEMENT[b] as FiveElKey | undefined;
-    const hiddens = JIJANGGAN[b] ?? [];
-    for (let j = 0; j < hiddens.length; j++) {
-      const w = JZG_W[Math.min(j, JZG_W.length - 1)];
-      if (w === 0) continue; // 본기 — already captured by main branch element
-      const hEl = STEM_ELEMENT[hiddens[j]] as FiveElKey | undefined;
-      if (!hEl || hEl === mainEl) continue; // same element as 본기 → already scored
-      if (hEl === dmEl)       score += w * 1.5;
-      else if (hEl === genEl) score += w * 1.0;
-      else if (hEl === gwaEl) score -= w * 1.0;
-      else if (hEl === sikEl) score -= w * 0.5;
-      else if (hEl === jaeEl) score -= w * 0.3;
-    }
-  }
-
-  return score;
+  return computeStrengthResult(dayStem, monthBranch, allStems, allBranches)?.score ?? 0;
 }
 
 export function computeStrengthLevel(
@@ -225,15 +309,7 @@ export function computeStrengthLevel(
 ): StrengthLevel {
   // Use weighted model when detailed data is provided
   if (allStems && allBranches) {
-    const score = computeStrengthScore(dayStem, monthBranch, allStems, allBranches);
-    // Thresholds calibrated for 3-stem model (day master excluded from allStems loop)
-    if (score < -5)   return "극신약";
-    if (score < -3)   return "태약";
-    if (score < -1.5) return "신약";
-    if (score < 1)    return "중화";
-    if (score < 3)    return "신강";
-    if (score < 5)    return "태강";
-    return "극신강";
+    return computeStrengthResult(dayStem, monthBranch, allStems, allBranches)?.level ?? "중화";
   }
 
   // Fallback: simple ratio model (backward compat)
