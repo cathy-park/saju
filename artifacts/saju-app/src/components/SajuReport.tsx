@@ -18,7 +18,8 @@ import {
   ELEMENT_KO,
   type StrengthLevel,
 } from "@/lib/interpretSchema";
-import type { PersonRecord, ManualShinsalItem, MaritalStatus, ManualBranchRelation, ManualDerived, ManualTenGodCounts } from "@/lib/storage";
+import type { PersonRecord, ManualShinsalItem, MaritalStatus, ManualBranchRelation, ManualDerived, ManualTenGodCounts, FortuneOptions } from "@/lib/storage";
+import type { SajuProfile } from "@/lib/sajuEngine";
 import { getFinalPillars, getMyProfile, getPeople, saveManualShinsal, saveExcludedAutoShinsal, saveMaritalStatus, updatePersonRecord } from "@/lib/storage";
 import { upsertMyProfile, upsertPartnerProfile } from "@/lib/db";
 import { useAuth } from "@/lib/authContext";
@@ -1773,6 +1774,14 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
   const [selectedTgInfo, setSelectedTgInfo] = useState<TenGod | null>(null);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
 
+  // ── LOCAL REACTIVE STATE for fortune options + profile ─────────────
+  // Root cause of unresponsive toggles: `record` is a prop. `updatePersonRecord`
+  // writes to localStorage but the parent never re-renders with the new value.
+  // Fix: shadow `record.fortuneOptions` and `record.profile` in local state so
+  // toggles cause immediate re-renders without waiting for the parent.
+  const [fortuneOpts, setFortuneOpts] = useState<FortuneOptions>(() => record.fortuneOptions ?? {});
+  const [localProfile, setLocalProfile] = useState<SajuProfile>(() => record.profile);
+
   const { toast } = useToast();
 
   // ── Debounced Supabase sync ─────────────────────────────────────
@@ -1802,13 +1811,36 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
     }, 1500);
   }, [user, record.id]);
 
+  // ── Unified fortune-option updater ──────────────────────────────
+  // Updates local state (instant re-render) + persists to storage.
+  // When time-correction options change, also rebuilds the profile so
+  // hour pillar / five-element distribution reflect the new correction.
+  const applyFortuneOption = useCallback((
+    patch: Partial<FortuneOptions>,
+    profilePatch?: SajuProfile,   // supply when pillars must be recalculated
+  ) => {
+    setFortuneOpts((prev) => {
+      const next = { ...prev, ...patch };
+      // Persist merged opts + optional new profile to localStorage
+      updatePersonRecord(record.id, {
+        fortuneOptions: next,
+        ...(profilePatch ? { profile: profilePatch } : {}),
+      });
+      return next;
+    });
+    if (profilePatch) {
+      setLocalProfile(profilePatch);
+    }
+    scheduleSync();
+  }, [record.id, scheduleSync]);
+
   // ── 자동 계산 초기화 ────────────────────────────────────────────
   // Clears ALL manual override fields and re-runs the full calculation pipeline
   // using the stored birth input + current fortune options (time corrections etc.).
   const handleResetToAuto = useCallback(() => {
     const freshProfile = calculateProfileFromBirth(record.birthInput, {
-      localMeridianOn: record.fortuneOptions?.localMeridianOn ?? true,
-      trueSolarTimeOn: record.fortuneOptions?.trueSolarTimeOn ?? false,
+      localMeridianOn: fortuneOpts?.localMeridianOn ?? true,
+      trueSolarTimeOn: fortuneOpts?.trueSolarTimeOn ?? false,
     });
 
     updatePersonRecord(record.id, {
@@ -1827,7 +1859,8 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
       manualBranchRelationRemove: undefined,
     });
 
-    // Sync local component states that mirror the cleared fields
+    // Update local reactive states so UI reflects the reset immediately
+    setLocalProfile(freshProfile);
     setLocalStrengthLevel(null);
     setLocalYongshinData([]);
     setManualDerived({});
@@ -1843,7 +1876,7 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
       description: "자동 계산값으로 초기화되었습니다",
       duration: 3000,
     });
-  }, [record.id, record.birthInput, record.fortuneOptions, scheduleSync, toast]);
+  }, [record.id, record.birthInput, fortuneOpts, scheduleSync, toast]);
 
   // ── Interpretation subtab state ────────────────────────────────
   const INTERPRET_TABS = [
@@ -1953,7 +1986,7 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
 
   // ── Computed values ────────────────────────────────────────────
   const pillars = getFinalPillars(record);
-  const profile = record.profile;
+  const profile = localProfile;
   const input = record.birthInput;
   const isManuallyEdited = !!(
     (record.manualPillars           && Object.keys(record.manualPillars).length > 0) ||
@@ -2013,10 +2046,10 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
       manualStrengthLevel: localStrengthLevel,
       manualYongshinData: localYongshinData,
       expertOptions: {
-        seasonalAdjustmentOff: record.fortuneOptions?.seasonalAdjustmentOff ?? false,
+        seasonalAdjustmentOff: fortuneOpts?.seasonalAdjustmentOff ?? false,
       },
     });
-  }, [effectiveFiveElements, effectivePillars, localStrengthLevel, localYongshinData, record.fortuneOptions?.seasonalAdjustmentOff]);
+  }, [effectiveFiveElements, effectivePillars, localStrengthLevel, localYongshinData, fortuneOpts?.seasonalAdjustmentOff]);
 
   const ruleInsights = sajuPipelineResult?.interpretation.ruleInsights ?? [];
   const structureType = sajuPipelineResult?.interpretation.structureType ?? "";
@@ -2050,10 +2083,10 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
 
   const branchRelations = analyzeBranchRelations(effectivePillars as Parameters<typeof analyzeBranchRelations>[0]);
   const daewoonSuOpts: DaewoonSuOpts = {
-    exactSolarTermBoundaryOn: record.fortuneOptions?.exactSolarTermBoundaryOn ?? true,
-    trueSolarTimeOn: record.fortuneOptions?.trueSolarTimeOn ?? false,
+    exactSolarTermBoundaryOn: fortuneOpts?.exactSolarTermBoundaryOn ?? true,
+    trueSolarTimeOn: fortuneOpts?.trueSolarTimeOn ?? false,
   };
-  const luckCycles = calculateLuckCycles(input, record.profile.computedPillars, daewoonSuOpts);
+  const luckCycles = calculateLuckCycles(input, localProfile.computedPillars, daewoonSuOpts);
 
   const shinsalPillars = (dayStem && dayBranch)
     ? calculateShinsalFull(dayStem, dayBranch, input.month, [
@@ -2767,20 +2800,17 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
                 </div>
                 <button
                   onClick={() => {
-                    const current = record.fortuneOptions?.seasonalAdjustmentOff ?? false;
-                    updatePersonRecord(record.id, {
-                      fortuneOptions: { ...record.fortuneOptions, seasonalAdjustmentOff: !current }
-                    });
+                    applyFortuneOption({ seasonalAdjustmentOff: !(fortuneOpts?.seasonalAdjustmentOff ?? false) });
                   }}
                   className={`shrink-0 w-11 h-6 rounded-full border transition-colors relative ${
-                    !(record.fortuneOptions?.seasonalAdjustmentOff ?? false)
+                    !(fortuneOpts?.seasonalAdjustmentOff ?? false)
                       ? "bg-indigo-500 border-indigo-500"
                       : "bg-muted border-border"
                   }`}
                   title="조후 보정 켜기/끄기"
                 >
                   <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${
-                    !(record.fortuneOptions?.seasonalAdjustmentOff ?? false) ? "left-[22px]" : "left-0.5"
+                    !(fortuneOpts?.seasonalAdjustmentOff ?? false) ? "left-[22px]" : "left-0.5"
                   }`} />
                 </button>
               </div>
@@ -2796,16 +2826,14 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
                 <div className="shrink-0 flex gap-1">
                   {(["보수", "기본"] as const).map((mode) => {
                     const isActive = mode === "보수"
-                      ? (record.fortuneOptions?.shinsalMode ?? "default") === "conservative"
-                      : (record.fortuneOptions?.shinsalMode ?? "default") === "default";
+                      ? (fortuneOpts?.shinsalMode ?? "default") === "conservative"
+                      : (fortuneOpts?.shinsalMode ?? "default") === "default";
                     return (
                       <button
                         key={mode}
                         onClick={() => {
                           const val = mode === "보수" ? "conservative" : "default";
-                          updatePersonRecord(record.id, {
-                            fortuneOptions: { ...record.fortuneOptions, shinsalMode: val }
-                          });
+                          applyFortuneOption({ shinsalMode: val });
                         }}
                         className={`text-[11px] px-2.5 py-1 rounded-full border font-semibold transition-all ${
                           isActive
@@ -2838,23 +2866,22 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
                 </div>
                 <button
                   onClick={() => {
-                    const nextOn = !(record.fortuneOptions?.localMeridianOn ?? true);
-                    const newOpts = { ...record.fortuneOptions, localMeridianOn: nextOn };
+                    const nextOn = !(fortuneOpts?.localMeridianOn ?? true);
                     const newProfile = calculateProfileFromBirth(record.birthInput, {
                       localMeridianOn: nextOn,
-                      trueSolarTimeOn: record.fortuneOptions?.trueSolarTimeOn ?? false,
+                      trueSolarTimeOn: fortuneOpts?.trueSolarTimeOn ?? false,
                     });
-                    updatePersonRecord(record.id, { fortuneOptions: newOpts, profile: newProfile });
+                    applyFortuneOption({ localMeridianOn: nextOn }, newProfile);
                   }}
                   className={`shrink-0 w-11 h-6 rounded-full border transition-colors relative ${
-                    (record.fortuneOptions?.localMeridianOn ?? true)
+                    (fortuneOpts?.localMeridianOn ?? true)
                       ? "bg-indigo-500 border-indigo-500"
                       : "bg-muted border-border"
                   }`}
                   title="지역시 보정 켜기/끄기"
                 >
                   <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${
-                    (record.fortuneOptions?.localMeridianOn ?? true) ? "left-[22px]" : "left-0.5"
+                    (fortuneOpts?.localMeridianOn ?? true) ? "left-[22px]" : "left-0.5"
                   }`} />
                 </button>
               </div>
@@ -2869,23 +2896,22 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
                 </div>
                 <button
                   onClick={() => {
-                    const nextOn = !(record.fortuneOptions?.trueSolarTimeOn ?? false);
-                    const newOpts = { ...record.fortuneOptions, trueSolarTimeOn: nextOn };
+                    const nextOn = !(fortuneOpts?.trueSolarTimeOn ?? false);
                     const newProfile = calculateProfileFromBirth(record.birthInput, {
-                      localMeridianOn: record.fortuneOptions?.localMeridianOn ?? true,
+                      localMeridianOn: fortuneOpts?.localMeridianOn ?? true,
                       trueSolarTimeOn: nextOn,
                     });
-                    updatePersonRecord(record.id, { fortuneOptions: newOpts, profile: newProfile });
+                    applyFortuneOption({ trueSolarTimeOn: nextOn }, newProfile);
                   }}
                   className={`shrink-0 w-11 h-6 rounded-full border transition-colors relative ${
-                    (record.fortuneOptions?.trueSolarTimeOn ?? false)
+                    (fortuneOpts?.trueSolarTimeOn ?? false)
                       ? "bg-indigo-500 border-indigo-500"
                       : "bg-muted border-border"
                   }`}
                   title="진태양시 켜기/끄기"
                 >
                   <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${
-                    (record.fortuneOptions?.trueSolarTimeOn ?? false) ? "left-[22px]" : "left-0.5"
+                    (fortuneOpts?.trueSolarTimeOn ?? false) ? "left-[22px]" : "left-0.5"
                   }`} />
                 </button>
               </div>
@@ -2900,20 +2926,17 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
                 </div>
                 <button
                   onClick={() => {
-                    const nextOn = !(record.fortuneOptions?.exactSolarTermBoundaryOn ?? true);
-                    updatePersonRecord(record.id, {
-                      fortuneOptions: { ...record.fortuneOptions, exactSolarTermBoundaryOn: nextOn }
-                    });
+                    applyFortuneOption({ exactSolarTermBoundaryOn: !(fortuneOpts?.exactSolarTermBoundaryOn ?? true) });
                   }}
                   className={`shrink-0 w-11 h-6 rounded-full border transition-colors relative ${
-                    (record.fortuneOptions?.exactSolarTermBoundaryOn ?? true)
+                    (fortuneOpts?.exactSolarTermBoundaryOn ?? true)
                       ? "bg-indigo-500 border-indigo-500"
                       : "bg-muted border-border"
                   }`}
                   title="절입시각 정확 계산 켜기/끄기"
                 >
                   <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${
-                    (record.fortuneOptions?.exactSolarTermBoundaryOn ?? true) ? "left-[22px]" : "left-0.5"
+                    (fortuneOpts?.exactSolarTermBoundaryOn ?? true) ? "left-[22px]" : "left-0.5"
                   }`} />
                 </button>
               </div>
