@@ -371,6 +371,8 @@ export function calculateShinsalFull(
       if (guimoonPairOf && branch !== dayBranch && branch === guimoonPairOf) branchItems.push("귀문관살");
       if (cheonbokTarget && branch === cheonbokTarget) branchItems.push("천복귀인");
       if (cheonuiTarget && branch === cheonuiTarget && pillar !== "년주") branchItems.push("천의성");
+      // 천문성 (天門星): 술(戌)·해(亥) 지지에 발동 — 하늘 문이 열리는 기운, 영적 감수성·종교적 직관
+      if (branch === "술" || branch === "해") branchItems.push("천문성");
     }
 
     if (stem) {
@@ -448,7 +450,7 @@ export const ALL_SHINSAL_NAMES: string[] = [
   // 성취·보호 계열
   "반안살", "장성살",
   // 기타
-  "화개", "육해살", "귀문관살", "현침살", "천의성", "재살",
+  "화개", "육해살", "귀문관살", "현침살", "천의성", "천문성", "재살",
 ];
 
 export const SHINSAL_GROUPS: { label: string; names: string[] }[] = [
@@ -480,7 +482,7 @@ export const SHINSAL_GROUPS: { label: string; names: string[] }[] = [
   },
   {
     label: "기타",
-    names: ["화개", "육해살", "귀문관살", "현침살", "천의성", "재살"],
+    names: ["화개", "육해살", "귀문관살", "현침살", "천의성", "천문성", "재살"],
   },
 ];
 
@@ -526,6 +528,7 @@ export const SHINSAL_DESC: Record<string, string> = {
   귀문관살: "직관력과 감수성이 날카로워지나, 신경 예민 상태가 이어질 수 있습니다",
   현침살: "날카로운 집중력이 생기나, 신체 수술 또는 사고 주의가 필요한 시기입니다",
   천의성: "치유와 봉사 기운이 강해지나, 과도한 희생으로 에너지가 소진될 수 있습니다",
+  천문성: "하늘의 문이 열리는 기운으로 영적 직관과 종교적 감수성이 높아지나, 현실 감각을 함께 유지해야 합니다",
   재살: "재난·사고 위험이 있으니, 이동 중 안전과 건강 관리에 주의하세요",
 };
 
@@ -571,5 +574,6 @@ export const SHINSAL_COLOR: Record<string, string> = {
   귀문관살: "bg-zinc-100 text-zinc-600 border-zinc-300",
   현침살: "bg-slate-100 text-slate-600 border-slate-300",
   천의성: "bg-teal-50 text-teal-700 border-teal-200",
+  천문성: "bg-indigo-50 text-indigo-700 border-indigo-200",
   재살: "bg-orange-50 text-orange-700 border-orange-200",
 };

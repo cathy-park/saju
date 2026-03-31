@@ -104,7 +104,7 @@ function toPartnerPayload(userId: string, record: PersonRecord) {
 // Any name NOT in this set from old saju_payload is silently dropped.
 const VALID_SHINSAL_NAMES = new Set([
   "도화", "홍염", "역마", "화개",
-  "천을귀인", "문창귀인", "문곡귀인", "금여", "태극귀인", "천복귀인", "천의성",
+  "천을귀인", "문창귀인", "문곡귀인", "금여", "태극귀인", "천복귀인", "천의성", "천문성",
   "천덕귀인", "월덕귀인",
   "양인살", "장성살", "반안살",
   "겁살", "재살", "천살", "지살", "망신살", "육해살",
@@ -112,8 +112,12 @@ const VALID_SHINSAL_NAMES = new Set([
   "현침살", "백호살", "괴강살",
 ]);
 
-// Yongshin types in current UI. Others from old payloads are dropped.
-const VALID_YONGSHIN_TYPES = new Set(["억부용신", "조후용신", "통관용신", "병약용신"]);
+// Yongshin types in current UI.
+// NOTE: We only DROP entries that are structurally malformed (missing type or elements).
+//       We do NOT drop entries with unrecognized type strings, because:
+//       - "종용신" or custom types the user manually entered must survive sync.
+//       - Dropping on type-name mismatch causes data loss on schema evolution.
+const KNOWN_YONGSHIN_TYPES = new Set(["억부용신", "조후용신", "통관용신", "병약용신"]);
 
 // ── Helper: DB row → PersonRecord ─────────────────────────────────
 
@@ -138,12 +142,19 @@ function dbRowToRecord(row: DbMyProfile | DbPartnerProfile): PersonRecord {
     return ok;
   });
 
-  // Sanitise manual yongshin data: drop any type that no longer exists
+  // Sanitise manual yongshin data: drop only structurally malformed entries.
+  // We intentionally keep entries with unrecognised type strings so that user-entered
+  // values (e.g. "종용신", custom labels) survive a save → sync → load cycle.
   const rawYongshinData = payload.manualYongshinData ?? [];
   const sanitisedYongshinData = rawYongshinData.filter((entry) => {
-    const ok = VALID_YONGSHIN_TYPES.has(entry.type);
-    if (!ok) console.warn(`[db] dropping stale manualYongshinData entry type: "${entry.type}"`);
-    return ok;
+    if (!entry || typeof entry.type !== "string" || !Array.isArray(entry.elements)) {
+      console.warn(`[db] dropping malformed manualYongshinData entry`, entry);
+      return false;
+    }
+    if (!KNOWN_YONGSHIN_TYPES.has(entry.type)) {
+      console.info(`[db] preserving unrecognized manualYongshinData type: "${entry.type}"`);
+    }
+    return true;
   });
 
   return {

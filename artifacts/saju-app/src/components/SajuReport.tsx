@@ -1293,6 +1293,8 @@ function LuckFlowTabs({
 
 // ── Main Report ────────────────────────────────────────────────────
 
+const STEM_RELATION_TYPES = new Set(["천간합", "천간충"]);
+
 interface SajuReportProps {
   record: PersonRecord;
   showSaveStatus?: boolean;
@@ -1945,8 +1947,8 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
           <Dialog open={showBranchAddSheet} onOpenChange={(o) => { if (!o) { setShowBranchAddSheet(false); setBranchAddPick1(""); setBranchAddPick2(""); } }}>
             <DialogContent className="max-w-sm">
               <DialogHeader>
-                <DialogTitle className="text-base">지지 관계 수동 추가</DialogTitle>
-                <p className="text-[13px] text-muted-foreground mt-1">관계 유형과 두 지지를 선택하세요</p>
+                <DialogTitle className="text-base">천간·지지 관계 수동 추가</DialogTitle>
+                <p className="text-[13px] text-muted-foreground mt-1">관계 유형을 먼저 선택하면 해당 글자 목록이 바뀝니다</p>
               </DialogHeader>
               <div className="space-y-4 pt-1">
                 <div>
@@ -1955,7 +1957,12 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
                     {(["천간합", "지지육합", "지지삼합", "지지방합", "천간충", "지지충", "형", "파", "해", "원진", "공망"] as const).map((t) => (
                       <button
                         key={t}
-                        onClick={() => setBranchAddType(t)}
+                        onClick={() => {
+                          const wasStem = STEM_RELATION_TYPES.has(branchAddType);
+                          const isStem = STEM_RELATION_TYPES.has(t);
+                          if (wasStem !== isStem) { setBranchAddPick1(""); setBranchAddPick2(""); }
+                          setBranchAddType(t);
+                        }}
                         className={`text-[12px] font-bold px-2.5 py-1 rounded-full border transition-all active:scale-95 ${branchAddType === t ? RELATION_COLORS[t] : "bg-muted/30 text-muted-foreground border-border"}`}
                       >
                         {t}
@@ -1964,32 +1971,65 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
                   </div>
                 </div>
                 <div>
-                  <p className="text-[11px] font-bold text-muted-foreground mb-2 uppercase">지지 선택 (두 개)</p>
-                  <div className="grid grid-cols-6 gap-1.5">
-                    {["자", "축", "인", "묘", "진", "사", "오", "미", "신", "유", "술", "해"].map((b) => {
-                      const el = charToElement(b);
-                      const isP1 = branchAddPick1 === b;
-                      const isP2 = branchAddPick2 === b;
-                      return (
-                        <button
-                          key={b}
-                          onClick={() => {
-                            if (isP1) { setBranchAddPick1(""); return; }
-                            if (isP2) { setBranchAddPick2(""); return; }
-                            if (!branchAddPick1) setBranchAddPick1(b);
-                            else if (!branchAddPick2) setBranchAddPick2(b);
-                            else { setBranchAddPick1(branchAddPick2); setBranchAddPick2(b); }
-                          }}
-                          style={el ? { color: isP1 || isP2 ? "#FFF" : ELEMENT_TEXT_HEX[el], background: isP1 || isP2 ? ELEMENT_HEX[el] : ELEMENT_LIGHT_HEX[el] } : {}}
-                          className={`text-center py-2 rounded-lg text-sm font-bold border transition-all ${isP1 || isP2 ? "border-current shadow-sm scale-105" : "border-transparent"}`}
-                        >
-                          {b}
-                          {isP1 && <span className="block text-[9px] opacity-80">①</span>}
-                          {isP2 && <span className="block text-[9px] opacity-80">②</span>}
-                        </button>
-                      );
-                    })}
-                  </div>
+                  {STEM_RELATION_TYPES.has(branchAddType) ? (
+                    <>
+                      <p className="text-[11px] font-bold text-muted-foreground mb-2 uppercase">천간 선택 (두 개) — 갑·을·병·정·무·기·경·신·임·계</p>
+                      <div className="grid grid-cols-5 gap-1.5">
+                        {["갑", "을", "병", "정", "무", "기", "경", "신", "임", "계"].map((s) => {
+                          const el = charToElement(s);
+                          const isP1 = branchAddPick1 === s;
+                          const isP2 = branchAddPick2 === s;
+                          return (
+                            <button
+                              key={s}
+                              onClick={() => {
+                                if (isP1) { setBranchAddPick1(""); return; }
+                                if (isP2) { setBranchAddPick2(""); return; }
+                                if (!branchAddPick1) setBranchAddPick1(s);
+                                else if (!branchAddPick2) setBranchAddPick2(s);
+                                else { setBranchAddPick1(branchAddPick2); setBranchAddPick2(s); }
+                              }}
+                              style={el ? { color: isP1 || isP2 ? "#FFF" : ELEMENT_TEXT_HEX[el], background: isP1 || isP2 ? ELEMENT_HEX[el] : ELEMENT_LIGHT_HEX[el] } : {}}
+                              className={`text-center py-2.5 rounded-lg text-sm font-bold border transition-all ${isP1 || isP2 ? "border-current shadow-sm scale-105" : "border-transparent"}`}
+                            >
+                              {s}
+                              {isP1 && <span className="block text-[9px] opacity-80">①</span>}
+                              {isP2 && <span className="block text-[9px] opacity-80">②</span>}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-[11px] font-bold text-muted-foreground mb-2 uppercase">지지 선택 (두 개) — 자·축·인·묘·진·사·오·미·신·유·술·해</p>
+                      <div className="grid grid-cols-6 gap-1.5">
+                        {["자", "축", "인", "묘", "진", "사", "오", "미", "신", "유", "술", "해"].map((b) => {
+                          const el = charToElement(b);
+                          const isP1 = branchAddPick1 === b;
+                          const isP2 = branchAddPick2 === b;
+                          return (
+                            <button
+                              key={b}
+                              onClick={() => {
+                                if (isP1) { setBranchAddPick1(""); return; }
+                                if (isP2) { setBranchAddPick2(""); return; }
+                                if (!branchAddPick1) setBranchAddPick1(b);
+                                else if (!branchAddPick2) setBranchAddPick2(b);
+                                else { setBranchAddPick1(branchAddPick2); setBranchAddPick2(b); }
+                              }}
+                              style={el ? { color: isP1 || isP2 ? "#FFF" : ELEMENT_TEXT_HEX[el], background: isP1 || isP2 ? ELEMENT_HEX[el] : ELEMENT_LIGHT_HEX[el] } : {}}
+                              className={`text-center py-2 rounded-lg text-sm font-bold border transition-all ${isP1 || isP2 ? "border-current shadow-sm scale-105" : "border-transparent"}`}
+                            >
+                              {b}
+                              {isP1 && <span className="block text-[9px] opacity-80">①</span>}
+                              {isP2 && <span className="block text-[9px] opacity-80">②</span>}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </>
+                  )}
                 </div>
                 <button
                   disabled={!branchAddPick1 || !branchAddPick2}

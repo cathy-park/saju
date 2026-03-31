@@ -1,0 +1,77 @@
+We keep having repeated missing-field bugs in the saju app.
+
+This is NOT just a UI bug.
+The root problem is that the final saju result schema is incomplete and inconsistent across:
+- calculation logic
+- normalized payload
+- Supabase save/load
+- UI rendering
+
+Current missing/incorrect issues reported:
+1. In 지지 관계 추가, 기 and 을 are missing
+2. 종용신 is missing
+3. 천문성 is missing
+4. Other previously mentioned derived fields keep disappearing after edits/sync
+
+I need a full schema audit and normalization.
+
+Tasks:
+
+[1] Create one canonical saju result schema
+Define a single normalized result object for the app that includes ALL required derived fields.
+
+It must include at least:
+- base pillars
+- five elements
+- ten gods
+- detailed ten gods
+- yongshin
+- secondary yongshin (종용신)
+- heeshin / gishin if used
+- shinsal list
+- 천문성 if present
+- branch/stem relationship additions
+- combination/conflict/punishment/destruction rules
+- palace interpretation data
+- seasonal adjustment data
+- interpretation summary data
+
+[2] Audit the full pipeline
+Check where each of those fields is:
+- calculated
+- normalized
+- saved to saju_payload
+- loaded from Supabase
+- rendered in UI
+
+[3] Fix missing-field loss
+Find whether missing fields are being lost because of:
+- incomplete TypeScript interfaces
+- schema filtering
+- object destructuring omissions
+- serializer/sanitizer logic
+- save/load mapping mismatch
+- stale cache overwrite
+
+[4] Ensure these fields are explicitly supported
+At minimum, make sure these are preserved end-to-end:
+- 종용신
+- 천문성
+- 기
+- 을
+- all user-edited and derived saju fields
+
+[5] Print the final normalized payload
+Before save and before render, log the full final normalized saju payload so we can verify no field is dropped.
+
+[6] Show me:
+- the canonical schema definition file
+- the calculation file
+- the normalization/mapping file
+- the save/load file
+- the UI render file
+- exactly where each missing field was being dropped
+
+Important:
+Do NOT patch one field at a time anymore.
+Fix this as a full schema consistency problem.
