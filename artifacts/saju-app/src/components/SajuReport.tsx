@@ -1357,8 +1357,6 @@ function LuckFlowTabs({
 }) {
   const [tab, setTab] = useState<LuckTabKey>("대운");
   const [subTab, setSubTab] = useState<"월운" | "일운">("월운");
-  const [selectedWolunYear, setSelectedWolunYear] = useState(now.getFullYear());
-  const [selectedWolunMonth, setSelectedWolunMonth] = useState(now.getMonth() + 1);
   const TABS: { key: LuckTabKey; label: string }[] = [
     { key: "대운", label: "대운" },
     { key: "세운", label: "세운" },
@@ -1366,6 +1364,8 @@ function LuckFlowTabs({
     { key: "달력", label: "달력" },
   ];
   const now = new Date();
+  const [selectedWolunYear, setSelectedWolunYear] = useState(now.getFullYear());
+  const [selectedWolunMonth, setSelectedWolunMonth] = useState(now.getMonth() + 1);
   const age = now.getFullYear() - birthYear;
   const daewoonSu = luckCycles.daewoon[0]?.startAge ?? 0;
   const currentSeun = luckCycles.seun.find((e) => e.year === now.getFullYear()) ?? null;
