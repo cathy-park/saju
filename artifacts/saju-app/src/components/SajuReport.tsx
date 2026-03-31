@@ -1357,6 +1357,8 @@ function LuckFlowTabs({
 }) {
   const [tab, setTab] = useState<LuckTabKey>("대운");
   const [subTab, setSubTab] = useState<"월운" | "일운">("월운");
+  const [selectedWolunYear, setSelectedWolunYear] = useState(now.getFullYear());
+  const [selectedWolunMonth, setSelectedWolunMonth] = useState(now.getMonth() + 1);
   const TABS: { key: LuckTabKey; label: string }[] = [
     { key: "대운", label: "대운" },
     { key: "세운", label: "세운" },
@@ -1639,47 +1641,87 @@ function LuckFlowTabs({
           </div>
 
           {/* 월운 sub */}
-          {subTab === "월운" && (
-            <div className="space-y-3">
-              {(() => {
-                const { ganZhi: gz, year, month } = luckCycles.wolun;
-                const se = getStemElement(gz.stem);
-                const be = STEM_ELEMENT[gz.branch] ?? null;
-                const tg = dayStem ? getTenGod(dayStem, gz.stem) : null;
-                const btg = dayStem ? getTenGod(dayStem, gz.branch) : null;
-                return (
-                  <div className="w-full rounded-xl border border-border bg-muted/20 px-3 py-3">
-                    <p className="text-[13px] text-muted-foreground mb-1.5">월운 · {year}년 {month}월</p>
-                    <div className="flex gap-0.5 items-baseline">
-                      <span className={`text-xl font-bold ${se ? ELEMENT_COLORS[se] : ""}`}>{gz.stem}</span>
-                      <span className={`text-xl font-bold ${be ? ELEMENT_COLORS[be] : ""}`}>{gz.branch}</span>
-                      <span className="text-[13px] text-muted-foreground font-serif ml-1">{gz.hanja}</span>
-                    </div>
-                    <div className="flex gap-1.5 mt-1.5 flex-wrap">
-                      {tg && <span className={`text-[13px] font-bold px-1.5 py-0.5 rounded ${TEN_GOD_COLOR[tg as TenGod] ?? "bg-muted"}`}>천간 {tg}</span>}
-                      {btg && <span className={`text-[13px] font-bold px-1.5 py-0.5 rounded ${TEN_GOD_COLOR[btg as TenGod] ?? "bg-muted"}`}>지지 {btg}</span>}
-                    </div>
-                  </div>
-                );
-              })()}
+          {subTab === "월운" && (() => {
+            const thisYear = now.getFullYear();
+            const thisMonth = now.getMonth() + 1;
+            const wolunSeun = luckCycles.seun.find(e => e.year === selectedWolunYear) ?? null;
+            const wolunDaewoon = adjustedDaewoon.find(e => (selectedWolunYear - birthYear) >= e.startAge && (selectedWolunYear - birthYear) <= e.endAge) ?? currentDaewoon;
+            return (
+              <div className="space-y-3">
+                {/* 연도 선택 */}
+                <div className="flex items-center justify-between">
+                  <button onClick={() => setSelectedWolunYear(y => y - 1)} className="px-3 py-1.5 rounded-lg border border-border bg-muted/20 text-sm font-bold active:scale-95">‹</button>
+                  <span className="text-[15px] font-bold">{selectedWolunYear}년 월운</span>
+                  <button onClick={() => setSelectedWolunYear(y => y + 1)} className="px-3 py-1.5 rounded-lg border border-border bg-muted/20 text-sm font-bold active:scale-95">›</button>
+                </div>
 
-              {/* 대운 × 세운 × 월운 결합 */}
-              {currentDaewoon && currentSeun && dayStem && (() => {
-                const { layerDesc, combinedText } = getCombinedFortuneText(dayStem, [
-                  { label: "대운", ganZhi: currentDaewoon.ganZhi },
-                  { label: "세운", ganZhi: currentSeun.ganZhi },
-                  { label: "월운", ganZhi: luckCycles.wolun.ganZhi },
-                ]);
-                return (
-                  <div className="rounded-xl border border-teal-100 bg-teal-50/40 px-3 py-3 space-y-1.5">
-                    <p className="text-[11px] font-bold text-teal-600 uppercase tracking-wide">대운 × 세운 × 월운 결합 해석</p>
-                    <p className="text-[12px] text-teal-400 font-mono">{layerDesc}</p>
-                    <p className="text-[13px] text-foreground leading-relaxed">{combinedText}</p>
-                  </div>
-                );
-              })()}
-            </div>
-          )}
+                {/* 12달 그리드 */}
+                <div className="grid grid-cols-3 gap-1.5">
+                  {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => {
+                    const gz = getMonthGanZhi(selectedWolunYear, m);
+                    const se = getStemElement(gz.stem);
+                    const be = STEM_ELEMENT[gz.branch] ?? null;
+                    const tg = dayStem ? getTenGod(dayStem, gz.stem) : null;
+                    const isNow = selectedWolunYear === thisYear && m === thisMonth;
+                    const isSelected = m === selectedWolunMonth;
+                    return (
+                      <button
+                        key={m}
+                        onClick={() => setSelectedWolunMonth(m)}
+                        className={`rounded-lg border p-2 flex flex-col items-center gap-0.5 transition-all active:scale-95 ${isSelected ? "border-teal-400 bg-teal-50" : isNow ? "border-amber-400 bg-amber-50" : "border-border bg-muted/20"}`}
+                      >
+                        <span className="text-[11px] text-muted-foreground font-semibold">{m}월{isNow ? " ●" : ""}</span>
+                        <div className="flex gap-0.5">
+                          <span className={`text-[15px] font-bold leading-tight ${se ? ELEMENT_COLORS[se] : ""}`}>{gz.stem}</span>
+                          <span className={`text-[15px] font-bold leading-tight ${be ? ELEMENT_COLORS[be] : ""}`}>{gz.branch}</span>
+                        </div>
+                        {tg && <span className={`text-[10px] font-bold px-1 py-0.5 rounded ${TEN_GOD_COLOR[tg as TenGod] ?? "bg-muted"}`}>{tg}</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* 선택된 월 상세 카드 + 결합해석 */}
+                {(() => {
+                  const gz = getMonthGanZhi(selectedWolunYear, selectedWolunMonth);
+                  const se = getStemElement(gz.stem);
+                  const be = STEM_ELEMENT[gz.branch] ?? null;
+                  const tg = dayStem ? getTenGod(dayStem, gz.stem) : null;
+                  const btg = dayStem ? getTenGod(dayStem, gz.branch) : null;
+                  return (
+                    <div className="space-y-2">
+                      <div className="w-full rounded-xl border border-border bg-muted/20 px-3 py-3">
+                        <p className="text-[13px] text-muted-foreground mb-1.5">월운 · {selectedWolunYear}년 {selectedWolunMonth}월</p>
+                        <div className="flex gap-0.5 items-baseline">
+                          <span className={`text-xl font-bold ${se ? ELEMENT_COLORS[se] : ""}`}>{gz.stem}</span>
+                          <span className={`text-xl font-bold ${be ? ELEMENT_COLORS[be] : ""}`}>{gz.branch}</span>
+                          <span className="text-[13px] text-muted-foreground font-serif ml-1">{gz.hanja}</span>
+                        </div>
+                        <div className="flex gap-1.5 mt-1.5 flex-wrap">
+                          {tg && <span className={`text-[13px] font-bold px-1.5 py-0.5 rounded ${TEN_GOD_COLOR[tg as TenGod] ?? "bg-muted"}`}>천간 {tg}</span>}
+                          {btg && <span className={`text-[13px] font-bold px-1.5 py-0.5 rounded ${TEN_GOD_COLOR[btg as TenGod] ?? "bg-muted"}`}>지지 {btg}</span>}
+                        </div>
+                      </div>
+                      {wolunDaewoon && wolunSeun && dayStem && (() => {
+                        const { layerDesc, combinedText } = getCombinedFortuneText(dayStem, [
+                          { label: "대운", ganZhi: wolunDaewoon.ganZhi },
+                          { label: "세운", ganZhi: wolunSeun.ganZhi },
+                          { label: "월운", ganZhi: gz },
+                        ]);
+                        return (
+                          <div className="rounded-xl border border-teal-100 bg-teal-50/40 px-3 py-3 space-y-1.5">
+                            <p className="text-[11px] font-bold text-teal-600 uppercase tracking-wide">대운 × 세운 × 월운 결합 해석</p>
+                            <p className="text-[12px] text-teal-400 font-mono">{layerDesc}</p>
+                            <p className="text-[13px] text-foreground leading-relaxed">{combinedText}</p>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  );
+                })()}
+              </div>
+            );
+          })()}
 
           {/* 일운 sub */}
           {subTab === "일운" && (
@@ -1771,6 +1813,7 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
   });
   const [reportTab, setReportTab] = useState<"원국" | "성향" | "운세" | "해석">("원국");
   const [hourMode, setHourMode] = useState<"포함" | "제외" | "비교">("포함");
+  const [selectedTgInfo, setSelectedTgInfo] = useState<TenGod | null>(null);
 
   // ── Debounced Supabase sync ─────────────────────────────────────
   // Any manual edit (shinsal, strength, yongshin, five-elements, etc.)
@@ -2286,17 +2329,50 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
                           {members.map((tg) => {
                             const cnt = displayCounts[tg as TenGod] ?? 0;
                             const pct = Math.round((cnt / allTgTotal) * 100);
+                            const isActive = selectedTgInfo === tg;
                             return (
-                            <div key={tg} className={`flex items-center justify-between rounded-lg px-2.5 py-1.5 ${TEN_GOD_COLOR[tg as TenGod]}`}>
+                            <button
+                              key={tg}
+                              onClick={() => setSelectedTgInfo(isActive ? null : tg as TenGod)}
+                              className={`flex items-center justify-between rounded-lg px-2.5 py-1.5 transition-all active:scale-95 ${TEN_GOD_COLOR[tg as TenGod]} ${isActive ? "ring-2 ring-foreground/30" : ""}`}
+                            >
                               <span className="text-[13px] font-bold">{tg}</span>
                               <span className="text-[13px] font-semibold">{pct}%</span>
-                            </div>
+                            </button>
                             );
                           })}
                         </div>
                       </div>
                     );
                   })}
+                  {/* 선택된 십성 의미 카드 */}
+                  {selectedTgInfo && TG_LUCK_MEANING[selectedTgInfo] && (
+                    <div className={`rounded-xl px-3 py-3 space-y-2 border ${TEN_GOD_COLOR[selectedTgInfo]}`}>
+                      <div className="flex items-center justify-between">
+                        <span className="text-[14px] font-bold">{selectedTgInfo}</span>
+                        <button onClick={() => setSelectedTgInfo(null)} className="text-[11px] text-muted-foreground px-1.5 py-0.5 rounded border border-border/50 bg-white/60">닫기</button>
+                      </div>
+                      <p className="text-[12px] leading-relaxed">{TG_LUCK_MEANING[selectedTgInfo].summary}</p>
+                      {TG_LUCK_MEANING[selectedTgInfo].relationship && (
+                        <div>
+                          <p className="text-[10px] font-bold uppercase tracking-widest opacity-60 mb-0.5">관계·사람</p>
+                          <p className="text-[12px] leading-relaxed">{TG_LUCK_MEANING[selectedTgInfo].relationship}</p>
+                        </div>
+                      )}
+                      {TG_LUCK_MEANING[selectedTgInfo].work && (
+                        <div>
+                          <p className="text-[10px] font-bold uppercase tracking-widest opacity-60 mb-0.5">일·직업</p>
+                          <p className="text-[12px] leading-relaxed">{TG_LUCK_MEANING[selectedTgInfo].work}</p>
+                        </div>
+                      )}
+                      {TG_LUCK_MEANING[selectedTgInfo].tip && (
+                        <div>
+                          <p className="text-[10px] font-bold uppercase tracking-widest opacity-60 mb-0.5">조언</p>
+                          <p className="text-[12px] leading-relaxed">{TG_LUCK_MEANING[selectedTgInfo].tip}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
                   {manualTenGodCounts && (
                     <p className="text-[11px] text-amber-600 bg-amber-50 rounded-lg px-2.5 py-1.5">
                       ✎ 직접 편집된 십성 — 오행 분포가 십성 기준으로 재계산됩니다
