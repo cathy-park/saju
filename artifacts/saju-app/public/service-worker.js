@@ -1,4 +1,4 @@
-const CACHE_NAME = "naheuleum-v1";
+const CACHE_NAME = "naheuleum-v2";
 const STATIC_ASSETS = [
   "/",
   "/manifest.json",
