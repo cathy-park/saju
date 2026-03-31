@@ -70,8 +70,8 @@ function AppHeader() {
   return (
     <div className="fixed top-0 left-0 right-0 z-40 bg-background/97 backdrop-blur border-b border-[#F0EDE8] supports-[backdrop-filter]:bg-background/90">
       <div className="max-w-lg mx-auto px-5 h-14 flex items-center justify-between">
-        {/* Brand wordmark */}
-        <div className="flex items-center gap-2">
+        {/* Brand wordmark — 클릭 시 홈으로 이동 */}
+        <Link href="/" className="flex items-center gap-2">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <path d="M3 12C3 12 5.5 7 8.5 7C11.5 7 12.5 17 15.5 17C18.5 17 21 12 21 12"
               stroke="hsl(12,72%,50%)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -79,7 +79,7 @@ function AppHeader() {
           <span className="text-[18px] font-bold text-foreground tracking-tight" style={{ fontFamily: "'Pretendard Variable', 'Pretendard', sans-serif" }}>
             나의 흐름
           </span>
-        </div>
+        </Link>
         <AuthBar />
       </div>
     </div>
