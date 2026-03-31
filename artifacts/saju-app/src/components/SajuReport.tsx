@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useCallback } from "react";
 import type { ComputedPillars, FiveElementCount } from "@/lib/sajuEngine";
 import { ELEMENT_BG_COLORS, ELEMENT_COLORS, countFiveElements } from "@/lib/sajuEngine";
 import {
@@ -11,7 +11,9 @@ import {
   type StrengthLevel,
 } from "@/lib/interpretSchema";
 import type { PersonRecord, ManualShinsalItem, MaritalStatus, ManualBranchRelation, ManualDerived } from "@/lib/storage";
-import { getFinalPillars, saveManualShinsal, saveExcludedAutoShinsal, saveMaritalStatus, updatePersonRecord } from "@/lib/storage";
+import { getFinalPillars, getMyProfile, getPeople, saveManualShinsal, saveExcludedAutoShinsal, saveMaritalStatus, updatePersonRecord } from "@/lib/storage";
+import { upsertMyProfile, upsertPartnerProfile } from "@/lib/db";
+import { useAuth } from "@/lib/authContext";
 import { charToElement, ELEMENT_TEXT_HEX, ELEMENT_HEX, ELEMENT_LIGHT_HEX, ELEMENT_TW, getTenGodGroup, type FiveElKey } from "@/lib/element-color";
 import { TodayFortuneCard } from "@/components/TodayFortuneCard";
 import { getFortuneForDate } from "@/lib/todayFortune";
@@ -1215,6 +1217,7 @@ interface SajuReportProps {
 }
 
 export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
+  const { user } = useAuth();
   const [infoSheet, setInfoSheet] = useState<InfoSheetType | null>(null);
   const [manualShinsal, setManualShinsal] = useState<ManualShinsalItem[]>(record.manualShinsal ?? []);
   const [excludedAutoShinsal, setExcludedAutoShinsal] = useState<ManualShinsalItem[]>(record.excludedAutoShinsal ?? []);
@@ -1234,6 +1237,33 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
   const [showFiveElEdit, setShowFiveElEdit] = useState(false);
   const [draftFiveEl, setDraftFiveEl] = useState<FiveElementCount>({ 목: 0, 화: 0, 토: 0, 금: 0, 수: 0 });
 
+  // ── Debounced Supabase sync ─────────────────────────────────────
+  // Any manual edit (shinsal, strength, yongshin, five-elements, etc.)
+  // only hits localStorage.  scheduleSync() queues a Supabase write
+  // ~1.5 s after the last change so cross-device edits are persisted.
+  const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scheduleSync = useCallback(() => {
+    if (!user) return;
+    if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+    syncTimerRef.current = setTimeout(async () => {
+      try {
+        const myProfile = getMyProfile();
+        if (myProfile?.id === record.id) {
+          await upsertMyProfile(user.id, myProfile);
+          console.log("[SajuReport] manual edit synced to Supabase (myProfile) ✓");
+        } else {
+          const partner = getPeople().find((p) => p.id === record.id);
+          if (partner) {
+            await upsertPartnerProfile(user.id, partner);
+            console.log("[SajuReport] manual edit synced to Supabase (partner) ✓");
+          }
+        }
+      } catch (e) {
+        console.error("[SajuReport] sync to Supabase failed:", e);
+      }
+    }, 1500);
+  }, [user, record.id]);
+
   // ── Interpretation subtab state ────────────────────────────────
   const INTERPRET_TABS = [
     { key: "전체",    icon: "✨" },
@@ -1252,6 +1282,7 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
     const next = status === maritalStatus ? undefined : status;
     setMaritalStatus(next);
     saveMaritalStatus(record.id, next);
+    scheduleSync();
   }
 
   function handleAddShinsal(name: string) {
@@ -1263,6 +1294,7 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
       return next;
     });
     setPickerForPosition(null);
+    scheduleSync();
   }
 
   function handleDeleteManualShinsal(position: string, name: string) {
@@ -1271,6 +1303,7 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
       saveManualShinsal(record.id, next);
       return next;
     });
+    scheduleSync();
   }
 
   function handleExcludeAutoShinsal(position: string, name: string) {
@@ -1280,6 +1313,7 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
       saveExcludedAutoShinsal(record.id, next);
       return next;
     });
+    scheduleSync();
   }
 
   function handleRestoreAutoShinsal(position: string, name: string) {
@@ -1288,6 +1322,7 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
       saveExcludedAutoShinsal(record.id, next);
       return next;
     });
+    scheduleSync();
   }
 
   function openFiveElEditor(current: FiveElementCount) {
@@ -1299,12 +1334,14 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
     setManualFiveElements(draftFiveEl);
     updatePersonRecord(record.id, { manualFiveElements: draftFiveEl });
     setShowFiveElEdit(false);
+    scheduleSync();
   }
 
   function resetFiveElEdit() {
     setManualFiveElements(undefined);
     updatePersonRecord(record.id, { manualFiveElements: undefined });
     setShowFiveElEdit(false);
+    scheduleSync();
   }
 
   // ── Computed values ────────────────────────────────────────────
@@ -1461,6 +1498,7 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
             onSaveDerived={async (d) => {
               setManualDerived(d);
               await updatePersonRecord(record.id, { manualDerived: d });
+              scheduleSync();
             }}
           />
 
@@ -1754,10 +1792,12 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
                                 );
                                 setManualBranchAdd(next);
                                 updatePersonRecord(record.id, { manualBranchRelationAdd: next });
+                                scheduleSync();
                               } else {
                                 const next = [...manualBranchRemove, autoKey];
                                 setManualBranchRemove(next);
                                 updatePersonRecord(record.id, { manualBranchRelationRemove: next });
+                                scheduleSync();
                               }
                             }}
                             className="w-7 h-7 rounded-full bg-red-100 text-red-600 flex items-center justify-center text-xs font-bold border border-red-200 shrink-0 active:scale-95 transition-all"
@@ -1778,7 +1818,7 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
                   )}
                   {manualBranchRemove.length > 0 && branchEditMode && (
                     <button
-                      onClick={() => { setManualBranchRemove([]); updatePersonRecord(record.id, { manualBranchRelationRemove: [] }); }}
+                      onClick={() => { setManualBranchRemove([]); updatePersonRecord(record.id, { manualBranchRelationRemove: [] }); scheduleSync(); }}
                       className="text-[11px] text-muted-foreground underline px-1"
                     >
                       숨긴 자동관계 복원
@@ -1846,6 +1886,7 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
                     const next = [...manualBranchAdd, item];
                     setManualBranchAdd(next);
                     updatePersonRecord(record.id, { manualBranchRelationAdd: next });
+                    scheduleSync();
                     setShowBranchAddSheet(false);
                     setBranchAddPick1("");
                     setBranchAddPick2("");
@@ -1877,10 +1918,12 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
               onStrengthLevelChange={(lv) => {
                 setLocalStrengthLevel(lv);
                 updatePersonRecord(record.id, { manualStrengthLevel: lv ?? undefined });
+                scheduleSync();
               }}
               onYongshinDataChange={(data) => {
                 setLocalYongshinData(data);
                 updatePersonRecord(record.id, { manualYongshinData: data });
+                scheduleSync();
               }}
             />
           )}

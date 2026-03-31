@@ -99,6 +99,22 @@ function toPartnerPayload(userId: string, record: PersonRecord) {
   return payload;
 }
 
+// ── Validation allowlists ─────────────────────────────────────────
+// Shinsal names that are valid in the current code version.
+// Any name NOT in this set from old saju_payload is silently dropped.
+const VALID_SHINSAL_NAMES = new Set([
+  "도화", "홍염", "역마", "화개",
+  "천을귀인", "문창귀인", "문곡귀인", "금여", "태극귀인", "천복귀인", "천의성",
+  "천덕귀인", "월덕귀인",
+  "양인살", "장성살", "반안살",
+  "겁살", "재살", "천살", "지살", "망신살", "육해살",
+  "고신살", "과숙살", "귀문관살",
+  "현침살", "백호살", "괴강살",
+]);
+
+// Yongshin types in current UI. Others from old payloads are dropped.
+const VALID_YONGSHIN_TYPES = new Set(["억부용신", "조후용신", "통관용신", "병약용신"]);
+
 // ── Helper: DB row → PersonRecord ─────────────────────────────────
 
 function dbRowToRecord(row: DbMyProfile | DbPartnerProfile): PersonRecord {
@@ -106,6 +122,30 @@ function dbRowToRecord(row: DbMyProfile | DbPartnerProfile): PersonRecord {
   const [yr, mo, dy] = row.birth_date.split("-").map(Number);
   const timeUnknown = row.birth_time === null;
   const [h, mi] = row.birth_time ? row.birth_time.split(":").map(Number) : [0, 0];
+
+  // Sanitise manual shinsal: drop any name that no longer exists in the codebase
+  const rawManualShinsal = payload.manualShinsal ?? [];
+  const sanitisedManualShinsal = rawManualShinsal.filter((item) => {
+    const ok = VALID_SHINSAL_NAMES.has(item.name);
+    if (!ok) console.warn(`[db] dropping stale manualShinsal entry: "${item.name}"`);
+    return ok;
+  });
+
+  const rawExcludedShinsal = payload.excludedAutoShinsal ?? [];
+  const sanitisedExcludedShinsal = rawExcludedShinsal.filter((item) => {
+    const ok = VALID_SHINSAL_NAMES.has(item.name);
+    if (!ok) console.warn(`[db] dropping stale excludedAutoShinsal entry: "${item.name}"`);
+    return ok;
+  });
+
+  // Sanitise manual yongshin data: drop any type that no longer exists
+  const rawYongshinData = payload.manualYongshinData ?? [];
+  const sanitisedYongshinData = rawYongshinData.filter((entry) => {
+    const ok = VALID_YONGSHIN_TYPES.has(entry.type);
+    if (!ok) console.warn(`[db] dropping stale manualYongshinData entry type: "${entry.type}"`);
+    return ok;
+  });
+
   return {
     ...payload,
     id: row.id,
@@ -122,6 +162,9 @@ function dbRowToRecord(row: DbMyProfile | DbPartnerProfile): PersonRecord {
       name:         row.name,
       gender:       (row.gender ?? "남") as "남" | "여",
     },
+    manualShinsal:      sanitisedManualShinsal.length > 0 ? sanitisedManualShinsal : undefined,
+    excludedAutoShinsal: sanitisedExcludedShinsal.length > 0 ? sanitisedExcludedShinsal : undefined,
+    manualYongshinData: sanitisedYongshinData.length > 0 ? sanitisedYongshinData : undefined,
     createdAt:  row.created_at,
     updatedAt:  row.updated_at,
   };
