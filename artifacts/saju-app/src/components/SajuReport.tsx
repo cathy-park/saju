@@ -28,7 +28,8 @@ import { getFortuneForDate } from "@/lib/todayFortune";
 import { buildLifeFlowInsights } from "@/lib/lifeFlowInsight";
 import {
   getTenGod,
-  TEN_GOD_COLOR, TEN_GOD_KEYWORDS, TEN_GOD_TOOLTIP, TEN_GOD_ELEMENT,
+  getTenGodTw,
+  TEN_GOD_KEYWORDS, TEN_GOD_TOOLTIP, TEN_GOD_ELEMENT,
   tenGodCountsToFiveElements, autoCountTenGods,
   ALL_TEN_GOD_NAMES, TEN_GOD_GROUPS,
   type TenGod,
@@ -350,7 +351,7 @@ function PillarTable({
                     </select>
                   ) : c.effStemTG ? (
                     <button onClick={() => toggle(i, "stem")}
-                      className={`text-[12px] font-semibold px-1 py-0.5 rounded transition-colors ${isOpen(i, "stem") ? "bg-primary/15 text-primary" : TEN_GOD_COLOR[c.effStemTG as keyof typeof TEN_GOD_COLOR]}`}>
+                      className={`text-[12px] font-semibold px-1 py-0.5 rounded transition-colors ${isOpen(i, "stem") ? "bg-primary/15 text-primary" : getTenGodTw(c.effStemTG, dayStem)}`}>
                       {c.effStemTG}
                     </button>
                   ) : <span className="text-[10px] text-muted-foreground">-</span>}
@@ -388,7 +389,7 @@ function PillarTable({
                     </select>
                   ) : c.effBranchTG ? (
                     <button onClick={() => toggle(i, "branch")}
-                      className={`text-[12px] font-semibold px-1 py-0.5 rounded transition-colors ${isOpen(i, "branch") ? "bg-primary/15 text-primary" : TEN_GOD_COLOR[c.effBranchTG as keyof typeof TEN_GOD_COLOR]}`}>
+                      className={`text-[12px] font-semibold px-1 py-0.5 rounded transition-colors ${isOpen(i, "branch") ? "bg-primary/15 text-primary" : getTenGodTw(c.effBranchTG, dayStem)}`}>
                       {c.effBranchTG}
                     </button>
                   ) : <span className="text-[10px] text-muted-foreground">-</span>}
@@ -458,7 +459,7 @@ function PillarTable({
           <div className="border border-border rounded-xl bg-card px-4 py-3 space-y-2 mt-2">
             <div className="flex items-center justify-between gap-2">
               <div>
-                <span className={`text-[12px] font-bold px-2 py-0.5 rounded-full ${TEN_GOD_COLOR[tg as keyof typeof TEN_GOD_COLOR]}`}>{tg}</span>
+                <span className={`text-[12px] font-bold px-2 py-0.5 rounded-full ${getTenGodTw(tg, dayStem)}`}>{tg}</span>
                 <span className="ml-2 text-[13px] text-muted-foreground">{tooltip?.headline}</span>
               </div>
               <button onClick={() => setActiveTooltip(null)} className="text-muted-foreground/50 hover:text-muted-foreground text-sm">✕</button>
@@ -1179,8 +1180,8 @@ function FortuneCalendar({ record, dayStem, luckCycles, birthYear, adjustedDaewo
                 <span className="text-[13px] text-muted-foreground font-serif ml-1">{dayGZ.hanja}</span>
               </div>
               <div className="flex gap-1.5 mt-1.5 flex-wrap">
-                {tg && <span className={`text-[13px] font-bold px-1.5 py-0.5 rounded ${TEN_GOD_COLOR[tg as TenGod] ?? "bg-muted"}`}>천간 {tg}</span>}
-                {btg && <span className={`text-[13px] font-bold px-1.5 py-0.5 rounded ${TEN_GOD_COLOR[btg as TenGod] ?? "bg-muted"}`}>지지 {btg}</span>}
+                {tg && <span className={`text-[13px] font-bold px-1.5 py-0.5 rounded ${getTenGodTw(tg, dayStem ?? "")}`}>천간 {tg}</span>}
+                {btg && <span className={`text-[13px] font-bold px-1.5 py-0.5 rounded ${getTenGodTw(btg, dayStem ?? "")}`}>지지 {btg}</span>}
               </div>
             </div>
 
@@ -1282,12 +1283,13 @@ function getDaewoonInterpretationText(dayStem: string, ganZhi: { hangul: string;
 
 type LuckTabKey = "대운" | "세운" | "월운" | "일운";
 
-function LuckDetailCard({ luckType, ganZhi, period, tg, btg }: {
+function LuckDetailCard({ luckType, ganZhi, period, tg, btg, dayStem }: {
   luckType: string;
   ganZhi: { stem: string; branch: string; hangul: string; hanja: string };
   period: string;
   tg: string | null;
   btg: string | null;
+  dayStem?: string;
 }) {
   const tgData = tg ? TG_LUCK_MEANING[tg] : null;
   const btgData = btg ? TG_LUCK_MEANING[btg] : null;
@@ -1297,8 +1299,8 @@ function LuckDetailCard({ luckType, ganZhi, period, tg, btg }: {
     <div className="rounded-xl border border-amber-200 bg-amber-50/30 p-3 space-y-2.5">
       <div className="flex items-center gap-2 flex-wrap">
         <span className="text-[11px] font-bold bg-muted/60 text-muted-foreground px-2 py-0.5 rounded-full">{luckType}</span>
-        {tg && <span className={`text-[13px] font-bold px-2 py-0.5 rounded-full ${TEN_GOD_COLOR[tg as TenGod] ?? "bg-muted"}`}>천간 {tg}</span>}
-        {btg && <span className={`text-[13px] font-bold px-2 py-0.5 rounded-full ${TEN_GOD_COLOR[btg as TenGod] ?? "bg-muted"}`}>지지 {btg}</span>}
+        {tg && <span className={`text-[13px] font-bold px-2 py-0.5 rounded-full ${getTenGodTw(tg, dayStem ?? "")}`}>천간 {tg}</span>}
+        {btg && <span className={`text-[13px] font-bold px-2 py-0.5 rounded-full ${getTenGodTw(btg, dayStem ?? "")}`}>지지 {btg}</span>}
       </div>
       <div className="flex items-baseline gap-2">
         <span className="text-xl font-bold">
@@ -1524,7 +1526,7 @@ function LuckFlowTabs({
                         <span className={`text-xl font-bold ${stemEl ? ELEMENT_COLORS[stemEl] : ""}`}>{entry.ganZhi.stem}</span>
                         <span className={`text-xl font-bold ${branchEl ? ELEMENT_COLORS[branchEl] : ""}`}>{entry.ganZhi.branch}</span>
                       </div>
-                      {tg && <span className={`text-[13px] font-bold px-1 py-0.5 rounded ml-auto ${TEN_GOD_COLOR[tg as TenGod] ?? "bg-muted"}`}>{tg}</span>}
+                      {tg && <span className={`text-[13px] font-bold px-1 py-0.5 rounded ml-auto ${getTenGodTw(tg, dayStem)}`}>{tg}</span>}
                     </button>
                   );
                 })}
@@ -1543,6 +1545,7 @@ function LuckFlowTabs({
                     period={`${entry.startAge}~${entry.endAge}세${isCurrent ? " · 현재 대운" : ""}`}
                     tg={tg}
                     btg={btg}
+                    dayStem={dayStem}
                   />
                 );
               })()}
@@ -1578,7 +1581,7 @@ function LuckFlowTabs({
                       <span className={`text-lg font-bold ${be ? ELEMENT_COLORS[be] : ""}`}>{ganZhi.branch}</span>
                     </div>
                     <p className="text-[13px] text-muted-foreground font-serif">{ganZhi.hanja}</p>
-                    {tg && <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded mt-0.5 inline-block ${TEN_GOD_COLOR[tg as TenGod] ?? "bg-muted"}`}>{tg}</span>}
+                    {tg && <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded mt-0.5 inline-block ${getTenGodTw(tg, dayStem)}`}>{tg}</span>}
                     {isThisYear && <p className="text-[11px] text-amber-600 font-medium mt-0.5">올해</p>}
                   </button>
                 );
@@ -1613,6 +1616,7 @@ function LuckFlowTabs({
                 period={`${selectedSeunYear}년`}
                 tg={tg}
                 btg={btg}
+                dayStem={dayStem}
               />
             );
           })()}
@@ -1657,7 +1661,7 @@ function LuckFlowTabs({
                           <span className={`text-[15px] font-bold leading-tight ${se ? ELEMENT_COLORS[se] : ""}`}>{gz.stem}</span>
                           <span className={`text-[15px] font-bold leading-tight ${be ? ELEMENT_COLORS[be] : ""}`}>{gz.branch}</span>
                         </div>
-                        {tg && <span className={`text-[10px] font-bold px-1 py-0.5 rounded ${TEN_GOD_COLOR[tg as TenGod] ?? "bg-muted"}`}>{tg}</span>}
+                        {tg && <span className={`text-[10px] font-bold px-1 py-0.5 rounded ${getTenGodTw(tg, dayStem)}`}>{tg}</span>}
                       </button>
                     );
                   })}
@@ -1680,8 +1684,8 @@ function LuckFlowTabs({
                           <span className="text-[13px] text-muted-foreground font-serif ml-1">{gz.hanja}</span>
                         </div>
                         <div className="flex gap-1.5 mt-1.5 flex-wrap">
-                          {tg && <span className={`text-[13px] font-bold px-1.5 py-0.5 rounded ${TEN_GOD_COLOR[tg as TenGod] ?? "bg-muted"}`}>천간 {tg}</span>}
-                          {btg && <span className={`text-[13px] font-bold px-1.5 py-0.5 rounded ${TEN_GOD_COLOR[btg as TenGod] ?? "bg-muted"}`}>지지 {btg}</span>}
+                          {tg && <span className={`text-[13px] font-bold px-1.5 py-0.5 rounded ${getTenGodTw(tg, dayStem)}`}>천간 {tg}</span>}
+                          {btg && <span className={`text-[13px] font-bold px-1.5 py-0.5 rounded ${getTenGodTw(btg, dayStem)}`}>지지 {btg}</span>}
                         </div>
                       </div>
                       {wolunDaewoon && wolunSeun && dayStem && (() => {
@@ -2181,8 +2185,8 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
                     {hourBranch && <span className={`text-xl font-bold ${ELEMENT_COLORS[STEM_ELEMENT[hourBranch] ?? ""] ?? ""}`}>{hourBranch}</span>}
                   </div>
                   <div className="flex gap-0.5 mt-0.5 justify-center flex-wrap">
-                    {hourStemTg && <span className={`text-[10px] font-bold px-1 py-0.5 rounded ${TEN_GOD_COLOR[hourStemTg as TenGod] ?? "bg-muted"}`}>{hourStemTg}</span>}
-                    {hourBranchTg && <span className={`text-[10px] font-bold px-1 py-0.5 rounded ${TEN_GOD_COLOR[hourBranchTg as TenGod] ?? "bg-muted"}`}>{hourBranchTg}</span>}
+                    {hourStemTg && <span className={`text-[10px] font-bold px-1 py-0.5 rounded ${getTenGodTw(hourStemTg, dayStem)}`}>{hourStemTg}</span>}
+                    {hourBranchTg && <span className={`text-[10px] font-bold px-1 py-0.5 rounded ${getTenGodTw(hourBranchTg, dayStem)}`}>{hourBranchTg}</span>}
                   </div>
                 </div>
                 <div className="flex-1 min-w-0 space-y-1.5">
@@ -2277,7 +2281,7 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
                             <button
                               key={tg}
                               onClick={() => setSelectedTgInfo(isActive ? null : tg as TenGod)}
-                              className={`flex items-center justify-between rounded-lg px-2.5 py-1.5 transition-all active:scale-95 ${TEN_GOD_COLOR[tg as TenGod]} ${isActive ? "ring-2 ring-foreground/30" : ""}`}
+                              className={`flex items-center justify-between rounded-lg px-2.5 py-1.5 transition-all active:scale-95 ${getTenGodTw(tg, dayStem)} ${isActive ? "ring-2 ring-foreground/30" : ""}`}
                             >
                               <span className="text-[13px] font-bold">{tg}</span>
                               <span className="text-[13px] font-semibold">{pct}%</span>
@@ -2295,7 +2299,7 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
                     const allTgTotalForCard = Object.values(displayCounts).reduce((s, c) => s + c, 0) || 1;
                     const pct = Math.round((cnt / allTgTotalForCard) * 100);
                     return (
-                    <div className={`rounded-xl px-3 py-3 space-y-2 border ${TEN_GOD_COLOR[selectedTgInfo]}`}>
+                    <div className={`rounded-xl px-3 py-3 space-y-2 border ${getTenGodTw(selectedTgInfo, dayStem)}`}>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <span className="text-[14px] font-bold">{selectedTgInfo}</span>
@@ -2795,8 +2799,8 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
                     )}
                   </div>
                   <div className="flex gap-1 mt-0.5 justify-center">
-                    {hourStemTg && <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded ${TEN_GOD_COLOR[hourStemTg as TenGod] ?? "bg-muted"}`}>{hourStemTg}</span>}
-                    {hourBranchTg && <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded ${TEN_GOD_COLOR[hourBranchTg as TenGod] ?? "bg-muted"}`}>{hourBranchTg}</span>}
+                    {hourStemTg && <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded ${getTenGodTw(hourStemTg, dayStem)}`}>{hourStemTg}</span>}
+                    {hourBranchTg && <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded ${getTenGodTw(hourBranchTg, dayStem)}`}>{hourBranchTg}</span>}
                   </div>
                 </div>
                 <div className="flex-1 min-w-0">
@@ -2924,7 +2928,7 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
                     dayEl={STEM_ELEMENT[dayStem] as FiveElKey | undefined}
                     allChars={allChars}
                     effectiveFiveElements={effectiveFiveElements}
-                    onTap={(group) => setInfoSheet({ kind: "tengod-group", group })}
+                    onTap={(group) => setInfoSheet({ kind: "tengod-group", group, dayStem })}
                   />
                 </div>
                 <div>
@@ -2957,7 +2961,7 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
                               </td>
                               <td className="py-2 px-2 text-center border-l border-border">
                                 {stemTg ? (
-                                  <span className={`text-[13px] px-1.5 py-0.5 rounded font-bold ${TEN_GOD_COLOR[stemTg]}`}>{stemTg}</span>
+                                  <span className={`text-[13px] px-1.5 py-0.5 rounded font-bold ${getTenGodTw(stemTg, dayStem)}`}>{stemTg}</span>
                                 ) : <span className="text-[13px] text-muted-foreground">-</span>}
                               </td>
                               <td className="py-2 px-2 text-center border-l border-border">
@@ -2965,7 +2969,7 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
                               </td>
                               <td className="py-2 px-2 text-center border-l border-border">
                                 {branchTg ? (
-                                  <span className={`text-[13px] px-1.5 py-0.5 rounded font-bold ${TEN_GOD_COLOR[branchTg]}`}>{branchTg}</span>
+                                  <span className={`text-[13px] px-1.5 py-0.5 rounded font-bold ${getTenGodTw(branchTg, dayStem)}`}>{branchTg}</span>
                                 ) : <span className="text-[13px] text-muted-foreground">-</span>}
                               </td>
                             </tr>
@@ -3443,7 +3447,7 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
                   </div>
                   {members.map((tg, i) => (
                     <div key={tg} className={`flex items-center px-3 py-2 ${i < members.length - 1 ? "border-b border-border/50" : ""}`}>
-                      <span className={`text-[13px] font-bold px-2 py-0.5 rounded-full mr-2 ${TEN_GOD_COLOR[tg as TenGod]}`}>{tg}</span>
+                      <span className={`text-[13px] font-bold px-2 py-0.5 rounded-full mr-2 ${getTenGodTw(tg, dayStem)}`}>{tg}</span>
                       <div className="flex items-center gap-2 ml-auto">
                         <button
                           onClick={() => setDraftTenGod((p) => ({ ...p, [tg]: Math.max(0, (p[tg] ?? 0) - 1) }))}

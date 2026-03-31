@@ -2,7 +2,7 @@ import type { PersonRecord } from "@/lib/storage";
 import { getFortuneForDate } from "@/lib/todayFortune";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Sparkles } from "lucide-react";
-import { TEN_GOD_COLOR } from "@/lib/tenGods";
+import { getTenGodTw } from "@/lib/tenGods";
 import { TWELVE_STAGE_COLOR } from "@/lib/twelveStages";
 import { charToElement } from "@/lib/element-color";
 import { ELEMENT_TEXT_HEX } from "@/lib/element-color";
@@ -34,6 +34,7 @@ export function TodayFortuneCard({ record, year, month, day }: TodayFortuneCardP
   const m = month ?? now.getMonth() + 1;
   const d = day ?? now.getDate();
 
+  const dayStem = record.profile.computedPillars?.day?.hangul?.[0] ?? "";
   const fortune = getFortuneForDate(record, y, m, d);
 
   return (
@@ -85,12 +86,12 @@ export function TodayFortuneCard({ record, year, month, day }: TodayFortuneCardP
               </div>
               <div className="flex flex-wrap gap-1">
                 {layer.tenGod && (
-                  <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded-full ${TEN_GOD_COLOR[layer.tenGod as keyof typeof TEN_GOD_COLOR] ?? "bg-muted text-muted-foreground"}`}>
+                  <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded-full ${getTenGodTw(layer.tenGod, dayStem)}`}>
                     천:{layer.tenGod}
                   </span>
                 )}
                 {layer.branchTenGod && (
-                  <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded-full ${TEN_GOD_COLOR[layer.branchTenGod as keyof typeof TEN_GOD_COLOR] ?? "bg-muted text-muted-foreground"}`}>
+                  <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded-full ${getTenGodTw(layer.branchTenGod, dayStem)}`}>
                     지:{layer.branchTenGod}
                   </span>
                 )}

@@ -1,3 +1,11 @@
+import {
+  ELEMENT_TW,
+  ELEMENT_HEX,
+  ELEMENT_LIGHT_HEX,
+  ELEMENT_TEXT_HEX,
+  type FiveElKey,
+} from "./element-color";
+
 export type TenGod =
   | "비견" | "겁재"
   | "식신" | "상관"
@@ -184,6 +192,50 @@ export const ALL_TEN_GOD_NAMES: TenGod[] = [
   "편인", "정인",
 ];
 
+// ── 십성 → 오행 색상 헬퍼 ─────────────────────────────────────────
+// 십성 색상은 반드시 오행(五行)에서 파생됩니다.
+// 매핑: 비견/겁재→일간 동일 오행, 식신/상관→일간이 生하는 오행,
+//       편재/정재→일간이 剋하는 오행, 편관/정관→일간을 剋하는 오행,
+//       편인/정인→일간을 生하는 오행
+
+/** 십성의 오행(FiveElKey)을 반환합니다. dayStem이 없으면 null. */
+export function getTenGodElement(tenGod: TenGod | string, dayStem: string): FiveElKey | null {
+  if (!dayStem) return null;
+  const map = getTenGodGroupElements(dayStem);
+  const el = map[tenGod as TenGod];
+  return el ? (el as FiveElKey) : null;
+}
+
+/**
+ * 십성의 Tailwind 색상 클래스(bg + text)를 반환합니다.
+ * 항상 오행 색상에서 파생됩니다.
+ * @param tenGod 십성 이름
+ * @param dayStem 일간 천간 (예: "갑", "병" 등)
+ * @returns Tailwind className 문자열
+ */
+export function getTenGodTw(tenGod: TenGod | string, dayStem: string): string {
+  const el = getTenGodElement(tenGod, dayStem);
+  if (!el) return "bg-muted text-muted-foreground";
+  return ELEMENT_TW[el];
+}
+
+/**
+ * 십성의 hex 색상들을 반환합니다 (인라인 스타일용).
+ */
+export function getTenGodColors(tenGod: TenGod | string, dayStem: string): {
+  hex: string;
+  lightHex: string;
+  textHex: string;
+} {
+  const el = getTenGodElement(tenGod, dayStem) ?? "토";
+  return {
+    hex: ELEMENT_HEX[el],
+    lightHex: ELEMENT_LIGHT_HEX[el],
+    textHex: ELEMENT_TEXT_HEX[el],
+  };
+}
+
+/** @deprecated 오행 색상 헬퍼 getTenGodTw(tenGod, dayStem) 사용 권장 */
 export const TEN_GOD_COLOR: Record<TenGod, string> = {
   비견: "bg-green-100 text-green-800",
   겁재: "bg-emerald-100 text-emerald-800",

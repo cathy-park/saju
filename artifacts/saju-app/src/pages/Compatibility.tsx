@@ -26,7 +26,7 @@ import { charToElement, ELEMENT_TEXT_HEX, ELEMENT_HEX, ELEMENT_LIGHT_HEX } from 
 import {
   calculateLuckCycles,
 } from "@/lib/luckCycles";
-import { getTenGod } from "@/lib/tenGods";
+import { getTenGod, getTenGodTw } from "@/lib/tenGods";
 import {
   getSpousePalaceInfo,
   getMarriageTimingHint,
@@ -310,14 +310,6 @@ function BulletRow({ text, positive }: { text: string; positive: boolean }) {
 }
 
 // GRADE_STYLES removed — use GRADE_PALETTE (defined above) for all color logic.
-
-const TEN_GOD_COLOR: Record<string, string> = {
-  비견: "bg-green-100 text-green-800", 겁재: "bg-lime-100 text-lime-800",
-  식신: "bg-sky-100 text-sky-800", 상관: "bg-blue-100 text-blue-800",
-  편재: "bg-yellow-100 text-yellow-800", 정재: "bg-amber-100 text-amber-800",
-  편관: "bg-red-100 text-red-800", 정관: "bg-rose-100 text-rose-800",
-  편인: "bg-violet-100 text-violet-800", 정인: "bg-purple-100 text-purple-800",
-};
 
 const REL_TONE_COLOR: Record<string, string> = {
   "매우 좋음": "text-green-700",
@@ -761,7 +753,7 @@ export default function Compatibility() {
                   <p className="text-[11px] text-muted-foreground mb-1.5">일간 관계</p>
                   <p className="text-[13px] font-bold text-foreground leading-tight">{fullReport.stemRel.label}</p>
                   {fullReport.stemRel.me2other && (
-                    <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded mt-1.5 inline-block ${TEN_GOD_COLOR[fullReport.stemRel.me2other] ?? "bg-muted text-foreground"}`}>
+                    <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded mt-1.5 inline-block ${getTenGodTw(fullReport.stemRel.me2other, myDayStem2)}`}>
                       {fullReport.stemRel.me2other}
                     </span>
                   )}
@@ -994,6 +986,7 @@ export default function Compatibility() {
                       {
                         from: myName, to: otherName,
                         tg: fullReport.stemRel.me2other,
+                        tgDayStem: myDayStem2,
                         desc: fullReport.stemRel.me2otherDesc,
                         sectionTitle: `${myName}${ptcl(myName, "이", "가")} 느끼는 ${otherName}`,
                         bodyLabel: `${myName}에게 ${otherName}${ptcl(otherName, "은", "는")}`,
@@ -1001,18 +994,19 @@ export default function Compatibility() {
                       {
                         from: otherName, to: myName,
                         tg: fullReport.stemRel.other2me,
+                        tgDayStem: otherDayStem2,
                         desc: fullReport.stemRel.other2meDesc,
                         sectionTitle: `${otherName}${ptcl(otherName, "이", "가")} 느끼는 ${myName}`,
                         bodyLabel: `${otherName}에게 ${myName}${ptcl(myName, "은", "는")}`,
                       },
-                    ].map(({ from, tg, desc, sectionTitle, bodyLabel }) => (
+                    ].map(({ from, tg, tgDayStem, desc, sectionTitle, bodyLabel }) => (
                       <div key={from} className="rounded-lg border border-border bg-muted/10 p-2.5">
                         <p className="text-[12px] font-bold text-foreground mb-2 leading-tight">{sectionTitle}</p>
                         {tg ? (
                           <>
                             <p className="text-[12px] text-muted-foreground mb-1.5">{bodyLabel}</p>
                             <div className="flex items-center gap-1.5 mb-1.5">
-                              <span className={`text-[13px] font-bold px-2 py-0.5 rounded-full ${TEN_GOD_COLOR[tg] ?? "bg-muted text-foreground"}`}>{tg}</span>
+                              <span className={`text-[13px] font-bold px-2 py-0.5 rounded-full ${getTenGodTw(tg, tgDayStem ?? "")}`}>{tg}</span>
                               <span className="text-[12px] text-muted-foreground">관계로 느껴집니다</span>
                             </div>
                             <p className="text-[12px] text-muted-foreground leading-relaxed">{desc}</p>

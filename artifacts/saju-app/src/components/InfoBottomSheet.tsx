@@ -7,7 +7,7 @@ import {
   DrawerDescription,
 } from "@/components/ui/drawer";
 import { SHINSAL_COLOR, SHINSAL_DESC } from "@/lib/luckCycles";
-import { TEN_GOD_COLOR, getTenGodDescription } from "@/lib/tenGods";
+import { getTenGodTw, getTenGodDescription } from "@/lib/tenGods";
 import type { TenGod } from "@/lib/tenGods";
 import { RELATION_DETAIL, RELATION_DESC, RELATION_COLORS } from "@/lib/branchRelations";
 import type { RelationType } from "@/lib/branchRelations";
@@ -488,7 +488,7 @@ export const TG_NATAL_MEANING: Record<string, {
 export type InfoSheetType =
   | { kind: "shinsal"; name: string; source?: "auto" | "manual" }
   | { kind: "luck"; luckType: "대운" | "세운" | "월운" | "일운"; ganZhiStr: string; ganZhiHanja: string; tenGod?: string | null; branchTenGod?: string | null; period?: string; dayStem?: string }
-  | { kind: "tengod-group"; group: string }
+  | { kind: "tengod-group"; group: string; dayStem?: string }
   | { kind: "branchRelation"; relationType: RelationType; branches: string[] };
 
 // ── Main InfoBottomSheet Component ────────────────────────────────
@@ -507,7 +507,7 @@ export function InfoBottomSheet({ info, onClose }: InfoBottomSheetProps) {
             <div className="pb-4">
               {info.kind === "shinsal" && <ShinsalSheet name={info.name} source={info.source} />}
               {info.kind === "luck" && <LuckSheet info={info} />}
-              {info.kind === "tengod-group" && <TenGodGroupSheet group={info.group} />}
+              {info.kind === "tengod-group" && <TenGodGroupSheet group={info.group} dayStem={info.dayStem} />}
               {info.kind === "branchRelation" && <BranchRelationSheet relationType={info.relationType} branches={info.branches} />}
             </div>
           </div>
@@ -575,12 +575,12 @@ function LuckSheet({ info }: { info: Extract<InfoSheetType, { kind: "luck" }> })
         <div className="flex items-center gap-2 mb-1 flex-wrap">
           <span className="text-[13px] font-bold bg-muted text-muted-foreground px-2.5 py-1 rounded-full">{info.luckType}</span>
           {info.tenGod && (
-            <span className={`text-[13px] font-bold px-2.5 py-1 rounded-full ${TEN_GOD_COLOR[info.tenGod as TenGod] ?? "bg-muted"}`}>
+            <span className={`text-[13px] font-bold px-2.5 py-1 rounded-full ${getTenGodTw(info.tenGod, info.dayStem ?? "")}`}>
               천간 {info.tenGod}
             </span>
           )}
           {info.branchTenGod && (
-            <span className={`text-[13px] font-bold px-2.5 py-1 rounded-full ${TEN_GOD_COLOR[info.branchTenGod as TenGod] ?? "bg-muted"}`}>
+            <span className={`text-[13px] font-bold px-2.5 py-1 rounded-full ${getTenGodTw(info.branchTenGod, info.dayStem ?? "")}`}>
               지지 {info.branchTenGod}
             </span>
           )}
@@ -624,7 +624,7 @@ function LuckSheet({ info }: { info: Extract<InfoSheetType, { kind: "luck" }> })
 
 // ── Ten-God Group Sheet ───────────────────────────────────────────
 
-function TenGodGroupSheet({ group }: { group: string }) {
+function TenGodGroupSheet({ group, dayStem }: { group: string; dayStem?: string }) {
   const detail = TEN_GOD_GROUPS.find((g) => g.group === group);
   if (!detail) return null;
 
@@ -634,7 +634,7 @@ function TenGodGroupSheet({ group }: { group: string }) {
         <div className="flex items-center gap-2 mb-1">
           <span className={`text-[13px] font-bold px-3 py-1 rounded-full ${detail.color}`}>{group}</span>
           {detail.members.map((m) => (
-            <span key={m} className={`text-[13px] font-bold px-2 py-0.5 rounded-full ${TEN_GOD_COLOR[m]}`}>{m}</span>
+            <span key={m} className={`text-[13px] font-bold px-2 py-0.5 rounded-full ${getTenGodTw(m, dayStem ?? "")}`}>{m}</span>
           ))}
         </div>
         <DrawerTitle className="text-xl">{detail.title}</DrawerTitle>
