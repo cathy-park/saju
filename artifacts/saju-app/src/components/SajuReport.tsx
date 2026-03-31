@@ -564,46 +564,112 @@ function FiveElementSection({ counts, dayStem }: { counts: FiveElementCount; day
 
 // ── Ten-God Distribution Section ──────────────────────────────────
 
+const TG_GROUP_COLORS: Record<string, { bar: string; bg: string; text: string; subBg: string; subText: string }> = {
+  비겁: { bar: "bg-green-500",  bg: "bg-green-100 border-green-200",   text: "text-green-800",  subBg: "bg-green-50 border-green-200",  subText: "text-green-700" },
+  식상: { bar: "bg-red-500",    bg: "bg-red-100 border-red-200",       text: "text-red-800",    subBg: "bg-red-50 border-red-200",      subText: "text-red-700" },
+  재성: { bar: "bg-yellow-500", bg: "bg-yellow-100 border-yellow-200", text: "text-yellow-800", subBg: "bg-yellow-50 border-yellow-200",subText: "text-yellow-700" },
+  관성: { bar: "bg-gray-400",   bg: "bg-gray-100 border-gray-200",     text: "text-gray-700",   subBg: "bg-gray-50 border-gray-200",    subText: "text-gray-600" },
+  인성: { bar: "bg-blue-500",   bg: "bg-blue-100 border-blue-200",     text: "text-blue-800",   subBg: "bg-blue-50 border-blue-200",    subText: "text-blue-700" },
+};
+
+const TG_SUB_PAIRS: Record<string, [string, string]> = {
+  비겁: ["비견", "겁재"],
+  식상: ["식신", "상관"],
+  재성: ["정재", "편재"],
+  관성: ["정관", "편관"],
+  인성: ["정인", "편인"],
+};
+
+// Returns { top_level, detailed } ten god distribution.
+// Group totals come from effectiveFiveElements (updates with ohaeng edits).
+// Sub-ratios (yin/yang split) come from actual character ten god counts.
+function computeTenGodDistribution(
+  dayStem: string,
+  dayEl: FiveElKey | undefined,
+  allChars: string[],
+  effectiveFiveElements: FiveElementCount,
+): {
+  topLevel: Record<string, number>;   // group → % (0-100)
+  detailed: Record<string, number>;   // ten-god → % (0-100)
+} {
+  const groups = ["비겁", "식상", "재성", "관성", "인성"] as const;
+  const fiveElKeys: FiveElKey[] = ["목", "화", "토", "금", "수"];
+
+  // ── Group totals from ohaeng ────────────────────────────────────
+  const groupRaw: Record<string, number> = { 비겁: 0, 식상: 0, 재성: 0, 관성: 0, 인성: 0 };
+  if (dayEl) {
+    for (const el of fiveElKeys) {
+      const g = getTenGodGroup(dayEl, el);
+      groupRaw[g] = (groupRaw[g] ?? 0) + (effectiveFiveElements[el] ?? 0);
+    }
+  } else {
+    // fallback: count from chars
+    for (const ch of allChars) {
+      const tg = getTenGod(dayStem, ch);
+      if (!tg) continue;
+      const g = tg === "비견" || tg === "겁재" ? "비겁"
+              : tg === "식신" || tg === "상관" ? "식상"
+              : tg === "편재" || tg === "정재" ? "재성"
+              : tg === "편관" || tg === "정관" ? "관성"
+              : "인성";
+      groupRaw[g]++;
+    }
+  }
+  const rawTotal = Object.values(groupRaw).reduce((a, b) => a + b, 0) || 1;
+  const topLevel: Record<string, number> = {};
+  for (const g of groups) topLevel[g] = Math.round((groupRaw[g] / rawTotal) * 100);
+
+  // ── Sub-ratio from actual chars ─────────────────────────────────
+  const detailedFromChars: Record<string, number> = {};
+  for (const ch of allChars) {
+    const tg = getTenGod(dayStem, ch);
+    if (tg) detailedFromChars[tg] = (detailedFromChars[tg] ?? 0) + 1;
+  }
+
+  // Apply sub-ratio to group %
+  const detailed: Record<string, number> = {};
+  for (const g of groups) {
+    const [s1, s2] = TG_SUB_PAIRS[g];
+    const c1 = detailedFromChars[s1] ?? 0;
+    const c2 = detailedFromChars[s2] ?? 0;
+    const subTotal = c1 + c2;
+    const gPct = topLevel[g];
+    if (subTotal === 0) {
+      detailed[s1] = Math.round(gPct / 2);
+      detailed[s2] = gPct - Math.round(gPct / 2);
+    } else {
+      const p1 = Math.round((c1 / subTotal) * gPct);
+      detailed[s1] = p1;
+      detailed[s2] = gPct - p1;
+    }
+  }
+
+  return { topLevel, detailed };
+}
+
 function TenGodDistributionSection({
   dayStem,
+  dayEl,
   allChars,
+  effectiveFiveElements,
   onTap,
 }: {
   dayStem: string;
+  dayEl?: FiveElKey;
   allChars: string[];
+  effectiveFiveElements: FiveElementCount;
   onTap: (group: string) => void;
 }) {
-  const groups = ["비겁", "식상", "재성", "관성", "인성"];
-  const groupFor = (tg: string | null): string | null => {
-    if (!tg) return null;
-    if (tg === "비견" || tg === "겁재") return "비겁";
-    if (tg === "식신" || tg === "상관") return "식상";
-    if (tg === "편재" || tg === "정재") return "재성";
-    if (tg === "편관" || tg === "정관") return "관성";
-    if (tg === "편인" || tg === "정인") return "인성";
-    return null;
-  };
-  const counts: Record<string, number> = { 비겁: 0, 식상: 0, 재성: 0, 관성: 0, 인성: 0 };
-  for (const ch of allChars) {
-    if (!ch) continue;
-    const tg = getTenGod(dayStem, ch);
-    const g = groupFor(tg);
-    if (g) counts[g]++;
-  }
-  const total = Object.values(counts).reduce((a, b) => a + b, 0) || 1;
-  const GROUP_COLORS: Record<string, { bar: string; bg: string; text: string }> = {
-    비겁: { bar: "bg-green-500",  bg: "bg-green-100 border-green-200",   text: "text-green-800" },
-    식상: { bar: "bg-red-500",    bg: "bg-red-100 border-red-200",       text: "text-red-800" },
-    재성: { bar: "bg-yellow-500", bg: "bg-yellow-100 border-yellow-200", text: "text-yellow-800" },
-    관성: { bar: "bg-gray-400",   bg: "bg-gray-100 border-gray-200",     text: "text-gray-700" },
-    인성: { bar: "bg-blue-500",   bg: "bg-blue-100 border-blue-200",     text: "text-blue-800" },
-  };
+  const groups = ["비겁", "식상", "재성", "관성", "인성"] as const;
+  const { topLevel, detailed } = computeTenGodDistribution(dayStem, dayEl, allChars, effectiveFiveElements);
+
   return (
     <div className="space-y-2">
+      {/* Summary chips */}
       <div className="flex flex-wrap gap-2 mb-3">
         {groups.map((g) => {
-          const pct = Math.round((counts[g] / total) * 100);
-          const c = GROUP_COLORS[g];
+          const pct = topLevel[g];
+          const c = TG_GROUP_COLORS[g];
           return (
             <button
               key={g}
@@ -611,31 +677,46 @@ function TenGodDistributionSection({
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[13px] font-bold cursor-pointer transition-all active:scale-95 hover:shadow-sm ${c.bg} ${c.text}`}
             >
               <span>{g}</span>
-              <span className="font-normal opacity-75">{counts[g]}개</span>
               <span className="font-normal opacity-60">{pct}%</span>
               <span className="text-[13px] opacity-50 ml-0.5">▸</span>
             </button>
           );
         })}
       </div>
-      <div className="space-y-1.5">
+      {/* Bar rows with sub-categories */}
+      <div className="space-y-3">
         {groups.map((g) => {
-          const pct = Math.round((counts[g] / total) * 100);
-          const c = GROUP_COLORS[g];
+          const pct = topLevel[g];
+          const c = TG_GROUP_COLORS[g];
+          const [s1, s2] = TG_SUB_PAIRS[g];
+          const p1 = detailed[s1] ?? 0;
+          const p2 = detailed[s2] ?? 0;
           return (
-            <button
-              key={g}
-              onClick={() => onTap(g)}
-              className="w-full flex items-center gap-3 text-left hover:bg-muted/30 rounded px-1 py-0.5 transition-colors"
-            >
-              <span className="w-10 text-[13px] font-semibold shrink-0">{g}</span>
-              <div className="flex-1 h-2.5 bg-muted rounded-full overflow-hidden">
-                <div className={`h-full rounded-full ${c.bar}`} style={{ width: `${pct}%` }} />
+            <div key={g}>
+              <button
+                onClick={() => onTap(g)}
+                className="w-full flex items-center gap-3 text-left hover:bg-muted/30 rounded px-1 py-0.5 transition-colors"
+              >
+                <span className="w-10 text-[13px] font-semibold shrink-0">{g}</span>
+                <div className="flex-1 h-2.5 bg-muted rounded-full overflow-hidden">
+                  <div className={`h-full rounded-full ${c.bar}`} style={{ width: `${pct}%` }} />
+                </div>
+                <span className={`text-[13px] font-bold whitespace-nowrap text-right px-2 py-0.5 rounded-full border ${c.bg} ${c.text}`}>
+                  {pct}%
+                </span>
+              </button>
+              {/* Subcategory pills */}
+              <div className="flex gap-1.5 mt-1 ml-11">
+                <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full border text-[11px] ${c.subBg} ${c.subText}`}>
+                  <span className="font-semibold">{s1}</span>
+                  <span className="opacity-70">{p1}%</span>
+                </span>
+                <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full border text-[11px] ${c.subBg} ${c.subText}`}>
+                  <span className="font-semibold">{s2}</span>
+                  <span className="opacity-70">{p2}%</span>
+                </span>
               </div>
-              <span className={`text-[13px] font-bold whitespace-nowrap text-right px-2 py-0.5 rounded-full border ${c.bg} ${c.text}`}>
-                {counts[g]}개 {pct}%
-              </span>
-            </button>
+            </div>
           );
         })}
       </div>
@@ -1963,7 +2044,9 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
                   <p className="text-[13px] text-muted-foreground mb-2.5">각 항목을 탭하면 자세한 설명을 볼 수 있습니다</p>
                   <TenGodDistributionSection
                     dayStem={dayStem}
+                    dayEl={STEM_ELEMENT[dayStem] as FiveElKey | undefined}
                     allChars={allChars}
+                    effectiveFiveElements={effectiveFiveElements}
                     onTap={(group) => setInfoSheet({ kind: "tengod-group", group })}
                   />
                 </div>
