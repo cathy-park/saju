@@ -223,7 +223,7 @@ export function getTenGodChipStyle(tenGod: TenGod | string, dayStem: string): CS
   }
   return {
     backgroundColor: elementColorVar(el, "muted"),
-    color: elementColorVar(el, "strong"),
+    color: elementColorVar(el, "base"),
     borderColor: elementColorVar(el, "base"),
   };
 }

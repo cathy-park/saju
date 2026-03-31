@@ -834,11 +834,10 @@ function FiveElementSection({
         {nodes.map(({ el, x, y, pct, count, tenGodGroup }) => {
           const fillY = y + NODE_R * (1 - 2 * pct);
           const fillH = 2 * NODE_R * pct;
-          const isDay = el === dayEl;
           const isPrimary = el === primaryEl;
           const tier = tiers[el];
           const tone: ElementTone = tier === "primary" ? "strong" : tier === "secondary" ? "base" : "muted";
-          const stroke = isPrimary ? elementColorVar(el, "strong") : isDay ? elementColorVar(el, "base") : "hsl(var(--border))";
+          const stroke = isPrimary ? elementColorVar(el, "strong") : "hsl(var(--border))";
           return (
             <g key={el}>
               <circle
@@ -847,11 +846,20 @@ function FiveElementSection({
                 r={NODE_R}
                 fill="hsl(var(--card))"
                 stroke={stroke}
-                strokeWidth={isPrimary ? 3.5 : isDay ? 2.5 : 1.5}
+                strokeWidth={isPrimary ? 2 : 1.5}
               />
               <rect x={x - NODE_R} y={fillY} width={NODE_R * 2} height={Math.max(0, fillH)}
                 fill={elementColorVar(el, tone)} opacity={tier === "minor" ? 0.22 : 0.32} clipPath={`url(#pclip-${el})`} />
-              <text x={x} y={y - (tenGodGroup ? 9 : 4)} textAnchor="middle" fontSize="15" fontWeight={isPrimary ? "900" : "700"} fill={elementColorVar(el, isPrimary ? "strong" : "base")}>{el}</text>
+              <text
+                x={x}
+                y={y - (tenGodGroup ? 9 : 4)}
+                textAnchor="middle"
+                fontSize="15"
+                fontWeight={isPrimary ? "800" : "600"}
+                fill={isPrimary ? elementColorVar(el, "strong") : "hsl(var(--foreground))"}
+              >
+                {el}
+              </text>
               {tenGodGroup && (
                 <text x={x} y={y + 5} textAnchor="middle" fontSize="10" fontWeight="700" fill="hsl(var(--muted-foreground))">({tenGodGroup})</text>
               )}
@@ -957,19 +965,31 @@ function TenGodDistributionSection({
   allChars,
   effectiveFiveElements,
   onTap,
+  monthBranch,
+  dayBranch,
+  allStems,
+  allBranches,
 }: {
   dayStem: string;
   dayEl?: FiveElKey;
   allChars: string[];
   effectiveFiveElements: FiveElementCount;
   onTap: (group: string, pct: number) => void;
+  monthBranch?: string;
+  dayBranch?: string;
+  allStems?: string[];
+  allBranches?: string[];
 }) {
   const groups = ["비겁", "식상", "재성", "관성", "인성"] as const;
   const { topLevel, detailed } = computeTenGodDistribution(dayStem, dayEl, allChars, effectiveFiveElements);
 
-  const dominantGroup = groups.reduce<string>((max, g) => (topLevel[g] > (topLevel[max] ?? 0) ? g : max), groups[0]);
-  const dominantPct = topLevel[dominantGroup] ?? 0;
-  const primaryEl = computePrimaryElement({ counts: effectiveFiveElements });
+  const primaryEl = computePrimaryElement({
+    counts: effectiveFiveElements,
+    monthBranch,
+    dayBranch,
+    allStems,
+    allBranches,
+  });
   const tiers = computeElementTiers(effectiveFiveElements, primaryEl);
 
   return (
@@ -984,9 +1004,10 @@ function TenGodDistributionSection({
           const [s1, s2] = TG_SUB_PAIRS[g];
           const p1 = detailed[s1] ?? 0;
           const p2 = detailed[s2] ?? 0;
-          const isDominant = g === dominantGroup;
+          /* 대표 오행과 같은 오행을 나타내는 십성 행만 강조 (비율 최대 행과 무관) */
+          const isPrimaryRow = dayEl ? elForGroup === primaryEl : false;
           const rowSurface =
-            isDominant
+            isPrimaryRow
               ? {
                   ...elementChipColors(elForGroup, { bg: "muted", text: "strong", border: "strong" }),
                   borderWidth: 1,
@@ -1005,8 +1026,8 @@ function TenGodDistributionSection({
                 className="w-full flex items-center gap-3 text-left rounded px-1 py-0.5 transition-opacity hover:opacity-90"
               >
                 <span
-                  className={`w-10 text-[13px] font-semibold shrink-0 ${isDominant ? "" : "text-foreground"}`}
-                  style={isDominant ? { color: elementColorVar(elForGroup, "strong") } : undefined}
+                  className={`w-10 text-[13px] font-semibold shrink-0 ${isPrimaryRow ? "" : "text-foreground"}`}
+                  style={isPrimaryRow ? { color: elementColorVar(elForGroup, "strong") } : undefined}
                 >
                   {g}
                 </span>
@@ -1021,7 +1042,11 @@ function TenGodDistributionSection({
                 </div>
                 <span
                   className="text-[13px] font-bold whitespace-nowrap text-right px-2 py-0.5 rounded-full border border-solid"
-                  style={elementChipColors(elForGroup, { bg: "muted", text: "strong", border: "base" })}
+                  style={elementChipColors(elForGroup, {
+                    bg: "muted",
+                    text: isPrimaryRow ? "strong" : "base",
+                    border: "base",
+                  })}
                 >
                   {pct}%
                 </span>
@@ -3235,6 +3260,10 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                     dayEl={STEM_ELEMENT[dayStem] as FiveElKey | undefined}
                     allChars={allChars}
                     effectiveFiveElements={effectiveFiveElements}
+                    monthBranch={pillars.month?.hangul?.[1]}
+                    dayBranch={dayBranch}
+                    allStems={allStems}
+                    allBranches={allBranches}
                     onTap={(group, pct) => setInfoSheet({ kind: "tengod-group", group, dayStem, pct })}
                   />
                 </div>

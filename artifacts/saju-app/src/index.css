@@ -196,27 +196,27 @@
   --chip-sky-bg: #E3F2FC;
   --chip-sky-fg: #1565A8;
 
-  /* ── Five-element (오행) tokens (HSL) ───────────────────────────── */
-  /* Base (default) */
-  --element-wood: 142 45% 40%;
-  --element-fire: 4 72% 50%;
-  --element-earth: 35 72% 44%;
-  --element-metal: 215 10% 45%;
-  --element-water: 205 78% 44%;
+  /* ── Five-element (오행) tokens (HSL) — 참고 UI: 선명한 카테고리색 + 연한 칩 배경 ── */
+  /* Base (막대·라벨·십성 칩 글자/테두리 — emerald / red / gold / slate / sky) */
+  --element-wood: 145 63% 42%;
+  --element-fire: 4 78% 52%;
+  --element-earth: 42 88% 48%;
+  --element-metal: 215 16% 46%;
+  --element-water: 204 82% 48%;
 
-  /* Muted (tinted chips — was 92% L, too close to ivory bg on some displays) */
-  --element-wood-muted: 142 50% 84%;
-  --element-fire-muted: 4 78% 86%;
-  --element-earth-muted: 38 72% 86%;
-  --element-metal-muted: 215 14% 86%;
-  --element-water-muted: 205 72% 86%;
+  /* Muted (칩·행 배경 틴트) */
+  --element-wood-muted: 145 45% 92%;
+  --element-fire-muted: 4 70% 93%;
+  --element-earth-muted: 42 75% 90%;
+  --element-metal-muted: 215 12% 92%;
+  --element-water-muted: 204 55% 92%;
 
-  /* Strong (primary element emphasis) */
-  --element-wood-strong: 142 55% 32%;
-  --element-fire-strong: 4 78% 42%;
-  --element-earth-strong: 35 78% 36%;
-  --element-metal-strong: 215 12% 30%;
-  --element-water-strong: 205 85% 36%;
+  /* Strong (대표 오행 강조 — base보다 약간 진함) */
+  --element-wood-strong: 145 68% 34%;
+  --element-fire-strong: 4 82% 44%;
+  --element-earth-strong: 42 90% 40%;
+  --element-metal-strong: 215 18% 36%;
+  --element-water-strong: 204 88% 40%;
 }
 
 .dark {
