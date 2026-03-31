@@ -81,7 +81,7 @@ function getElement(char: string): keyof FiveElementCount | null {
   return STEM_ELEMENTS[char] || BRANCH_ELEMENTS[char] || null;
 }
 
-function countFiveElements(pillars: ComputedPillars): FiveElementCount {
+export function countFiveElements(pillars: ComputedPillars): FiveElementCount {
   const counts: FiveElementCount = { 목: 0, 화: 0, 토: 0, 금: 0, 수: 0 };
   const pillarsToCount = [pillars.year, pillars.month, pillars.day, pillars.hour].filter(
     Boolean

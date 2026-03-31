@@ -1,4 +1,4 @@
-import type { BirthInput, ComputedPillars, SajuProfile } from "./sajuEngine";
+import type { BirthInput, ComputedPillars, FiveElementCount, SajuProfile } from "./sajuEngine";
 
 export interface ManualShinsalItem {
   position: string;
@@ -54,6 +54,7 @@ export interface PersonRecord {
   manualBranchRelationAdd?: ManualBranchRelation[];
   manualBranchRelationRemove?: string[];
   manualDerived?: ManualDerived;
+  manualFiveElements?: FiveElementCount;
   createdAt: string;
   updatedAt: string;
 }

@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
-import type { FiveElementCount } from "@/lib/sajuEngine";
-import { ELEMENT_BG_COLORS, ELEMENT_COLORS } from "@/lib/sajuEngine";
+import type { ComputedPillars, FiveElementCount } from "@/lib/sajuEngine";
+import { ELEMENT_BG_COLORS, ELEMENT_COLORS, countFiveElements } from "@/lib/sajuEngine";
 import {
   buildInterpretSchema,
   STRENGTH_LEVELS,
@@ -106,28 +106,37 @@ const BRANCH_SIGN: Record<string, string> = {
 function AccSection({
   title,
   defaultOpen = false,
+  titleExtra,
   children,
 }: {
   title: string;
   defaultOpen?: boolean;
+  titleExtra?: React.ReactNode;
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
     <div className="border-t border-border/40 pt-1">
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between py-3 group"
-      >
-        <span className="text-[13px] font-bold text-muted-foreground uppercase tracking-widest group-hover:text-foreground transition-colors">
-          {title}
-        </span>
-        <ChevronDown
-          className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${
-            open ? "rotate-180" : ""
-          }`}
-        />
-      </button>
+      <div className="flex items-center">
+        <button
+          onClick={() => setOpen((v) => !v)}
+          className="flex-1 flex items-center justify-between py-3 group min-w-0"
+        >
+          <span className="text-[13px] font-bold text-muted-foreground uppercase tracking-widest group-hover:text-foreground transition-colors">
+            {title}
+          </span>
+          <ChevronDown
+            className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ml-2 shrink-0 ${
+              open ? "rotate-180" : ""
+            }`}
+          />
+        </button>
+        {titleExtra && (
+          <div className="pl-2 shrink-0" onClick={(e) => e.stopPropagation()}>
+            {titleExtra}
+          </div>
+        )}
+      </div>
       <div className={`space-y-4 pb-2 ${open ? "" : "hidden"}`}>{children}</div>
     </div>
   );
@@ -1221,6 +1230,9 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
   const [localStrengthLevel, setLocalStrengthLevel] = useState<string | null>(record.manualStrengthLevel ?? null);
   const [localYongshinData, setLocalYongshinData] = useState<{ type: string; elements: string[] }[]>(record.manualYongshinData ?? []);
   const [manualDerived, setManualDerived] = useState<ManualDerived>(record.manualDerived ?? {});
+  const [manualFiveElements, setManualFiveElements] = useState<FiveElementCount | undefined>(record.manualFiveElements);
+  const [showFiveElEdit, setShowFiveElEdit] = useState(false);
+  const [draftFiveEl, setDraftFiveEl] = useState<FiveElementCount>({ 목: 0, 화: 0, 토: 0, 금: 0, 수: 0 });
 
   // ── Interpretation subtab state ────────────────────────────────
   const INTERPRET_TABS = [
@@ -1278,11 +1290,34 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
     });
   }
 
+  function openFiveElEditor(current: FiveElementCount) {
+    setDraftFiveEl({ ...current });
+    setShowFiveElEdit(true);
+  }
+
+  function saveFiveElEdit() {
+    setManualFiveElements(draftFiveEl);
+    updatePersonRecord(record.id, { manualFiveElements: draftFiveEl });
+    setShowFiveElEdit(false);
+  }
+
+  function resetFiveElEdit() {
+    setManualFiveElements(undefined);
+    updatePersonRecord(record.id, { manualFiveElements: undefined });
+    setShowFiveElEdit(false);
+  }
+
   // ── Computed values ────────────────────────────────────────────
   const pillars = getFinalPillars(record);
   const profile = record.profile;
   const input = record.birthInput;
   const isManuallyEdited = !!(record.manualPillars && Object.keys(record.manualPillars).length > 0);
+
+  // effectiveFiveElements: manualFiveElements if set, else recompute from final pillars
+  const effectiveFiveElements = useMemo<FiveElementCount>(() => {
+    if (manualFiveElements) return manualFiveElements;
+    return countFiveElements(pillars as ComputedPillars);
+  }, [manualFiveElements, pillars]);
 
   const pillarData = [
     { label: "생시", hangul: pillars.hour?.hangul ?? "", hanja: pillars.hour?.hanja ?? "", isUnknown: !pillars.hour || input.timeUnknown },
@@ -1384,7 +1419,7 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
     ? getMarriageTimingHint(input.gender, dayStem, luckCycles.daewoon)
     : null;
   const relationshipPattern = (dayStem && dayBranch)
-    ? getRelationshipPattern(dayStem, dayBranch, profile.fiveElementDistribution)
+    ? getRelationshipPattern(dayStem, dayBranch, effectiveFiveElements)
     : null;
 
   const [reportTab, setReportTab] = useState<"원국" | "성향" | "운세" | "해석">("원국");
@@ -1394,7 +1429,7 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
 
       {/* ── 상단 요약 (항상 표시) ── */}
       {dayStem && (
-        <CoreInsightChips dayStem={dayStem} fiveElement={profile.fiveElementDistribution} />
+        <CoreInsightChips dayStem={dayStem} fiveElement={effectiveFiveElements} />
       )}
 
       {/* ── 탭 바 ── */}
@@ -1429,8 +1464,19 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
             }}
           />
 
-          <AccSection title="오행 분포 五行分布">
-            <FiveElementSection counts={profile.fiveElementDistribution} dayStem={dayStem} />
+          <AccSection
+            title="오행 분포 五行分布"
+            titleExtra={
+              <button
+                onClick={() => openFiveElEditor(effectiveFiveElements)}
+                className="flex items-center gap-1 text-[11px] font-semibold text-muted-foreground hover:text-primary border border-border/50 rounded-md px-2 py-1 transition-colors"
+              >
+                <Edit3 className="h-3 w-3" />
+                {manualFiveElements ? "수정됨" : "수정"}
+              </button>
+            }
+          >
+            <FiveElementSection counts={effectiveFiveElements} dayStem={dayStem} />
           </AccSection>
 
           {/* 신살 */}
@@ -1821,7 +1867,7 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
           {dayStem && (
             <SajuStructureSummary
               dayStem={dayStem}
-              counts={profile.fiveElementDistribution}
+              counts={effectiveFiveElements}
               monthBranch={pillars.month?.hangul?.[1]}
               dayBranch={dayBranch}
               allStems={allStems}
@@ -1843,16 +1889,27 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
           {dayStem && (
             <div className="rounded-xl border border-border bg-muted/20 px-4 py-3.5">
               <p className="text-[13px] font-bold text-muted-foreground mb-1.5">일간 성향 · {dayStem}일간</p>
-              <p className="text-sm text-foreground leading-relaxed">{getDayMasterSummary(dayStem, profile.fiveElementDistribution)}</p>
+              <p className="text-sm text-foreground leading-relaxed">{getDayMasterSummary(dayStem, effectiveFiveElements)}</p>
             </div>
           )}
 
           {/* 오행 균형 */}
-          <AccSection title="오행 균형 五行均衡">
+          <AccSection
+            title="오행 균형 五行均衡"
+            titleExtra={
+              <button
+                onClick={() => openFiveElEditor(effectiveFiveElements)}
+                className="flex items-center gap-1 text-[11px] font-semibold text-muted-foreground hover:text-primary border border-border/50 rounded-md px-2 py-1 transition-colors"
+              >
+                <Edit3 className="h-3 w-3" />
+                {manualFiveElements ? "수정됨" : "수정"}
+              </button>
+            }
+          >
             <div className="rounded-lg border border-sky-100 bg-sky-50/40 px-3 py-2.5">
-              <p className="text-sm">{getElementBalanceSummary(profile.fiveElementDistribution)}</p>
+              <p className="text-sm">{getElementBalanceSummary(effectiveFiveElements)}</p>
             </div>
-            <FiveElementSection counts={profile.fiveElementDistribution} dayStem={dayStem} />
+            <FiveElementSection counts={effectiveFiveElements} dayStem={dayStem} />
           </AccSection>
 
           {/* 십성 분포 */}
@@ -2066,11 +2123,11 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
               </div>
               <div className="rounded-lg border border-amber-200 bg-amber-50/60 p-3">
                 <p className="text-[13px] font-semibold text-amber-700 mb-1">일간 성향</p>
-                <p className="text-sm">{getDayMasterSummary(dayStem, profile.fiveElementDistribution)}</p>
+                <p className="text-sm">{getDayMasterSummary(dayStem, effectiveFiveElements)}</p>
               </div>
               <div className="rounded-lg border border-sky-100 bg-sky-50/40 p-3">
                 <p className="text-[13px] font-semibold text-sky-700 mb-1">오행 균형</p>
-                <p className="text-sm">{getElementBalanceSummary(profile.fiveElementDistribution)}</p>
+                <p className="text-sm">{getElementBalanceSummary(effectiveFiveElements)}</p>
               </div>
               {branchRelations.length > 0 && (
                 <div className="rounded-lg border border-border bg-muted/20 p-3">
@@ -2263,6 +2320,66 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
           </CardContent>
         </Card>
       )}
+
+      {/* ── 오행 수동 편집 Dialog ── */}
+      <Dialog open={showFiveElEdit} onOpenChange={setShowFiveElEdit}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold">오행 직접 수정</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-1 pt-1">
+            <p className="text-[13px] text-muted-foreground mb-4">
+              자동 계산값이 실제와 다를 때 직접 수정하세요. 각 오행의 개수를 설정합니다.
+            </p>
+            {(["목", "화", "토", "금", "수"] as const).map((el) => {
+              const hex = ELEMENT_HEX[el];
+              return (
+                <div key={el} className="flex items-center gap-3 py-2">
+                  <div
+                    className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[14px] font-bold shrink-0"
+                    style={{ backgroundColor: hex }}
+                  >
+                    {el}
+                  </div>
+                  <div className="flex items-center gap-2 ml-auto">
+                    <button
+                      onClick={() => setDraftFiveEl((p) => ({ ...p, [el]: Math.max(0, (p[el] ?? 0) - 1) }))}
+                      className="w-8 h-8 rounded-full border border-border flex items-center justify-center text-lg font-bold text-muted-foreground hover:bg-muted transition-colors"
+                    >
+                      −
+                    </button>
+                    <span className="w-6 text-center text-[16px] font-bold tabular-nums">
+                      {draftFiveEl[el] ?? 0}
+                    </span>
+                    <button
+                      onClick={() => setDraftFiveEl((p) => ({ ...p, [el]: (p[el] ?? 0) + 1 }))}
+                      className="w-8 h-8 rounded-full border border-border flex items-center justify-center text-lg font-bold text-muted-foreground hover:bg-muted transition-colors"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <div className="flex gap-2 pt-2">
+            {manualFiveElements && (
+              <button
+                onClick={resetFiveElEdit}
+                className="flex-1 py-2.5 text-[13px] font-semibold rounded-xl border border-border text-muted-foreground hover:bg-muted transition-colors"
+              >
+                자동 계산으로 초기화
+              </button>
+            )}
+            <button
+              onClick={saveFiveElEdit}
+              className="flex-1 py-2.5 text-[13px] font-semibold rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+            >
+              저장
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* ── Bottom Sheet ── */}
       <InfoBottomSheet info={infoSheet} onClose={() => setInfoSheet(null)} />
