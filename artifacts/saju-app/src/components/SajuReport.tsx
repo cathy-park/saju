@@ -86,9 +86,7 @@ import {
 } from "@/lib/relationshipReport";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  CheckCircle,
   Clock,
-  Edit3,
   TrendingUp,
   Calendar,
   Star,
@@ -460,13 +458,11 @@ function PillarTable({
       {/* Edit toggle bar */}
       {onSaveDerived && (
         <div className="flex justify-end mb-1.5 gap-1.5">
-          {editMode ? (
+          {editMode && (
             <>
               <button onClick={handleSave} className="text-[12px] font-bold px-3 py-1 rounded-lg bg-primary text-primary-foreground transition-all active:scale-95">저장</button>
               <button onClick={handleCancel} className="text-[12px] font-medium px-3 py-1 rounded-lg border border-border text-muted-foreground transition-all active:scale-95">취소</button>
             </>
-          ) : (
-            <button onClick={() => setEditMode(true)} className="text-[12px] font-medium px-3 py-1 rounded-lg border border-border text-muted-foreground hover:text-foreground transition-all active:scale-95">✏️ 원국 수정</button>
           )}
         </div>
       )}
@@ -3905,51 +3901,15 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
         </DialogContent>
       </Dialog>
 
-      {/* ── 저장 상태 (항상 표시) ── */}
+      {/* ── 자동 계산 초기화 버튼 ── */}
       {showSaveStatus && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">저장 상태</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col gap-2 text-sm">
-              <div className="flex items-center gap-2">
-                <CheckCircle className="h-4 w-4 text-green-600" />
-                <span>자동 계산됨</span>
-                <span className="text-[13px] text-muted-foreground ml-auto">
-                  {new Date(record.createdAt).toLocaleDateString("ko-KR")}
-                </span>
-              </div>
-              {isManuallyEdited && (
-                <div className="flex items-center gap-2">
-                  <Edit3 className="h-4 w-4 text-amber-600" />
-                  <span className="text-amber-700 font-medium">수동 수정됨</span>
-                  <span className="text-[13px] text-muted-foreground ml-auto">
-                    {new Date(record.updatedAt).toLocaleDateString("ko-KR")}
-                  </span>
-                </div>
-              )}
-              <div className="flex items-center gap-2 text-muted-foreground text-[13px] pt-1 border-t border-border">
-                <span>
-                  {input.calendarType === "solar" ? "양력" : "음력"} ·{" "}
-                  {input.year}.{String(input.month).padStart(2, "0")}.{String(input.day).padStart(2, "0")}
-                  {!input.timeUnknown
-                    ? ` · ${String(input.hour ?? 0).padStart(2, "0")}:${String(input.minute ?? 0).padStart(2, "0")}`
-                    : " · 시간 미상"}
-                </span>
-              </div>
-
-              {/* 자동 계산 초기화 버튼 */}
-              <button
-                onClick={() => setShowResetConfirm(true)}
-                className="mt-1 flex items-center justify-center gap-2 w-full py-2.5 rounded-xl border border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors text-[13px] font-semibold active:scale-95"
-              >
-                <RotateCcw className="h-4 w-4" />
-                자동 계산값으로 초기화
-              </button>
-            </div>
-          </CardContent>
-        </Card>
+        <button
+          onClick={() => setShowResetConfirm(true)}
+          className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl border border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors text-[13px] font-semibold active:scale-95"
+        >
+          <RotateCcw className="h-4 w-4" />
+          자동 계산값으로 초기화
+        </button>
       )}
 
       {/* ── 오행 수동 편집 Dialog ── */}

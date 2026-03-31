@@ -100,11 +100,20 @@ export function determineGukguk(
   const hiddenStems = JIJANGGAN[monthBranch];
   if (!hiddenStems || hiddenStems.length === 0) return null;
 
-  // 1. 透出 확인: 지장간 간이 四柱 천간에 존재하는지 (본기→중기→여기 우선순위)
-  const reversed = [...hiddenStems].reverse(); // 본기를 먼저 체크
+  // 格局 투출 체크는 연간·월간·시간만 봐야 함 (일간 제외 — 단 동일 글자가 타 주에 있으면 유지)
+  const nonDayStems = (() => {
+    const arr = [...allStems];
+    const idx = arr.indexOf(dayStem);
+    if (idx !== -1) arr.splice(idx, 1);
+    return arr;
+  })();
+
+  // 1. 透出 확인: 지장간(초기→중기→정기) 중 연간·월간·시간에 있는지 확인
+  //    여러 개 투출 시 정기(본기) 우선 → reversed(본기→중기→초기) 순서로 체크
+  const reversed = [...hiddenStems].reverse();
   let transparentStem: string | null = null;
   for (const hs of reversed) {
-    if (allStems.includes(hs)) {
+    if (nonDayStems.includes(hs)) {
       transparentStem = hs;
       break;
     }
