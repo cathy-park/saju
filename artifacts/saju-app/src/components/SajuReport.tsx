@@ -1212,7 +1212,29 @@ function GukgukSection({
   if (!dayStem || !monthBranch) return null;
   const gukguk = determineGukguk(dayStem, monthBranch, allStems);
   const patterns = detectStructurePatterns(dayStem, allStems, allBranches, monthBranch);
-  if (!gukguk) return null;
+  if (!gukguk && patterns.length === 0) {
+    return (
+      <div className="space-y-3">
+        <div className="rounded-2xl border px-4 py-4 space-y-2 bg-muted/20 border-border/60">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-xl font-black tracking-tight">격국 없음</span>
+              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-neutral-200 text-neutral-700">미인정</span>
+            </div>
+            <div className="text-right">
+              <span className="text-[11px] text-muted-foreground">월지 {monthBranch}</span>
+            </div>
+          </div>
+          <p className="text-[13px] leading-relaxed text-muted-foreground">
+            월지 지장간의 <span className="font-semibold text-foreground">투출</span>이 확인되지 않아 격국을 확정하지 않았습니다.
+          </p>
+          <p className="text-[12px] text-muted-foreground/80">
+            이 경우에도 사주 자체는 정상이며, 구조 패턴이 명확하지 않으면 “구조 분석”이 표시되지 않을 수 있습니다.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   const toneLabel = gukguk.tone === "길" ? "길격" : gukguk.tone === "흉" ? "흉격" : "중성격";
   const toneBadge = gukguk.tone === "길"
@@ -1224,32 +1246,49 @@ function GukgukSection({
   return (
     <div className="space-y-3">
       {/* 格局 카드 */}
-      <div className={`rounded-2xl border px-4 py-4 space-y-3 ${gukguk.colorClass}`}>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-xl font-black tracking-tight">{gukguk.name}</span>
-            <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${toneBadge}`}>{toneLabel}</span>
+      {gukguk ? (
+        <div className={`rounded-2xl border px-4 py-4 space-y-3 ${gukguk.colorClass}`}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-xl font-black tracking-tight">{gukguk.name}</span>
+              <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${toneBadge}`}>{toneLabel}</span>
+            </div>
+            <div className="text-right">
+              <span className="text-[11px] text-current/60">
+                월지 {monthBranch}
+                {gukguk.transparentStem ? ` · ${gukguk.transparentStem} 투출` : ""}
+              </span>
+            </div>
           </div>
-          <div className="text-right">
-            <span className="text-[11px] text-current/60">
-              월지 {monthBranch}
-              {gukguk.transparentStem ? ` · ${gukguk.transparentStem} 투출` : ""}
-            </span>
-          </div>
+          <p className="text-[13px] leading-relaxed opacity-90">{gukguk.description}</p>
+          {gukguk.explanation && gukguk.explanation.length > 0 && (
+            <div className="rounded-xl border border-border/40 bg-muted/20 px-3 py-2.5 space-y-1">
+              <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide">격국 판정 근거</p>
+              <ul className="text-[12px] text-foreground/90 list-disc pl-4 space-y-0.5">
+                {gukguk.explanation.map((line, i) => (
+                  <li key={i}>{line}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {/* strict 투출 격국: 투출이 없으면 determineGukguk가 null을 반환 */}
         </div>
-        <p className="text-[13px] leading-relaxed opacity-90">{gukguk.description}</p>
-        {gukguk.explanation && gukguk.explanation.length > 0 && (
-          <div className="rounded-xl border border-border/40 bg-muted/20 px-3 py-2.5 space-y-1">
-            <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide">격국 판정 근거</p>
-            <ul className="text-[12px] text-foreground/90 list-disc pl-4 space-y-0.5">
-              {gukguk.explanation.map((line, i) => (
-                <li key={i}>{line}</li>
-              ))}
-            </ul>
+      ) : (
+        <div className="rounded-2xl border px-4 py-4 space-y-2 bg-muted/20 border-border/60">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-xl font-black tracking-tight">격국 없음</span>
+              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-neutral-200 text-neutral-700">미인정</span>
+            </div>
+            <div className="text-right">
+              <span className="text-[11px] text-muted-foreground">월지 {monthBranch}</span>
+            </div>
           </div>
-        )}
-        {/* strict 투출 격국: 투출이 없으면 determineGukguk가 null을 반환하므로 본기 fallback 문구는 표시하지 않음 */}
-      </div>
+          <p className="text-[13px] leading-relaxed text-muted-foreground">
+            월지 지장간의 <span className="font-semibold text-foreground">투출</span>이 확인되지 않아 격국을 확정하지 않았습니다.
+          </p>
+        </div>
+      )}
 
       {/* 구조 분석 */}
       {patterns.length > 0 && (
