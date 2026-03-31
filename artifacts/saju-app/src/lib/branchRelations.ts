@@ -196,6 +196,7 @@ export function computeBranchRelations(
   const all = opponentBranches ? [...branches, ...opponentBranches] : branches;
   const results: BranchRelation[] = [];
   const dedup = new Set<string>();
+  const presentSet = new Set(all);
 
   function push(rel: BranchRelation) {
     const key = `${rel.type}|${[rel.branch1, rel.branch2].sort().join(",")}`;
@@ -230,7 +231,13 @@ export function computeBranchRelations(
       // 형 — triple group
       if (a !== b) {
         for (const group of HYEONG_TRIPLES) {
-          if (group.has(a) && group.has(b)) push(makeRel(a, b, "형", "형", `${a}${b} 형`));
+          // 전문 만세력/명리 해석에서:
+          // - 인사신/축술미는 2지지(부분형)도 형 작용이 있다고 보는 견해가 널리 쓰임
+          // - 3지지 완성(삼형)은 작용이 더 강하므로 설명에 표시
+          if (group.has(a) && group.has(b)) {
+            const full = Array.from(group).every((x) => presentSet.has(x));
+            push(makeRel(a, b, "형", "형", `${a}${b} 형${full ? " (삼형 완성)" : " (부분형)"}`));
+          }
         }
       }
       if (matchPair(a, b, [HYEONG_PAIR])) push(makeRel(a, b, "형", "형", `${a}${b} 형`));

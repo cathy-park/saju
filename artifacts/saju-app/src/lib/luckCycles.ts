@@ -485,10 +485,12 @@ const GWASUK_T: Record<string, string> = {
 };
 // 귀문관살 (鬼門關殺): ghostly gate pairs
 const GUIMOON_PAIR: Record<string, string> = {
+  // 만세력/명리에서 널리 쓰이는 귀문관살 조합(6쌍)
+  // 子酉, 丑午, 寅未, 卯申, 辰亥, 巳戌
   자: "유", 유: "자",
   축: "오", 오: "축",
   인: "미", 미: "인",
-  묘: "신", 신: "묘",
+  묘: "신", 신: "묘", // 卯申
   진: "해", 해: "진",
   사: "술", 술: "사",
 };
@@ -757,11 +759,17 @@ export function calculateShinsalFull(
       if (taegeukBranches.includes(branch)) addB("태극귀인", `일간 ${dayStem} 기준 → ${pillar} ${branch}에 태극귀인 발동`);
       // 쌍(Pair) 기반 신살
       if (wonjinPairOf && branch !== dayBranch && branch === wonjinPairOf)
-        addB("원진살",    `일지 ${dayBranch}와 ${pillar} ${branch}의 조합으로 원진살 형성`);
+        addB(
+          "원진살",
+          `일지 ${dayBranch}와 ${pillar} ${branch}의 조합(${dayBranch}${branch})으로 원진살 형성`
+        );
       if (branch !== dayBranch && branch === yukhaePairOf)
         addB("육해살",    `일지 ${dayBranch}와 ${pillar} ${branch}의 조합으로 육해살 형성`);
       if (guimoonPairOf && branch !== dayBranch && branch === guimoonPairOf)
-        addB("귀문관살",  `일지 ${dayBranch}와 ${pillar} ${branch}의 조합으로 귀문관살 형성`);
+        addB(
+          "귀문관살",
+          `일지 ${dayBranch}와 ${pillar} ${branch}의 조합(${dayBranch}${branch})으로 귀문관살 형성`
+        );
       // 고신·과숙·천복귀인·천의성
       if (goshinTarget && branch === goshinTarget)   addB("고신살",   `일지 ${dayBranch} 기준 → ${pillar} ${branch}에 고신살 발동`);
       if (gwasukTarget && branch === gwasukTarget)   addB("과숙살",   `일지 ${dayBranch} 기준 → ${pillar} ${branch}에 과숙살 발동`);
@@ -786,17 +794,30 @@ export function calculateShinsalFull(
         if (allowedByMode) addB("천문성", `${pillar} ${branch}는 술·해 지지로 천문성 발동`);
       }
       // 공망 (空亡)
-      if (pillar !== "일주" && gongmangBranches.includes(branch))
-        addB("공망", `일주 ${dayStem}${dayBranch}의 공망 지지(${gongmangBranches.join("·")}) → ${pillar} ${branch}에 공망`);
+      if (gongmangBranches.includes(branch))
+        addB("공망", `일주 ${dayStem}${dayBranch} 공망(${gongmangBranches.join("·")})이 ${pillar} ${branch}에 해당`);
       // ── 형살 (刑殺) ──────────────────────────────────────────
       if (SAMHYEONG_GROUP_A.has(branch) && hasSamhyeongA)
-        addB("삼형살(인사신)", `인(寅)·사(巳)·신(申) 세 지지가 사주에 모두 있어 삼형살 형성`);
+        addB(
+          "삼형살(인사신)",
+          `사주 지지에 인(寅)·사(巳)·신(申)이 모두 있어 삼형살(인사신) 형성`
+        );
       if (SAMHYEONG_GROUP_B.has(branch) && hasSamhyeongB)
-        addB("삼형살(축술미)", `축(丑)·술(戌)·미(未) 세 지지가 사주에 모두 있어 삼형살 형성`);
+        addB(
+          "삼형살(축술미)",
+          `사주 지지에 축(丑)·술(戌)·미(未)가 모두 있어 삼형살(축술미) 형성`
+        );
       if ((branch === "자" || branch === "묘") && hasSanghyeong)
-        addB("상형살(자묘)", `자(子)·묘(卯) 두 지지가 사주에 함께 있어 상형살 형성`);
+        addB("상형살(자묘)", `사주 지지에 자(子)·묘(卯)가 함께 있어 상형살(자묘) 형성`);
       if (JAJYEONG_BRANCHES.has(branch) && jajyeongActive.has(branch))
-        addB("자형살", `${branch}(${{진:"辰",오:"午",유:"酉",해:"亥"}[branch]}) 지지가 사주에 2번 이상 나타나 자형살 형성`);
+        addB(
+          "자형살",
+          (() => {
+            const hanja = ({ 진: "辰", 오: "午", 유: "酉", 해: "亥" } as Record<string, string>)[branch] ?? branch;
+            const c = branchCountMap[branch] ?? 2;
+            return `사주 지지에 ${branch}(${hanja})가 ${c}번(예: ${hanja}${hanja}) 중복되어 자형살 형성`;
+          })()
+        );
     }
 
     if (stem) {

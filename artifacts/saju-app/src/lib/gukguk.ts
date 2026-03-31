@@ -80,8 +80,14 @@ export interface GukgukResult {
   tone: "길" | "흉" | "중";
   colorClass: string;
   monthBranch: string;
-  transparentStem: string | null;  // 透出 천간 (없으면 본기)
-  isTransparent: boolean;          // 透出 여부
+  transparentStem: string | null;  // 透出 천간 (투출이 없으면 null)
+  isTransparent: boolean;          // 透出 여부 (strict: true일 때만 반환)
+  // Explanation/debug — UI에서 '왜'를 설명할 때 사용
+  tenGod?: TenGod;
+  hiddenStems?: string[];         // 월지 지장간 [여기, 중기, 본기]
+  heavenStemsNonDay?: string[];  // 일간 제외한 천간 (연/월/시)
+  matchedTransparentStems?: string[]; // 투출로 매칭된 지장간들
+  explanation?: string[];        // 사람이 읽는 근거 문장들
 }
 
 /**
@@ -100,28 +106,28 @@ export function determineGukguk(
   const hiddenStems = JIJANGGAN[monthBranch];
   if (!hiddenStems || hiddenStems.length === 0) return null;
 
-  // 格局 투출 체크는 연간·월간·시간만 봐야 함 (일간 제외 — 단 동일 글자가 타 주에 있으면 유지)
-  const nonDayStems = (() => {
-    const arr = [...allStems];
-    const idx = arr.indexOf(dayStem);
-    if (idx !== -1) arr.splice(idx, 1);
-    return arr;
-  })();
+  // 格局 투출 체크는 연간·월간·시간만 봐야 함 (일간 제외)
+  const heavenStemsNonDay = allStems.filter((s) => s !== dayStem);
 
   // 1. 透出 확인: 지장간(초기→중기→정기) 중 연간·월간·시간에 있는지 확인
   //    여러 개 투출 시 정기(본기) 우선 → reversed(본기→중기→초기) 순서로 체크
   const reversed = [...hiddenStems].reverse();
   let transparentStem: string | null = null;
+  const matchedTransparentStems: string[] = [];
   for (const hs of reversed) {
-    if (nonDayStems.includes(hs)) {
+    if (heavenStemsNonDay.includes(hs)) {
+      matchedTransparentStems.push(hs);
       transparentStem = hs;
       break;
     }
   }
 
-  // 2. 透出이 없으면 본기 사용
-  const targetStem = transparentStem ?? hiddenStems[hiddenStems.length - 1];
-  const isTransparent = transparentStem !== null;
+  // strict rule:
+  // 지장간이 '투출'되어 천간에 나타난 글자가 있을 때만 格局으로 인정
+  if (!transparentStem) return null;
+
+  const targetStem = transparentStem;
+  const isTransparent = true;
 
   // 3. 일간과의 십성 관계
   const tg = getTenGod(dayStem, targetStem);
@@ -135,6 +141,14 @@ export function determineGukguk(
   }
 
   const tone = GUKGUK_TONE[gukgukName] ?? "중";
+
+  const explanation: string[] = [
+    `월지(${monthBranch}) 지장간: ${hiddenStems.join("·")}`,
+    `격국 투출 대상 천간(연/월/시): ${heavenStemsNonDay.join("·") || "없음"}`,
+    `투출 매칭(본기 우선): ${matchedTransparentStems.join("·") || "없음"} → 사용: ${targetStem}`,
+    `일간(${dayStem}) 과 투출 천간(${targetStem})의 십성: ${tg} → 격국명: ${gukgukName}`,
+  ];
+
   return {
     name: gukgukName,
     description: GUKGUK_DESC[gukgukName] ?? "",
@@ -143,6 +157,11 @@ export function determineGukguk(
     monthBranch,
     transparentStem,
     isTransparent,
+    tenGod: tg,
+    hiddenStems,
+    heavenStemsNonDay,
+    matchedTransparentStems: matchedTransparentStems,
+    explanation,
   };
 }
 

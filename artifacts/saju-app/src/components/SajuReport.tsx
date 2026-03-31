@@ -1232,18 +1232,22 @@ function GukgukSection({
           <div className="text-right">
             <span className="text-[11px] text-current/60">
               월지 {monthBranch}{BRANCH_HANJA[monthBranch] ? `(${BRANCH_HANJA[monthBranch]})` : ""}
-              {gukguk.transparentStem
-                ? ` · ${gukguk.transparentStem} 투출`
-                : " · 본기 기준"}
+              {gukguk.transparentStem ? ` · ${gukguk.transparentStem} 투출` : ""}
             </span>
           </div>
         </div>
         <p className="text-[13px] leading-relaxed opacity-90">{gukguk.description}</p>
-        {!gukguk.isTransparent && (
-          <p className="text-[11px] opacity-60">
-            ※ 투출 천간이 없어 월지 본기를 格 기준으로 사용합니다.
-          </p>
+        {gukguk.explanation && gukguk.explanation.length > 0 && (
+          <div className="rounded-xl border border-border/40 bg-muted/20 px-3 py-2.5 space-y-1">
+            <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide">격국 판정 근거</p>
+            <ul className="text-[12px] text-foreground/90 list-disc pl-4 space-y-0.5">
+              {gukguk.explanation.map((line, i) => (
+                <li key={i}>{line}</li>
+              ))}
+            </ul>
+          </div>
         )}
+        {/* strict 투출 격국: 투출이 없으면 determineGukguk가 null을 반환하므로 본기 fallback 문구는 표시하지 않음 */}
       </div>
 
       {/* 구조 분석 */}
@@ -2569,7 +2573,7 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
             const displayCounts: ManualTenGodCounts = manualTenGodCounts ?? autoTgCounts;
             return (
               <AccSection
-                title="십성 분포 十星分布"
+                title="십성 분포"
                 defaultOpen
                 titleExtra={
                   manualTenGodCounts ? (
@@ -2678,7 +2682,7 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
           })()}
 
           <AccSection
-            title="오행 분포 五行分布"
+            title="오행 분포"
             titleExtra={
               manualTenGodCounts ? (
                 <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-bold">십성 파생</span>
@@ -2715,13 +2719,18 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
                 ].map(({ pillar, stemLabel, branchLabel, isDay, isUnknown }) => {
                   const ps = shinsalPillars.find((p) => p.pillar === pillar);
                   const positions = PILLAR_TO_POSITIONS[pillar] ?? { stem: stemLabel, branch: branchLabel };
-                  const autoStemRaw = [...(ps?.pillarItems ?? []), ...(ps?.stemItems ?? [])];
-                  const autoBranchRaw = ps?.branchItems ?? [];
+                  const pillarItems = ps?.pillarItems ?? [];
+                  const stemItems = ps?.stemItems ?? [];
+                  const branchItems = ps?.branchItems ?? [];
+                  // 일주 기반 특수 신살(고란살/음양차착살/일귀인)은 '일지' 행에 표시되도록 정렬
+                  // (기존: 일천간 행에 섞여 보이던 케이스로 '누락'처럼 보일 수 있어 조정)
+                  const autoStemRaw = pillar === "일주" ? [...stemItems] : [...pillarItems, ...stemItems];
+                  const autoBranchRaw = pillar === "일주" ? [...branchItems, ...pillarItems] : branchItems;
                   const visibleAutoStem = autoStemRaw.filter((n) => !excludedAutoShinsal.some((e) => e.position === positions.stem && e.name === n));
                   const visibleAutoBranch = autoBranchRaw.filter((n) => !excludedAutoShinsal.some((e) => e.position === positions.branch && e.name === n));
                   const manualStem = manualShinsal.filter((m) => m.position === positions.stem);
                   const manualBranch = manualShinsal.filter((m) => m.position === positions.branch);
-                  const renderPositionRow = (label: string, pos: string, autoItems: string[], rawAutoItems: string[], manualItems: ManualShinsalItem[], isLast: boolean) => {
+                    const renderPositionRow = (label: string, pos: string, autoItems: string[], rawAutoItems: string[], manualItems: ManualShinsalItem[], isLast: boolean) => {
                     const excludedAtPos = rawAutoItems.filter((n) => excludedAutoShinsal.some((e) => e.position === pos && e.name === n));
                     const mergedNames = new Set(autoItems.filter((n) => manualItems.some((m) => m.name === n)));
                     const autoOnly = autoItems.filter((n) => !mergedNames.has(n));
@@ -2735,25 +2744,35 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
                         ) : (
                           <div className="flex flex-wrap gap-1.5 flex-1">
                             {[...mergedNames].map((n) => (
-                              <div key={`merged-${pos}-${n}`} className="flex items-center gap-0.5">
-                                <button onClick={() => setInfoSheet({ kind: "shinsal", name: n, source: "auto" })}
+                            <div key={`merged-${pos}-${n}`} className="flex items-center gap-0.5">
+                                <button
+                                  onClick={() =>
+                                    setInfoSheet({
+                                      kind: "shinsal",
+                                      name: n,
+                                      source: "auto",
+                                      trigger: ps?.triggerInfo?.[n],
+                                    })
+                                  }
                                   className={`text-[13px] font-bold px-2.5 py-1 rounded-full border transition-all active:scale-95 hover:brightness-95 ${SHINSAL_COLOR[n] ?? "bg-muted text-muted-foreground border-border"}`}>
                                   {n}
                                 </button>
-                                <button title="자동 제외" onClick={(e) => { e.stopPropagation(); handleExcludeAutoShinsal(pos, n); }}
-                                  className="text-[13px] text-orange-500 hover:text-orange-700 px-1 py-0.5 rounded border border-orange-200 bg-orange-50 hover:bg-orange-100 transition-colors font-bold shrink-0">제외</button>
-                                <button title="수동 삭제" onClick={(e) => { e.stopPropagation(); handleDeleteManualShinsal(pos, n); }}
-                                  className="text-[13px] text-red-500 hover:text-red-700 px-1 py-0.5 rounded border border-red-200 bg-red-50 hover:bg-red-100 transition-colors font-bold shrink-0">✕</button>
                               </div>
                             ))}
                             {autoOnly.map((n) => (
                               <div key={`auto-${pos}-${n}`} className="flex items-center gap-0.5">
-                                <button onClick={() => setInfoSheet({ kind: "shinsal", name: n, source: "auto" })}
+                                <button
+                                  onClick={() =>
+                                    setInfoSheet({
+                                      kind: "shinsal",
+                                      name: n,
+                                      source: "auto",
+                                      trigger: ps?.triggerInfo?.[n],
+                                    })
+                                  }
                                   className={`text-[13px] font-bold px-2.5 py-1 rounded-full border transition-all active:scale-95 hover:brightness-95 ${SHINSAL_COLOR[n] ?? "bg-muted text-muted-foreground border-border"}`}>
                                   {n}
                                 </button>
-                                <button title="제외" onClick={(e) => { e.stopPropagation(); handleExcludeAutoShinsal(pos, n); }}
-                                  className="text-[13px] text-muted-foreground hover:text-red-600 px-1 py-0.5 rounded border border-border hover:border-red-200 hover:bg-red-50 transition-colors font-bold shrink-0">✕</button>
                               </div>
                             ))}
                             {manualOnly.map((m) => (
@@ -2762,8 +2781,6 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
                                   className={`text-[13px] font-bold px-2.5 py-1 rounded-full border border-dashed transition-all active:scale-95 hover:brightness-95 ${SHINSAL_COLOR[m.name] ?? "bg-muted text-muted-foreground border-border"}`}>
                                   {m.name}
                                 </button>
-                                <button title="삭제" onClick={(e) => { e.stopPropagation(); handleDeleteManualShinsal(pos, m.name); }}
-                                  className="text-[13px] text-red-500 hover:text-red-700 px-1 py-0.5 rounded border border-red-200 bg-red-50 hover:bg-red-100 transition-colors font-bold shrink-0">✕</button>
                               </div>
                             ))}
                             {excludedAtPos.map((n) => (
@@ -3517,7 +3534,7 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
                 <Layers className="h-3.5 w-3.5" />
-                운 흐름 運氣
+                운 흐름
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -3976,7 +3993,7 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
       <Dialog open={showTenGodEdit} onOpenChange={setShowTenGodEdit}>
         <DialogContent className="max-w-sm max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-base font-bold">십성 직접 편집 十星直輯</DialogTitle>
+            <DialogTitle className="text-base font-bold">십성 직접 편집</DialogTitle>
           </DialogHeader>
           <p className="text-[13px] text-muted-foreground">
             각 십성의 비율(%)을 설정하면 오행 분포와 해석이 자동으로 재계산됩니다.
