@@ -839,7 +839,7 @@ function TenGodDistributionSection({
   return (
     <div className="space-y-3">
       {/* Summary chips — horizontal scroll */}
-      <div className="overflow-x-auto -mx-1 px-1 pb-1" style={{ scrollbarWidth: "none", msOverflowStyle: "none" as "none" }}>
+      <div className="overflow-x-auto -mx-1 px-1 py-1" style={{ scrollbarWidth: "none", msOverflowStyle: "none" as "none" }}>
         <div className="flex gap-2 min-w-max">
           {groups.map((g) => {
             const pct = topLevel[g];
