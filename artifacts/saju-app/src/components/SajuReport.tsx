@@ -1614,10 +1614,10 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
   );
 
   const tenGodPairs = [
-    ...(pillars.hour ? [{ label: "시주", pillar: pillars.hour }] : []),
-    { label: "일주 (일간)", pillar: pillars.day, isSelf: true },
-    { label: "월주", pillar: pillars.month },
-    { label: "년주", pillar: pillars.year },
+    ...(effectivePillars.hour ? [{ label: "시주", pillar: effectivePillars.hour }] : []),
+    { label: "일주 (일간)", pillar: effectivePillars.day, isSelf: true },
+    { label: "월주", pillar: effectivePillars.month },
+    { label: "년주", pillar: effectivePillars.year },
   ];
 
   const spousePalace = dayBranch ? getSpousePalaceInfo(dayBranch) : null;

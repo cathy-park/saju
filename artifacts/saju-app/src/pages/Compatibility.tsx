@@ -428,6 +428,15 @@ export default function Compatibility() {
   const [pairPersonA, setPairPersonA] = useState<PersonRecord | null>(urlPairA);
   const [pairPersonB, setPairPersonB] = useState<PersonRecord | null>(urlPairB);
   const [showInfoSheet, setShowInfoSheet] = useState(false);
+  const [hourMode, setHourMode] = useState<"포함" | "제외">("포함");
+
+  // ── 시주 제외 모드 지원: manualPillars.hour = null 로 시주 무력화 ──
+  function withHourRemoved(record: PersonRecord): PersonRecord {
+    return {
+      ...record,
+      manualPillars: { ...(record.manualPillars ?? {}), hour: null },
+    };
+  }
 
   const swapPair = useCallback(() => {
     setPairPersonA((prev) => pairPersonB);
@@ -457,8 +466,12 @@ export default function Compatibility() {
   const p1: PersonRecord | null = mode === "me_other" ? myProfile : pairPersonA;
   const p2: PersonRecord | null = mode === "me_other" ? selectedPerson : pairPersonB;
 
-  const fullReport = (p1 && p2)
-    ? buildFullCompatibilityReport(p1, p2, mode === "me_other" ? (p2 as PersonRecord & { relationshipType?: RelationshipType }).relationshipType : undefined)
+  // ── 시주 모드에 따라 effective 레코드 생성 (궁합 계산에 사용) ──
+  const ep1 = p1 && hourMode === "제외" ? withHourRemoved(p1) : p1;
+  const ep2 = p2 && hourMode === "제외" ? withHourRemoved(p2) : p2;
+
+  const fullReport = (ep1 && ep2)
+    ? buildFullCompatibilityReport(ep1, ep2, mode === "me_other" ? (p2 as PersonRecord & { relationshipType?: RelationshipType }).relationshipType : undefined)
     : null;
   const result: CompatibilityResult | null = fullReport?.scoreResult ?? null;
   // Derive all colors from result.finalType — single source of truth
@@ -593,6 +606,31 @@ export default function Compatibility() {
               </div>
               {(!pairPersonA || !pairPersonB) && (
                 <p className="text-[12px] text-muted-foreground text-center">A와 B를 각각 선택하면 궁합이 계산됩니다</p>
+              )}
+            </div>
+          )}
+
+          {/* ── 시주 포함/제외 모드 (두 사람 선택 후 표시) ── */}
+          {p1 && p2 && (
+            <div className="flex items-center gap-2">
+              <span className="text-[12px] text-muted-foreground shrink-0">시주</span>
+              {(["포함", "제외"] as const).map((m) => (
+                <button
+                  key={m}
+                  onClick={() => setHourMode(m)}
+                  className={`text-[12px] font-semibold px-3 py-1 rounded-full border transition-colors ${
+                    hourMode === m
+                      ? "bg-foreground text-background border-foreground"
+                      : "bg-muted/30 text-muted-foreground border-border"
+                  }`}
+                >
+                  {m}
+                </button>
+              ))}
+              {hourMode === "제외" && (
+                <span className="text-[11px] text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
+                  시주 제외로 계산 중
+                </span>
               )}
             </div>
           )}
