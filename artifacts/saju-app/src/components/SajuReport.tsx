@@ -1357,7 +1357,14 @@ function LuckFlowTabs({
   birthYear: number;
   record: PersonRecord;
 }) {
-  const [tab, setTab] = useState<LuckTabKey>("대운");
+  const [tab, setTab] = useState<LuckTabKey>(() => {
+    const saved = sessionStorage.getItem("openLuckTab") as LuckTabKey | null;
+    if (saved && (["대운", "세운", "월운", "일운"] as string[]).includes(saved)) {
+      sessionStorage.removeItem("openLuckTab");
+      return saved;
+    }
+    return "대운";
+  });
   const TABS: { key: LuckTabKey; label: string }[] = [
     { key: "대운", label: "대운" },
     { key: "세운", label: "세운" },
@@ -1509,7 +1516,6 @@ function LuckFlowTabs({
                 {adjustedDaewoon.slice(0, 8).map((entry, i) => {
                   const stemEl = getStemElement(entry.ganZhi.stem);
                   const branchEl = STEM_ELEMENT[entry.ganZhi.branch] ?? null;
-                  const tg = dayStem ? getTenGod(dayStem, entry.ganZhi.stem) : null;
                   const isCurrent = age >= entry.startAge && age <= entry.endAge;
                   const isSelected = selectedDaewoonIdx === i;
                   return (
@@ -1526,7 +1532,6 @@ function LuckFlowTabs({
                         <span className={`text-xl font-bold ${stemEl ? ELEMENT_COLORS[stemEl] : ""}`}>{entry.ganZhi.stem}</span>
                         <span className={`text-xl font-bold ${branchEl ? ELEMENT_COLORS[branchEl] : ""}`}>{entry.ganZhi.branch}</span>
                       </div>
-                      {tg && <span className={`text-[13px] font-bold px-1 py-0.5 rounded ml-auto ${getTenGodTw(tg, dayStem)}`}>{tg}</span>}
                     </button>
                   );
                 })}
@@ -1757,6 +1762,7 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
   const [reportTab, setReportTab] = useState<"원국" | "성향" | "운세" | "오늘운세">(() => {
     const saved = sessionStorage.getItem("openReportTab");
     if (saved === "오늘운세") { sessionStorage.removeItem("openReportTab"); return "오늘운세"; }
+    if (saved === "운세") { sessionStorage.removeItem("openReportTab"); return "운세"; }
     return "원국";
   });
   const [hourMode, setHourMode] = useState<"포함" | "제외" | "비교">("포함");

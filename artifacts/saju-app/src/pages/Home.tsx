@@ -393,15 +393,22 @@ function Dashboard({ record }: { record: PersonRecord }) {
       ══════════════════════════════════════════ */}
       <div style={{ padding: "14px 16px 0" }}>
         <div
-          onClick={() => setShowLuckSheet(true)}
-          style={{ border: "1px solid #EBEBEB", borderRadius: 16, background: "#FFF", padding: "12px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, cursor: "pointer" }}>
+          style={{ border: "1px solid #EBEBEB", borderRadius: 16, background: "#FFF", padding: "12px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
           {fortune.luckLayers.map((layer) => {
             const stemEl = charToElement(layer.ganZhi[0]);
             const stemColor = stemEl ? ELEMENT_TEXT_HEX[stemEl as FiveElKey] : "#111";
             const branchEl = charToElement(layer.ganZhi[1]);
             const branchColor = branchEl ? ELEMENT_TEXT_HEX[branchEl as FiveElKey] : "#111";
             return (
-              <div key={layer.label} style={{ background: "#FAFAF8", borderRadius: 10, padding: "10px 11px" }}>
+              <div
+                key={layer.label}
+                onClick={() => {
+                  sessionStorage.setItem("openReportTab", "운세");
+                  sessionStorage.setItem("openLuckTab", layer.label);
+                  navigate("/saju");
+                }}
+                style={{ background: "#FAFAF8", borderRadius: 10, padding: "10px 11px", cursor: "pointer" }}
+              >
                 <div style={{ display: "flex", alignItems: "baseline", gap: 5, marginBottom: 6 }}>
                   <span style={{ fontSize: 10, fontWeight: 700, color: "#AAAAAA" }}>{layer.label}</span>
                   <span style={{ fontSize: 14, fontWeight: 800, letterSpacing: "0.04em" }}>
