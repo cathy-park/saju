@@ -939,6 +939,44 @@ function StrengthGraph({ level }: { level: StrengthLevel }) {
   );
 }
 
+function DayMasterStrengthCard({
+  strength,
+}: {
+  strength?: {
+    strengthLevel: string;
+    strengthScore: number;
+    strengthExplanation: string[];
+  } | null;
+}) {
+  if (!strength) return null;
+  const lines = strength.strengthExplanation ?? [];
+  return (
+    <div className="rounded-2xl border px-4 py-4 bg-gradient-to-br from-sky-50/70 to-white border-sky-200 space-y-2.5">
+      <div className="flex items-center justify-between">
+        <p className="text-[13px] font-bold text-sky-700 tracking-wide">일간 강도</p>
+        <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-sky-100 text-sky-700 border border-sky-200">
+          strengthBreakdown
+        </span>
+      </div>
+      <div className="flex items-end gap-2">
+        <p className="text-2xl font-black tracking-tight text-foreground">{strength.strengthLevel}</p>
+        <p className="text-[13px] font-bold text-muted-foreground pb-1">({strength.strengthScore}점)</p>
+      </div>
+      {lines.length > 0 ? (
+        <ul className="text-[12px] text-foreground/80 list-disc pl-4 space-y-0.5">
+          {lines.map((t, i) => (
+            <li key={i}>{t}</li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-[12px] text-muted-foreground">
+          득령·득지·득세 조건이 뚜렷하지 않아 설명이 생성되지 않았습니다.
+        </p>
+      )}
+    </div>
+  );
+}
+
 // ── Structural summary card (interactive inline editing) ──────────
 
 const YONGSHIN_TYPES = ["억부용신", "조후용신", "통관용신", "병약용신"] as const;
@@ -2721,17 +2759,6 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
             );
           })()}
 
-          <AccSection
-            title="오행 분포"
-            titleExtra={
-              manualTenGodCounts ? (
-                <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-bold">십성 파생</span>
-              ) : undefined
-            }
-          >
-            <FiveElementSection counts={effectiveFiveElements} dayStem={dayStem} />
-          </AccSection>
-
           {/* 格局 및 구조 분석 */}
           {dayStem && (
             <AccSection title="격국 및 구조 분석">
@@ -2743,6 +2770,24 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
               />
             </AccSection>
           )}
+
+          {/* 신강/신약 (strengthBreakdown) */}
+          {sajuPipelineResult?.base?.strengthBreakdown && (
+            <AccSection title="일간 강도">
+              <DayMasterStrengthCard strength={sajuPipelineResult.base.strengthBreakdown} />
+            </AccSection>
+          )}
+
+          <AccSection
+            title="오행 분포"
+            titleExtra={
+              manualTenGodCounts ? (
+                <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-bold">십성 파생</span>
+              ) : undefined
+            }
+          >
+            <FiveElementSection counts={effectiveFiveElements} dayStem={dayStem} />
+          </AccSection>
 
           {/* 신살 */}
           {dayStem && dayBranch && (
