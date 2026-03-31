@@ -103,7 +103,7 @@ const JULGGI_NAMES: Record<number, string> = {
  *   TC1  1990-01-23 19:29 KST 여 경(양) → 역행 소한  17.8일 → 6
  *   TC2  1990-01-04 12:00 KST 남 경(양) → 순행 소한   1.5일 → 1
  *   TC3  1990-01-07 23:00 KST 여 경(양) → 역행 소한   2.0일 → 1
- *   TC4  2000-04-11 12:00 KST 남 경(양) → 순행 입하  24.1일 → 9
+ *   TC4  2000-04-11 12:00 KST 남 경(양) → 순행 입하  24.1일 → 8  (24일, 나머지0 → 그대로)
  *   TC5  2004-10-28 12:00 KST 여 갑(양) → 역행 한로  20.2일 → 7
  * ═══════════════════════════════════════════════════════════════
  */
@@ -157,10 +157,17 @@ export function calculateDaewoonSu(birthInput: BirthInput, pillars: ComputedPill
     if (!targetTerm) return 5;
 
     // ── 5. 대운수 계산 ───────────────────────────────────────────────
-    // 공식: 대운수 = ⌈ diffDays / 3 ⌉, 최소 1
-    // (3일 간격 = 1년 대운, 전통 올림 적용)
-    const diffDays = Math.abs(targetTerm.date.getTime() - birthDate.getTime()) / 86400000;
-    const su = Math.max(1, Math.ceil(diffDays / 3));
+    // 전통 명리 규칙 (3일 = 1년):
+    //   정수 일수(wholeDays) 기준으로 나머지를 처리
+    //   나머지 0 → 그대로  (9일÷3 = 3)
+    //   나머지 1 → 버림    (10일÷3 → 3, 약함)
+    //   나머지 2 → 올림    (11일÷3 → 4, 강함)
+    //   공식: floor((wholeDays + 1) / 3)  ← 위 규칙을 한 줄로 구현
+    //   주의: Math.ceil(diffDays/3) 는 나머지1 케이스에서 1년 과산됨 → 사용 안 함
+    const diffDays   = Math.abs(targetTerm.date.getTime() - birthDate.getTime()) / 86400000;
+    const wholeDays  = Math.floor(diffDays);           // 소수점 이하 시/분 제거
+    const remainder  = wholeDays % 3;                  // 0·1·2
+    const su         = Math.max(1, Math.floor((wholeDays + 1) / 3));
 
     // ── 디버그 로그 (브라우저 콘솔 F12에서 확인) ─────────────────────
     const kst = 9 * 3600000;
@@ -170,8 +177,9 @@ export function calculateDaewoonSu(birthInput: BirthInput, pillars: ComputedPill
       `[${isMale ? "남" : "여"}, 년간 ${yearStem}(${isYangYear ? "양" : "음"})]`);
     console.log("대상 절기:", targetTerm.name,
       "→", new Date(targetTerm.date.getTime() + kst).toISOString().slice(0, 16) + " KST");
-    console.log("차이     :", diffDays.toFixed(3) + "일");
-    console.log("대운수   : ⌈" + diffDays.toFixed(3) + "/3⌉ = ⌈" + (diffDays / 3).toFixed(3) + "⌉ = " + su);
+    console.log("차이     :", diffDays.toFixed(3) + "일 (정수: " + wholeDays + "일, 나머지: " + remainder + ")");
+    console.log("대운수   : floor((" + wholeDays + "+1)/3) = floor(" + (wholeDays + 1) + "/3) = " + su,
+      remainder === 0 ? "(나머지0 → 그대로)" : remainder === 1 ? "(나머지1 → 버림)" : "(나머지2 → 올림)");
     console.groupEnd();
 
     return su;
