@@ -2,6 +2,17 @@
 @import "tw-animate-css";
 @plugin "@tailwindcss/typography";
 
+/* elementBgClass / elementTextClass / elementBorderClass build names at runtime — safelist for JIT */
+@source inline("bg-element-{wood,fire,earth,metal,water}");
+@source inline("bg-element-{wood,fire,earth,metal,water}-muted");
+@source inline("bg-element-{wood,fire,earth,metal,water}-strong");
+@source inline("text-element-{wood,fire,earth,metal,water}");
+@source inline("text-element-{wood,fire,earth,metal,water}-muted");
+@source inline("text-element-{wood,fire,earth,metal,water}-strong");
+@source inline("border-element-{wood,fire,earth,metal,water}");
+@source inline("border-element-{wood,fire,earth,metal,water}-muted");
+@source inline("border-element-{wood,fire,earth,metal,water}-strong");
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {

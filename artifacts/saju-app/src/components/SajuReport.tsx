@@ -26,10 +26,14 @@ import { useAuth } from "@/lib/authContext";
 import { computeSajuPipeline } from "@/lib/sajuPipeline";
 import {
   charToElement,
+  CONTROLS,
   elementBgClass,
   elementBorderClass,
   elementColorVar,
   elementTextClass,
+  GENERATES,
+  getController,
+  getGenerator,
   getTenGodGroup,
   type ElementTone,
   type FiveElKey,

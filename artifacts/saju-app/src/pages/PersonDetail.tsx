@@ -1,13 +1,23 @@
 import { useParams, Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { SajuReport } from "@/components/SajuReport";
-import { getPeople, getFinalPillars } from "@/lib/storage";
+import { getPeople, getFinalPillars, type PersonRecord } from "@/lib/storage";
 import { getZodiacFromDayPillar } from "@/lib/zodiacAnimal";
 import { ArrowLeft, Heart } from "lucide-react";
 import { CopyButton } from "@/components/CopyButton";
 import { buildPersonClipboardText } from "@/lib/clipboardExport";
 import { charToElement, elementBgClass, type FiveElKey } from "@/lib/element-color";
-import { RELATIONSHIP_STATUS_LABEL, toRelationshipStatus } from "@/lib/storage";
+import { MaritalBadge, type MaritalBadgeStatus } from "@/components/MaritalField";
+
+function partnerBadgeStatus(person: PersonRecord): MaritalBadgeStatus | undefined {
+  if (person.maritalStatus) return person.maritalStatus;
+  const r = person.relationshipStatus;
+  if (!r) return undefined;
+  if (r === "single") return "솔로";
+  if (r === "dating") return "연애중";
+  if (r === "married") return "기혼";
+  return "기타";
+}
 
 export default function PersonDetail() {
   const { id } = useParams<{ id: string }>();
@@ -32,7 +42,7 @@ export default function PersonDetail() {
   const zodiac = getZodiacFromDayPillar(dayHangul);
   const dayEl = (dayStem ? charToElement(dayStem) : null) as FiveElKey | null;
   const thumbBgClass = dayEl ? elementBgClass(dayEl, "muted") : "bg-muted";
-  const rel = toRelationshipStatus(person.relationshipStatus ?? person.maritalStatus);
+  const badgeStatus = partnerBadgeStatus(person);
 
   return (
     <div className="max-w-lg mx-auto px-4 py-8 space-y-5">
@@ -57,16 +67,14 @@ export default function PersonDetail() {
                 {input.gender === "여" ? "♀" : "♂"}
               </span>
             </div>
-            {rel && (
-              <p className="text-[13px] text-muted-foreground mt-0.5">
-                {RELATIONSHIP_STATUS_LABEL[rel]}
-              </p>
-            )}
             {dayStem && (
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground mt-0.5">
                 일주 <span className="font-semibold text-foreground">{dayStem}{dayBranch}</span>
               </p>
             )}
+            <div className="mt-1">
+              <MaritalBadge status={badgeStatus} />
+            </div>
           </div>
         </div>
 

@@ -1,10 +1,18 @@
 import type { MaritalStatus } from "@/lib/storage";
 
+/** Display-only extension for 관계 `other` → 기타 뱃지 */
+export type MaritalBadgeStatus = MaritalStatus | "기타";
+
 export const MARITAL_OPTIONS: { value: MaritalStatus; icon: string }[] = [
   { value: "솔로",   icon: "🌸" },
   { value: "연애중", icon: "💑" },
   { value: "기혼",   icon: "💍" },
   { value: "모름",   icon: "🔒" },
+];
+
+const BADGE_DISPLAY_OPTIONS: { value: MaritalBadgeStatus; icon: string }[] = [
+  ...MARITAL_OPTIONS,
+  { value: "기타", icon: "🙂" },
 ];
 
 export function MaritalField({
@@ -40,9 +48,9 @@ export function MaritalField({
   );
 }
 
-export function MaritalBadge({ status }: { status: MaritalStatus | undefined }) {
+export function MaritalBadge({ status }: { status: MaritalBadgeStatus | undefined }) {
   if (!status) return null;
-  const opt = MARITAL_OPTIONS.find(o => o.value === status);
+  const opt = BADGE_DISPLAY_OPTIONS.find(o => o.value === status);
   return (
     <span className="inline-block text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-muted/40 text-muted-foreground border border-border">
       {opt?.icon} {status}
