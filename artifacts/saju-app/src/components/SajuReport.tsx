@@ -1451,7 +1451,13 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
   }
 
   function openTenGodEditor(autoCounts: ManualTenGodCounts) {
-    setDraftTenGod(manualTenGodCounts ? { ...manualTenGodCounts } : { ...autoCounts });
+    const source = manualTenGodCounts ? { ...manualTenGodCounts } : { ...autoCounts };
+    const total = Object.values(source).reduce((s, c) => s + c, 0) || 1;
+    const pcts: ManualTenGodCounts = {} as ManualTenGodCounts;
+    for (const [tg, cnt] of Object.entries(source)) {
+      pcts[tg as TenGod] = Math.round((cnt / total) * 100);
+    }
+    setDraftTenGod(pcts);
     setShowTenGodEdit(true);
   }
 
@@ -2835,16 +2841,24 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
             <DialogTitle className="text-base font-bold">십성 직접 편집 十星直輯</DialogTitle>
           </DialogHeader>
           <p className="text-[13px] text-muted-foreground">
-            각 십성의 개수를 설정하면 오행 분포와 해석이 자동으로 재계산됩니다.
+            각 십성의 비율(%)을 설정하면 오행 분포와 해석이 자동으로 재계산됩니다.
           </p>
           <div className="space-y-3 pt-1">
+            {Object.values(draftTenGod).reduce((s, c) => s + c, 0) !== 100 && (
+              <div className="flex items-center justify-between px-3 py-1.5 rounded-lg bg-amber-50 border border-amber-200">
+                <span className="text-[12px] text-amber-700 font-semibold">합계</span>
+                <span className="text-[12px] font-bold text-amber-600">
+                  {Object.values(draftTenGod).reduce((s, c) => s + c, 0)}%
+                </span>
+              </div>
+            )}
             {Object.entries(TEN_GOD_GROUPS).map(([group, members]) => {
-              const groupTotal = members.reduce((s, tg) => s + (draftTenGod[tg] ?? 0), 0);
+              const groupPct = members.reduce((s, tg) => s + (draftTenGod[tg] ?? 0), 0);
               return (
                 <div key={group} className="rounded-xl border border-border overflow-hidden">
                   <div className="flex items-center justify-between px-3 py-2 bg-muted/30 border-b border-border">
                     <span className="text-[13px] font-bold">{group}</span>
-                    <span className="text-[12px] text-muted-foreground">{groupTotal}개</span>
+                    <span className="text-[12px] font-semibold text-muted-foreground">{groupPct}%</span>
                   </div>
                   {members.map((tg, i) => (
                     <div key={tg} className={`flex items-center px-3 py-2 ${i < members.length - 1 ? "border-b border-border/50" : ""}`}>
@@ -2854,7 +2868,7 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
                           onClick={() => setDraftTenGod((p) => ({ ...p, [tg]: Math.max(0, (p[tg] ?? 0) - 1) }))}
                           className="w-7 h-7 rounded-full border border-border flex items-center justify-center text-lg font-bold text-muted-foreground hover:bg-muted transition-colors"
                         >−</button>
-                        <span className="w-5 text-center text-[15px] font-bold tabular-nums">{draftTenGod[tg as TenGod] ?? 0}</span>
+                        <span className="w-8 text-center text-[15px] font-bold tabular-nums">{draftTenGod[tg as TenGod] ?? 0}%</span>
                         <button
                           onClick={() => setDraftTenGod((p) => ({ ...p, [tg]: (p[tg] ?? 0) + 1 }))}
                           className="w-7 h-7 rounded-full border border-border flex items-center justify-center text-lg font-bold text-muted-foreground hover:bg-muted transition-colors"
@@ -2873,7 +2887,7 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
                     .filter(([, c]) => c > 0)
                     .map(([el, cnt]) => (
                       <span key={el} className="text-[12px] font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: (ELEMENT_HEX as Record<string, string>)[el], color: "#fff" }}>
-                        {el} {cnt}
+                        {el} {Math.round(cnt)}%
                       </span>
                     ))}
                 </div>
