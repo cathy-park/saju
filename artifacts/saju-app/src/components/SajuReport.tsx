@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef, useCallback } from "react";
 import type { ComputedPillars, FiveElementCount } from "@/lib/sajuEngine";
-import { ELEMENT_BG_COLORS, ELEMENT_COLORS, countFiveElements } from "@/lib/sajuEngine";
+import { ELEMENT_BG_COLORS, ELEMENT_COLORS, countFiveElements, calculateProfileFromBirth } from "@/lib/sajuEngine";
+import type { DaewoonSuOpts } from "@/lib/luckCycles";
 import {
   countFiveElementsNoHour,
   diffFiveElements,
@@ -1987,7 +1988,11 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
   ].filter((c): c is string => !!c);
 
   const branchRelations = analyzeBranchRelations(effectivePillars as Parameters<typeof analyzeBranchRelations>[0]);
-  const luckCycles = calculateLuckCycles(input, record.profile.computedPillars);
+  const daewoonSuOpts: DaewoonSuOpts = {
+    exactSolarTermBoundaryOn: record.fortuneOptions?.exactSolarTermBoundaryOn ?? true,
+    trueSolarTimeOn: record.fortuneOptions?.trueSolarTimeOn ?? false,
+  };
+  const luckCycles = calculateLuckCycles(input, record.profile.computedPillars, daewoonSuOpts);
 
   const shinsalPillars = (dayStem && dayBranch)
     ? calculateShinsalFull(dayStem, dayBranch, input.month, [
@@ -2754,8 +2759,106 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
                 </div>
               </div>
 
-              <p className="text-[10px] text-muted-foreground/70 pt-1">
-                대운수 수동 수정은 '운세' 탭에서 가능합니다. 지장간 통근 보정·지지충 약화·절기 기반 대운수는 항상 자동 적용됩니다.
+              {/* ── 시간 보정 섹션 구분선 ── */}
+              <div className="pt-2 pb-1">
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">시간 보정 옵션</p>
+                <p className="text-[10px] text-muted-foreground/70 mt-0.5">
+                  시주가 입력된 경우에만 영향을 줍니다. 변경 시 년·월·일·시주와 대운수가 즉시 재계산됩니다.
+                </p>
+              </div>
+
+              {/* 지역시 (Local Mean Time) */}
+              <div className="flex items-center justify-between py-2 border-t border-border/40">
+                <div className="flex-1 min-w-0 pr-3">
+                  <p className="font-semibold text-foreground text-[13px]">지역시 보정 (地域時)</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    출생 경도 기준 지방 평균시 적용 (기준 동경 135° 대비 ±4분/도). 서울(127°) 기준 −32분.
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    const nextOn = !(record.fortuneOptions?.localMeridianOn ?? true);
+                    const newOpts = { ...record.fortuneOptions, localMeridianOn: nextOn };
+                    const newProfile = calculateProfileFromBirth(record.birthInput, {
+                      localMeridianOn: nextOn,
+                      trueSolarTimeOn: record.fortuneOptions?.trueSolarTimeOn ?? false,
+                    });
+                    updatePersonRecord(record.id, { fortuneOptions: newOpts, profile: newProfile });
+                  }}
+                  className={`shrink-0 w-11 h-6 rounded-full border transition-colors relative ${
+                    (record.fortuneOptions?.localMeridianOn ?? true)
+                      ? "bg-indigo-500 border-indigo-500"
+                      : "bg-muted border-border"
+                  }`}
+                  title="지역시 보정 켜기/끄기"
+                >
+                  <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${
+                    (record.fortuneOptions?.localMeridianOn ?? true) ? "left-[22px]" : "left-0.5"
+                  }`} />
+                </button>
+              </div>
+
+              {/* 진태양시 (True Solar Time / 균시차) */}
+              <div className="flex items-center justify-between py-2 border-t border-border/40">
+                <div className="flex-1 min-w-0 pr-3">
+                  <p className="font-semibold text-foreground text-[13px]">진태양시 (均時差 보정)</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    지역시에 균시차(Equation of Time, ±최대 16분)를 추가 적용. 태양의 실제 위치를 반영합니다.
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    const nextOn = !(record.fortuneOptions?.trueSolarTimeOn ?? false);
+                    const newOpts = { ...record.fortuneOptions, trueSolarTimeOn: nextOn };
+                    const newProfile = calculateProfileFromBirth(record.birthInput, {
+                      localMeridianOn: record.fortuneOptions?.localMeridianOn ?? true,
+                      trueSolarTimeOn: nextOn,
+                    });
+                    updatePersonRecord(record.id, { fortuneOptions: newOpts, profile: newProfile });
+                  }}
+                  className={`shrink-0 w-11 h-6 rounded-full border transition-colors relative ${
+                    (record.fortuneOptions?.trueSolarTimeOn ?? false)
+                      ? "bg-indigo-500 border-indigo-500"
+                      : "bg-muted border-border"
+                  }`}
+                  title="진태양시 켜기/끄기"
+                >
+                  <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${
+                    (record.fortuneOptions?.trueSolarTimeOn ?? false) ? "left-[22px]" : "left-0.5"
+                  }`} />
+                </button>
+              </div>
+
+              {/* 절입시각 정확 계산 */}
+              <div className="flex items-center justify-between py-2 border-t border-border/40">
+                <div className="flex-1 min-w-0 pr-3">
+                  <p className="font-semibold text-foreground text-[13px]">절입시각 정확 계산</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    대운수 계산 시 실제 출생 시각(KST→UTC)을 기준점으로 사용. OFF 시 정오 기준 (구버전 호환).
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    const nextOn = !(record.fortuneOptions?.exactSolarTermBoundaryOn ?? true);
+                    updatePersonRecord(record.id, {
+                      fortuneOptions: { ...record.fortuneOptions, exactSolarTermBoundaryOn: nextOn }
+                    });
+                  }}
+                  className={`shrink-0 w-11 h-6 rounded-full border transition-colors relative ${
+                    (record.fortuneOptions?.exactSolarTermBoundaryOn ?? true)
+                      ? "bg-indigo-500 border-indigo-500"
+                      : "bg-muted border-border"
+                  }`}
+                  title="절입시각 정확 계산 켜기/끄기"
+                >
+                  <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${
+                    (record.fortuneOptions?.exactSolarTermBoundaryOn ?? true) ? "left-[22px]" : "left-0.5"
+                  }`} />
+                </button>
+              </div>
+
+              <p className="text-[10px] text-muted-foreground/70 pt-1 border-t border-border/30 mt-1">
+                대운수 수동 수정은 '운세' 탭에서 가능합니다. 지장간 통근 보정·지지충 약화·VSOP87 절기 계산은 항상 자동 적용됩니다.
               </p>
             </div>
           </AccSection>

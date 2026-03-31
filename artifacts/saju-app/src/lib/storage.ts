@@ -68,6 +68,26 @@ export interface FortuneOptions {
    * Disabled by default because it is complex and context-dependent.
    */
   ganhapChemyong?: boolean;
+
+  // ── Time-correction expert options ─────────────────────────────────
+  /**
+   * 진태양시 (True Solar Time): adds Equation of Time (균시차, ±16 min)
+   * on top of local-meridian correction before computing hour pillar & daewoon.
+   * Default: false (most standard manseoryeok apps do not apply EoT).
+   */
+  trueSolarTimeOn?: boolean;
+  /**
+   * 지역시 (Local Mean Time): applies longitude-based meridian correction
+   * (standard meridian 135°E → birth longitude, 4 min/degree).
+   * Default: true — disabling passes applyTimeCorrection:false to the library.
+   */
+  localMeridianOn?: boolean;
+  /**
+   * 절입시각 정확 계산: uses actual birth hour/minute (KST→UTC) for
+   * 대운수 solar-term distance calculation instead of fixed noon.
+   * Default: true — this was previously always hardcoded to noon (bug).
+   */
+  exactSolarTermBoundaryOn?: boolean;
 }
 
 export interface PersonRecord {

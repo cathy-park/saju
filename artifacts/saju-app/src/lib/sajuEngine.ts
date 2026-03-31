@@ -6,6 +6,20 @@ import {
   type SajuOptions,
 } from "@fullstackfamily/manseryeok";
 
+// ── 균시차 (Equation of Time) ──────────────────────────────────────────────
+// Returns the difference in MINUTES between Apparent Solar Time and Mean Solar
+// Time for a given calendar date (Spencer 1971 approximation, accurate ±30 sec).
+// Positive value → sun is ahead of mean time (TST > LMT).
+// Range: approx −16 min (Nov) to +14 min (Feb).
+export function equationOfTimeMins(year: number, month: number, day: number): number {
+  // Day-of-year (1 = Jan 1)
+  const start = Date.UTC(year, 0, 1);
+  const cur   = Date.UTC(year, month - 1, day);
+  const N = Math.round((cur - start) / 86400000) + 1;
+  const B = (2 * Math.PI / 365) * (N - 81);
+  return 9.87 * Math.sin(2 * B) - 7.53 * Math.cos(B) - 1.5 * Math.sin(B);
+}
+
 export interface BirthInput {
   name: string;
   gender: "남" | "여";
@@ -97,7 +111,14 @@ export function countFiveElements(pillars: ComputedPillars): FiveElementCount {
   return counts;
 }
 
-export function calculateProfileFromBirth(input: BirthInput): SajuProfile {
+export interface TimeCorrectOpts {
+  /** Apply longitude-based Local Mean Time correction (default: true) */
+  localMeridianOn?: boolean;
+  /** Apply Equation of Time (균시차) on top of LMT correction (default: false) */
+  trueSolarTimeOn?: boolean;
+}
+
+export function calculateProfileFromBirth(input: BirthInput, timeOpts?: TimeCorrectOpts): SajuProfile {
   let solarYear = input.year;
   let solarMonth = input.month;
   let solarDay = input.day;
@@ -131,31 +152,37 @@ export function calculateProfileFromBirth(input: BirthInput): SajuProfile {
     };
   }
 
+  // ── Time-correction logic ──────────────────────────────────────────
+  // localMeridianOn defaults to true (library already applies it).
+  // trueSolarTimeOn defaults to false (adds EoT on top of LMT).
+  const localMeridianOn = timeOpts?.localMeridianOn ?? true;
+  const trueSolarTimeOn = !input.timeUnknown && (timeOpts?.trueSolarTimeOn ?? false);
+
   const options: SajuOptions = {
     longitude: input.longitude ?? 127,
-    applyTimeCorrection: !input.timeUnknown,
+    // Let library handle LMT correction only when localMeridianOn AND time is known.
+    applyTimeCorrection: !input.timeUnknown && localMeridianOn,
   };
+
+  // Equation of Time (균시차) offset in minutes — applied when trueSolarTimeOn.
+  let eotOffsetMins = 0;
+  if (trueSolarTimeOn) {
+    eotOffsetMins = Math.round(equationOfTimeMins(solarYear, solarMonth, solarDay));
+  }
 
   let rawResult: SajuResult;
 
   if (input.timeUnknown) {
-    rawResult = calculateSaju(
-      solarYear,
-      solarMonth,
-      solarDay,
-      undefined,
-      undefined,
-      options
-    );
+    rawResult = calculateSaju(solarYear, solarMonth, solarDay, undefined, undefined, options);
   } else {
-    rawResult = calculateSaju(
-      solarYear,
-      solarMonth,
-      solarDay,
-      input.hour ?? 0,
-      input.minute ?? 0,
-      options
-    );
+    // Apply EoT correction to hour/minute before calling library.
+    let calcHour   = input.hour   ?? 0;
+    let calcMinute = (input.minute ?? 0) + eotOffsetMins;
+    // Normalise minutes into valid range (handles cross-hour and cross-day)
+    while (calcMinute < 0)   { calcMinute += 60; calcHour -= 1; }
+    while (calcMinute >= 60) { calcMinute -= 60; calcHour += 1; }
+    calcHour = ((calcHour % 24) + 24) % 24;
+    rawResult = calculateSaju(solarYear, solarMonth, solarDay, calcHour, calcMinute, options);
   }
 
   const computedPillars: ComputedPillars = {

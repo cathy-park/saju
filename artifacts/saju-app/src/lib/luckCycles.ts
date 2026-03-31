@@ -1,4 +1,5 @@
 import type { BirthInput, ComputedPillars } from "./sajuEngine";
+import { equationOfTimeMins } from "./sajuEngine";
 
 export const STEMS = ["갑", "을", "병", "정", "무", "기", "경", "신", "임", "계"];
 export const BRANCHES = ["자", "축", "인", "묘", "진", "사", "오", "미", "신", "유", "술", "해"];
@@ -45,15 +46,50 @@ function findSolarTermDate(year: number, targetLon: number): Date {
   return d;
 }
 
+export interface DaewoonSuOpts {
+  /**
+   * Use actual birth hour/minute (KST→UTC) for solar-term distance.
+   * When false, falls back to fixed noon UTC (old, less accurate behaviour).
+   * Default: true.
+   */
+  exactSolarTermBoundaryOn?: boolean;
+  /**
+   * Add Equation of Time offset to birth moment before computing distance.
+   * Requires actual birth time to be meaningful.
+   * Default: false.
+   */
+  trueSolarTimeOn?: boolean;
+}
+
 /**
  * Calculate 대운수 (대운 start age) from solar term distance.
  * Traditional rule: each 3 days between birth and nearest 절기 = 1 year of 대운수.
  * Forward direction (양남음녀): distance to NEXT 절기.
  * Backward direction (양녀음남): distance to PREVIOUS 절기.
  */
-export function calculateDaewoonSu(birthInput: BirthInput, pillars: ComputedPillars): number {
+export function calculateDaewoonSu(birthInput: BirthInput, pillars: ComputedPillars, opts?: DaewoonSuOpts): number {
   try {
-    const birthDate = new Date(Date.UTC(birthInput.year, birthInput.month - 1, birthInput.day, 12));
+    // ── Birth moment in UTC ──────────────────────────────────────────
+    // Old code hardcoded noon UTC regardless of actual birth time (bug).
+    // Fix: convert KST birth time to UTC (KST = UTC+9).
+    const useExact = opts?.exactSolarTermBoundaryOn ?? true;
+    let birthHourKST   = useExact && !birthInput.timeUnknown ? (birthInput.hour   ?? 12) : 12;
+    let birthMinuteKST = useExact && !birthInput.timeUnknown ? (birthInput.minute ?? 0)  : 0;
+
+    // Equation of Time offset (균시차) — only when time is known and option is on
+    if (useExact && !birthInput.timeUnknown && (opts?.trueSolarTimeOn ?? false)) {
+      const eotMins = Math.round(equationOfTimeMins(birthInput.year, birthInput.month, birthInput.day));
+      birthMinuteKST += eotMins;
+    }
+
+    // Normalise minutes → KST hour/min, then convert to UTC (-9h).
+    // Date.UTC handles day/month rollovers automatically when given out-of-range values.
+    while (birthMinuteKST < 0)   { birthMinuteKST += 60; birthHourKST -= 1; }
+    while (birthMinuteKST >= 60) { birthMinuteKST -= 60; birthHourKST += 1; }
+    const birthDate = new Date(Date.UTC(
+      birthInput.year, birthInput.month - 1, birthInput.day,
+      birthHourKST - 9, birthMinuteKST  // KST → UTC
+    ));
     const yearStem = pillars.year?.hangul?.[0];
     if (!yearStem) return 5;
 
@@ -134,7 +170,7 @@ export interface DaewoonEntry {
   ganZhi: GanZhi;
 }
 
-export function calculateDaewoon(birthInput: BirthInput, pillars: ComputedPillars): DaewoonEntry[] {
+export function calculateDaewoon(birthInput: BirthInput, pillars: ComputedPillars, opts?: DaewoonSuOpts): DaewoonEntry[] {
   const monthPillar = pillars.month;
   if (!monthPillar) return [];
   const yearStem = pillars.year?.hangul?.[0];
@@ -145,7 +181,7 @@ export function calculateDaewoon(birthInput: BirthInput, pillars: ComputedPillar
   const startIdx = ganZhiIndex(monthPillar.hangul[0], monthPillar.hangul[1]);
 
   // Calculate proper 대운수 from solar term distance (replaces hardcoded 5)
-  const daewoonSu = calculateDaewoonSu(birthInput, pillars);
+  const daewoonSu = calculateDaewoonSu(birthInput, pillars, opts);
 
   const entries: DaewoonEntry[] = [];
   for (let i = 0; i < 10; i++) {
@@ -194,12 +230,12 @@ export interface LuckCycles {
   ilun: { year: number; month: number; day: number; ganZhi: GanZhi };
 }
 
-export function calculateLuckCycles(birthInput: BirthInput, pillars: ComputedPillars): LuckCycles {
+export function calculateLuckCycles(birthInput: BirthInput, pillars: ComputedPillars, opts?: DaewoonSuOpts): LuckCycles {
   const now = new Date();
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth() + 1;
   const currentDay = now.getDate();
-  const daewoon = calculateDaewoon(birthInput, pillars);
+  const daewoon = calculateDaewoon(birthInput, pillars, opts);
   const seun = Array.from({ length: 15 }, (_, i) => ({
     year: currentYear - 2 + i,
     ganZhi: getYearGanZhi(currentYear - 2 + i),

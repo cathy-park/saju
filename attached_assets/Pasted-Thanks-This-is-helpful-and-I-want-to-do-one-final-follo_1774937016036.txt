@@ -1,0 +1,46 @@
+Thanks. This is helpful, and I want to do one final follow-up pass focused specifically on time-correction accuracy.
+
+Important:
+If these corrections already exist internally but are not truly affecting the final effective calculation pipeline, reconnect them so they affect the final result, not only internal logic or interpretation text.
+
+Current concern:
+Including birth time still tends to make results less accurate than expected.
+That suggests solar-time and seasonal-boundary corrections may still be missing, weak, or not fully connected to the final calculation output.
+
+Please add and verify the following advanced expert options:
+
+1. True solar time option (진태양시 사용)
+Adjust hour pillar calculation based on actual solar position at birthplace.
+
+2. Local time correction option (지역시 사용)
+Apply location-based time correction instead of fixed timezone-only logic.
+
+3. Exact solar-term boundary calculation option (절입시각 정확 계산)
+Use precise solar-term timestamps instead of date-only boundaries.
+
+These corrections must affect the actual final effective calculation result, including:
+
+- hour pillar calculation
+- month pillar boundary
+- five elements calculation
+- ten gods calculation
+- shin-gang / shin-yak logic
+- yongshin determination
+- Daewoon starting age calculation
+- current Daewoon number calculation
+
+Do not stop at just adding settings UI.
+Please verify whether changing these options actually changes the underlying calculation output when appropriate.
+
+After implementing, report clearly:
+
+1. whether these options already existed before
+2. whether they were previously disconnected from the final effective result
+3. which files were changed
+4. whether hour inclusion now improves accuracy
+5. whether Daewoon calculation becomes closer to standard manseoryeok
+6. whether five-element mismatch is reduced
+7. whether the final result now changes appropriately when these expert options are toggled
+
+These options should be placed inside the advanced calculation settings panel.
+Default behavior should remain standard-manseoryeok-friendly.
