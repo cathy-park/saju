@@ -1376,19 +1376,28 @@ function LuckFlowTabs({
   const selectedSeunEntry = luckCycles.seun.find((e) => e.year === selectedSeunYear) ?? null;
 
   // ── 대운수 수동 편집 ──────────────────────────────────────────
-  const storedOverride = record.fortuneOptions?.daewoonStartAgeOverride ?? null;
+  const [daewoonSuOverride, setDaewoonSuOverride] = useState<number | null>(
+    record.fortuneOptions?.daewoonStartAgeOverride ?? null
+  );
   const [editingDaewoonSu, setEditingDaewoonSu] = useState(false);
   const [daewoonSuDraft, setDaewoonSuDraft] = useState<string>("");
-  const displayDaewoonSu = storedOverride != null ? storedOverride : daewoonSu;
+  const displayDaewoonSu = daewoonSuOverride != null ? daewoonSuOverride : daewoonSu;
 
   function saveDaewoonSuOverride() {
     const val = parseInt(daewoonSuDraft, 10);
     if (!isNaN(val) && val >= 0 && val <= 10) {
+      setDaewoonSuOverride(val);
       updatePersonRecord(record.id, { fortuneOptions: { ...record.fortuneOptions, daewoonStartAgeOverride: val } });
-    } else if (daewoonSuDraft === "" || daewoonSuDraft === "자동") {
+    } else {
+      setDaewoonSuOverride(null);
       updatePersonRecord(record.id, { fortuneOptions: { ...record.fortuneOptions, daewoonStartAgeOverride: null } });
     }
     setEditingDaewoonSu(false);
+  }
+
+  function resetDaewoonSuOverride() {
+    setDaewoonSuOverride(null);
+    updatePersonRecord(record.id, { fortuneOptions: { ...record.fortuneOptions, daewoonStartAgeOverride: null } });
   }
 
   return (
@@ -1441,9 +1450,9 @@ function LuckFlowTabs({
                   >
                     수정
                   </button>
-                  {storedOverride != null && (
+                  {daewoonSuOverride != null && (
                     <button
-                      onClick={() => updatePersonRecord(record.id, { fortuneOptions: { ...record.fortuneOptions, daewoonStartAgeOverride: null } })}
+                      onClick={resetDaewoonSuOverride}
                       className="text-[10px] text-muted-foreground border border-border rounded px-1 py-0.5 hover:bg-muted/40"
                       title="자동 계산으로 되돌리기"
                     >
@@ -1457,7 +1466,7 @@ function LuckFlowTabs({
             <div className="flex-1 min-w-0">
               <p className="text-[12px] text-amber-700">
                 만 <span className="font-bold">{displayDaewoonSu}세</span>부터 대운이 시작됩니다
-                {storedOverride != null && <span className="ml-1 text-[10px] text-amber-500">(수동 설정)</span>}
+                {daewoonSuOverride != null && <span className="ml-1 text-[10px] text-amber-500">(수동 설정)</span>}
               </p>
               {currentDaewoon && (
                 <p className="text-[12px] text-amber-600 mt-0.5">
