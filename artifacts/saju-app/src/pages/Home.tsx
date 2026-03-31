@@ -8,7 +8,7 @@ import { Pencil } from "lucide-react";
 import { useAuth } from "@/lib/authContext";
 import { getZodiacFromDayPillar, DEFAULT_ZODIAC } from "@/lib/zodiacAnimal";
 import type { ZodiacInfo } from "@/lib/zodiacAnimal";
-import { ELEMENT_HEX, ELEMENT_TEXT_HEX, charToElement } from "@/lib/element-color";
+import { ELEMENT_HEX, ELEMENT_TEXT_HEX, ELEMENT_LIGHT_HEX, charToElement } from "@/lib/element-color";
 import type { FiveElKey } from "@/lib/element-color";
 import gyeolDefault from "@assets/image_24_1774912053926.png";
 
@@ -360,33 +360,46 @@ function Dashboard({ record }: { record: PersonRecord }) {
         </div>
       )}
 
-      {/* ══════════════════════════════════════════
-          4 MINI STATUS CARDS (horizontal scroll)
-      ══════════════════════════════════════════ */}
-      <div className="domain-scroll" style={{ padding: "14px 16px 0", overflowX: "auto", WebkitOverflowScrolling: "touch" as "touch", scrollbarWidth: "none" as "none", msOverflowStyle: "none" as "none" }}>
-        <div style={{ display: "flex", gap: 6, minWidth: "max-content", paddingBottom: 2 }}>
-          {fortune.domainFortunes.map((d) => {
-            const bs = domainLevelBadge[d.level];
-            return (
-              <button
-                key={d.domain}
-                onClick={() => setDomainSheet(d)}
-                style={{
-                  flexShrink: 0, background: "#FFF", border: "1px solid #EBEBEB",
-                  borderRadius: 12, padding: "8px 10px",
-                  display: "flex", alignItems: "center", gap: 6, cursor: "pointer",
-                }}
-              >
-                <span style={{ fontSize: 11, fontWeight: 700, color: "#111", whiteSpace: "nowrap" }}>{d.icon} {d.domain}</span>
-                <span style={{ fontSize: 10, fontWeight: 700, background: bs.bg, color: bs.color, borderRadius: 20, padding: "2px 7px", whiteSpace: "nowrap" }}>
-                  {bs.icon} {d.label}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-        <style>{`.domain-scroll::-webkit-scrollbar{display:none}`}</style>
-      </div>
+      {/* ── 오늘 일운 해석 (십성) ── */}
+      {(() => {
+        const dayLayer = fortune.luckLayers[3] ?? fortune.luckLayers[fortune.luckLayers.length - 1];
+        if (!dayLayer) return null;
+        const stemFortune   = getTenGodFortune(dayLayer.tenGod);
+        const branchFortune = getTenGodFortune(dayLayer.branchTenGod);
+        const stemEl   = charToElement(dayLayer.ganZhi[0]) as FiveElKey | null;
+        const branchEl = charToElement(dayLayer.ganZhi[1]) as FiveElKey | null;
+        const items = [
+          { label: dayLayer.tenGod,   sub: "천간", el: stemEl,   ...stemFortune },
+          ...(dayLayer.branchTenGod && dayLayer.branchTenGod !== dayLayer.tenGod
+            ? [{ label: dayLayer.branchTenGod, sub: "지지", el: branchEl, ...branchFortune }]
+            : []),
+        ];
+        return (
+          <div style={{ padding: "10px 16px 0" }}>
+            <div style={{ border: "1px solid #EBEBEB", borderRadius: 12, background: "#FFF", overflow: "hidden" }}>
+              <div style={{ padding: "9px 14px 8px", borderBottom: "1px solid #F2F2F2" }}>
+                <span style={{ fontSize: 10, fontWeight: 700, color: "#AAAAAA", letterSpacing: "0.05em" }}>오늘 일운 해석</span>
+              </div>
+              {items.map((item, idx) => {
+                const tc = item.el ? ELEMENT_TEXT_HEX[item.el] : "#6366F1";
+                const bg = item.el ? ELEMENT_LIGHT_HEX[item.el] : "rgba(99,102,241,0.10)";
+                return (
+                  <div key={idx} style={{ padding: "10px 14px", borderBottom: idx < items.length - 1 ? "1px solid #F7F7F7" : "none" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                      <span style={{ fontSize: 11, fontWeight: 800, color: tc, background: bg, borderRadius: 20, padding: "2px 9px" }}>
+                        {item.label}
+                      </span>
+                      <span style={{ fontSize: 10, color: "#BBBBBB", fontWeight: 600 }}>{item.sub}</span>
+                    </div>
+                    <p style={{ fontSize: 12, color: "#555", margin: "0 0 3px", fontWeight: 600, lineHeight: 1.5 }}>{item.summary}</p>
+                    <p style={{ fontSize: 11, color: "#888", margin: 0, lineHeight: 1.55 }}>{item.guidance}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ══════════════════════════════════════════
           FLOW STRUCTURE CARD (대운/세운/월운/일운 2×2)
@@ -432,41 +445,6 @@ function Dashboard({ record }: { record: PersonRecord }) {
           })}
         </div>
 
-        {/* 오늘 일운 해석 strip */}
-        {(() => {
-          const dayLayer = fortune.luckLayers[3] ?? fortune.luckLayers[fortune.luckLayers.length - 1];
-          if (!dayLayer) return null;
-          const stemFortune   = getTenGodFortune(dayLayer.tenGod);
-          const branchFortune = getTenGodFortune(dayLayer.branchTenGod);
-          const items = [
-            { label: dayLayer.tenGod, sub: "천간", ...stemFortune },
-            ...(dayLayer.branchTenGod && dayLayer.branchTenGod !== dayLayer.tenGod
-              ? [{ label: dayLayer.branchTenGod, sub: "지지", ...branchFortune }]
-              : []),
-          ];
-          return (
-            <div style={{ marginTop: 8, border: "1px solid #EBEBEB", borderRadius: 12, background: "#FFF", overflow: "hidden" }}>
-              <div style={{ padding: "9px 14px 8px", borderBottom: "1px solid #F2F2F2" }}>
-                <span style={{ fontSize: 10, fontWeight: 700, color: "#AAAAAA", letterSpacing: "0.05em" }}>오늘 일운 해석</span>
-              </div>
-              {items.map((item, idx) => (
-                <div key={idx} style={{
-                  padding: "10px 14px",
-                  borderBottom: idx < items.length - 1 ? "1px solid #F7F7F7" : "none",
-                }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
-                    <span style={{ fontSize: 11, fontWeight: 800, color: "#6366F1", background: "rgba(99,102,241,0.10)", borderRadius: 20, padding: "2px 9px" }}>
-                      {item.label}
-                    </span>
-                    <span style={{ fontSize: 10, color: "#BBBBBB", fontWeight: 600 }}>{item.sub}</span>
-                  </div>
-                  <p style={{ fontSize: 12, color: "#555", margin: "0 0 3px", fontWeight: 600, lineHeight: 1.5 }}>{item.summary}</p>
-                  <p style={{ fontSize: 11, color: "#888", margin: 0, lineHeight: 1.55 }}>{item.guidance}</p>
-                </div>
-              ))}
-            </div>
-          );
-        })()}
       </div>
 
       {/* ══════════════════════════════════════════
