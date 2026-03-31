@@ -1146,9 +1146,88 @@ function FortuneCalendar({ record }: { record: PersonRecord }) {
   );
 }
 
+// ── Fortune combined interpretation helpers ──────────────────────
+
+const TG_GROUP_MAP: Record<string, string> = {
+  비견: "비겁", 겁재: "비겁", 식신: "식상", 상관: "식상",
+  편재: "재성", 정재: "재성", 편관: "관성", 정관: "관성",
+  편인: "인성", 정인: "인성",
+};
+
+const COMBINED_FORTUNE_TEXTS: Record<string, Record<string, string>> = {
+  비겁: {
+    비겁: "같은 자아 에너지가 겹쳐 독립성과 경쟁심이 강해집니다. 주도적으로 움직이되 지나친 고집은 조심하세요.",
+    식상: "자신감이 창의적 표현으로 발전합니다. 자기 색깔을 드러낼 기회를 잡으세요.",
+    재성: "경쟁 에너지가 재물 기운을 자극합니다. 능동적으로 행동하면 기회가 열립니다.",
+    관성: "자아와 규율이 긴장합니다. 무리한 확장보다 신중한 대처가 필요합니다.",
+    인성: "자아 에너지가 지원으로 채워집니다. 학습과 성장에 좋은 기반이 됩니다.",
+  },
+  식상: {
+    비겁: "표현력이 자신감으로 뒷받침됩니다. 창작·소통 활동이 활발해집니다.",
+    식상: "표현과 창의가 두 배로 펼쳐집니다. 예술·언어·기술 분야에서 두각을 나타낼 수 있습니다.",
+    재성: "표현력이 재물로 연결됩니다. 능력을 수익으로 전환할 기회가 많습니다.",
+    관성: "창의성과 규율의 균형이 중요합니다. 자유로움과 책임감이 동시에 요구됩니다.",
+    인성: "창의 에너지가 학문적으로 정리됩니다. 깊이 있는 발전을 꾀하기 좋습니다.",
+  },
+  재성: {
+    비겁: "재물 에너지가 경쟁과 만납니다. 자금 관리와 경쟁 상황에 주의가 필요합니다.",
+    식상: "재물 흐름이 활발해지고 기회가 늘어납니다. 적극적인 행동이 결실을 맺습니다.",
+    재성: "재물 기운이 두 겹으로 활성화됩니다. 큰 기회이지만 과욕은 금물입니다.",
+    관성: "재물과 사회적 성취가 연결됩니다. 경력을 통한 수입 확대를 기대할 수 있습니다.",
+    인성: "재물 기운이 안정적인 지원을 받습니다. 꾸준한 자산 형성에 유리합니다.",
+  },
+  관성: {
+    비겁: "권위 에너지가 도전을 받습니다. 원칙과 자기중심 사이에서 균형이 필요합니다.",
+    식상: "규율이 표현력과 부딪힙니다. 창의적 돌파구를 찾으세요.",
+    재성: "사회적 성공과 재물이 연결됩니다. 경력·직위를 통한 성과가 기대됩니다.",
+    관성: "규율과 압박이 강해집니다. 인내와 적응력이 이 시기의 핵심입니다.",
+    인성: "관성 에너지가 지지를 받습니다. 공직·학문·전문직에서 인정받기 좋은 흐름입니다.",
+  },
+  인성: {
+    비겁: "지원 에너지가 자아를 강화합니다. 자기계발과 독립에 좋은 구조입니다.",
+    식상: "지식이 표현으로 피어납니다. 강의·저술·교육 활동에 좋은 흐름입니다.",
+    재성: "배움을 재물로 연결하는 전환점이 될 수 있습니다. 능력을 실용적으로 적용하세요.",
+    관성: "지원 에너지와 규율이 결합됩니다. 체계적인 학습이나 자격 취득에 유리합니다.",
+    인성: "지원과 보호 에너지가 풍부해집니다. 안정적이고 내면적인 성장의 시기입니다.",
+  },
+};
+
+
+function getCombinedFortuneText(
+  dayStem: string,
+  layers: Array<{ label: string; ganZhi: { stem: string; hangul: string } } | null | undefined>
+): { layerDesc: string; combinedText: string } {
+  const valid = layers.filter((l): l is { label: string; ganZhi: { stem: string; hangul: string } } => !!l);
+  if (valid.length < 2) return { layerDesc: "", combinedText: "" };
+  const tagged = valid.map((l) => {
+    const tg = getTenGod(dayStem, l.ganZhi.stem) ?? null;
+    const group = tg ? (TG_GROUP_MAP[tg] ?? "비겁") : "비겁";
+    return { ...l, tg, group };
+  });
+  const layerDesc = tagged.map((t) => `${t.label} ${t.ganZhi.hangul}(${t.tg ?? "-"})`).join(" + ");
+  const second = tagged[tagged.length - 2];
+  const last = tagged[tagged.length - 1];
+  const combinedText = COMBINED_FORTUNE_TEXTS[second.group]?.[last.group]
+    ?? `${second.group}과 ${last.group}의 기운이 함께 작용합니다.`;
+  return { layerDesc, combinedText };
+}
+
+function getDaewoonInterpretationText(dayStem: string, ganZhi: { hangul: string; stem: string }): string {
+  const tg = getTenGod(dayStem, ganZhi.stem);
+  const group = tg ? (TG_GROUP_MAP[tg] ?? "비겁") : "비겁";
+  const texts: Record<string, string> = {
+    비겁: `${ganZhi.hangul} 대운은 자아와 독립을 강조하는 시기입니다. 경쟁에서 자신만의 길을 개척하는 에너지가 강합니다.`,
+    식상: `${ganZhi.hangul} 대운은 표현과 창의가 피어나는 시기입니다. 재능이 외부로 발휘되고 소통이 활발해집니다.`,
+    재성: `${ganZhi.hangul} 대운은 재물과 현실적 성취에 집중되는 시기입니다. 실용적인 노력이 결실을 맺습니다.`,
+    관성: `${ganZhi.hangul} 대운은 사회적 책임과 성취의 시기입니다. 원칙과 규율 속에서 지위와 인정을 쌓아갑니다.`,
+    인성: `${ganZhi.hangul} 대운은 학습·보호·지원의 흐름이 강한 시기입니다. 배움과 내면의 성장이 중심이 됩니다.`,
+  };
+  return texts[group] ?? `${ganZhi.hangul} 대운이 흐르고 있습니다.`;
+}
+
 // ── Luck Flow Tabs ─────────────────────────────────────────────────
 
-type LuckTabKey = "대운" | "세운" | "월운" | "일운";
+type LuckTabKey = "대운" | "세운" | "월/일운" | "달력";
 
 function LuckFlowTabs({
   luckCycles,
@@ -1164,14 +1243,18 @@ function LuckFlowTabs({
   record: PersonRecord;
 }) {
   const [tab, setTab] = useState<LuckTabKey>("대운");
+  const [subTab, setSubTab] = useState<"월운" | "일운">("월운");
   const TABS: { key: LuckTabKey; label: string }[] = [
     { key: "대운", label: "대운" },
     { key: "세운", label: "세운" },
-    { key: "월운", label: "월운" },
-    { key: "일운", label: "일운" },
+    { key: "월/일운", label: "월/일운" },
+    { key: "달력", label: "달력" },
   ];
   const now = new Date();
   const age = now.getFullYear() - birthYear;
+  const daewoonSu = luckCycles.daewoon[0]?.startAge ?? 0;
+  const currentDaewoon = luckCycles.daewoon.find((e) => age >= e.startAge && age <= e.endAge) ?? null;
+  const currentSeun = luckCycles.seun.find((e) => e.year === now.getFullYear()) ?? null;
 
   return (
     <div className="space-y-3">
@@ -1181,7 +1264,7 @@ function LuckFlowTabs({
           <button
             key={key}
             onClick={() => setTab(key)}
-            className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all active:scale-95 ${
+            className={`flex-1 py-1.5 text-[13px] font-semibold rounded-lg transition-all active:scale-95 ${
               tab === key
                 ? "bg-background text-foreground shadow-sm border border-border/50"
                 : "text-muted-foreground hover:text-foreground"
@@ -1194,7 +1277,36 @@ function LuckFlowTabs({
 
       {/* 대운 panel */}
       {tab === "대운" && (
-        <div className="space-y-2">
+        <div className="space-y-3">
+          {/* 대운수 */}
+          <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-amber-50/60 border border-amber-100">
+            <div className="text-center shrink-0">
+              <p className="text-[11px] font-semibold text-amber-600 uppercase tracking-wide">대운수</p>
+              <p className="text-2xl font-bold text-amber-700">{daewoonSu}</p>
+            </div>
+            <div className="w-px h-10 bg-amber-200 shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-[12px] text-amber-700">
+                만 <span className="font-bold">{daewoonSu}세</span>부터 대운이 시작됩니다
+              </p>
+              {currentDaewoon && (
+                <p className="text-[12px] text-amber-600 mt-0.5">
+                  현재 대운: <span className="font-bold">{currentDaewoon.ganZhi.hangul}</span> ({currentDaewoon.startAge}~{currentDaewoon.endAge}세)
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Current daewoon interpretation */}
+          {currentDaewoon && dayStem && (
+            <div className="rounded-xl bg-muted/20 border border-border px-3 py-3">
+              <p className="text-[11px] font-bold text-muted-foreground mb-1.5 uppercase tracking-wide">현재 대운 해석</p>
+              <p className="text-[13px] text-foreground leading-relaxed">
+                {getDaewoonInterpretationText(dayStem, currentDaewoon.ganZhi)}
+              </p>
+            </div>
+          )}
+
           {luckCycles.daewoon.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-6">대운 데이터가 없습니다</p>
           ) : (
@@ -1234,7 +1346,7 @@ function LuckFlowTabs({
 
       {/* 세운 panel */}
       {tab === "세운" && (
-        <div className="space-y-2">
+        <div className="space-y-3">
           <p className="text-[13px] text-muted-foreground px-0.5">연간 운세 · 탭하면 해석을 볼 수 있습니다</p>
           <div className="flex gap-2 flex-wrap">
             {luckCycles.seun.map(({ year, ganZhi }) => {
@@ -1262,44 +1374,135 @@ function LuckFlowTabs({
               );
             })}
           </div>
+
+          {/* 대운 × 세운 결합 해석 */}
+          {currentDaewoon && currentSeun && dayStem && (() => {
+            const { layerDesc, combinedText } = getCombinedFortuneText(dayStem, [
+              { label: "대운", ganZhi: currentDaewoon.ganZhi },
+              { label: "세운", ganZhi: currentSeun.ganZhi },
+            ]);
+            return (
+              <div className="rounded-xl border border-indigo-100 bg-indigo-50/40 px-3 py-3 space-y-1.5">
+                <p className="text-[11px] font-bold text-indigo-600 uppercase tracking-wide">대운 × 세운 결합 해석</p>
+                <p className="text-[12px] text-indigo-400 font-mono">{layerDesc}</p>
+                <p className="text-[13px] text-foreground leading-relaxed">{combinedText}</p>
+              </div>
+            );
+          })()}
         </div>
       )}
 
-      {/* 월운 panel */}
-      {tab === "월운" && (
-        <div className="space-y-2">
-          <p className="text-[13px] text-muted-foreground px-0.5">이달 월운과 오늘 일운 · 탭하면 해석을 볼 수 있습니다</p>
-          <div className="grid grid-cols-2 gap-2">
-            {([
-              { luckType: "월운" as const, gz: luckCycles.wolun.ganZhi, sub: `${luckCycles.wolun.year}년 ${luckCycles.wolun.month}월` },
-              { luckType: "일운" as const, gz: luckCycles.ilun.ganZhi, sub: `${luckCycles.ilun.month}월 ${luckCycles.ilun.day}일` },
-            ] as const).map(({ luckType, gz, sub }) => {
-              const se = getStemElement(gz.stem);
-              const be = STEM_ELEMENT[gz.branch] ?? null;
-              const tg = dayStem ? getTenGod(dayStem, gz.stem) : null;
-              const btg = dayStem ? getTenGod(dayStem, gz.branch) : null;
-              return (
-                <button
-                  key={luckType}
-                  onClick={() => onInfoSheet({ kind: "luck", luckType, ganZhiStr: gz.hangul, ganZhiHanja: gz.hanja, tenGod: tg, branchTenGod: btg, period: sub, dayStem })}
-                  className="rounded-lg border border-border bg-muted/20 px-3 py-3 cursor-pointer transition-all active:scale-95 hover:bg-muted/30 text-left w-full"
-                >
-                  <p className="text-[13px] text-muted-foreground mb-1.5">{luckType} · {sub}</p>
-                  <div className="flex gap-0.5 items-baseline">
-                    <span className={`text-xl font-bold ${se ? ELEMENT_COLORS[se] : ""}`}>{gz.stem}</span>
-                    <span className={`text-xl font-bold ${be ? ELEMENT_COLORS[be] : ""}`}>{gz.branch}</span>
-                    <span className="text-[13px] text-muted-foreground font-serif ml-1">{gz.hanja}</span>
-                  </div>
-                  {tg && <span className={`text-[13px] font-bold px-1.5 py-0.5 rounded mt-1.5 inline-block ${TEN_GOD_COLOR[tg]}`}>{tg}</span>}
-                </button>
-              );
-            })}
+      {/* 월/일운 panel */}
+      {tab === "월/일운" && (
+        <div className="space-y-3">
+          {/* Sub-tabs */}
+          <div className="flex gap-1.5">
+            {(["월운", "일운"] as const).map((st) => (
+              <button
+                key={st}
+                onClick={() => setSubTab(st)}
+                className={`flex-1 py-1.5 text-sm font-semibold rounded-xl border transition-all active:scale-95 ${
+                  subTab === st
+                    ? "bg-foreground text-background border-foreground"
+                    : "bg-muted/30 text-muted-foreground border-border"
+                }`}
+              >
+                {st}
+              </button>
+            ))}
           </div>
+
+          {/* 월운 sub */}
+          {subTab === "월운" && (
+            <div className="space-y-3">
+              {(() => {
+                const { ganZhi: gz, year, month } = luckCycles.wolun;
+                const se = getStemElement(gz.stem);
+                const be = STEM_ELEMENT[gz.branch] ?? null;
+                const tg = dayStem ? getTenGod(dayStem, gz.stem) : null;
+                const btg = dayStem ? getTenGod(dayStem, gz.branch) : null;
+                return (
+                  <button
+                    onClick={() => onInfoSheet({ kind: "luck", luckType: "월운", ganZhiStr: gz.hangul, ganZhiHanja: gz.hanja, tenGod: tg, branchTenGod: btg, period: `${year}년 ${month}월`, dayStem })}
+                    className="w-full rounded-xl border border-border bg-muted/20 px-3 py-3 cursor-pointer transition-all active:scale-95 hover:bg-muted/30 text-left"
+                  >
+                    <p className="text-[13px] text-muted-foreground mb-1.5">월운 · {year}년 {month}월</p>
+                    <div className="flex gap-0.5 items-baseline">
+                      <span className={`text-xl font-bold ${se ? ELEMENT_COLORS[se] : ""}`}>{gz.stem}</span>
+                      <span className={`text-xl font-bold ${be ? ELEMENT_COLORS[be] : ""}`}>{gz.branch}</span>
+                      <span className="text-[13px] text-muted-foreground font-serif ml-1">{gz.hanja}</span>
+                    </div>
+                    {tg && <span className={`text-[13px] font-bold px-1.5 py-0.5 rounded mt-1.5 inline-block ${TEN_GOD_COLOR[tg]}`}>{tg}</span>}
+                  </button>
+                );
+              })()}
+
+              {/* 대운 × 세운 × 월운 결합 */}
+              {currentDaewoon && currentSeun && dayStem && (() => {
+                const { layerDesc, combinedText } = getCombinedFortuneText(dayStem, [
+                  { label: "대운", ganZhi: currentDaewoon.ganZhi },
+                  { label: "세운", ganZhi: currentSeun.ganZhi },
+                  { label: "월운", ganZhi: luckCycles.wolun.ganZhi },
+                ]);
+                return (
+                  <div className="rounded-xl border border-teal-100 bg-teal-50/40 px-3 py-3 space-y-1.5">
+                    <p className="text-[11px] font-bold text-teal-600 uppercase tracking-wide">대운 × 세운 × 월운 결합 해석</p>
+                    <p className="text-[12px] text-teal-400 font-mono">{layerDesc}</p>
+                    <p className="text-[13px] text-foreground leading-relaxed">{combinedText}</p>
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+
+          {/* 일운 sub */}
+          {subTab === "일운" && (
+            <div className="space-y-3">
+              {(() => {
+                const { ganZhi: gz, month, day } = luckCycles.ilun;
+                const se = getStemElement(gz.stem);
+                const be = STEM_ELEMENT[gz.branch] ?? null;
+                const tg = dayStem ? getTenGod(dayStem, gz.stem) : null;
+                const btg = dayStem ? getTenGod(dayStem, gz.branch) : null;
+                return (
+                  <button
+                    onClick={() => onInfoSheet({ kind: "luck", luckType: "일운", ganZhiStr: gz.hangul, ganZhiHanja: gz.hanja, tenGod: tg, branchTenGod: btg, period: `${month}월 ${day}일`, dayStem })}
+                    className="w-full rounded-xl border border-border bg-muted/20 px-3 py-3 cursor-pointer transition-all active:scale-95 hover:bg-muted/30 text-left"
+                  >
+                    <p className="text-[13px] text-muted-foreground mb-1.5">일운 · {month}월 {day}일</p>
+                    <div className="flex gap-0.5 items-baseline">
+                      <span className={`text-xl font-bold ${se ? ELEMENT_COLORS[se] : ""}`}>{gz.stem}</span>
+                      <span className={`text-xl font-bold ${be ? ELEMENT_COLORS[be] : ""}`}>{gz.branch}</span>
+                      <span className="text-[13px] text-muted-foreground font-serif ml-1">{gz.hanja}</span>
+                    </div>
+                    {tg && <span className={`text-[13px] font-bold px-1.5 py-0.5 rounded mt-1.5 inline-block ${TEN_GOD_COLOR[tg]}`}>{tg}</span>}
+                  </button>
+                );
+              })()}
+
+              {/* 대운 × 세운 × 월운 × 일운 결합 */}
+              {currentDaewoon && currentSeun && dayStem && (() => {
+                const { layerDesc, combinedText } = getCombinedFortuneText(dayStem, [
+                  { label: "대운", ganZhi: currentDaewoon.ganZhi },
+                  { label: "세운", ganZhi: currentSeun.ganZhi },
+                  { label: "월운", ganZhi: luckCycles.wolun.ganZhi },
+                  { label: "일운", ganZhi: luckCycles.ilun.ganZhi },
+                ]);
+                return (
+                  <div className="rounded-xl border border-rose-100 bg-rose-50/40 px-3 py-3 space-y-1.5">
+                    <p className="text-[11px] font-bold text-rose-600 uppercase tracking-wide">대운 × 세운 × 월운 × 일운 결합 해석</p>
+                    <p className="text-[12px] text-rose-400 font-mono">{layerDesc}</p>
+                    <p className="text-[13px] text-foreground leading-relaxed">{combinedText}</p>
+                  </div>
+                );
+              })()}
+            </div>
+          )}
         </div>
       )}
 
-      {/* 일운 panel */}
-      {tab === "일운" && <FortuneCalendar record={record} />}
+      {/* 달력 panel */}
+      {tab === "달력" && <FortuneCalendar record={record} />}
     </div>
   );
 }
