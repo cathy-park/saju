@@ -314,7 +314,7 @@ function PillarTable({
       )}
 
       <div className="rounded-xl overflow-hidden border border-border">
-        <table className="w-full border-collapse">
+        <table className="w-full border-collapse table-fixed">
           {/* Column headers */}
           <thead>
             <tr className="bg-muted/40 border-b border-border">
@@ -444,7 +444,7 @@ function PillarTable({
                   : editMode ? (
                     <input type="text" value={c.effShinsal} onChange={(e) => setDerived("branchShinsal", i, e.target.value)} className={inputStyle} />
                   ) : (
-                    <span className="text-[10px] text-muted-foreground leading-tight block">{c.effShinsal || "-"}</span>
+                    <span className="text-[10px] text-muted-foreground leading-tight block whitespace-normal break-words">{c.effShinsal || "-"}</span>
                   )}
                 </td>
               ))}
