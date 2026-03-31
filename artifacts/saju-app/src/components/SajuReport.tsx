@@ -183,6 +183,92 @@ const DAY_STEM_KEYWORDS: Record<string, string[]> = {
   계: ["감성", "적응력", "지혜"],
 };
 
+const DAY_STEM_KEYWORD_BASIS: Record<string, Record<string, string>> = {
+  갑: {
+    리더십: "갑목(甲木)은 천간의 첫 번째 자리로, 처음을 여는 양간입니다. 하늘을 향해 곧게 뻗는 큰 나무처럼 앞장서서 이끄는 성질이 강해 리더십이 자연스럽게 발현됩니다.",
+    성장: "갑목의 본질은 끊임없이 위로 뻗어나가는 성장 에너지입니다. 현재에 안주하지 않고 더 높은 곳을 향해 나아가려는 의지가 강하게 작용합니다.",
+    도전: "양목(陽木)의 에너지는 장애물을 뚫고 나아가는 힘입니다. 어떤 어려움에도 굴하지 않고 새로운 길을 개척하려는 도전 정신이 핵심 기질로 나타납니다.",
+  },
+  을: {
+    유연함: "을목(乙木)은 바람에 휘어지면서도 꺾이지 않는 덩굴식물의 기운입니다. 상황에 따라 적절히 굽히며 적응하는 유연한 지혜가 본질입니다.",
+    섬세함: "음목(陰木)의 기운은 작은 것까지 세밀하게 관찰하는 능력을 줍니다. 타인의 마음과 환경의 미묘한 변화를 민감하게 감지하는 섬세한 감수성이 특성입니다.",
+    조화: "을목은 주변과 어울리며 함께 자라는 성질을 지닙니다. 갈등보다 균형과 공존을 추구하며 자연스럽게 화합의 분위기를 만들어냅니다.",
+  },
+  병: {
+    열정: "병화(丙火)는 태양의 기운으로 불꽃처럼 타오르는 양간입니다. 내면에서 뿜어져 나오는 뜨거운 에너지가 열정이라는 키워드로 나타납니다.",
+    표현력: "태양처럼 빛을 발산하는 병화는 자신을 드러내는 힘이 강합니다. 감정과 생각을 솔직하고 풍부하게 표현하는 능력이 자연스럽게 발현됩니다.",
+    활력: "병화는 하루를 밝히는 태양처럼 주변에 생기를 불어넣습니다. 스스로 에너지가 넘치고 주위 사람들도 활기차게 만드는 특성을 지닙니다.",
+  },
+  정: {
+    직관: "정화(丁火)는 촛불처럼 은은하게 타는 음화(陰火)입니다. 강렬한 외표보다 내면에서 빛나는 예리한 통찰과 직관이 강점으로 발현됩니다.",
+    헌신: "촛불은 자신을 태워 주변을 밝힙니다. 정화 일간은 이처럼 아끼는 사람과 목표를 위해 자신을 아낌없이 내어주는 헌신의 기질이 강합니다.",
+    세심함: "정화는 작고 세밀한 빛으로 구석구석을 비춥니다. 타인의 감정과 상황을 세심하게 살피고 배려하는 능력이 뛰어난 특성입니다.",
+  },
+  무: {
+    신뢰: "무토(戊土)는 거대한 산의 기운입니다. 흔들리지 않는 산처럼 일관된 태도를 유지하며 주변에서 믿고 의지할 수 있는 신뢰의 존재로 여겨집니다.",
+    안정: "산은 오랜 시간 한자리를 지킵니다. 무토 일간은 이처럼 요동치지 않는 안정감을 지니며 주변에 심리적 안전감을 제공합니다.",
+    중용: "무토는 오행의 중심에서 균형을 잡는 토(土) 기운 중 가장 강한 형태입니다. 어느 한쪽으로 치우치지 않는 중용의 지혜가 핵심 특성입니다.",
+  },
+  기: {
+    꼼꼼함: "기토(己土)는 비옥한 논밭의 기운으로 음토(陰土)입니다. 세세한 것까지 챙기고 관리하는 능력이 뛰어나 꼼꼼함이 자연스럽게 발현됩니다.",
+    인내: "기토는 씨앗이 뿌리를 내리고 싹을 틔울 수 있는 토양입니다. 결과가 나올 때까지 묵묵히 기다리는 인내력이 강한 특성입니다.",
+    실용: "논밭은 실질적인 결실을 위한 공간입니다. 기토 일간은 현실적이고 실용적인 관점으로 문제를 해결하는 능력이 뛰어납니다.",
+  },
+  경: {
+    결단력: "경금(庚金)은 바위처럼 단단한 양금(陽金)의 기운입니다. 흔들리지 않는 강한 의지와 과감한 결단으로 상황을 돌파하는 능력이 강합니다.",
+    원칙: "단단한 금속처럼 경금은 자신의 기준을 쉽게 구부리지 않습니다. 원칙과 규칙을 중시하며 일관된 기준으로 행동하는 특성이 나타납니다.",
+    강직함: "경금의 기운은 날카롭고 곧은 검과 같습니다. 불의에 굴하지 않고 옳다고 믿는 것을 직접적으로 말하고 행동하는 강직한 성품이 특성입니다.",
+  },
+  신: {
+    완벽주의: "신금(辛金)은 가공된 보석과 귀금속의 기운으로 음금(陰金)입니다. 흠집 없이 완벽한 보석을 추구하듯 높은 기준을 추구하는 완벽주의적 성향이 나타납니다.",
+    예민함: "신금은 아주 미세한 흠도 감지하는 예리함을 지닙니다. 환경과 사람의 미묘한 변화에 민감하게 반응하며 섬세하게 느끼는 예민한 감수성이 특성입니다.",
+    정밀함: "귀금속 가공에는 높은 정밀도가 필요합니다. 신금 일간은 어떤 일이든 디테일을 놓치지 않고 정교하게 처리하는 정밀함이 강점입니다.",
+  },
+  임: {
+    창의: "임수(壬水)는 넓고 깊은 바다의 기운으로 양수(陽水)입니다. 끝없이 넓은 바다처럼 무한한 상상력과 창의적인 아이디어가 넘치는 특성입니다.",
+    유연성: "물은 어떤 그릇에도 담깁니다. 임수 일간은 다양한 상황과 사람에 자연스럽게 적응하는 뛰어난 유연성이 강점으로 발현됩니다.",
+    통찰: "깊은 바다는 수면 아래 많은 것을 품습니다. 임수는 표면 너머의 본질을 꿰뚫어 보는 깊은 통찰력과 지혜를 타고납니다.",
+  },
+  계: {
+    감성: "계수(癸水)는 이슬·빗물처럼 섬세한 음수(陰水)입니다. 풍부한 감수성으로 세상의 아름다움과 타인의 감정을 깊이 느끼는 감성적 기질이 강합니다.",
+    적응력: "계수는 작은 물방울처럼 어디든 스며드는 성질을 지닙니다. 어떤 환경이든 유연하게 적응하며 자신의 자리를 만들어나가는 능력이 뛰어납니다.",
+    지혜: "계수는 조용히 스며드는 물처럼 깊이 생각하고 느끼는 능력을 지닙니다. 직접적인 경험과 내면의 성찰로 세상의 이치를 파악하는 지혜가 특성입니다.",
+  },
+};
+
+const ELEMENT_ENERGY_MEANING: Record<string, { title: string; nature: string; traits: string; inLife: string }> = {
+  목: {
+    title: "목(木) — 봄의 에너지",
+    nature: "목은 씨앗이 땅을 뚫고 솟아나는 봄의 기운입니다. 위로 뻗어나가고 성장하려는 강한 의지가 핵심이며, 생명력과 창조의 에너지를 상징합니다.",
+    traits: "인(仁)·사랑·리더십·시작하는 힘·뻗어나가는 의지. 강하게 뿌리를 내리면서도 위로 자라나는 이중적 에너지를 지닙니다.",
+    inLife: "목 기운이 강한 사주는 성장과 도전을 즐기며 새로운 것을 시작하는 힘이 강합니다. 리더십과 추진력이 뛰어나지만 고집이 생길 수 있으니 유연함을 기르는 것이 좋습니다.",
+  },
+  화: {
+    title: "화(火) — 여름의 에너지",
+    nature: "화는 태양과 불꽃처럼 밝게 타오르는 여름의 기운입니다. 열정·표현·확산의 에너지로 주변을 밝히고 따뜻하게 만드는 힘을 상징합니다.",
+    traits: "예(禮)·열정·표현력·사교성·빛과 따뜻함. 밝게 타오르며 주변에 에너지를 전파하는 기운입니다.",
+    inLife: "화 기운이 강한 사주는 밝고 사교적이며 표현력이 뛰어납니다. 열정적으로 살아가지만 과열되면 조급함이나 감정 기복이 생길 수 있어 여유를 갖는 것이 도움됩니다.",
+  },
+  토: {
+    title: "토(土) — 환절기의 에너지",
+    nature: "토는 모든 계절의 전환점에서 중심을 잡아주는 대지의 기운입니다. 오행의 중심에서 균형을 유지하고 조화를 이루는 신뢰와 안정의 에너지입니다.",
+    traits: "신(信)·신뢰·안정·중용·포용력. 흔들리지 않는 토대처럼 모든 것을 받아들이고 중심을 잡습니다.",
+    inLife: "토 기운이 강한 사주는 신뢰감이 높고 안정적입니다. 흔들리지 않는 강인함이 있지만 변화를 싫어하거나 고집스러울 수 있어 유연성을 갖는 것이 중요합니다.",
+  },
+  금: {
+    title: "금(金) — 가을의 에너지",
+    nature: "금은 단단한 광석과 보석의 기운으로 가을의 결실을 상징합니다. 정제·결단·수확의 에너지이며 불필요한 것을 걸러내는 의(義)의 힘입니다.",
+    traits: "의(義)·결단력·원칙·강직함·정밀함. 날카롭고 단단하게 본질을 꿰뚫는 힘을 지닙니다.",
+    inLife: "금 기운이 강한 사주는 결단력이 강하고 원칙을 중시합니다. 강직함이 장점이지만 지나치면 냉정하거나 고집스러워 보일 수 있어 따뜻함을 더하는 것이 좋습니다.",
+  },
+  수: {
+    title: "수(水) — 겨울의 에너지",
+    nature: "수는 바다와 강처럼 깊고 유연한 겨울의 기운입니다. 지혜·통찰·적응·저장의 에너지이며 모든 것을 품고 흘려보내는 지(智)의 힘을 상징합니다.",
+    traits: "지(智)·지혜·감수성·유연성·통찰. 깊은 곳에서 흐르며 본질을 꿰뚫어 보는 힘입니다.",
+    inLife: "수 기운이 강한 사주는 지혜롭고 감수성이 풍부합니다. 적응력이 뛰어나지만 과도하면 우유부단해지거나 감정에 빠질 수 있어 결단력을 기르는 것이 도움됩니다.",
+  },
+};
+
 const ELEMENT_EXTRA_LABEL: Record<string, string> = {
   목: "목 기운 강",
   화: "화 기운 강",
@@ -191,6 +277,8 @@ const ELEMENT_EXTRA_LABEL: Record<string, string> = {
   수: "수 기운 강",
 };
 
+type KeywordInfo = { title: string; basis: string; isElement?: boolean; elementKey?: string };
+
 function CoreInsightChips({
   dayStem,
   fiveElement,
@@ -198,6 +286,7 @@ function CoreInsightChips({
   dayStem: string;
   fiveElement: FiveElementCount;
 }) {
+  const [activeInfo, setActiveInfo] = useState<KeywordInfo | null>(null);
   const keywords = DAY_STEM_KEYWORDS[dayStem] ?? [];
   const dayEl = STEM_ELEMENT[dayStem];
   const sorted = (Object.entries(fiveElement) as [keyof FiveElementCount, number][])
@@ -206,21 +295,78 @@ function CoreInsightChips({
   const strongestExtra = sorted[0];
 
   return (
-    <div className="flex flex-wrap gap-2 px-1 pb-1">
-      {keywords.map((kw, idx) => (
-        <span
-          key={kw}
-          className={`text-[13px] font-bold px-3 py-1 rounded-full border ${KEYWORD_COLORS[idx % KEYWORD_COLORS.length]}`}
-        >
-          {kw}
-        </span>
-      ))}
-      {strongestExtra && strongestExtra[1] >= 2 && ELEMENT_EXTRA_LABEL[strongestExtra[0]] && (
-        <span className={`text-[13px] font-bold px-3 py-1 rounded-full border ${ELEMENT_TW[strongestExtra[0] as FiveElKey] ?? "bg-muted text-foreground border-border"}`}>
-          {ELEMENT_EXTRA_LABEL[strongestExtra[0]]}
-        </span>
-      )}
-    </div>
+    <>
+      <div className="flex flex-wrap gap-2 px-1 pb-1">
+        {keywords.map((kw, idx) => {
+          const basis = DAY_STEM_KEYWORD_BASIS[dayStem]?.[kw] ?? "";
+          return (
+            <button
+              key={kw}
+              onClick={() => setActiveInfo({ title: kw, basis })}
+              className={`text-[13px] font-bold px-3 py-1 rounded-full border transition-all active:scale-95 hover:shadow-sm ${KEYWORD_COLORS[idx % KEYWORD_COLORS.length]}`}
+            >
+              {kw}
+            </button>
+          );
+        })}
+        {strongestExtra && strongestExtra[1] >= 2 && ELEMENT_EXTRA_LABEL[strongestExtra[0]] && (() => {
+          const elKey = strongestExtra[0] as string;
+          const elMeaning = ELEMENT_ENERGY_MEANING[elKey];
+          return (
+            <button
+              onClick={() => elMeaning && setActiveInfo({
+                title: ELEMENT_EXTRA_LABEL[elKey],
+                basis: elMeaning.nature,
+                isElement: true,
+                elementKey: elKey,
+              })}
+              className={`text-[13px] font-bold px-3 py-1 rounded-full border transition-all active:scale-95 hover:shadow-sm ${ELEMENT_TW[elKey as FiveElKey] ?? "bg-muted text-foreground border-border"}`}
+            >
+              {ELEMENT_EXTRA_LABEL[elKey]}
+            </button>
+          );
+        })()}
+      </div>
+
+      <Dialog open={!!activeInfo} onOpenChange={(open) => !open && setActiveInfo(null)}>
+        <DialogContent className="max-w-sm rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold">{activeInfo?.title}</DialogTitle>
+          </DialogHeader>
+          {activeInfo && (
+            <div className="space-y-3 text-sm">
+              {activeInfo.isElement && activeInfo.elementKey ? (() => {
+                const em = ELEMENT_ENERGY_MEANING[activeInfo.elementKey];
+                if (!em) return null;
+                return (
+                  <>
+                    <div className="rounded-lg bg-muted/30 border border-border/50 px-3 py-2.5">
+                      <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide mb-1">기운의 본질</p>
+                      <p className="leading-relaxed">{em.nature}</p>
+                    </div>
+                    <div className="rounded-lg bg-amber-50 border border-amber-100 px-3 py-2.5">
+                      <p className="text-[11px] font-bold text-amber-700 uppercase tracking-wide mb-1">핵심 특성</p>
+                      <p className="leading-relaxed">{em.traits}</p>
+                    </div>
+                    <div className="rounded-lg bg-sky-50 border border-sky-100 px-3 py-2.5">
+                      <p className="text-[11px] font-bold text-sky-700 uppercase tracking-wide mb-1">삶에서의 발현</p>
+                      <p className="leading-relaxed">{em.inLife}</p>
+                    </div>
+                  </>
+                );
+              })() : (
+                <>
+                  <div className="rounded-lg bg-muted/30 border border-border/50 px-3 py-2.5">
+                    <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide mb-1">이 키워드가 뜬 이유</p>
+                    <p className="leading-relaxed">{activeInfo.basis}</p>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
@@ -692,37 +838,26 @@ function TenGodDistributionSection({
 
   return (
     <div className="space-y-3">
-      {/* 대표 십성 카드 */}
-      <button
-        onClick={() => onTap(dominantGroup, dominantPct)}
-        className={`w-full flex items-center gap-3 rounded-xl border px-4 py-3 text-left transition-all active:scale-[0.98] hover:shadow-sm ${dominantColor.bg} ${dominantColor.text}`}
-      >
-        <div className="flex-1">
-          <p className="text-[11px] font-bold uppercase tracking-wide opacity-60 mb-0.5">나를 대표하는 기운</p>
-          <p className="text-lg font-bold">{dominantGroup}</p>
-          <p className="text-[12px] opacity-70 mt-0.5">{dominantPct}% · 탭하면 맞춤 해설 보기</p>
+      {/* Summary chips — horizontal scroll */}
+      <div className="overflow-x-auto -mx-1 px-1 pb-1" style={{ scrollbarWidth: "none", msOverflowStyle: "none" as "none" }}>
+        <div className="flex gap-2 min-w-max">
+          {groups.map((g) => {
+            const pct = topLevel[g];
+            const c = TG_GROUP_COLORS[g];
+            const isTop = g === dominantGroup;
+            return (
+              <button
+                key={g}
+                onClick={() => onTap(g, pct)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[13px] font-bold cursor-pointer transition-all active:scale-95 hover:shadow-sm ${c.bg} ${c.text} ${isTop ? "ring-2 ring-offset-1 ring-current" : ""}`}
+              >
+                <span>{g}</span>
+                <span className="font-normal opacity-60">{pct}%</span>
+                <span className="text-[13px] opacity-50 ml-0.5">▸</span>
+              </button>
+            );
+          })}
         </div>
-        <div className={`text-2xl font-black opacity-30`}>▸</div>
-      </button>
-
-      {/* Summary chips */}
-      <div className="flex flex-wrap gap-2">
-        {groups.map((g) => {
-          const pct = topLevel[g];
-          const c = TG_GROUP_COLORS[g];
-          const isTop = g === dominantGroup;
-          return (
-            <button
-              key={g}
-              onClick={() => onTap(g, pct)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[13px] font-bold cursor-pointer transition-all active:scale-95 hover:shadow-sm ${c.bg} ${c.text} ${isTop ? "ring-2 ring-offset-1 ring-current" : ""}`}
-            >
-              <span>{g}</span>
-              <span className="font-normal opacity-60">{pct}%</span>
-              <span className="text-[13px] opacity-50 ml-0.5">▸</span>
-            </button>
-          );
-        })}
       </div>
       {/* Bar rows with sub-categories */}
       <div className="space-y-3">
@@ -2374,18 +2509,9 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
                 title="십성 분포 十星分布"
                 defaultOpen
                 titleExtra={
-                  <div className="flex items-center gap-1">
-                    {manualTenGodCounts && (
-                      <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-bold">수정됨</span>
-                    )}
-                    <button
-                      onClick={() => openTenGodEditor(autoTgCounts)}
-                      className="flex items-center gap-1 text-[11px] font-semibold text-muted-foreground hover:text-primary border border-border/50 rounded-md px-2 py-1 transition-colors"
-                    >
-                      <Edit3 className="h-3 w-3" />
-                      편집
-                    </button>
-                  </div>
+                  manualTenGodCounts ? (
+                    <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-bold">수정됨</span>
+                  ) : undefined
                 }
               >
                 {(() => {
@@ -2427,33 +2553,51 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
                     const cnt = displayCounts[selectedTgInfo] ?? 0;
                     const allTgTotalForCard = Object.values(displayCounts).reduce((s, c) => s + c, 0) || 1;
                     const pct = Math.round((cnt / allTgTotalForCard) * 100);
+                    const pctLabel = pct === 0 ? "없음(0%)" : pct <= 10 ? `매우 약함(${pct}%)` : pct <= 25 ? `적당함(${pct}%)` : pct <= 50 ? `강함(${pct}%)` : `매우 강함(${pct}%)`;
+                    const pctContext = pct === 0
+                      ? `현재 사주에 ${selectedTgInfo}이(가) 없습니다. 이 기운의 본성적 특질이 약하게 나타나며, 오히려 대운·세운에서 이 기운을 만났을 때 더 민감하게 반응할 수 있습니다.`
+                      : pct <= 10
+                      ? `${selectedTgInfo}이(가) 사주에 매우 약하게(${pct}%) 자리합니다. 주도적으로 발현되기보다 특수한 상황이나 자극이 있을 때 간헐적으로 나타납니다.`
+                      : pct <= 25
+                      ? `${selectedTgInfo}이(가) 사주에 적당히(${pct}%) 자리합니다. 다른 기운과 조화롭게 균형을 이루며 발현됩니다.`
+                      : pct <= 50
+                      ? `${selectedTgInfo}이(가) 사주에 강하게(${pct}%) 자리합니다. 성격과 삶의 흐름에 뚜렷한 영향을 미치는 핵심 기운 중 하나입니다.`
+                      : `${selectedTgInfo}이(가) 사주에서 매우 강하게(${pct}%) 작용합니다. 삶 전반에 걸쳐 가장 핵심적인 영향을 미치는 지배적 기운입니다.`;
                     return (
                     <div className={`rounded-xl px-3 py-3 space-y-2 border ${getTenGodTw(selectedTgInfo, dayStem)}`}>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <span className="text-[14px] font-bold">{selectedTgInfo}</span>
-                          <span className="text-[12px] font-semibold opacity-60">{pct}% 보유</span>
+                          <span className="text-[11px] font-bold opacity-70 bg-white/40 px-1.5 py-0.5 rounded-full border border-current/20">{pctLabel}</span>
                         </div>
                         <button onClick={() => setSelectedTgInfo(null)} className="text-[11px] text-muted-foreground px-1.5 py-0.5 rounded border border-border/50 bg-white/60">닫기</button>
                       </div>
-                      <p className="text-[12px] leading-relaxed">{nm.summary}</p>
-                      {nm.traits && (
-                        <div>
-                          <p className="text-[10px] font-bold uppercase tracking-widest opacity-60 mb-0.5">성향·특성</p>
-                          <p className="text-[12px] leading-relaxed">{nm.traits}</p>
-                        </div>
-                      )}
-                      {nm.strengths && (
-                        <div>
-                          <p className="text-[10px] font-bold uppercase tracking-widest opacity-60 mb-0.5">강점</p>
-                          <p className="text-[12px] leading-relaxed">{nm.strengths}</p>
-                        </div>
-                      )}
-                      {nm.caution && (
-                        <div>
-                          <p className="text-[10px] font-bold uppercase tracking-widest opacity-60 mb-0.5">주의점</p>
-                          <p className="text-[12px] leading-relaxed">{nm.caution}</p>
-                        </div>
+                      <div className="rounded-lg bg-amber-50/80 border border-amber-100 px-2.5 py-2">
+                        <p className="text-[10px] font-bold text-amber-700 uppercase tracking-wide mb-0.5">내 사주 맞춤 해설</p>
+                        <p className="text-[12px] leading-relaxed text-foreground">{pctContext}</p>
+                      </div>
+                      {pct > 0 && (
+                        <>
+                          <p className="text-[12px] leading-relaxed">{nm.summary}</p>
+                          {nm.traits && (
+                            <div>
+                              <p className="text-[10px] font-bold uppercase tracking-widest opacity-60 mb-0.5">성향·특성</p>
+                              <p className="text-[12px] leading-relaxed">{nm.traits}</p>
+                            </div>
+                          )}
+                          {nm.strengths && (
+                            <div>
+                              <p className="text-[10px] font-bold uppercase tracking-widest opacity-60 mb-0.5">강점</p>
+                              <p className="text-[12px] leading-relaxed">{nm.strengths}</p>
+                            </div>
+                          )}
+                          {nm.caution && (
+                            <div>
+                              <p className="text-[10px] font-bold uppercase tracking-widest opacity-60 mb-0.5">주의점</p>
+                              <p className="text-[12px] leading-relaxed">{nm.caution}</p>
+                            </div>
+                          )}
+                        </>
                       )}
                     </div>
                     );
