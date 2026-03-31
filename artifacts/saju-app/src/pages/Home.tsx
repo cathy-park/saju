@@ -291,7 +291,7 @@ function Dashboard({ record }: { record: PersonRecord }) {
       {/* ══════════════════════════════════════════
           4 MINI STATUS CARDS (horizontal scroll)
       ══════════════════════════════════════════ */}
-      <div style={{ padding: "14px 16px 0", overflowX: "auto", WebkitOverflowScrolling: "touch" as "touch" }}>
+      <div className="domain-scroll" style={{ padding: "14px 16px 0", overflowX: "auto", WebkitOverflowScrolling: "touch" as "touch", scrollbarWidth: "none" as "none", msOverflowStyle: "none" as "none" }}>
         <div style={{ display: "flex", gap: 6, minWidth: "max-content", paddingBottom: 2 }}>
           {fortune.domainFortunes.map((d) => {
             const bs = domainLevelBadge[d.level];

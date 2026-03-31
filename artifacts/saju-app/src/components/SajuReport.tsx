@@ -14,6 +14,7 @@ import type { PersonRecord, ManualShinsalItem, MaritalStatus, ManualBranchRelati
 import { getFinalPillars, getMyProfile, getPeople, saveManualShinsal, saveExcludedAutoShinsal, saveMaritalStatus, updatePersonRecord } from "@/lib/storage";
 import { upsertMyProfile, upsertPartnerProfile } from "@/lib/db";
 import { useAuth } from "@/lib/authContext";
+import { computeSajuPipeline } from "@/lib/sajuPipeline";
 import { charToElement, ELEMENT_TEXT_HEX, ELEMENT_HEX, ELEMENT_LIGHT_HEX, ELEMENT_TW, getTenGodGroup, type FiveElKey } from "@/lib/element-color";
 import { TodayFortuneCard } from "@/components/TodayFortuneCard";
 import { getFortuneForDate } from "@/lib/todayFortune";
@@ -1437,6 +1438,36 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
     return countFiveElements(pillars as ComputedPillars);
   }, [manualFiveElements, pillars]);
 
+  // ── 4-Layer Saju Pipeline (auto-recomputes when any input changes) ──
+  // 오행·십성·신강약·조후·용신·규칙 해석을 한 번에 재계산합니다.
+  // 계산 순서: 오행 → 십성 → 신강약 → 조후 보정 → 용신 → 규칙 해석
+  const sajuPipelineResult = useMemo(() => {
+    const dayStemNow = pillars.day?.hangul?.[0] ?? "";
+    if (!dayStemNow) return null;
+    const allStemsNow = [
+      pillars.hour?.hangul?.[0], dayStemNow,
+      pillars.month?.hangul?.[0], pillars.year?.hangul?.[0],
+    ].filter((c): c is string => !!c);
+    const allBranchesNow = [
+      pillars.hour?.hangul?.[1], pillars.day?.hangul?.[1],
+      pillars.month?.hangul?.[1], pillars.year?.hangul?.[1],
+    ].filter((c): c is string => !!c);
+    return computeSajuPipeline({
+      dayStem: dayStemNow,
+      monthBranch: pillars.month?.hangul?.[1],
+      dayBranch: pillars.day?.hangul?.[1],
+      allStems: allStemsNow,
+      allBranches: allBranchesNow,
+      effectiveFiveElements,
+      manualStrengthLevel: localStrengthLevel,
+      manualYongshinData: localYongshinData,
+    });
+  }, [effectiveFiveElements, pillars, localStrengthLevel, localYongshinData]);
+
+  const ruleInsights = sajuPipelineResult?.interpretation.ruleInsights ?? [];
+  const structureType = sajuPipelineResult?.interpretation.structureType ?? "";
+  const seasonalNote  = sajuPipelineResult?.interpretation.seasonalNote ?? "";
+
   const pillarData = [
     { label: "생시", hangul: pillars.hour?.hangul ?? "", hanja: pillars.hour?.hanja ?? "", isUnknown: !pillars.hour || input.timeUnknown },
     { label: "생일", hangul: pillars.day?.hangul ?? "", hanja: pillars.day?.hanja ?? "", isDayMaster: true },
@@ -2180,6 +2211,38 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
               })}
             </div>
           </div>
+
+          {/* ── 사주 구조 분석 (규칙 기반) — 전체 탭 ── */}
+          {interpretTab === "전체" && ruleInsights.length > 0 && (
+            <Card className="border-violet-100 bg-gradient-to-br from-violet-50/60 to-transparent">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-semibold text-violet-700 flex items-center gap-1.5">
+                  <Layers className="h-3.5 w-3.5" />
+                  사주 구조 분석
+                  {structureType && (
+                    <span className="ml-1 text-[11px] font-normal bg-violet-100 text-violet-600 px-2 py-0.5 rounded-full border border-violet-200">
+                      {structureType}
+                    </span>
+                  )}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {seasonalNote && (
+                  <p className="text-[12px] text-violet-600/80 border-l-2 border-violet-300 pl-2 leading-relaxed">
+                    {seasonalNote}
+                  </p>
+                )}
+                {ruleInsights.map((insight, i) => (
+                  <div key={i} className="rounded-xl bg-white/70 border border-violet-100 px-3 py-2.5">
+                    <p className="text-[13px] text-foreground leading-relaxed">{insight}</p>
+                  </div>
+                ))}
+                <p className="text-[11px] text-muted-foreground/60 text-right">
+                  오행·십성 수정 시 자동 재계산됩니다
+                </p>
+              </CardContent>
+            </Card>
+          )}
 
           {/* 오늘의 전체 흐름 — 전체 탭에서만 노출 */}
           {interpretTab === "전체" && <Card className="border-indigo-100 bg-gradient-to-br from-indigo-50/60 to-transparent">

@@ -84,6 +84,20 @@ calculateSaju(year, month, day, hour?, minute?, options?) → SajuResult
 // 시간 미입력 시 hourPillar: null
 ```
 
+#### 사주 계산 파이프라인 아키텍처 (4-Layer)
+
+| 레이어 | 파일 | 역할 |
+|------|------|------|
+| Layer 1 (입력) | `sajuPipeline.ts: PipelineInput` | 일간·오행·신강약 수동값 입력 |
+| Layer 2 (기본 구조) | `sajuPipeline.ts: computeBaseStructure()` | 십성 분포·신강약 점수·용신 계산 |
+| Layer 3 (조정 구조) | `sajuPipeline.ts: computeAdjustedStructure()` | 조후 보정·수동 재정의 반영 |
+| Layer 4 (해석) | `sajuPipeline.ts: buildInterpretationResult()` + `interpretationRules.ts` | 규칙 기반 해석 텍스트 자동 생성 |
+
+- **`sajuPipeline.ts`**: `computeSajuPipeline()` 단일 함수로 전체 파이프라인 실행  
+- **`interpretationRules.ts`**: if-then 규칙 배열 (R01~R11). 규칙 추가 = RULES 배열에 항목 추가  
+- **자동 재계산**: `SajuReport.tsx`에서 `useMemo` 기반으로 오행/신강약/용신 변경 시 즉시 재실행  
+- **격국 판정**: 월지 십성 기반 단순 판정 (건록격·식신격·재격·관격·인수격·잡격)
+
 #### 화면
 
 | 경로 | 파일 | 기능 |
