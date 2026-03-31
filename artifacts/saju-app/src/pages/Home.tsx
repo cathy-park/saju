@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { getMyProfile } from "@/lib/storage";
 import { getTodayFortuneCard, getTenGodFortune } from "@/lib/todayFortune";
 import { buildLifeFlowInsights } from "@/lib/lifeFlowInsight";
@@ -151,8 +151,15 @@ function Dashboard({ record }: { record: PersonRecord }) {
   const { user } = useAuth();
   const fortune = getTodayFortuneCard(record);
   const lifeFlow = buildLifeFlowInsights(record);
+  const [, navigate] = useLocation();
   const [showEditSheet, setShowEditSheet] = useState(false);
   const [showLuckSheet, setShowLuckSheet] = useState(false);
+  const [domainSheet, setDomainSheet] = useState<typeof fortune.domainFortunes[number] | null>(null);
+
+  function goToTodayFortune() {
+    sessionStorage.setItem("openReportTab", "오늘운세");
+    navigate("/saju");
+  }
   const [nickname, setNickname] = useState(() => user ? loadNick() : "사용자");
   useEffect(() => { setNickname(user ? loadNick() : "사용자"); }, [user]);
 
@@ -328,6 +335,27 @@ function Dashboard({ record }: { record: PersonRecord }) {
                 </div>
               ))}
             </div>
+
+            {/* 관계·재물·건강·일 미니 뱃지 + 상세보기 */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 12 }}>
+              <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
+                {lifeFlow.lifeFlows.slice(0, 4).map((lf) => {
+                  const lvColor = lf.level === "good" ? "#2E7D32" : lf.level === "caution" ? "#E65100" : "#666";
+                  const lvBg   = lf.level === "good" ? "rgba(46,125,50,0.10)" : lf.level === "caution" ? "rgba(230,81,0,0.10)" : "rgba(120,120,120,0.10)";
+                  return (
+                    <span key={lf.category} style={{ fontSize: 11, fontWeight: 700, background: lvBg, color: lvColor, borderRadius: 20, padding: "3px 9px", border: `1px solid ${lvColor}33` }}>
+                      {lf.icon} {lf.category}
+                    </span>
+                  );
+                })}
+              </div>
+              <button
+                onClick={goToTodayFortune}
+                style={{ fontSize: 12, fontWeight: 700, color: "#6366F1", background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.2)", borderRadius: 20, padding: "4px 12px", cursor: "pointer", whiteSpace: "nowrap" }}
+              >
+                상세보기 →
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -340,16 +368,20 @@ function Dashboard({ record }: { record: PersonRecord }) {
           {fortune.domainFortunes.map((d) => {
             const bs = domainLevelBadge[d.level];
             return (
-              <div key={d.domain} style={{
-                flexShrink: 0, background: "#FFF", border: "1px solid #EBEBEB",
-                borderRadius: 12, padding: "8px 10px",
-                display: "flex", alignItems: "center", gap: 6,
-              }}>
+              <button
+                key={d.domain}
+                onClick={() => setDomainSheet(d)}
+                style={{
+                  flexShrink: 0, background: "#FFF", border: "1px solid #EBEBEB",
+                  borderRadius: 12, padding: "8px 10px",
+                  display: "flex", alignItems: "center", gap: 6, cursor: "pointer",
+                }}
+              >
                 <span style={{ fontSize: 11, fontWeight: 700, color: "#111", whiteSpace: "nowrap" }}>{d.icon} {d.domain}</span>
                 <span style={{ fontSize: 10, fontWeight: 700, background: bs.bg, color: bs.color, borderRadius: 20, padding: "2px 7px", whiteSpace: "nowrap" }}>
                   {bs.icon} {d.label}
                 </span>
-              </div>
+              </button>
             );
           })}
         </div>
@@ -566,6 +598,44 @@ function LuckInterpretSheet({ fortune, onClose }: { fortune: ReturnType<typeof g
           </div>
         </div>
       </div>
+
+      {/* ── 도메인 상세 바텀시트 ── */}
+      {domainSheet && (
+        <div
+          onClick={() => setDomainSheet(null)}
+          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 9000, display: "flex", alignItems: "flex-end" }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ width: "100%", maxWidth: 480, margin: "0 auto", background: "#FFF", borderRadius: "20px 20px 0 0", padding: "24px 20px 40px" }}
+          >
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: "#DDD", margin: "0 auto 18px" }} />
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+              <span style={{ fontSize: 26 }}>{domainSheet.icon}</span>
+              <div>
+                <p style={{ fontSize: 16, fontWeight: 800, color: "#111", margin: 0 }}>{domainSheet.domain}운</p>
+                <span style={{
+                  fontSize: 11, fontWeight: 700, borderRadius: 20, padding: "2px 10px",
+                  background: domainSheet.level === "good" ? "rgba(46,125,50,0.10)" : domainSheet.level === "caution" ? "rgba(230,81,0,0.10)" : "rgba(120,120,120,0.10)",
+                  color: domainSheet.level === "good" ? "#2E7D32" : domainSheet.level === "caution" ? "#E65100" : "#666",
+                }}>
+                  {domainSheet.level === "good" ? "✨" : domainSheet.level === "caution" ? "⚠️" : "●"} {domainSheet.label}
+                </span>
+              </div>
+            </div>
+            <div style={{ background: "#F7F6FE", borderRadius: 12, padding: "12px 14px", marginBottom: 14 }}>
+              <p style={{ fontSize: 12, fontWeight: 700, color: "#8B8FCC", margin: "0 0 5px" }}>오늘의 {domainSheet.domain} 흐름</p>
+              <p style={{ fontSize: 14, color: "#333", margin: 0, lineHeight: 1.6, fontWeight: 500 }}>{domainSheet.hint}</p>
+            </div>
+            <button
+              onClick={() => { setDomainSheet(null); goToTodayFortune(); }}
+              style={{ width: "100%", padding: "14px 0", borderRadius: 14, background: "linear-gradient(135deg,#6366F1,#8B5CF6)", color: "#FFF", fontSize: 14, fontWeight: 800, border: "none", cursor: "pointer", letterSpacing: "0.02em" }}
+            >
+              오늘 운세 상세보기 →
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1811,7 +1811,11 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
     편재: 0, 정재: 0, 편관: 0, 정관: 0,
     편인: 0, 정인: 0,
   });
-  const [reportTab, setReportTab] = useState<"원국" | "성향" | "운세" | "해석">("원국");
+  const [reportTab, setReportTab] = useState<"원국" | "성향" | "운세" | "오늘운세">(() => {
+    const saved = sessionStorage.getItem("openReportTab");
+    if (saved === "오늘운세") { sessionStorage.removeItem("openReportTab"); return "오늘운세"; }
+    return "원국";
+  });
   const [hourMode, setHourMode] = useState<"포함" | "제외" | "비교">("포함");
   const [selectedTgInfo, setSelectedTgInfo] = useState<TenGod | null>(null);
 
@@ -2207,7 +2211,7 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
 
       {/* ── 탭 바 ── */}
       <div className="flex rounded-xl border border-border bg-muted/30 p-1 gap-1">
-        {(["원국", "성향", "운세", "해석"] as const).map((tab) => (
+        {(["원국", "성향", "운세", "오늘운세"] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setReportTab(tab)}
@@ -3095,7 +3099,7 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
       )}
 
       {/* ── 탭 4: 해석 ── */}
-      {reportTab === "해석" && dayStem && lifeFlowData && (
+      {reportTab === "오늘운세" && dayStem && lifeFlowData && (
         <div className="space-y-3">
           {/* 해석 서브탭 */}
           <div className="overflow-x-auto -mx-1 px-1 pb-1" style={{ scrollbarWidth: "none", msOverflowStyle: "none" as "none" }}>
