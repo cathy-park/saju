@@ -67,6 +67,18 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
+import {
+  determineGukguk,
+  detectStructurePatterns,
+  STRUCTURE_TYPE_COLOR,
+  BRANCH_HANJA,
+} from "@/lib/gukguk";
+import {
   getSpousePalaceInfo,
   getComplementaryInfo,
   getMarriageTimingHint,
@@ -328,44 +340,44 @@ function CoreInsightChips({
         })()}
       </div>
 
-      <Dialog open={!!activeInfo} onOpenChange={(open) => !open && setActiveInfo(null)}>
-        <DialogContent className="max-w-sm rounded-2xl">
-          <DialogHeader>
-            <DialogTitle className="text-base font-bold">{activeInfo?.title}</DialogTitle>
-          </DialogHeader>
-          {activeInfo && (
-            <div className="space-y-3 text-sm">
-              {activeInfo.isElement && activeInfo.elementKey ? (() => {
-                const em = ELEMENT_ENERGY_MEANING[activeInfo.elementKey];
-                if (!em) return null;
-                return (
-                  <>
-                    <div className="rounded-lg bg-muted/30 border border-border/50 px-3 py-2.5">
-                      <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide mb-1">기운의 본질</p>
-                      <p className="leading-relaxed">{em.nature}</p>
-                    </div>
-                    <div className="rounded-lg bg-amber-50 border border-amber-100 px-3 py-2.5">
-                      <p className="text-[11px] font-bold text-amber-700 uppercase tracking-wide mb-1">핵심 특성</p>
-                      <p className="leading-relaxed">{em.traits}</p>
-                    </div>
-                    <div className="rounded-lg bg-sky-50 border border-sky-100 px-3 py-2.5">
-                      <p className="text-[11px] font-bold text-sky-700 uppercase tracking-wide mb-1">삶에서의 발현</p>
-                      <p className="leading-relaxed">{em.inLife}</p>
-                    </div>
-                  </>
-                );
-              })() : (
-                <>
-                  <div className="rounded-lg bg-muted/30 border border-border/50 px-3 py-2.5">
-                    <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide mb-1">이 키워드가 뜬 이유</p>
-                    <p className="leading-relaxed">{activeInfo.basis}</p>
+      <Drawer open={!!activeInfo} onOpenChange={(open) => !open && setActiveInfo(null)}>
+        <DrawerContent>
+          <div className="max-w-lg mx-auto w-full px-5 pb-8 pt-1">
+            <DrawerHeader className="text-left px-0 pb-3">
+              <DrawerTitle className="text-xl font-bold">{activeInfo?.title}</DrawerTitle>
+            </DrawerHeader>
+            {activeInfo && (
+              <div className="space-y-3 text-sm">
+                {activeInfo.isElement && activeInfo.elementKey ? (() => {
+                  const em = ELEMENT_ENERGY_MEANING[activeInfo.elementKey];
+                  if (!em) return null;
+                  return (
+                    <>
+                      <div className="rounded-xl bg-muted/30 border border-border/50 px-4 py-3">
+                        <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide mb-1.5">기운의 본질</p>
+                        <p className="leading-relaxed">{em.nature}</p>
+                      </div>
+                      <div className="rounded-xl bg-amber-50 border border-amber-100 px-4 py-3">
+                        <p className="text-[11px] font-bold text-amber-700 uppercase tracking-wide mb-1.5">핵심 특성</p>
+                        <p className="leading-relaxed">{em.traits}</p>
+                      </div>
+                      <div className="rounded-xl bg-sky-50 border border-sky-100 px-4 py-3">
+                        <p className="text-[11px] font-bold text-sky-700 uppercase tracking-wide mb-1.5">삶에서의 발현</p>
+                        <p className="leading-relaxed">{em.inLife}</p>
+                      </div>
+                    </>
+                  );
+                })() : (
+                  <div className="rounded-xl bg-muted/30 border border-border/50 px-4 py-3">
+                    <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide mb-1.5">이 키워드가 뜬 이유</p>
+                    <p className="leading-relaxed">{activeInfo?.basis}</p>
                   </div>
-                </>
-              )}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+                )}
+              </div>
+            )}
+          </div>
+        </DrawerContent>
+      </Drawer>
     </>
   );
 }
@@ -1185,6 +1197,81 @@ function getElementBalanceSummary(counts: FiveElementCount) {
   if (missing.length > 0) return `${missing.join("·")} 오행이 부족합니다. 해당 기운을 보완하는 것이 도움이 됩니다.`;
   if (dominant.length > 0) return `${dominant.join("·")} 오행이 편중되어 있습니다. 해당 기운의 특성이 강하게 나타납니다.`;
   return "오행 분포에 주의가 필요합니다.";
+}
+
+// ── 格局 & 구조 분석 섹션 ────────────────────────────────────────
+
+function GukgukSection({
+  dayStem,
+  monthBranch,
+  allStems,
+  allBranches,
+}: {
+  dayStem: string;
+  monthBranch?: string;
+  allStems: string[];
+  allBranches: string[];
+}) {
+  if (!dayStem || !monthBranch) return null;
+  const gukguk = determineGukguk(dayStem, monthBranch, allStems);
+  const patterns = detectStructurePatterns(dayStem, allStems, allBranches, monthBranch);
+  if (!gukguk) return null;
+
+  const toneLabel = gukguk.tone === "길" ? "길格" : gukguk.tone === "흉" ? "흉格" : "중성格";
+  const toneBadge = gukguk.tone === "길"
+    ? "bg-emerald-100 text-emerald-700"
+    : gukguk.tone === "흉"
+    ? "bg-rose-100 text-rose-700"
+    : "bg-amber-100 text-amber-700";
+
+  return (
+    <div className="space-y-3">
+      {/* 格局 카드 */}
+      <div className={`rounded-2xl border px-4 py-4 space-y-3 ${gukguk.colorClass}`}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-xl font-black tracking-tight">{gukguk.name}</span>
+            <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${toneBadge}`}>{toneLabel}</span>
+          </div>
+          <div className="text-right">
+            <span className="text-[11px] text-current/60">
+              월지 {monthBranch}{BRANCH_HANJA[monthBranch] ? `(${BRANCH_HANJA[monthBranch]})` : ""}
+              {gukguk.transparentStem
+                ? ` · ${gukguk.transparentStem} 투출`
+                : " · 본기 기준"}
+            </span>
+          </div>
+        </div>
+        <p className="text-[13px] leading-relaxed opacity-90">{gukguk.description}</p>
+        {!gukguk.isTransparent && (
+          <p className="text-[11px] opacity-60">
+            ※ 투출 천간이 없어 월지 본기를 格 기준으로 사용합니다.
+          </p>
+        )}
+      </div>
+
+      {/* 구조 분석 */}
+      {patterns.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide px-1">사주 구조 분석</p>
+          {patterns.map((p) => (
+            <div
+              key={p.name}
+              className={`rounded-xl border px-3 py-2.5 flex items-start gap-2 ${STRUCTURE_TYPE_COLOR[p.type]}`}
+            >
+              <span className="text-[11px] font-bold mt-0.5 shrink-0 opacity-70">
+                {p.type === "상생" ? "生" : p.type === "상극" ? "克" : "◎"}
+              </span>
+              <div>
+                <p className="text-[13px] font-bold leading-tight">{p.name}</p>
+                <p className="text-[12px] opacity-80 mt-0.5 leading-relaxed">{p.description}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 // ── Fortune Calendar (일운 monthly view) ──────────────────────────
@@ -2604,6 +2691,18 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
           >
             <FiveElementSection counts={effectiveFiveElements} dayStem={dayStem} />
           </AccSection>
+
+          {/* 格局 및 구조 분석 */}
+          {dayStem && (
+            <AccSection title="格局 및 구조 분석">
+              <GukgukSection
+                dayStem={dayStem}
+                monthBranch={effectivePillars.month?.hangul?.[1]}
+                allStems={allStems}
+                allBranches={allBranches}
+              />
+            </AccSection>
+          )}
 
           {/* 신살 */}
           {dayStem && dayBranch && (

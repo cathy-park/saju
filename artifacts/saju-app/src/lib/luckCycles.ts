@@ -376,11 +376,18 @@ const JAESAL_T: Record<string, string> = {
   신: "오", 자: "오", 진: "오",
   해: "유", 묘: "유", 미: "유",
 };
-// 천살 (天殺)
+// 천살 (天殺) — 12신살 순서 기준: 생지의 전칸 (재살의 다음)
 const CHEONSAL_T: Record<string, string> = {
-  인: "술", 오: "술", 술: "술",
+  인: "축", 오: "축", 술: "축",
+  사: "진", 유: "진", 축: "진",
+  신: "미", 자: "미", 진: "미",
+  해: "술", 묘: "술", 미: "술",
+};
+// 월살 (月殺) — 12신살 순서 기준: 연살(도화)의 다음
+const WOLSAL_T: Record<string, string> = {
+  인: "진", 오: "진", 술: "진",
   사: "미", 유: "미", 축: "미",
-  신: "진", 자: "진", 진: "진",
+  신: "술", 자: "술", 진: "술",
   해: "축", 묘: "축", 미: "축",
 };
 // 지살 (地殺)
@@ -390,12 +397,27 @@ const JISAL_T: Record<string, string> = {
   신: "신", 자: "신", 진: "신",
   해: "해", 묘: "해", 미: "해",
 };
-// 망신살 (亡身殺)
+// 망신살 (亡身殺) — 12신살 순서 기준: 월살의 다음 (왕지 전전 지지)
 const MANGSIN_T: Record<string, string> = {
-  인: "신", 오: "신", 술: "신",
-  사: "해", 유: "해", 축: "해",
-  신: "인", 자: "인", 진: "인",
-  해: "사", 묘: "사", 미: "사",
+  인: "사", 오: "사", 술: "사",
+  사: "신", 유: "신", 축: "신",
+  신: "해", 자: "해", 진: "해",
+  해: "인", 묘: "인", 미: "인",
+};
+// 원진살 (怨嗔殺) — 상극 관계의 지지쌍
+const WONJIN_PAIR: Record<string, string> = {
+  자: "미", 미: "자",
+  축: "오", 오: "축",
+  인: "유", 유: "인",
+  묘: "신", 신: "묘",
+  진: "해", 해: "진",
+  사: "술", 술: "사",
+};
+// 암록 (暗祿) — 일간 건록의 六合 지지
+const AMROK_T: Record<string, string> = {
+  갑: "해", 을: "술", 병: "신", 정: "미",
+  무: "신", 기: "미", 경: "사", 신: "진",
+  임: "인", 계: "축",
 };
 // 육해살 (六害殺) — pairs
 const YUKHAE_PAIR: Record<string, string> = {
@@ -543,9 +565,12 @@ export function calculateShinsalFull(
   const geobsalTarget = GEOBSAL_T[dayBranch] ?? "";
   const jaesalTarget = JAESAL_T[dayBranch] ?? "";
   const cheonsalTarget = CHEONSAL_T[dayBranch] ?? "";
+  const wolsalTarget = WOLSAL_T[dayBranch] ?? "";
   const jisalTarget = JISAL_T[dayBranch] ?? "";
   const mangsinsalTarget = MANGSIN_T[dayBranch] ?? "";
   const yukhaePairOf = YUKHAE_PAIR[dayBranch] ?? "";
+  const wonjinPairOf = WONJIN_PAIR[dayBranch] ?? "";
+  const amrokTarget = AMROK_T[dayStem] ?? "";
   const goshinTarget = GOSHIN_T[dayBranch] ?? "";
   const gwasukTarget = GWASUK_T[dayBranch] ?? "";
   const guimoonPairOf = GUIMOON_PAIR[dayBranch] ?? "";
@@ -588,8 +613,11 @@ export function calculateShinsalFull(
       if (branch === geobsalTarget) branchItems.push("겁살");
       if (branch === jaesalTarget) branchItems.push("재살");
       if (branch === cheonsalTarget) branchItems.push("천살");
+      if (branch === wolsalTarget) branchItems.push("월살");
       if (branch === jisalTarget) branchItems.push("지살");
       if (branch === mangsinsalTarget) branchItems.push("망신살");
+      if (amrokTarget && branch === amrokTarget) branchItems.push("암록");
+      if (wonjinPairOf && branch !== dayBranch && branch === wonjinPairOf) branchItems.push("원진살");
       if (taegeukBranches.includes(branch)) branchItems.push("태극귀인");
       if (branch !== dayBranch && branch === yukhaePairOf) branchItems.push("육해살");
       // New additions
@@ -676,9 +704,9 @@ export const ALL_SHINSAL_NAMES: string[] = [
   "태극귀인", "금여", "복성귀인", "국인귀인", "암록", "천관귀인", "천복귀인", "천주귀인",
   "관귀학관",
   // 활동·이동 계열
-  "역마", "지살", "천살",
+  "역마", "지살", "천살", "월살",
   // 관계·감정 계열
-  "도화", "홍염", "망신살",
+  "도화", "홍염", "망신살", "원진살",
   // 충돌·위험 계열
   "양인살", "괴강살", "백호살", "겁살",
   // 고립 계열
@@ -700,11 +728,11 @@ export const SHINSAL_GROUPS: { label: string; names: string[] }[] = [
   },
   {
     label: "활동·이동 계열",
-    names: ["역마", "지살", "천살"],
+    names: ["역마", "지살", "천살", "월살"],
   },
   {
     label: "관계·감정 계열",
-    names: ["도화", "홍염", "망신살"],
+    names: ["도화", "홍염", "망신살", "원진살"],
   },
   {
     label: "충돌·위험 계열",
@@ -749,10 +777,12 @@ export const SHINSAL_DESC: Record<string, string> = {
   역마: "만남과 이동의 기회가 늘어나지만, 정착성이 약해질 수 있어 주의가 필요합니다",
   지살: "이동과 변동이 활발해지나, 섣불리 자리를 옮기면 후회로 이어질 수 있습니다",
   천살: "예기치 않은 변수가 생길 수 있으니 계획에 여유를 두는 것이 좋습니다",
+  월살: "막히는 기운이 있어 결정이 지연되거나 계획이 어그러질 수 있으니 인내심을 가지세요",
   // 관계·감정 계열 — 매력과 불안정 사이
   도화: "매력과 인기를 높여주지만, 관계의 안정성 및 깊이와는 별개입니다",
   홍염: "정열과 화려함이 강해지나, 감정 기복과 과소비에 주의가 필요합니다",
   망신살: "구설과 실수 가능성이 높아지니, 언행을 신중하게 관리하세요",
+  원진살: "서로 꺼리고 멀리하는 기운으로 관계에서 오해와 갈등이 생기기 쉬우니 소통에 특히 주의하세요",
   // 충돌·위험 계열 — 에너지와 위험이 동전의 양면
   양인살: "강한 추진력을 주지만, 이 에너지가 타인과의 갈등으로 이어질 수 있습니다",
   괴강살: "뛰어난 집중력과 고집이 있으나, 독단적 결정으로 관계가 어려워질 수 있습니다",
@@ -796,10 +826,12 @@ export const SHINSAL_COLOR: Record<string, string> = {
   역마: "bg-blue-100 text-blue-800 border-blue-200",
   지살: "bg-emerald-50 text-emerald-700 border-emerald-200",
   천살: "bg-slate-100 text-slate-700 border-slate-200",
+  월살: "bg-gray-100 text-gray-600 border-gray-300",
   // 관계·감정 계열
   도화: "bg-pink-100 text-pink-800 border-pink-200",
   홍염: "bg-rose-100 text-rose-800 border-rose-200",
   망신살: "bg-neutral-100 text-neutral-700 border-neutral-200",
+  원진살: "bg-red-50 text-red-600 border-red-200",
   // 충돌·위험 계열
   양인살: "bg-red-100 text-red-800 border-red-200",
   괴강살: "bg-zinc-100 text-zinc-700 border-zinc-300",
