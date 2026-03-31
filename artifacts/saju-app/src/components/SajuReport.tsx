@@ -1985,7 +1985,10 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
   }
 
   // ── Computed values ────────────────────────────────────────────
-  const pillars = getFinalPillars(record);
+  // Use localProfile (reactive local state) so that time-correction toggles
+  // (localMeridianOn / trueSolarTimeOn) immediately update the pillar display.
+  // record.manualPillars overrides are still applied on top via getFinalPillars.
+  const pillars = getFinalPillars({ ...record, profile: localProfile });
   const profile = localProfile;
   const input = record.birthInput;
   const isManuallyEdited = !!(
