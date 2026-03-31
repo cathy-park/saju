@@ -109,7 +109,7 @@ async function syncWithSupabase(uid: string, userMeta: SupabaseUser | null): Pro
     }
   }
 
-  // 4. Pull final DB state → overwrite localStorage (DB wins)
+  // 4. Pull final DB state → merge with localStorage (DB wins for known records, local wins for local-only)
   try {
     const [finalProfile, finalPartners] = await Promise.all([
       fetchMyProfile(uid),
@@ -120,9 +120,22 @@ async function syncWithSupabase(uid: string, userMeta: SupabaseUser | null): Pro
       saveMyProfile(finalProfile);
       console.log("[auth] synced myProfile from Supabase ✓");
     }
+
+    const finalDbIds = new Set(finalPartners.map((p) => p.id));
+    // Save DB partners (DB wins for these records)
     for (const p of finalPartners) {
       savePerson(p);
     }
+    // Preserve any local-only partners that didn't make it to DB (local fallback)
+    const localAfterSync = loadLocal();
+    const stillLocalOnly = local.people.filter((p) => !finalDbIds.has(p.id));
+    for (const p of stillLocalOnly) {
+      if (!localAfterSync.people.some((lp) => lp.id === p.id)) {
+        savePerson(p);
+        console.warn(`[auth] preserved local-only partner: ${p.birthInput?.name ?? p.id}`);
+      }
+    }
+
     if (finalPartners.length > 0) {
       console.log(`[auth] synced ${finalPartners.length} partner(s) from Supabase ✓`);
     }

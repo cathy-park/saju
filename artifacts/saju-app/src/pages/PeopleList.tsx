@@ -226,7 +226,7 @@ export default function PeopleList() {
   }
 
   const searchFiltered = people.filter((p) =>
-    p.birthInput.name.includes(search)
+    (p.birthInput?.name ?? "").includes(search)
   );
 
   const visibleTabs = REL_TABS.filter((t) => {
