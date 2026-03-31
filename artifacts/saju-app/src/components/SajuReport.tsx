@@ -2,6 +2,13 @@ import { useState, useMemo, useRef, useCallback } from "react";
 import type { ComputedPillars, FiveElementCount } from "@/lib/sajuEngine";
 import { ELEMENT_BG_COLORS, ELEMENT_COLORS, countFiveElements } from "@/lib/sajuEngine";
 import {
+  countFiveElementsNoHour,
+  diffFiveElements,
+  diffShinsal,
+  hasAnyHourDiff,
+} from "@/lib/hourPillarDiff";
+import type { FiveElDiffEntry, ShinsalDiff } from "@/lib/hourPillarDiff";
+import {
   buildInterpretSchema,
   STRENGTH_LEVELS,
   STRENGTH_LEVEL_INDEX,
@@ -1574,6 +1581,34 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
     : null;
 
   const [reportTab, setReportTab] = useState<"원국" | "성향" | "운세" | "해석">("원국");
+  const [hourMode, setHourMode] = useState<"포함" | "제외" | "비교">("포함");
+
+  // ── 시주 비교 모드 계산 ────────────────────────────────────────
+  const hasHourPillar = !!(pillars.hour && !input.timeUnknown);
+  const fiveElNoHour = useMemo<FiveElementCount>(
+    () => countFiveElementsNoHour(pillars as ComputedPillars),
+    [pillars],
+  );
+  const shinsalNamesNoHour = useMemo<string[]>(() => {
+    if (!dayStem || !dayBranch) return [];
+    const noHourPillars = [
+      { pillar: "일주", stem: pillars.day?.hangul?.[0] ?? "", branch: pillars.day?.hangul?.[1] ?? "" },
+      { pillar: "월주", stem: pillars.month?.hangul?.[0] ?? "", branch: pillars.month?.hangul?.[1] ?? "" },
+      { pillar: "년주", stem: pillars.year?.hangul?.[0] ?? "", branch: pillars.year?.hangul?.[1] ?? "" },
+    ];
+    const ps = calculateShinsalFull(dayStem, dayBranch, input.month, noHourPillars);
+    return ps.flatMap((p) => [...(p.pillarItems ?? []), ...(p.stemItems ?? []), ...(p.branchItems ?? [])]);
+  }, [dayStem, dayBranch, pillars, input.month]);
+
+  const fiveElDiff = useMemo<FiveElDiffEntry[]>(
+    () => (hasHourPillar ? diffFiveElements(effectiveFiveElements, fiveElNoHour) : []),
+    [hasHourPillar, effectiveFiveElements, fiveElNoHour],
+  );
+  const shinsalDiff = useMemo<ShinsalDiff>(
+    () => (hasHourPillar ? diffShinsal(Array.from(finalShinsalNames), shinsalNamesNoHour) : { added: [], removed: [] }),
+    [hasHourPillar, finalShinsalNames, shinsalNamesNoHour],
+  );
+  const anyDiff = hasAnyHourDiff(fiveElDiff, shinsalDiff);
 
   return (
     <div className="space-y-4">
@@ -1603,6 +1638,26 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
       {/* ── 탭 1: 원국 ── */}
       {reportTab === "원국" && (
         <div className="space-y-3">
+
+          {/* ── 시주 모드 토글 (출생 시간 있을 때만) ── */}
+          {hasHourPillar && (
+            <div className="flex items-center gap-1.5 bg-muted/30 border border-border rounded-xl p-1">
+              {(["포함", "제외", "비교"] as const).map((m) => (
+                <button
+                  key={m}
+                  onClick={() => setHourMode(m)}
+                  className={`flex-1 py-1.5 text-[12px] font-semibold rounded-lg transition-all active:scale-95 ${
+                    hourMode === m
+                      ? "bg-background text-foreground shadow-sm border border-border/50"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  시주 {m}
+                </button>
+              ))}
+            </div>
+          )}
+
           {/* 사주팔자 — 항상 표시 */}
           <PillarTable
             pillars={pillarData}
@@ -2050,6 +2105,51 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
               </div>
             </DialogContent>
           </Dialog>
+
+          {/* ── 시주 비교 diff 카드 ── */}
+          {hasHourPillar && hourMode === "비교" && (
+            <div className="rounded-xl border border-border bg-muted/20 px-4 py-3.5 space-y-3">
+              <div className="flex items-center gap-2">
+                <span className="text-[13px] font-bold text-foreground">시주 포함 vs 제외 비교</span>
+                {!anyDiff && (
+                  <span className="text-[11px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full">변화 없음</span>
+                )}
+              </div>
+              {fiveElDiff.length > 0 && (
+                <div>
+                  <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5">오행 변화</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {fiveElDiff.map(({ el, withHour, withoutHour, delta }) => (
+                      <div key={el} className="flex items-center gap-1 rounded-lg border border-border bg-card px-2.5 py-1">
+                        <span className="text-[13px] font-bold" style={{ color: (ELEMENT_TEXT_HEX as Record<string, string>)[el] ?? undefined }}>{el}</span>
+                        <span className="text-[12px] text-muted-foreground">{withHour}→{withoutHour}</span>
+                        <span className={`text-[11px] font-bold ${delta > 0 ? "text-emerald-600" : "text-rose-500"}`}>
+                          {delta > 0 ? `+${delta}` : delta}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {(shinsalDiff.added.length > 0 || shinsalDiff.removed.length > 0) && (
+                <div>
+                  <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5">신살 변화</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {shinsalDiff.removed.map((n) => (
+                      <span key={`rem-${n}`} className={`text-[12px] font-bold px-2 py-0.5 rounded-full border line-through opacity-50 ${SHINSAL_COLOR[n] ?? "bg-muted text-muted-foreground border-border"}`}>
+                        {n}
+                      </span>
+                    ))}
+                    {shinsalDiff.added.map((n) => (
+                      <span key={`add-${n}`} className={`text-[12px] font-bold px-2 py-0.5 rounded-full border ${SHINSAL_COLOR[n] ?? "bg-muted text-muted-foreground border-border"}`}>
+                        +{n}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 

@@ -16,6 +16,7 @@ import {
 import { getZodiacFromDayPillar } from "@/lib/zodiacAnimal";
 import { type FiveElementCount } from "@/lib/sajuEngine";
 import { Heart, CheckCircle, XCircle, AlertTriangle, Lightbulb, Star, ChevronDown, ArrowLeftRight, Waves } from "lucide-react";
+import { GenderSymbol } from "@/components/GenderSymbol";
 import { CopyButton } from "@/components/CopyButton";
 import { buildCompatibilityClipboardText } from "@/lib/clipboardExport";
 import { Link } from "wouter";
@@ -464,6 +465,8 @@ export default function Compatibility() {
   const palette = result ? (GRADE_PALETTE[result.finalType] ?? GRADE_PALETTE["노력형 궁합"]) : null;
   const myName = p1?.birthInput.name ?? "";
   const otherName = p2?.birthInput.name ?? "";
+  const myGender = p1?.birthInput.gender ?? "";
+  const otherGender = p2?.birthInput.gender ?? "";
 
   // ── 배우자궁·관성 레이어 데이터 ──
   const myPillarsFull = p1 ? getFinalPillars(p1) : null;
@@ -690,6 +693,92 @@ export default function Compatibility() {
                 </div>
               </div>
 
+              {/* ── E. 현재 관계 흐름 (동적 궁합) ── */}
+              {flowA && flowB && combinedFlow && (
+                <AccSection
+                  title="현재 관계 흐름"
+                  icon={<Waves className="h-3.5 w-3.5 text-sky-500" />}
+                  defaultOpen={true}
+                >
+                  {/* 개인 흐름 — 2열 */}
+                  <div className="grid grid-cols-2 gap-2">
+                    {([
+                      { flow: flowA, gender: myGender },
+                      { flow: flowB, gender: otherGender },
+                    ] as const).map(({ flow, gender }) => (
+                      <div key={flow.name} className="rounded-xl border border-border bg-card p-3 space-y-1">
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className="text-[12px] font-bold text-foreground inline-flex items-center gap-0.5">
+                            <GenderSymbol gender={gender} />{flow.name}
+                          </span>
+                          <span className={`text-[11px] font-semibold px-1.5 py-0.5 rounded-full ${OPEN_BADGE[flow.flowOpenness]}`}>
+                            {flow.flowLabel}
+                          </span>
+                        </div>
+                        {flow.daywoon && (
+                          <FlowRow label="대운" gz={flow.daywoon.ganZhi} tg={flow.daywoonTenGod} />
+                        )}
+                        <FlowRow label="세운" gz={flow.sewoon} tg={flow.sewoonTenGod} />
+                        <FlowRow label="월운" gz={flow.wolwoon} tg={flow.wolwoonTenGod} />
+                        <FlowRow label="일운" gz={flow.ilwoon} tg={flow.ilwoonTenGod} />
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* 개인 해석 */}
+                  <div className="grid grid-cols-2 gap-2">
+                    {([
+                      { flow: flowA, gender: myGender },
+                      { flow: flowB, gender: otherGender },
+                    ] as const).map(({ flow, gender }) => (
+                      <div key={flow.name} className="rounded-xl border border-border bg-muted/10 p-3 space-y-2">
+                        <p className="text-[12px] font-bold text-foreground inline-flex items-center gap-0.5">
+                          <GenderSymbol gender={gender} />{flow.name}의 현재 흐름
+                        </p>
+                        <div className="space-y-1.5">
+                          <div>
+                            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-0.5">감정</p>
+                            <p className="text-[12px] text-foreground leading-snug">{flow.emotionalTendency}</p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-0.5">관계</p>
+                            <p className="text-[12px] text-foreground leading-snug">{flow.relationshipTendency}</p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-0.5">소통</p>
+                            <p className="text-[12px] text-foreground leading-snug">{flow.communicationTendency}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* 결합 흐름 */}
+                  <div className="rounded-xl border border-sky-200 bg-sky-50/40 p-3 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <p className="text-[12px] font-bold text-foreground">둘의 현재 결합 흐름</p>
+                      <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${ALIGN_BADGE[combinedFlow.alignmentType]}`}>
+                        {combinedFlow.alignmentType}
+                      </span>
+                    </div>
+                    <p className="text-[13px] text-foreground leading-relaxed">{combinedFlow.alignmentDesc}</p>
+                    <p className="text-[12px] text-muted-foreground leading-relaxed">{combinedFlow.staticModifier}</p>
+                  </div>
+
+                  {/* 오늘의 관계 흐름 */}
+                  <div className={`rounded-xl border p-3 ${TODAY_CARD_COLORS[combinedFlow.todayLevel]}`}>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">오늘의 관계 흐름</p>
+                    <p className={`text-[14px] font-semibold leading-snug ${TODAY_TEXT_COLORS[combinedFlow.todayLevel]}`}>
+                      {combinedFlow.todaySummary}
+                    </p>
+                  </div>
+
+                  <p className="text-[11px] text-muted-foreground/60 leading-relaxed">
+                    ※ 운 흐름은 규칙 기반 간략 추정으로, 절대적 예언이 아닙니다.
+                  </p>
+                </AccSection>
+              )}
+
               {/* ── B2. 배우자궁·관성 레이어 (접기/참고 지표) ── */}
               <AccSection
                 title="배우자 성향 · 관계운 레이어"
@@ -705,12 +794,14 @@ export default function Compatibility() {
                   <p className="text-[11px] font-bold text-violet-500 uppercase tracking-widest mb-2">① 원국 배우자 성향</p>
                   <div className="grid grid-cols-2 gap-2">
                     {[
-                      { name: myName, branch: myDayBranch2, palace: mySpousePalace },
-                      { name: otherName, branch: otherDayBranch2, palace: otherSpousePalace },
-                    ].map(({ name, branch, palace }) => (
+                      { name: myName, gender: myGender, branch: myDayBranch2, palace: mySpousePalace },
+                      { name: otherName, gender: otherGender, branch: otherDayBranch2, palace: otherSpousePalace },
+                    ].map(({ name, gender, branch, palace }) => (
                       <div key={name} className="rounded-lg border border-border bg-card p-3">
                         <div className="flex items-center gap-1.5 mb-1.5">
-                          <span className="text-[12px] font-semibold text-muted-foreground">{name}</span>
+                          <span className="text-[12px] font-semibold text-muted-foreground inline-flex items-center gap-0.5">
+                            <GenderSymbol gender={gender} />{name}
+                          </span>
                           {branch && (
                             <span
                               className="text-sm font-bold bg-muted px-1.5 py-0.5 rounded"
@@ -741,13 +832,15 @@ export default function Compatibility() {
                     <p className="text-[11px] font-bold text-violet-500 uppercase tracking-widest mb-2">② 결혼 적합 시기 힌트</p>
                     <div className="space-y-2">
                       {[
-                        { name: myName, timing: myMarriageTiming },
-                        { name: otherName, timing: otherMarriageTiming },
+                        { name: myName, gender: myGender, timing: myMarriageTiming },
+                        { name: otherName, gender: otherGender, timing: otherMarriageTiming },
                       ]
                         .filter(({ timing }) => timing)
-                        .map(({ name, timing }) => (
+                        .map(({ name, gender, timing }) => (
                           <div key={name} className="rounded-lg bg-muted/20 border border-border px-3 py-2.5">
-                            <p className="text-[12px] font-semibold text-foreground mb-1">{name}</p>
+                            <p className="text-[12px] font-semibold text-foreground mb-1 inline-flex items-center gap-0.5">
+                              <GenderSymbol gender={gender} />{name}
+                            </p>
                             <p className="text-[12px] text-muted-foreground leading-relaxed">{timing!.daewoonHint}</p>
                             <p className="text-[11px] text-muted-foreground/70 mt-1 leading-relaxed">{timing!.general}</p>
                           </div>
@@ -761,116 +854,6 @@ export default function Compatibility() {
                 </p>
               </AccSection>
 
-              {/* ── C. 장점 / 주의점 (항상 표시) ── */}
-              <div className="space-y-2">
-                <div className="space-y-1.5">
-                  <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest px-0.5">잘 맞는 점</p>
-                  {fullReport.harmonyPoints.slice(0, 3).map((item, i) => (
-                    <BulletRow key={i} text={item} positive />
-                  ))}
-                </div>
-                <div className="space-y-1.5 mt-3">
-                  <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest px-0.5">주의할 점</p>
-                  {fullReport.conflictPoints.slice(0, 3).map((item, i) => (
-                    <BulletRow key={i} text={item} positive={false} />
-                  ))}
-                </div>
-              </div>
-
-              {/* ── D. 관계 유지 팁 (항상 표시) ── */}
-              {fullReport.tips.length > 0 && (
-                <div className="rounded-xl border border-border bg-muted/20 px-4 py-3.5">
-                  <div className="flex items-center gap-1.5 mb-2">
-                    <Lightbulb className="h-3.5 w-3.5 text-amber-500" />
-                    <p className="text-[13px] font-semibold text-foreground">관계 유지 팁</p>
-                  </div>
-                  <ul className="space-y-1.5">
-                    {fullReport.tips.slice(0, 3).map((tip, i) => (
-                      <li key={i} className="flex items-start gap-2 text-[13px] text-muted-foreground">
-                        <span className="shrink-0 mt-0.5">•</span>
-                        <span>{tip}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {/* ── E. 현재 관계 흐름 (동적 궁합) ── */}
-              {flowA && flowB && combinedFlow && (
-                  <AccSection
-                    title="현재 관계 흐름"
-                    icon={<Waves className="h-3.5 w-3.5 text-sky-500" />}
-                    defaultOpen={true}
-                  >
-                    {/* 개인 흐름 — 2열 */}
-                    <div className="grid grid-cols-2 gap-2">
-                      {[flowA, flowB].map((flow) => (
-                        <div key={flow.name} className="rounded-xl border border-border bg-card p-3 space-y-1">
-                          <div className="flex items-center justify-between mb-1.5">
-                            <span className="text-[12px] font-bold text-foreground">{flow.name}</span>
-                            <span className={`text-[11px] font-semibold px-1.5 py-0.5 rounded-full ${OPEN_BADGE[flow.flowOpenness]}`}>
-                              {flow.flowLabel}
-                            </span>
-                          </div>
-                          {flow.daywoon && (
-                            <FlowRow label="대운" gz={flow.daywoon.ganZhi} tg={flow.daywoonTenGod} />
-                          )}
-                          <FlowRow label="세운" gz={flow.sewoon} tg={flow.sewoonTenGod} />
-                          <FlowRow label="월운" gz={flow.wolwoon} tg={flow.wolwoonTenGod} />
-                          <FlowRow label="일운" gz={flow.ilwoon} tg={flow.ilwoonTenGod} />
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* 개인 해석 */}
-                    <div className="grid grid-cols-2 gap-2">
-                      {[flowA, flowB].map((flow) => (
-                        <div key={flow.name} className="rounded-xl border border-border bg-muted/10 p-3 space-y-2">
-                          <p className="text-[12px] font-bold text-foreground">{flow.name}의 현재 흐름</p>
-                          <div className="space-y-1.5">
-                            <div>
-                              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-0.5">감정</p>
-                              <p className="text-[12px] text-foreground leading-snug">{flow.emotionalTendency}</p>
-                            </div>
-                            <div>
-                              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-0.5">관계</p>
-                              <p className="text-[12px] text-foreground leading-snug">{flow.relationshipTendency}</p>
-                            </div>
-                            <div>
-                              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-0.5">소통</p>
-                              <p className="text-[12px] text-foreground leading-snug">{flow.communicationTendency}</p>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* 결합 흐름 */}
-                    <div className="rounded-xl border border-sky-200 bg-sky-50/40 p-3 space-y-2">
-                      <div className="flex items-center gap-2">
-                        <p className="text-[12px] font-bold text-foreground">둘의 현재 결합 흐름</p>
-                        <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${ALIGN_BADGE[combinedFlow.alignmentType]}`}>
-                          {combinedFlow.alignmentType}
-                        </span>
-                      </div>
-                      <p className="text-[13px] text-foreground leading-relaxed">{combinedFlow.alignmentDesc}</p>
-                      <p className="text-[12px] text-muted-foreground leading-relaxed">{combinedFlow.staticModifier}</p>
-                    </div>
-
-                    {/* 오늘의 관계 흐름 */}
-                    <div className={`rounded-xl border p-3 ${TODAY_CARD_COLORS[combinedFlow.todayLevel]}`}>
-                      <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">오늘의 관계 흐름</p>
-                      <p className={`text-[14px] font-semibold leading-snug ${TODAY_TEXT_COLORS[combinedFlow.todayLevel]}`}>
-                        {combinedFlow.todaySummary}
-                      </p>
-                    </div>
-
-                    <p className="text-[11px] text-muted-foreground/60 leading-relaxed">
-                      ※ 운 흐름은 규칙 기반 간략 추정으로, 절대적 예언이 아닙니다.
-                    </p>
-                  </AccSection>
-              )}
-
               {/* ── F. 상세 분석 (접기) ── */}
               <AccSection
                 title="상세 분석"
@@ -881,13 +864,15 @@ export default function Compatibility() {
                   <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-2">사주 비교</p>
                   <div className="grid grid-cols-2 gap-3">
                     {[
-                      { record: p1!, label: myName },
-                      { record: p2!, label: otherName },
-                    ].map(({ record, label }) => {
+                      { record: p1!, label: myName, gender: myGender },
+                      { record: p2!, label: otherName, gender: otherGender },
+                    ].map(({ record, label, gender }) => {
                       const p = getFinalPillars(record);
                       return (
                         <div key={label} className="rounded-xl border border-border bg-card p-2.5">
-                          <p className="text-[13px] text-muted-foreground mb-2">{label}</p>
+                          <p className="text-[13px] text-muted-foreground mb-2 inline-flex items-center gap-0.5">
+                            <GenderSymbol gender={gender} />{label}
+                          </p>
                           <div className="grid grid-cols-4 gap-0.5">
                             {[
                               { lbl: "시", pillar: p.hour },
@@ -950,7 +935,9 @@ export default function Compatibility() {
                   <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-2">배우자궁 비교</p>
                   <div className="flex items-center gap-3 mb-2">
                     <div className="flex-1 text-center rounded-lg border p-2.5" style={getElCardStyle(charToElement(fullReport.branchComp.myBranch))}>
-                      <p className="text-[13px] text-muted-foreground mb-1">{myName} 일지</p>
+                      <p className="text-[13px] text-muted-foreground mb-1 inline-flex items-center gap-0.5 justify-center w-full">
+                        <GenderSymbol gender={myGender} />{myName} 일지
+                      </p>
                       <span className="text-2xl font-bold" style={getBranchColor(fullReport.branchComp.myBranch)}>{fullReport.branchComp.myBranch}</span>
                       <p className="text-[13px] text-muted-foreground mt-1 leading-tight">{fullReport.branchComp.myPalaceTitle.split("—")[0]}</p>
                     </div>
@@ -965,7 +952,9 @@ export default function Compatibility() {
                       ) : <p className="text-[13px] text-muted-foreground mt-1">무관계</p>}
                     </div>
                     <div className="flex-1 text-center rounded-lg border p-2.5" style={getElCardStyle(charToElement(fullReport.branchComp.otherBranch))}>
-                      <p className="text-[13px] text-muted-foreground mb-1">{otherName} 일지</p>
+                      <p className="text-[13px] text-muted-foreground mb-1 inline-flex items-center gap-0.5 justify-center w-full">
+                        <GenderSymbol gender={otherGender} />{otherName} 일지
+                      </p>
                       <span className="text-2xl font-bold" style={getBranchColor(fullReport.branchComp.otherBranch)}>{fullReport.branchComp.otherBranch}</span>
                       <p className="text-[13px] text-muted-foreground mt-1 leading-tight">{fullReport.branchComp.otherPalaceTitle.split("—")[0]}</p>
                     </div>
@@ -1043,11 +1032,15 @@ export default function Compatibility() {
                   <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-2">연애 스타일</p>
                   <div className="grid grid-cols-2 gap-2 mb-2">
                     <div className="rounded-lg border border-border bg-muted/10 px-3 py-2.5 text-center">
-                      <p className="text-[13px] text-muted-foreground">{myName}</p>
+                      <p className="text-[13px] text-muted-foreground inline-flex items-center gap-0.5 justify-center w-full">
+                        <GenderSymbol gender={myGender} />{myName}
+                      </p>
                       <p className="text-sm font-bold text-foreground mt-1">{fullReport.styleComp.person1Style}</p>
                     </div>
                     <div className="rounded-lg border border-border bg-muted/10 px-3 py-2.5 text-center">
-                      <p className="text-[13px] text-muted-foreground">{otherName}</p>
+                      <p className="text-[13px] text-muted-foreground inline-flex items-center gap-0.5 justify-center w-full">
+                        <GenderSymbol gender={otherGender} />{otherName}
+                      </p>
                       <p className="text-sm font-bold text-foreground mt-1">{fullReport.styleComp.person2Style}</p>
                     </div>
                   </div>
@@ -1086,6 +1079,39 @@ export default function Compatibility() {
                 )}
               </AccSection>
 
+              {/* ── C. 잘 맞는 점 / 주의할 점 ── */}
+              <div className="space-y-2">
+                <div className="space-y-1.5">
+                  <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest px-0.5">잘 맞는 점</p>
+                  {fullReport.harmonyPoints.slice(0, 3).map((item, i) => (
+                    <BulletRow key={i} text={item} positive />
+                  ))}
+                </div>
+                <div className="space-y-1.5 mt-3">
+                  <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest px-0.5">주의할 점</p>
+                  {fullReport.conflictPoints.slice(0, 3).map((item, i) => (
+                    <BulletRow key={i} text={item} positive={false} />
+                  ))}
+                </div>
+              </div>
+
+              {/* ── D. 관계 유지 팁 ── */}
+              {fullReport.tips.length > 0 && (
+                <div className="rounded-xl border border-border bg-muted/20 px-4 py-3.5">
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <Lightbulb className="h-3.5 w-3.5 text-amber-500" />
+                    <p className="text-[13px] font-semibold text-foreground">관계 유지 팁</p>
+                  </div>
+                  <ul className="space-y-1.5">
+                    {fullReport.tips.slice(0, 3).map((tip, i) => (
+                      <li key={i} className="flex items-start gap-2 text-[13px] text-muted-foreground">
+                        <span className="shrink-0 mt-0.5">•</span>
+                        <span>{tip}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
             </div>
           );})()}

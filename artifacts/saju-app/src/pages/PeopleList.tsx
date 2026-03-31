@@ -22,6 +22,7 @@ import {
   RELATIONSHIP_TYPE_EMOJI,
 } from "@/lib/storage";
 import { getZodiacFromDayPillar } from "@/lib/zodiacAnimal";
+import { GenderSymbol } from "@/components/GenderSymbol";
 import { Search, UserPlus, Trash2, Pencil, Heart, Check } from "lucide-react";
 import { Mascot } from "@/components/Mascot";
 import { useAuth } from "@/lib/authContext";
@@ -92,7 +93,7 @@ function PersonCard({
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="font-semibold text-foreground">{input.name}</span>
-              <span className="text-[13px] text-muted-foreground">{input.gender}</span>
+              <GenderSymbol gender={input.gender} />
               {dayStem && (
                 <span className="text-[13px] text-muted-foreground/60">
                   {dayStem}{dayBranch}일주
