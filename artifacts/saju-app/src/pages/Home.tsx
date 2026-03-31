@@ -336,26 +336,6 @@ function Dashboard({ record }: { record: PersonRecord }) {
               ))}
             </div>
 
-            {/* 관계·재물·건강·일 미니 뱃지 + 상세보기 */}
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 12 }}>
-              <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
-                {lifeFlow.lifeFlows.slice(0, 4).map((lf) => {
-                  const lvColor = lf.level === "good" ? "#2E7D32" : lf.level === "caution" ? "#E65100" : "#666";
-                  const lvBg   = lf.level === "good" ? "rgba(46,125,50,0.10)" : lf.level === "caution" ? "rgba(230,81,0,0.10)" : "rgba(120,120,120,0.10)";
-                  return (
-                    <span key={lf.category} style={{ fontSize: 11, fontWeight: 700, background: lvBg, color: lvColor, borderRadius: 20, padding: "3px 9px", border: `1px solid ${lvColor}33` }}>
-                      {lf.icon} {lf.category}
-                    </span>
-                  );
-                })}
-              </div>
-              <button
-                onClick={goToTodayFortune}
-                style={{ fontSize: 12, fontWeight: 700, color: "#6366F1", background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.2)", borderRadius: 20, padding: "4px 12px", cursor: "pointer", whiteSpace: "nowrap" }}
-              >
-                상세보기 →
-              </button>
-            </div>
           </div>
         </div>
       )}
