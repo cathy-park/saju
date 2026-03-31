@@ -1,5 +1,14 @@
 import type { BirthInput, ComputedPillars, FiveElementCount, SajuProfile } from "./sajuEngine";
 
+export type TenGodName =
+  | "비견" | "겁재"
+  | "식신" | "상관"
+  | "편재" | "정재"
+  | "편관" | "정관"
+  | "편인" | "정인";
+
+export type ManualTenGodCounts = Record<TenGodName, number>;
+
 export interface ManualShinsalItem {
   position: string;
   name: string;
@@ -55,6 +64,7 @@ export interface PersonRecord {
   manualBranchRelationRemove?: string[];
   manualDerived?: ManualDerived;
   manualFiveElements?: FiveElementCount;
+  manualTenGodCounts?: ManualTenGodCounts;
   createdAt: string;
   updatedAt: string;
 }

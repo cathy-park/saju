@@ -1,0 +1,100 @@
+Please make the hour-pillar interpretation mode and the analysis results from the 원국 tab propagate consistently to tabs 2, 3, 4 and also to compatibility.
+
+Current concern:
+The 원국 tab has 시주 포함 / 시주 제외 / 비교 mode,
+but I’m worried that only the 원국 tab is reacting to that mode,
+while tabs 2, 3, 4 and the compatibility screen may still be using a separate default calculation path.
+
+I need this fixed as a global interpretation-state issue, not just a single-tab UI feature.
+
+Requirements:
+
+[1] Global interpretation mode
+The selected interpretation mode in the 원국 tab must become a shared/global calculation mode for the entire app.
+
+Supported modes:
+- 시주 포함
+- 시주 제외
+- 비교
+
+This selected mode must apply consistently to:
+- 원국 tab
+- 2번 tab
+- 3번 tab
+- 4번 tab
+- compatibility screen
+
+[2] Propagate analysis results
+The structural analysis derived in the 원국 tab must carry forward into later tabs.
+
+This includes at least:
+- five elements
+- detailed elements
+- ten gods
+- detailed ten gods
+- shinsal
+- yongshin
+- secondary yongshin
+- combination/conflict adjustments
+- seasonal adjustment
+- palace adjustment
+- interpretation summaries
+
+Tabs 2, 3, 4 must not re-render from stale default values.
+They must use the same effective calculation result that was generated from the selected mode.
+
+[3] Check and verify actual behavior
+Do a full audit and verify whether tabs 2, 3, 4 are currently using:
+- the same recalculated result from 원국
+or
+- separate stale/default calculations
+
+Please explicitly test and confirm:
+1. When switching from 시주 포함 to 시주 제외 in 원국,
+   do tabs 2, 3, 4 also change?
+2. Do the five-element ratios change there too if they should?
+3. Do ten-god values change there too if they should?
+4. Do interpretation texts change there too if they should?
+
+If not, fix the shared state/data flow.
+
+[4] Compatibility screen must also support hour-pillar mode
+Add 시주 포함 / 시주 제외 / 비교 support to compatibility too.
+
+Compatibility must respect:
+- my profile’s interpretation mode
+- partner profile’s interpretation mode
+
+At minimum, compatibility should allow:
+- my side: include/exclude/compare
+- partner side: include/exclude/compare
+or a simpler but explicit combined compatibility mode if that is cleaner
+
+But the important thing is:
+compatibility must not ignore the hour-pillar option.
+
+[5] Comparison mode in compatibility
+When comparison mode is used in compatibility, show differences in:
+- compatibility score
+- spouse tendency
+- relationship layer
+- dynamic relationship flow
+- current timing interpretation
+
+Highlight changed results only.
+
+[6] Single source of truth
+Use one shared effective calculation result for each mode:
+- withHour result
+- withoutHour result
+- diff result
+
+Do NOT let later tabs or compatibility recalculate from a different outdated path.
+
+[7] Developer verification output
+Please show me:
+- which file controls the global interpretation mode state
+- which files for tab 2, 3, 4 were updated to consume that shared result
+- which file for compatibility was updated
+- whether the current code had separate stale paths before
+- proof that changing the mode in 원국 actually changes downstream tabs and compatibility too

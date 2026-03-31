@@ -105,6 +105,85 @@ export const TEN_GOD_ELEMENT: Record<string, string> = {
   임: "水", 계: "水",
 };
 
+// ── 십성 → 오행 변환 (일간 기준) ──────────────────────────────────
+
+const STEM_ELEMENT_MAP: Record<string, string> = {
+  갑: "목", 을: "목", 병: "화", 정: "화",
+  무: "토", 기: "토", 경: "금", 신: "금",
+  임: "수", 계: "수",
+};
+
+const GENERATING_MAP: Record<string, string> = {
+  목: "화", 화: "토", 토: "금", 금: "수", 수: "목",
+};
+const CONTROLLING_MAP: Record<string, string> = {
+  목: "토", 토: "수", 수: "화", 화: "금", 금: "목",
+};
+
+/** Day stem element → each Ten God group element */
+export function getTenGodGroupElements(dayStem: string): Record<TenGod, string> {
+  const d = STEM_ELEMENT_MAP[dayStem] ?? "";
+  const gen = GENERATING_MAP[d] ?? "";
+  const ctrl = CONTROLLING_MAP[d] ?? "";
+  const genBy = (Object.entries(GENERATING_MAP).find(([, v]) => v === d)?.[0]) ?? "";
+  const ctrlBy = (Object.entries(CONTROLLING_MAP).find(([, v]) => v === d)?.[0]) ?? "";
+  return {
+    비견: d,   겁재: d,
+    식신: gen, 상관: gen,
+    편재: ctrl, 정재: ctrl,
+    편관: ctrlBy, 정관: ctrlBy,
+    편인: genBy, 정인: genBy,
+  };
+}
+
+/** Convert manual ten-god counts to FiveElementCount */
+export function tenGodCountsToFiveElements(
+  counts: Partial<Record<TenGod, number>>,
+  dayStem: string,
+): Record<string, number> {
+  const groupEl = getTenGodGroupElements(dayStem);
+  const result: Record<string, number> = { 목: 0, 화: 0, 토: 0, 금: 0, 수: 0 };
+  for (const [tg, cnt] of Object.entries(counts) as [TenGod, number][]) {
+    const el = groupEl[tg];
+    if (el && cnt) result[el] = (result[el] ?? 0) + cnt;
+  }
+  return result;
+}
+
+/** Auto-count ten gods from pillar stems and branches */
+export function autoCountTenGods(
+  dayStem: string,
+  chars: string[],
+): Record<TenGod, number> {
+  const result: Record<TenGod, number> = {
+    비견: 0, 겁재: 0, 식신: 0, 상관: 0,
+    편재: 0, 정재: 0, 편관: 0, 정관: 0,
+    편인: 0, 정인: 0,
+  };
+  for (const c of chars) {
+    const tg = getTenGod(dayStem, c);
+    if (tg && tg !== (chars.find((x) => x === dayStem) ? "비견" : null)) {
+      // just count all (including 비견 for dayStem itself)
+    }
+    if (tg) result[tg] += 1;
+  }
+  return result;
+}
+
+export const TEN_GOD_GROUPS: Record<string, TenGod[]> = {
+  비겁: ["비견", "겁재"],
+  식상: ["식신", "상관"],
+  재성: ["편재", "정재"],
+  관성: ["편관", "정관"],
+  인성: ["편인", "정인"],
+};
+
+export const ALL_TEN_GOD_NAMES: TenGod[] = [
+  "비견", "겁재", "식신", "상관",
+  "편재", "정재", "편관", "정관",
+  "편인", "정인",
+];
+
 export const TEN_GOD_COLOR: Record<TenGod, string> = {
   비견: "bg-green-100 text-green-800",
   겁재: "bg-emerald-100 text-emerald-800",

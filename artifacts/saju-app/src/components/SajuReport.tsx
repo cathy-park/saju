@@ -17,7 +17,7 @@ import {
   ELEMENT_KO,
   type StrengthLevel,
 } from "@/lib/interpretSchema";
-import type { PersonRecord, ManualShinsalItem, MaritalStatus, ManualBranchRelation, ManualDerived } from "@/lib/storage";
+import type { PersonRecord, ManualShinsalItem, MaritalStatus, ManualBranchRelation, ManualDerived, ManualTenGodCounts } from "@/lib/storage";
 import { getFinalPillars, getMyProfile, getPeople, saveManualShinsal, saveExcludedAutoShinsal, saveMaritalStatus, updatePersonRecord } from "@/lib/storage";
 import { upsertMyProfile, upsertPartnerProfile } from "@/lib/db";
 import { useAuth } from "@/lib/authContext";
@@ -26,7 +26,13 @@ import { charToElement, ELEMENT_TEXT_HEX, ELEMENT_HEX, ELEMENT_LIGHT_HEX, ELEMEN
 import { TodayFortuneCard } from "@/components/TodayFortuneCard";
 import { getFortuneForDate } from "@/lib/todayFortune";
 import { buildLifeFlowInsights } from "@/lib/lifeFlowInsight";
-import { getTenGod, TEN_GOD_COLOR, TEN_GOD_KEYWORDS, TEN_GOD_TOOLTIP, TEN_GOD_ELEMENT } from "@/lib/tenGods";
+import {
+  getTenGod,
+  TEN_GOD_COLOR, TEN_GOD_KEYWORDS, TEN_GOD_TOOLTIP, TEN_GOD_ELEMENT,
+  tenGodCountsToFiveElements, autoCountTenGods,
+  ALL_TEN_GOD_NAMES, TEN_GOD_GROUPS,
+  type TenGod,
+} from "@/lib/tenGods";
 import { getHiddenStems, HIDDEN_STEMS_HANJA } from "@/lib/hiddenStems";
 import { InfoBottomSheet } from "@/components/InfoBottomSheet";
 import type { InfoSheetType } from "@/components/InfoBottomSheet";
@@ -1327,6 +1333,15 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
   const [manualFiveElements, setManualFiveElements] = useState<FiveElementCount | undefined>(record.manualFiveElements);
   const [showFiveElEdit, setShowFiveElEdit] = useState(false);
   const [draftFiveEl, setDraftFiveEl] = useState<FiveElementCount>({ 목: 0, 화: 0, 토: 0, 금: 0, 수: 0 });
+  const [manualTenGodCounts, setManualTenGodCounts] = useState<ManualTenGodCounts | undefined>(record.manualTenGodCounts);
+  const [showTenGodEdit, setShowTenGodEdit] = useState(false);
+  const [draftTenGod, setDraftTenGod] = useState<ManualTenGodCounts>({
+    비견: 0, 겁재: 0, 식신: 0, 상관: 0,
+    편재: 0, 정재: 0, 편관: 0, 정관: 0,
+    편인: 0, 정인: 0,
+  });
+  const [reportTab, setReportTab] = useState<"원국" | "성향" | "운세" | "해석">("원국");
+  const [hourMode, setHourMode] = useState<"포함" | "제외" | "비교">("포함");
 
   // ── Debounced Supabase sync ─────────────────────────────────────
   // Any manual edit (shinsal, strength, yongshin, five-elements, etc.)
@@ -1435,83 +1450,117 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
     scheduleSync();
   }
 
+  function openTenGodEditor(autoCounts: ManualTenGodCounts) {
+    setDraftTenGod(manualTenGodCounts ? { ...manualTenGodCounts } : { ...autoCounts });
+    setShowTenGodEdit(true);
+  }
+
+  function saveTenGodEdit() {
+    setManualTenGodCounts(draftTenGod);
+    setManualFiveElements(undefined);
+    updatePersonRecord(record.id, { manualTenGodCounts: draftTenGod, manualFiveElements: undefined });
+    setShowTenGodEdit(false);
+    scheduleSync();
+  }
+
+  function resetTenGodEdit() {
+    setManualTenGodCounts(undefined);
+    updatePersonRecord(record.id, { manualTenGodCounts: undefined });
+    setShowTenGodEdit(false);
+    scheduleSync();
+  }
+
   // ── Computed values ────────────────────────────────────────────
   const pillars = getFinalPillars(record);
   const profile = record.profile;
   const input = record.birthInput;
   const isManuallyEdited = !!(record.manualPillars && Object.keys(record.manualPillars).length > 0);
 
-  // effectiveFiveElements: manualFiveElements if set, else recompute from final pillars
+  // ── 시주 포함/제외 전환 ──────────────────────────────────────────
+  // 제외 모드: hour pillar 제거, 비교 모드: 원본 유지 + diff 표시
+  const effectivePillars = useMemo(() =>
+    hourMode === "제외"
+      ? { ...pillars, hour: undefined as typeof pillars.hour }
+      : pillars,
+    [pillars, hourMode],
+  );
+
+  // ── 효과적 오행: 십성 편집 > 오행 직접 편집 > 자동 계산 ─────────
+  const dayStemForCompute = pillars.day?.hangul?.[0] ?? "";
   const effectiveFiveElements = useMemo<FiveElementCount>(() => {
+    if (manualTenGodCounts && dayStemForCompute) {
+      const derived = tenGodCountsToFiveElements(manualTenGodCounts, dayStemForCompute);
+      return { 목: 0, 화: 0, 토: 0, 금: 0, 수: 0, ...derived } as FiveElementCount;
+    }
     if (manualFiveElements) return manualFiveElements;
-    return countFiveElements(pillars as ComputedPillars);
-  }, [manualFiveElements, pillars]);
+    return countFiveElements(effectivePillars as ComputedPillars);
+  }, [manualTenGodCounts, manualFiveElements, effectivePillars, dayStemForCompute]);
 
   // ── 4-Layer Saju Pipeline (auto-recomputes when any input changes) ──
   // 오행·십성·신강약·조후·용신·규칙 해석을 한 번에 재계산합니다.
   // 계산 순서: 오행 → 십성 → 신강약 → 조후 보정 → 용신 → 규칙 해석
   const sajuPipelineResult = useMemo(() => {
-    const dayStemNow = pillars.day?.hangul?.[0] ?? "";
+    const dayStemNow = effectivePillars.day?.hangul?.[0] ?? "";
     if (!dayStemNow) return null;
     const allStemsNow = [
-      pillars.hour?.hangul?.[0], dayStemNow,
-      pillars.month?.hangul?.[0], pillars.year?.hangul?.[0],
+      effectivePillars.hour?.hangul?.[0], dayStemNow,
+      effectivePillars.month?.hangul?.[0], effectivePillars.year?.hangul?.[0],
     ].filter((c): c is string => !!c);
     const allBranchesNow = [
-      pillars.hour?.hangul?.[1], pillars.day?.hangul?.[1],
-      pillars.month?.hangul?.[1], pillars.year?.hangul?.[1],
+      effectivePillars.hour?.hangul?.[1], effectivePillars.day?.hangul?.[1],
+      effectivePillars.month?.hangul?.[1], effectivePillars.year?.hangul?.[1],
     ].filter((c): c is string => !!c);
     return computeSajuPipeline({
       dayStem: dayStemNow,
-      monthBranch: pillars.month?.hangul?.[1],
-      dayBranch: pillars.day?.hangul?.[1],
+      monthBranch: effectivePillars.month?.hangul?.[1],
+      dayBranch: effectivePillars.day?.hangul?.[1],
       allStems: allStemsNow,
       allBranches: allBranchesNow,
       effectiveFiveElements,
       manualStrengthLevel: localStrengthLevel,
       manualYongshinData: localYongshinData,
     });
-  }, [effectiveFiveElements, pillars, localStrengthLevel, localYongshinData]);
+  }, [effectiveFiveElements, effectivePillars, localStrengthLevel, localYongshinData]);
 
   const ruleInsights = sajuPipelineResult?.interpretation.ruleInsights ?? [];
   const structureType = sajuPipelineResult?.interpretation.structureType ?? "";
   const seasonalNote  = sajuPipelineResult?.interpretation.seasonalNote ?? "";
 
   const pillarData = [
-    { label: "생시", hangul: pillars.hour?.hangul ?? "", hanja: pillars.hour?.hanja ?? "", isUnknown: !pillars.hour || input.timeUnknown },
-    { label: "생일", hangul: pillars.day?.hangul ?? "", hanja: pillars.day?.hanja ?? "", isDayMaster: true },
-    { label: "생월", hangul: pillars.month?.hangul ?? "", hanja: pillars.month?.hanja ?? "" },
-    { label: "생년", hangul: pillars.year?.hangul ?? "", hanja: pillars.year?.hanja ?? "" },
+    { label: "생시", hangul: effectivePillars.hour?.hangul ?? "", hanja: effectivePillars.hour?.hanja ?? "", isUnknown: !effectivePillars.hour || input.timeUnknown || hourMode === "제외" },
+    { label: "생일", hangul: effectivePillars.day?.hangul ?? "", hanja: effectivePillars.day?.hanja ?? "", isDayMaster: true },
+    { label: "생월", hangul: effectivePillars.month?.hangul ?? "", hanja: effectivePillars.month?.hanja ?? "" },
+    { label: "생년", hangul: effectivePillars.year?.hangul ?? "", hanja: effectivePillars.year?.hanja ?? "" },
   ];
 
   const dayStem = pillars.day?.hangul?.[0] ?? "";
   const dayBranch = pillars.day?.hangul?.[1] ?? "";
 
   const allChars = [
-    pillars.hour?.hangul?.[0], pillars.hour?.hangul?.[1],
-    pillars.day?.hangul?.[1],
-    pillars.month?.hangul?.[0], pillars.month?.hangul?.[1],
-    pillars.year?.hangul?.[0], pillars.year?.hangul?.[1],
+    effectivePillars.hour?.hangul?.[0], effectivePillars.hour?.hangul?.[1],
+    effectivePillars.day?.hangul?.[1],
+    effectivePillars.month?.hangul?.[0], effectivePillars.month?.hangul?.[1],
+    effectivePillars.year?.hangul?.[0], effectivePillars.year?.hangul?.[1],
   ].filter((c): c is string => !!c);
 
   const allStems = [
-    pillars.hour?.hangul?.[0], dayStem,
-    pillars.month?.hangul?.[0], pillars.year?.hangul?.[0],
+    effectivePillars.hour?.hangul?.[0], dayStem,
+    effectivePillars.month?.hangul?.[0], effectivePillars.year?.hangul?.[0],
   ].filter((c): c is string => !!c);
   const allBranches = [
-    pillars.hour?.hangul?.[1], dayBranch,
-    pillars.month?.hangul?.[1], pillars.year?.hangul?.[1],
+    effectivePillars.hour?.hangul?.[1], dayBranch,
+    effectivePillars.month?.hangul?.[1], effectivePillars.year?.hangul?.[1],
   ].filter((c): c is string => !!c);
 
-  const branchRelations = analyzeBranchRelations(pillars);
+  const branchRelations = analyzeBranchRelations(effectivePillars as Parameters<typeof analyzeBranchRelations>[0]);
   const luckCycles = calculateLuckCycles(input, record.profile.computedPillars);
 
   const shinsalPillars = (dayStem && dayBranch)
     ? calculateShinsalFull(dayStem, dayBranch, input.month, [
-        { pillar: "시주", stem: pillars.hour?.hangul?.[0] ?? "", branch: pillars.hour?.hangul?.[1] ?? "" },
-        { pillar: "일주", stem: pillars.day?.hangul?.[0] ?? "", branch: pillars.day?.hangul?.[1] ?? "" },
-        { pillar: "월주", stem: pillars.month?.hangul?.[0] ?? "", branch: pillars.month?.hangul?.[1] ?? "" },
-        { pillar: "년주", stem: pillars.year?.hangul?.[0] ?? "", branch: pillars.year?.hangul?.[1] ?? "" },
+        { pillar: "시주", stem: effectivePillars.hour?.hangul?.[0] ?? "", branch: effectivePillars.hour?.hangul?.[1] ?? "" },
+        { pillar: "일주", stem: effectivePillars.day?.hangul?.[0] ?? "", branch: effectivePillars.day?.hangul?.[1] ?? "" },
+        { pillar: "월주", stem: effectivePillars.month?.hangul?.[0] ?? "", branch: effectivePillars.month?.hangul?.[1] ?? "" },
+        { pillar: "년주", stem: effectivePillars.year?.hangul?.[0] ?? "", branch: effectivePillars.year?.hangul?.[1] ?? "" },
       ])
     : [];
 
@@ -1579,9 +1628,6 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
   const relationshipPattern = (dayStem && dayBranch)
     ? getRelationshipPattern(dayStem, dayBranch, effectiveFiveElements)
     : null;
-
-  const [reportTab, setReportTab] = useState<"원국" | "성향" | "운세" | "해석">("원국");
-  const [hourMode, setHourMode] = useState<"포함" | "제외" | "비교">("포함");
 
   // ── 시주 비교 모드 계산 ────────────────────────────────────────
   const hasHourPillar = !!(pillars.hour && !input.timeUnknown);
@@ -1671,16 +1717,78 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
             }}
           />
 
+          {/* ── 십성 직접 편집 (Primary) ── */}
+          {dayStem && (() => {
+            const autoTgCounts = autoCountTenGods(dayStem, [
+              ...allStems.filter((s) => s !== dayStem), ...allBranches,
+            ]) as ManualTenGodCounts;
+            const displayCounts: ManualTenGodCounts = manualTenGodCounts ?? autoTgCounts;
+            return (
+              <AccSection
+                title="십성 분포 十星分布"
+                defaultOpen
+                titleExtra={
+                  <div className="flex items-center gap-1">
+                    {manualTenGodCounts && (
+                      <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-bold">수정됨</span>
+                    )}
+                    <button
+                      onClick={() => openTenGodEditor(autoTgCounts)}
+                      className="flex items-center gap-1 text-[11px] font-semibold text-muted-foreground hover:text-primary border border-border/50 rounded-md px-2 py-1 transition-colors"
+                    >
+                      <Edit3 className="h-3 w-3" />
+                      편집
+                    </button>
+                  </div>
+                }
+              >
+                <div className="space-y-3">
+                  {Object.entries(TEN_GOD_GROUPS).map(([group, members]) => {
+                    const total = members.reduce((s, tg) => s + (displayCounts[tg] ?? 0), 0);
+                    return (
+                      <div key={group}>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-[12px] font-bold text-foreground">{group}</span>
+                          <span className="text-[12px] text-muted-foreground">{total}개</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-1">
+                          {members.map((tg) => (
+                            <div key={tg} className={`flex items-center justify-between rounded-lg px-2.5 py-1.5 ${TEN_GOD_COLOR[tg as TenGod]}`}>
+                              <span className="text-[13px] font-bold">{tg}</span>
+                              <span className="text-[13px] font-semibold">{displayCounts[tg as TenGod] ?? 0}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {manualTenGodCounts && (
+                    <p className="text-[11px] text-amber-600 bg-amber-50 rounded-lg px-2.5 py-1.5">
+                      ✎ 직접 편집된 십성 — 오행 분포가 십성 기준으로 재계산됩니다
+                    </p>
+                  )}
+                </div>
+              </AccSection>
+            );
+          })()}
+
           <AccSection
             title="오행 분포 五行分布"
             titleExtra={
-              <button
-                onClick={() => openFiveElEditor(effectiveFiveElements)}
-                className="flex items-center gap-1 text-[11px] font-semibold text-muted-foreground hover:text-primary border border-border/50 rounded-md px-2 py-1 transition-colors"
-              >
-                <Edit3 className="h-3 w-3" />
-                {manualFiveElements ? "수정됨" : "수정"}
-              </button>
+              <div className="flex items-center gap-1">
+                {manualTenGodCounts && (
+                  <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-bold">십성 파생</span>
+                )}
+                <button
+                  onClick={() => openFiveElEditor(effectiveFiveElements)}
+                  className="flex items-center gap-1 text-[11px] font-semibold text-muted-foreground hover:text-primary border border-border/50 rounded-md px-2 py-1 transition-colors disabled:opacity-40"
+                  disabled={!!manualTenGodCounts}
+                  title={manualTenGodCounts ? "십성 편집이 우선 적용됩니다" : undefined}
+                >
+                  <Edit3 className="h-3 w-3" />
+                  {manualFiveElements && !manualTenGodCounts ? "수정됨" : "수정"}
+                </button>
+              </div>
             }
           >
             <FiveElementSection counts={effectiveFiveElements} dayStem={dayStem} />
@@ -1694,7 +1802,7 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
                   일간 <span className="font-bold text-foreground">{dayStem}</span> · 일지 <span className="font-bold text-foreground">{dayBranch}</span> 기준
                 </p>
                 {[
-                  { pillar: "시주", stemLabel: "시천간", branchLabel: "시지", isDay: false, isUnknown: !pillars.hour || input.timeUnknown },
+                  { pillar: "시주", stemLabel: "시천간", branchLabel: "시지", isDay: false, isUnknown: !effectivePillars.hour || input.timeUnknown || hourMode === "제외" },
                   { pillar: "일주", stemLabel: "일천간", branchLabel: "일지", isDay: true, isUnknown: false },
                   { pillar: "월주", stemLabel: "월천간", branchLabel: "월지", isDay: false, isUnknown: false },
                   { pillar: "년주", stemLabel: "연천간", branchLabel: "연지", isDay: false, isUnknown: false },
@@ -2704,6 +2812,71 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
               onClick={saveFiveElEdit}
               className="flex-1 py-2.5 text-[13px] font-semibold rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
             >
+              저장
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── 십성 직접 편집 다이얼로그 ── */}
+      <Dialog open={showTenGodEdit} onOpenChange={setShowTenGodEdit}>
+        <DialogContent className="max-w-sm max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold">십성 직접 편집 十星直輯</DialogTitle>
+          </DialogHeader>
+          <p className="text-[13px] text-muted-foreground">
+            각 십성의 개수를 설정하면 오행 분포와 해석이 자동으로 재계산됩니다.
+          </p>
+          <div className="space-y-3 pt-1">
+            {Object.entries(TEN_GOD_GROUPS).map(([group, members]) => {
+              const groupTotal = members.reduce((s, tg) => s + (draftTenGod[tg] ?? 0), 0);
+              return (
+                <div key={group} className="rounded-xl border border-border overflow-hidden">
+                  <div className="flex items-center justify-between px-3 py-2 bg-muted/30 border-b border-border">
+                    <span className="text-[13px] font-bold">{group}</span>
+                    <span className="text-[12px] text-muted-foreground">{groupTotal}개</span>
+                  </div>
+                  {members.map((tg, i) => (
+                    <div key={tg} className={`flex items-center px-3 py-2 ${i < members.length - 1 ? "border-b border-border/50" : ""}`}>
+                      <span className={`text-[13px] font-bold px-2 py-0.5 rounded-full mr-2 ${TEN_GOD_COLOR[tg as TenGod]}`}>{tg}</span>
+                      <div className="flex items-center gap-2 ml-auto">
+                        <button
+                          onClick={() => setDraftTenGod((p) => ({ ...p, [tg]: Math.max(0, (p[tg] ?? 0) - 1) }))}
+                          className="w-7 h-7 rounded-full border border-border flex items-center justify-center text-lg font-bold text-muted-foreground hover:bg-muted transition-colors"
+                        >−</button>
+                        <span className="w-5 text-center text-[15px] font-bold tabular-nums">{draftTenGod[tg as TenGod] ?? 0}</span>
+                        <button
+                          onClick={() => setDraftTenGod((p) => ({ ...p, [tg]: (p[tg] ?? 0) + 1 }))}
+                          className="w-7 h-7 rounded-full border border-border flex items-center justify-center text-lg font-bold text-muted-foreground hover:bg-muted transition-colors"
+                        >+</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })}
+            {dayStem && (
+              <div className="rounded-xl bg-muted/20 border border-border px-3 py-2.5">
+                <p className="text-[11px] font-bold text-muted-foreground mb-1">편집 후 오행 미리보기</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {(Object.entries(tenGodCountsToFiveElements(draftTenGod, dayStem)) as [string, number][])
+                    .filter(([, c]) => c > 0)
+                    .map(([el, cnt]) => (
+                      <span key={el} className="text-[12px] font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: (ELEMENT_HEX as Record<string, string>)[el], color: "#fff" }}>
+                        {el} {cnt}
+                      </span>
+                    ))}
+                </div>
+              </div>
+            )}
+          </div>
+          <div className="flex gap-2 pt-2">
+            {manualTenGodCounts && (
+              <button onClick={resetTenGodEdit} className="flex-1 py-2.5 text-[13px] font-semibold rounded-xl border border-border text-muted-foreground hover:bg-muted transition-colors">
+                자동 계산으로 초기화
+              </button>
+            )}
+            <button onClick={saveTenGodEdit} className="flex-1 py-2.5 text-[13px] font-semibold rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
               저장
             </button>
           </div>
