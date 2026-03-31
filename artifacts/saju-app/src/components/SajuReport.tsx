@@ -680,6 +680,14 @@ function FiveElementSection({ counts, dayStem }: { counts: FiveElementCount; day
       {dayStem && dayEl && (
         <p className="text-[13px] font-bold text-foreground self-start">나의 오행: {dayStem}{dayEl}</p>
       )}
+      <div className="self-start space-y-0.5">
+        <p className="text-[12px] text-muted-foreground leading-relaxed">
+          오행 분포: <span className="font-semibold text-foreground">천간+지지</span> 기준
+        </p>
+        <p className="text-[12px] text-muted-foreground leading-relaxed">
+          용신 계산: <span className="font-semibold text-foreground">지장간 가중치 포함</span>
+        </p>
+      </div>
       <div className="flex gap-4 text-[12px] self-start">
         <span className="flex items-center gap-1 text-muted-foreground">
           <span className="text-blue-500 font-bold">→</span> 상생
@@ -989,6 +997,10 @@ function SajuStructureSummary({
   dayBranch,
   allStems,
   allBranches,
+  pipelineStrength,
+  pipelineYongshinPrimary,
+  pipelineYongshinSecondary,
+  pipelineSeasonalNote,
   overrideStrengthLevel,
   overrideYongshinData,
   onStrengthLevelChange,
@@ -1000,6 +1012,11 @@ function SajuStructureSummary({
   dayBranch?: string;
   allStems?: string[];
   allBranches?: string[];
+  /** Single source of truth from pipeline */
+  pipelineStrength?: StrengthResult | null;
+  pipelineYongshinPrimary?: FiveElKey | null;
+  pipelineYongshinSecondary?: FiveElKey | null;
+  pipelineSeasonalNote?: string | null;
   overrideStrengthLevel?: string | null;
   overrideYongshinData?: YongshinEntry[] | null;
   onStrengthLevelChange?: (lv: string | null) => void;
@@ -1009,15 +1026,18 @@ function SajuStructureSummary({
   const [activeYongshinType, setActiveYongshinType] = useState<YongshinType>("억부용신");
   const [localYongshinData, setLocalYongshinData] = useState<YongshinEntry[]>(overrideYongshinData ?? []);
 
+  // Use buildInterpretSchema only for display metadata (대표 오행 등).
+  // Strength/Yongshin/Johu must come from pipeline to avoid mismatches across screens.
   const baseSchema = buildInterpretSchema(dayStem, counts, monthBranch, dayBranch, allStems, allBranches);
-  const schema = {
-    ...baseSchema,
-    ...(overrideStrengthLevel ? {
-      strengthLevel: overrideStrengthLevel as StrengthLevel,
-      strengthDisplayLabel: STRENGTH_DISPLAY_LABEL[overrideStrengthLevel as StrengthLevel] ?? overrideStrengthLevel,
-      strengthDesc: STRENGTH_SHORT_DESC[overrideStrengthLevel as StrengthLevel] ?? "",
-    } : {}),
-  };
+  const strengthLevelEffective: StrengthLevel =
+    (overrideStrengthLevel as StrengthLevel | null) ??
+    (pipelineStrength?.level ?? baseSchema.strengthLevel);
+  const strengthDisplayLabel = STRENGTH_DISPLAY_LABEL[strengthLevelEffective] ?? strengthLevelEffective;
+  const strengthDesc = STRENGTH_SHORT_DESC[strengthLevelEffective] ?? "";
+  const strengthScore = pipelineStrength?.score;
+
+  const yongshinPrimary = (pipelineYongshinPrimary ?? baseSchema.yongshin) as FiveElKey;
+  const yongshinSecondary = (pipelineYongshinSecondary ?? baseSchema.yongshinSecondary) as FiveElKey | undefined;
 
   const hasYongshinOverride = overrideYongshinData && overrideYongshinData.length > 0;
   const canEdit = !!(onStrengthLevelChange || onYongshinDataChange);
@@ -1064,10 +1084,10 @@ function SajuStructureSummary({
         {/* 대표 오행 */}
         <div className="rounded-lg bg-white border border-border/60 px-2 py-2.5">
           <p className="text-[11px] text-muted-foreground mb-1">대표 오행</p>
-          <p className={`text-base font-bold ${ELEMENT_COLORS[schema.dominantElement]}`}>
-            {schema.dominantElement}
+          <p className={`text-base font-bold ${ELEMENT_COLORS[baseSchema.dominantElement]}`}>
+            {baseSchema.dominantElement}
           </p>
-          <p className="text-[10px] text-muted-foreground/60 mt-0.5">{ELEMENT_KO[schema.dominantElement].split(" ")[1] ?? ""}</p>
+          <p className="text-[10px] text-muted-foreground/60 mt-0.5">{ELEMENT_KO[baseSchema.dominantElement].split(" ")[1] ?? ""}</p>
         </div>
 
         {/* 사주 강도 */}
@@ -1081,8 +1101,11 @@ function SajuStructureSummary({
             사주 강도
             {canEdit && onStrengthLevelChange && <span className="text-[9px] opacity-40">✎</span>}
           </p>
-          <p className="text-base font-bold text-foreground">{schema.strengthDisplayLabel}</p>
-          <p className="text-[10px] text-muted-foreground/60 mt-0.5">{schema.strengthDesc}</p>
+          <p className="text-base font-bold text-foreground">{strengthDisplayLabel}</p>
+          <p className="text-[10px] text-muted-foreground/60 mt-0.5">
+            {strengthDesc}
+            {typeof strengthScore === "number" && Number.isFinite(strengthScore) ? ` · ${strengthScore}점` : ""}
+          </p>
         </button>
 
         {/* 용신 */}
@@ -1095,7 +1118,7 @@ function SajuStructureSummary({
           <p className="text-[11px] text-muted-foreground mb-1 flex items-center justify-center gap-0.5">
             용신
             {!hasYongshinOverride && (
-              <span className="text-[9px] font-bold text-orange-500 bg-orange-50 rounded px-1 align-middle">후보</span>
+              <span className="text-[9px] font-bold text-orange-500 bg-orange-50 rounded px-1 align-middle">자동</span>
             )}
             {canEdit && onYongshinDataChange && <span className="text-[9px] opacity-40">✎</span>}
           </p>
@@ -1112,10 +1135,10 @@ function SajuStructureSummary({
             </div>
           ) : (
             <>
-              <p className={`text-base font-bold ${ELEMENT_COLORS[schema.yongshin]}`}>{schema.yongshinLabel}</p>
-              {schema.yongshinSecondary && (
+              <p className={`text-base font-bold ${ELEMENT_COLORS[yongshinPrimary]}`}>{yongshinPrimary}</p>
+              {yongshinSecondary && (
                 <p className="text-[10px] text-muted-foreground/70 mt-0.5">
-                  보조: <span className={ELEMENT_COLORS[schema.yongshinSecondary]}>{schema.yongshinSecondary}</span>
+                  희신: <span className={ELEMENT_COLORS[yongshinSecondary]}>{yongshinSecondary}</span>
                 </p>
               )}
             </>
@@ -1123,7 +1146,13 @@ function SajuStructureSummary({
         </button>
       </div>
 
-      <StrengthGraph level={schema.strengthLevel} />
+      {pipelineSeasonalNote && (
+        <p className="text-[12px] text-amber-700/80 leading-relaxed border-l-2 border-amber-300 pl-2">
+          {pipelineSeasonalNote}
+        </p>
+      )}
+
+      <StrengthGraph level={strengthLevelEffective} />
 
       {/* 사주 강도 picker */}
       {editMode === "strength" && onStrengthLevelChange && (
@@ -1240,15 +1269,20 @@ function GukgukSection({
   monthBranch,
   allStems,
   allBranches,
+  pipelineGukguk,
+  pipelinePatterns,
 }: {
   dayStem: string;
   monthBranch?: string;
   allStems: string[];
   allBranches: string[];
+  pipelineGukguk?: ReturnType<typeof determineGukguk> | null;
+  pipelinePatterns?: ReturnType<typeof detectStructurePatterns>;
 }) {
   if (!dayStem || !monthBranch) return null;
-  const gukguk = determineGukguk(dayStem, monthBranch, allStems);
-  const patterns = detectStructurePatterns(dayStem, allStems, allBranches, monthBranch);
+  // Single source of truth: prefer pipeline-computed results to avoid divergent logic across sections.
+  const gukguk = pipelineGukguk ?? determineGukguk(dayStem, monthBranch, allStems);
+  const patterns = pipelinePatterns ?? detectStructurePatterns(dayStem, allStems, allBranches, monthBranch);
   if (!gukguk && patterns.length === 0) {
     return (
       <div className="space-y-3">
@@ -1273,12 +1307,16 @@ function GukgukSection({
     );
   }
 
-  const toneLabel = gukguk.tone === "길" ? "길격" : gukguk.tone === "흉" ? "흉격" : "중성격";
-  const toneBadge = gukguk.tone === "길"
-    ? "bg-emerald-100 text-emerald-700"
-    : gukguk.tone === "흉"
-    ? "bg-rose-100 text-rose-700"
-    : "bg-amber-100 text-amber-700";
+  const toneLabel = gukguk
+    ? (gukguk.tone === "길" ? "길격" : gukguk.tone === "흉" ? "흉격" : "중성격")
+    : null;
+  const toneBadge = gukguk
+    ? (gukguk.tone === "길"
+      ? "bg-emerald-100 text-emerald-700"
+      : gukguk.tone === "흉"
+      ? "bg-rose-100 text-rose-700"
+      : "bg-amber-100 text-amber-700")
+    : null;
 
   return (
     <div className="space-y-3">
@@ -1288,7 +1326,9 @@ function GukgukSection({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="text-xl font-black tracking-tight">{gukguk.name}</span>
-              <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${toneBadge}`}>{toneLabel}</span>
+              {toneLabel && toneBadge && (
+                <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${toneBadge}`}>{toneLabel}</span>
+              )}
             </div>
             <div className="text-right">
               <span className="text-[11px] text-current/60">
@@ -2793,6 +2833,8 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                 monthBranch={effectivePillars.month?.hangul?.[1]}
                 allStems={allStems}
                 allBranches={allBranches}
+                pipelineGukguk={sajuPipelineResult?.interpretation.gukguk ?? null}
+                pipelinePatterns={sajuPipelineResult?.interpretation.structurePatterns ?? []}
               />
             </AccSection>
           )}
@@ -3504,6 +3546,10 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
               dayBranch={dayBranch}
               allStems={allStems}
               allBranches={allBranches}
+              pipelineStrength={sajuPipelineResult?.adjusted?.strengthResult ?? null}
+              pipelineYongshinPrimary={sajuPipelineResult?.adjusted?.effectiveYongshin ?? null}
+              pipelineYongshinSecondary={sajuPipelineResult?.adjusted?.effectiveYongshinSecondary ?? null}
+              pipelineSeasonalNote={sajuPipelineResult?.interpretation?.seasonalNote ?? null}
               overrideStrengthLevel={localStrengthLevel}
               overrideYongshinData={localYongshinData}
               onStrengthLevelChange={(lv) => {

@@ -31,6 +31,12 @@ import {
   STRENGTH_SHORT_DESC,
 } from "./interpretSchema";
 import { applyInterpretationRules, type RuleResult } from "./interpretationRules";
+import {
+  determineGukguk,
+  detectStructurePatterns,
+  type GukgukResult,
+  type StructurePattern,
+} from "./gukguk";
 
 // ── 지장간 오행 증폭 (地藏干 Augmentation) ────────────────────────
 // Adds hidden stem elements to a five-element count with fractional weights.
@@ -109,6 +115,25 @@ export interface BaseStructure {
   dayMasterElement: FiveElKey | undefined;
 }
 
+function isDevRuntime(): boolean {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const im = (import.meta as any);
+    if (im?.env?.DEV === true) return true;
+  } catch { /* ignore */ }
+  try {
+    // eslint-disable-next-line no-undef
+    return typeof process !== "undefined" && process.env.NODE_ENV !== "production";
+  } catch { /* ignore */ }
+  return false;
+}
+
+function warnPipelineFallback(context: Record<string, unknown>) {
+  if (!isDevRuntime()) return;
+  // eslint-disable-next-line no-console
+  console.warn("[pipeline-fallback]", context);
+}
+
 function computeBaseStructure(input: PipelineInput): BaseStructure {
   const { dayStem, monthBranch, allStems, allBranches, effectiveFiveElements } = input;
 
@@ -125,21 +150,30 @@ function computeBaseStructure(input: PipelineInput): BaseStructure {
 
   const strengthScore = computeStrengthScore(dayStem, monthBranch, allStems, allBranches);
   const strengthLevel = computeStrengthLevel(dayStem, effectiveFiveElements, monthBranch, allStems, allBranches);
-  const strengthResult =
-    computeStrengthResult(dayStem, monthBranch, allStems, allBranches) ??
-    ({
-      score: strengthScore,
-      level: strengthLevel,
-      dayMasterState: (strengthLevel === "중화" ? "balanced" : ["신강", "태강", "극신강"].includes(strengthLevel) ? "strong" : "weak"),
-      reason: {
-        deukryeong: { score: 0, note: monthBranch ? `월지 ${monthBranch}` : "월지 미상" },
-        deukji: { score: 0, note: "지지" },
-        deukse: { score: 0, note: "천간" },
-        adjustments: [],
-      },
-      description: "",
-      explanation: [],
-    } as StrengthResult);
+  const computedStrength = computeStrengthResult(dayStem, monthBranch, allStems, allBranches);
+  if (!computedStrength) {
+    warnPipelineFallback({
+      kind: "strengthResult",
+      reason: "computeStrengthResult returned null; falling back to score/level defaults",
+      dayStem,
+      monthBranch,
+      allStems,
+      allBranches,
+    });
+  }
+  const strengthResult: StrengthResult = computedStrength ?? ({
+    score: strengthScore,
+    level: strengthLevel,
+    dayMasterState: (strengthLevel === "중화" ? "balanced" : ["신강", "태강", "극신강"].includes(strengthLevel) ? "strong" : "weak"),
+    reason: {
+      deukryeong: { score: 0, note: monthBranch ? `월지 ${monthBranch}` : "월지 미상" },
+      deukji: { score: 0, note: "지지" },
+      deukse: { score: 0, note: "천간" },
+      adjustments: ["fallback: computeStrengthResult=null"],
+    },
+    description: "",
+    explanation: ["강도 계산 상세가 없어 fallback 경로로 대체되었습니다."],
+  } as StrengthResult);
 
   // Use 지장간-augmented element counts for yongshin.
   // This gives a more accurate picture of the qi balance (including 여기/중기 hidden stems)
@@ -204,10 +238,10 @@ function computeSeasonalAdjustment(
   const needsWaterBoost = season === "여름" && fireRatio > 0.35;
 
   const adjustmentNote = needsFireBoost
-    ? "겨울 구조 + 수(水) 편중 → 조후용신 화(火) 보강 필요"
+    ? "겨울(월지 기준) + 수(水) 비율 편중 → 조후(온도) 보정: 화(火) 보강 필요 (오행 결핍과 별개)"
     : needsWaterBoost
-    ? "여름 구조 + 화(火) 편중 → 조후용신 수(水) 보강 필요"
-    : `${season} 구조 — 조후 보정 없음`;
+    ? "여름(월지 기준) + 화(火) 비율 편중 → 조후(온도) 보정: 수(水) 보강 필요 (오행 결핍과 별개)"
+    : `${season}(월지 기준) — 조후(온도/비율) 보정 규칙 미발동 (오행 결핍과 별개)`;
 
   return { season, seasonElement, needsFireBoost, needsWaterBoost, adjustmentNote };
 }
@@ -288,7 +322,12 @@ function computeAdjustedStructure(
 export interface InterpretationResult {
   rulesApplied: RuleResult[];
   ruleInsights: string[];          // 규칙에서 생성된 핵심 통찰
-  structureType: string;           // 격국 단순 판정
+  /** Single source of truth for 格局 (격국) */
+  gukguk: GukgukResult | null;
+  /** 구조 패턴 (식신생재/관인상생 등) */
+  structurePatterns: StructurePattern[];
+  /** UI short label (derived from gukguk only) */
+  structureType: string;
   yongshinCharacterKey: string;    // 용신 오행 한글
   seasonalNote: string;            // 조후 보정 메모
 }
@@ -317,25 +356,54 @@ function buildInterpretationResult(
     .filter((r) => r.fired)
     .map((r) => r.interpretation);
 
-  // 격국 판정 (월지 십성 기반 단순)
-  const structureType = (() => {
-    const monthBranchEl = input.monthBranch
-      ? (BRANCH_TO_ELEMENT[input.monthBranch] ?? undefined)
-      : undefined;
-    if (!monthBranchEl || !adjusted.dayMasterElement) return "잡격";
-    const g = getTenGodGroup(adjusted.dayMasterElement, monthBranchEl as FiveElKey);
-    const map: Record<string, string> = {
-      비겁: "건록격", 식상: "식신격", 재성: "재격", 관성: "관격", 인성: "인수격",
-    };
-    return map[g] ?? "잡격";
-  })();
+  const gukguk = (input.monthBranch
+    ? determineGukguk(input.dayStem, input.monthBranch, input.allStems)
+    : null);
+  const structurePatterns = detectStructurePatterns(input.dayStem, input.allStems, input.allBranches, input.monthBranch);
+  const structureType = gukguk?.name ?? "격국 없음";
 
   return {
     rulesApplied,
     ruleInsights,
+    gukguk,
+    structurePatterns,
     structureType,
     yongshinCharacterKey: effectiveYongshin,
     seasonalNote: seasonalAdjustment.adjustmentNote,
+  };
+}
+
+export interface EngineDiagnostics {
+  strength: {
+    source: "interpretSchema.computeStrengthResult";
+    score: number;
+    level: StrengthLevel;
+    deukRyeong: StrengthResult["reason"]["deukryeong"];
+    deukJi: StrengthResult["reason"]["deukji"];
+    deukSe: StrengthResult["reason"]["deukse"];
+    adjustments: string[];
+  };
+  gukguk: {
+    source: "gukguk.determineGukguk";
+    method: "투출 기준(월지 지장간 → 천간 투출)";
+    name: string;
+    reason: string[];
+  };
+  yongshin: {
+    source: "interpretSchema.computeYongshinFull";
+    method: "강도 기반(억부) + 지장간 가중(용신 계산에만) + 조후 secondary 주입(조건부)";
+    primary: FiveElKey;
+    secondary?: FiveElKey;
+    countsBasis: {
+      display: "천간+지지(지장간 미포함, 가중치 없음)";
+      yongshin: "천간+지지 + 지장간(여기/중기) 가중치 포함";
+    };
+  };
+  johu: {
+    source: "sajuPipeline.computeSeasonalAdjustment";
+    method: "계절(월지)+수/화 비율 threshold(결핍 기준 아님)";
+    adjusted: boolean;
+    reason: string;
   };
 }
 
@@ -346,6 +414,7 @@ export interface SajuPipelineResult {
   base: BaseStructure;       // Layer 2
   adjusted: AdjustedStructure; // Layer 3
   interpretation: InterpretationResult; // Layer 4
+  diagnostics: EngineDiagnostics;
 }
 
 /**
@@ -368,5 +437,39 @@ export function computeSajuPipeline(input: PipelineInput): SajuPipelineResult {
   const base        = computeBaseStructure(input);
   const adjusted    = computeAdjustedStructure(input, base);
   const interpretation = buildInterpretationResult(input, adjusted);
-  return { input, base, adjusted, interpretation };
+  const strength = adjusted.strengthResult;
+  const diagnostics: EngineDiagnostics = {
+    strength: {
+      source: "interpretSchema.computeStrengthResult",
+      score: strength.score,
+      level: strength.level,
+      deukRyeong: strength.reason.deukryeong,
+      deukJi: strength.reason.deukji,
+      deukSe: strength.reason.deukse,
+      adjustments: strength.reason.adjustments ?? [],
+    },
+    gukguk: {
+      source: "gukguk.determineGukguk",
+      method: "투출 기준(월지 지장간 → 천간 투출)",
+      name: interpretation.gukguk?.name ?? "격국 없음",
+      reason: interpretation.gukguk?.explanation ?? ["투출이 확인되지 않아 격국을 확정하지 않았습니다."],
+    },
+    yongshin: {
+      source: "interpretSchema.computeYongshinFull",
+      method: "강도 기반(억부) + 지장간 가중(용신 계산에만) + 조후 secondary 주입(조건부)",
+      primary: adjusted.effectiveYongshin,
+      secondary: adjusted.effectiveYongshinSecondary,
+      countsBasis: {
+        display: "천간+지지(지장간 미포함, 가중치 없음)",
+        yongshin: "천간+지지 + 지장간(여기/중기) 가중치 포함",
+      },
+    },
+    johu: {
+      source: "sajuPipeline.computeSeasonalAdjustment",
+      method: "계절(월지)+수/화 비율 threshold(결핍 기준 아님)",
+      adjusted: interpretation.seasonalNote.includes("보강 필요"),
+      reason: interpretation.seasonalNote,
+    },
+  };
+  return { input, base, adjusted, interpretation, diagnostics };
 }

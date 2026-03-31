@@ -1,4 +1,4 @@
-import { calculateDayMasterStrength } from "../../artifacts/saju-app/src/lib/dayMasterStrength";
+import { computeStrengthResult } from "../../artifacts/saju-app/src/lib/interpretSchema";
 
 type Case = {
   title: string;
@@ -33,10 +33,10 @@ const cases: Case[] = [
 ];
 
 for (const c of cases) {
-  const r = calculateDayMasterStrength(c);
+  const r = computeStrengthResult(c.dayStem, c.monthBranch, c.stems, c.branches);
   console.log("\n##", c.title);
-  console.log("strengthLevel:", r.strengthLevel, "score:", r.strengthScore);
-  console.log("explanation:", r.strengthExplanation);
-  console.log("detail:", r.detail);
+  console.log("strengthLevel:", r?.level ?? null, "score:", r?.score ?? null);
+  console.log("explanation:", r?.explanation ?? null);
+  console.log("reason:", r?.reason ?? null);
 }
 

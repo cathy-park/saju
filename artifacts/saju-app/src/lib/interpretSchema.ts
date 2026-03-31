@@ -99,6 +99,27 @@ export interface StrengthResult {
   explanation: string[];
 }
 
+function isDevRuntime(): boolean {
+  try {
+    // Vite/Browser
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const im = (import.meta as any);
+    if (im?.env?.DEV === true) return true;
+  } catch { /* ignore */ }
+  try {
+    // Node/scripts
+    // eslint-disable-next-line no-undef
+    return typeof process !== "undefined" && process.env.NODE_ENV !== "production";
+  } catch { /* ignore */ }
+  return false;
+}
+
+function warnStrengthFallback(context: Record<string, unknown>) {
+  if (!isDevRuntime()) return;
+  // eslint-disable-next-line no-console
+  console.warn("[strength-fallback]", context);
+}
+
 function toDayMasterState(level: StrengthLevel): DayMasterState {
   if (level === "중화") return "balanced";
   if (level === "신강" || level === "태강" || level === "극신강") return "strong";
@@ -297,7 +318,18 @@ export function computeStrengthScore(
   allStems: string[],
   allBranches: string[],
 ): number {
-  return computeStrengthResult(dayStem, monthBranch, allStems, allBranches)?.score ?? 0;
+  const r = computeStrengthResult(dayStem, monthBranch, allStems, allBranches);
+  if (!r) {
+    warnStrengthFallback({
+      kind: "score",
+      reason: "computeStrengthResult returned null (invalid DM element or non-finite score)",
+      dayStem,
+      monthBranch,
+      allStems,
+      allBranches,
+    });
+  }
+  return r?.score ?? 0;
 }
 
 export function computeStrengthLevel(
@@ -309,7 +341,18 @@ export function computeStrengthLevel(
 ): StrengthLevel {
   // Use weighted model when detailed data is provided
   if (allStems && allBranches) {
-    return computeStrengthResult(dayStem, monthBranch, allStems, allBranches)?.level ?? "중화";
+    const r = computeStrengthResult(dayStem, monthBranch, allStems, allBranches);
+    if (!r) {
+      warnStrengthFallback({
+        kind: "level",
+        reason: "computeStrengthResult returned null (invalid DM element or non-finite score)",
+        dayStem,
+        monthBranch,
+        allStems,
+        allBranches,
+      });
+    }
+    return r?.level ?? "중화";
   }
 
   // Fallback: simple ratio model (backward compat)
