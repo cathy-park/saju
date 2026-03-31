@@ -89,15 +89,15 @@ function Onboarding() {
       {/* ── CTA 버튼 (대시보드와 동일 위치) ── */}
       <div style={{ padding: "16px 16px 0", display: "flex", gap: 10 }}>
         <Link href="/saju" style={{ flex: 1 }}>
-          <div style={{ background: "#F6DADA", borderRadius: 50, padding: "14px 18px", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, cursor: "pointer" }}>
+          <div style={{ background: "rgba(99,102,241,0.12)", borderRadius: 50, padding: "14px 18px", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, cursor: "pointer" }}>
             <span style={{ fontSize: 16 }}>🔍</span>
-            <span style={{ fontSize: 14, fontWeight: 700, color: "#B54848" }}>사주 리포트</span>
+            <span style={{ fontSize: 14, fontWeight: 700, color: "#6366F1" }}>사주 리포트</span>
           </div>
         </Link>
         <Link href="/compatibility" style={{ flex: 1 }}>
-          <div style={{ background: "#DDD6F5", borderRadius: 50, padding: "14px 18px", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, cursor: "pointer" }}>
+          <div style={{ background: "rgba(239,116,66,0.12)", borderRadius: 50, padding: "14px 18px", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, cursor: "pointer" }}>
             <span style={{ fontSize: 16 }}>💞</span>
-            <span style={{ fontSize: 14, fontWeight: 700, color: "#6B5BBE" }}>궁합 보기</span>
+            <span style={{ fontSize: 14, fontWeight: 700, color: "hsl(12,72%,50%)" }}>궁합 보기</span>
           </div>
         </Link>
       </div>
@@ -446,15 +446,15 @@ function Dashboard({ record }: { record: PersonRecord }) {
       ══════════════════════════════════════════ */}
       <div style={{ padding: "16px 16px 0", display: "flex", gap: 10 }}>
         <Link href="/saju" style={{ flex: 1 }}>
-          <div style={{ background: "#F6DADA", borderRadius: 50, padding: "14px 18px", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, cursor: "pointer" }}>
+          <div style={{ background: "rgba(99,102,241,0.12)", borderRadius: 50, padding: "14px 18px", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, cursor: "pointer" }}>
             <span style={{ fontSize: 16 }}>🔍</span>
-            <span style={{ fontSize: 14, fontWeight: 700, color: "#B54848" }}>사주 리포트</span>
+            <span style={{ fontSize: 14, fontWeight: 700, color: "#6366F1" }}>사주 리포트</span>
           </div>
         </Link>
         <Link href="/compatibility" style={{ flex: 1 }}>
-          <div style={{ background: "#DDD6F5", borderRadius: 50, padding: "14px 18px", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, cursor: "pointer" }}>
+          <div style={{ background: "rgba(239,116,66,0.12)", borderRadius: 50, padding: "14px 18px", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, cursor: "pointer" }}>
             <span style={{ fontSize: 16 }}>💞</span>
-            <span style={{ fontSize: 14, fontWeight: 700, color: "#6B5BBE" }}>궁합 보기</span>
+            <span style={{ fontSize: 14, fontWeight: 700, color: "hsl(12,72%,50%)" }}>궁합 보기</span>
           </div>
         </Link>
       </div>
