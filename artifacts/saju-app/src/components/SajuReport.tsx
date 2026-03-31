@@ -1050,11 +1050,12 @@ function getElementBalanceSummary(counts: FiveElementCount) {
 
 // ── Fortune Calendar (일운 monthly view) ──────────────────────────
 
-function FortuneCalendar({ record, dayStem, luckCycles, birthYear }: {
+function FortuneCalendar({ record, dayStem, luckCycles, birthYear, adjustedDaewoon }: {
   record: PersonRecord;
   dayStem: string;
   luckCycles: ReturnType<typeof calculateLuckCycles>;
   birthYear: number;
+  adjustedDaewoon: ReturnType<typeof calculateLuckCycles>["daewoon"];
 }) {
   const today = new Date();
   const [viewYear, setViewYear] = useState(today.getFullYear());
@@ -1075,7 +1076,7 @@ function FortuneCalendar({ record, dayStem, luckCycles, birthYear }: {
   const calCombined = useMemo(() => {
     if (!selectedDay || !dayStem) return null;
     const selectedAge = viewYear - birthYear;
-    const calDaewoon = luckCycles.daewoon.find(e => selectedAge >= e.startAge && selectedAge <= e.endAge);
+    const calDaewoon = adjustedDaewoon.find(e => selectedAge >= e.startAge && selectedAge <= e.endAge);
     if (!calDaewoon) return null;
     const yearGZ = getYearGanZhi(viewYear);
     const monthGZ = getMonthGanZhi(viewYear, viewMonth);
@@ -1086,7 +1087,7 @@ function FortuneCalendar({ record, dayStem, luckCycles, birthYear }: {
       { label: "월운", ganZhi: monthGZ },
       { label: "일운", ganZhi: dayGZ },
     ]);
-  }, [selectedDay, dayStem, viewYear, viewMonth, birthYear, luckCycles]);
+  }, [selectedDay, dayStem, viewYear, viewMonth, birthYear, adjustedDaewoon]);
 
   function prevMonth() {
     if (viewMonth === 1) { setViewYear((y) => y - 1); setViewMonth(12); }
@@ -1365,15 +1366,7 @@ function LuckFlowTabs({
   const now = new Date();
   const age = now.getFullYear() - birthYear;
   const daewoonSu = luckCycles.daewoon[0]?.startAge ?? 0;
-  const currentDaewoon = luckCycles.daewoon.find((e) => age >= e.startAge && age <= e.endAge) ?? null;
-  const currentDaewoonIdx = luckCycles.daewoon.findIndex((e) => age >= e.startAge && age <= e.endAge);
   const currentSeun = luckCycles.seun.find((e) => e.year === now.getFullYear()) ?? null;
-
-  const [selectedDaewoonIdx, setSelectedDaewoonIdx] = useState<number>(
-    currentDaewoonIdx >= 0 ? currentDaewoonIdx : 0
-  );
-  const [selectedSeunYear, setSelectedSeunYear] = useState<number>(now.getFullYear());
-  const selectedSeunEntry = luckCycles.seun.find((e) => e.year === selectedSeunYear) ?? null;
 
   // ── 대운수 수동 편집 ──────────────────────────────────────────
   const [daewoonSuOverride, setDaewoonSuOverride] = useState<number | null>(
@@ -1382,6 +1375,24 @@ function LuckFlowTabs({
   const [editingDaewoonSu, setEditingDaewoonSu] = useState(false);
   const [daewoonSuDraft, setDaewoonSuDraft] = useState<string>("");
   const displayDaewoonSu = daewoonSuOverride != null ? daewoonSuOverride : daewoonSu;
+
+  // ── 대운수 기준으로 전체 연령 재계산 ─────────────────────────
+  const adjustedDaewoon = useMemo(
+    () => luckCycles.daewoon.map((entry, i) => ({
+      ...entry,
+      startAge: displayDaewoonSu + i * 10,
+      endAge: displayDaewoonSu + i * 10 + 9,
+    })),
+    [luckCycles.daewoon, displayDaewoonSu]
+  );
+  const currentDaewoon = adjustedDaewoon.find((e) => age >= e.startAge && age <= e.endAge) ?? null;
+  const currentDaewoonIdx = adjustedDaewoon.findIndex((e) => age >= e.startAge && age <= e.endAge);
+
+  const [selectedDaewoonIdx, setSelectedDaewoonIdx] = useState<number>(
+    currentDaewoonIdx >= 0 ? currentDaewoonIdx : 0
+  );
+  const [selectedSeunYear, setSelectedSeunYear] = useState<number>(now.getFullYear());
+  const selectedSeunEntry = luckCycles.seun.find((e) => e.year === selectedSeunYear) ?? null;
 
   function saveDaewoonSuOverride() {
     const val = parseInt(daewoonSuDraft, 10);
@@ -1486,13 +1497,13 @@ function LuckFlowTabs({
             </div>
           )}
 
-          {luckCycles.daewoon.length === 0 ? (
+          {adjustedDaewoon.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-6">대운 데이터가 없습니다</p>
           ) : (
             <>
               <p className="text-[13px] text-muted-foreground px-0.5">10년 주기 운의 흐름 · 항목을 탭하면 해석이 아래에 표시됩니다</p>
               <div className="grid grid-cols-2 gap-2">
-                {luckCycles.daewoon.slice(0, 8).map((entry, i) => {
+                {adjustedDaewoon.slice(0, 8).map((entry, i) => {
                   const stemEl = getStemElement(entry.ganZhi.stem);
                   const branchEl = STEM_ELEMENT[entry.ganZhi.branch] ?? null;
                   const tg = dayStem ? getTenGod(dayStem, entry.ganZhi.stem) : null;
@@ -1519,8 +1530,8 @@ function LuckFlowTabs({
               </div>
 
               {/* 선택된 대운 인라인 상세 카드 */}
-              {luckCycles.daewoon[selectedDaewoonIdx] && (() => {
-                const entry = luckCycles.daewoon[selectedDaewoonIdx];
+              {adjustedDaewoon[selectedDaewoonIdx] && (() => {
+                const entry = adjustedDaewoon[selectedDaewoonIdx];
                 const tg = dayStem ? getTenGod(dayStem, entry.ganZhi.stem) : null;
                 const btg = dayStem ? getTenGod(dayStem, entry.ganZhi.branch) : null;
                 const isCurrent = age >= entry.startAge && age <= entry.endAge;
@@ -1717,7 +1728,7 @@ function LuckFlowTabs({
       )}
 
       {/* 달력 panel */}
-      {tab === "달력" && <FortuneCalendar record={record} dayStem={dayStem} luckCycles={luckCycles} birthYear={birthYear} />}
+      {tab === "달력" && <FortuneCalendar record={record} dayStem={dayStem} luckCycles={luckCycles} birthYear={birthYear} adjustedDaewoon={adjustedDaewoon} />}
     </div>
   );
 }
