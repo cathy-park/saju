@@ -34,7 +34,7 @@ import {
   type TenGod,
 } from "@/lib/tenGods";
 import { getHiddenStems, HIDDEN_STEMS_HANJA } from "@/lib/hiddenStems";
-import { InfoBottomSheet, TG_LUCK_MEANING } from "@/components/InfoBottomSheet";
+import { InfoBottomSheet, TG_LUCK_MEANING, TG_NATAL_MEANING } from "@/components/InfoBottomSheet";
 import type { InfoSheetType } from "@/components/InfoBottomSheet";
 import {
   analyzeBranchRelations,
@@ -2346,33 +2346,42 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
                     );
                   })}
                   {/* 선택된 십성 의미 카드 */}
-                  {selectedTgInfo && TG_LUCK_MEANING[selectedTgInfo] && (
+                  {selectedTgInfo && TG_NATAL_MEANING[selectedTgInfo] && (() => {
+                    const nm = TG_NATAL_MEANING[selectedTgInfo];
+                    const cnt = displayCounts[selectedTgInfo] ?? 0;
+                    const allTgTotalForCard = Object.values(displayCounts).reduce((s, c) => s + c, 0) || 1;
+                    const pct = Math.round((cnt / allTgTotalForCard) * 100);
+                    return (
                     <div className={`rounded-xl px-3 py-3 space-y-2 border ${TEN_GOD_COLOR[selectedTgInfo]}`}>
                       <div className="flex items-center justify-between">
-                        <span className="text-[14px] font-bold">{selectedTgInfo}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[14px] font-bold">{selectedTgInfo}</span>
+                          <span className="text-[12px] font-semibold opacity-60">{pct}% 보유</span>
+                        </div>
                         <button onClick={() => setSelectedTgInfo(null)} className="text-[11px] text-muted-foreground px-1.5 py-0.5 rounded border border-border/50 bg-white/60">닫기</button>
                       </div>
-                      <p className="text-[12px] leading-relaxed">{TG_LUCK_MEANING[selectedTgInfo].summary}</p>
-                      {TG_LUCK_MEANING[selectedTgInfo].relationship && (
+                      <p className="text-[12px] leading-relaxed">{nm.summary}</p>
+                      {nm.traits && (
                         <div>
-                          <p className="text-[10px] font-bold uppercase tracking-widest opacity-60 mb-0.5">관계·사람</p>
-                          <p className="text-[12px] leading-relaxed">{TG_LUCK_MEANING[selectedTgInfo].relationship}</p>
+                          <p className="text-[10px] font-bold uppercase tracking-widest opacity-60 mb-0.5">성향·특성</p>
+                          <p className="text-[12px] leading-relaxed">{nm.traits}</p>
                         </div>
                       )}
-                      {TG_LUCK_MEANING[selectedTgInfo].work && (
+                      {nm.strengths && (
                         <div>
-                          <p className="text-[10px] font-bold uppercase tracking-widest opacity-60 mb-0.5">일·직업</p>
-                          <p className="text-[12px] leading-relaxed">{TG_LUCK_MEANING[selectedTgInfo].work}</p>
+                          <p className="text-[10px] font-bold uppercase tracking-widest opacity-60 mb-0.5">강점</p>
+                          <p className="text-[12px] leading-relaxed">{nm.strengths}</p>
                         </div>
                       )}
-                      {TG_LUCK_MEANING[selectedTgInfo].tip && (
+                      {nm.caution && (
                         <div>
-                          <p className="text-[10px] font-bold uppercase tracking-widest opacity-60 mb-0.5">조언</p>
-                          <p className="text-[12px] leading-relaxed">{TG_LUCK_MEANING[selectedTgInfo].tip}</p>
+                          <p className="text-[10px] font-bold uppercase tracking-widest opacity-60 mb-0.5">주의점</p>
+                          <p className="text-[12px] leading-relaxed">{nm.caution}</p>
                         </div>
                       )}
                     </div>
-                  )}
+                    );
+                  })()}
                   {manualTenGodCounts && (
                     <p className="text-[11px] text-amber-600 bg-amber-50 rounded-lg px-2.5 py-1.5">
                       ✎ 직접 편집된 십성 — 오행 분포가 십성 기준으로 재계산됩니다
