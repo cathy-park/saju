@@ -12,11 +12,18 @@ import { MaritalBadge, type MaritalBadgeStatus } from "@/components/MaritalField
 function partnerBadgeStatus(person: PersonRecord): MaritalBadgeStatus | undefined {
   if (person.maritalStatus) return person.maritalStatus;
   const r = person.relationshipStatus;
-  if (!r) return undefined;
-  if (r === "single") return "솔로";
-  if (r === "dating") return "연애중";
-  if (r === "married") return "기혼";
-  return "기타";
+  if (r) {
+    if (r === "single") return "솔로";
+    if (r === "dating") return "연애중";
+    if (r === "married") return "기혼";
+    return "기타";
+  }
+  // 생년 입력 폼에만 있던 구형 필드 (로컬/구 데이터)
+  const legacy = person.birthInput.relationshipStatus;
+  if (legacy === "기혼") return "기혼";
+  if (legacy === "연애중") return "연애중";
+  if (legacy === "미혼") return "솔로";
+  return undefined;
 }
 
 export default function PersonDetail() {

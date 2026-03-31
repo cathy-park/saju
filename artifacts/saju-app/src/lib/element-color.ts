@@ -1,3 +1,5 @@
+import type { CSSProperties } from "react";
+
 // ── Five-Element (오행) design tokens ──────────────────────────────
 // IMPORTANT (design system):
 // - Do NOT use raw hex colors in UI.
@@ -40,6 +42,18 @@ export function elementBorderClass(el: FiveElKey, tone: ElementTone = "base"): s
   const t = elementToken(el);
   const suffix = tone === "base" ? "" : `-${tone}`;
   return `border-element-${t}${suffix}`;
+}
+
+/** Inline colors from CSS variables — works when Tailwind cannot see dynamic class names. */
+export function elementChipColors(
+  el: FiveElKey,
+  cfg: { bg: ElementTone; text: ElementTone; border: ElementTone },
+): CSSProperties {
+  return {
+    backgroundColor: elementColorVar(el, cfg.bg),
+    color: elementColorVar(el, cfg.text),
+    borderColor: elementColorVar(el, cfg.border),
+  };
 }
 
 // ── Character → Element lookup ─────────────────────────────────────

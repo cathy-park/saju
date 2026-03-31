@@ -1,7 +1,6 @@
+import type { CSSProperties } from "react";
 import {
-  elementBgClass,
-  elementBorderClass,
-  elementTextClass,
+  elementColorVar,
   type FiveElKey,
 } from "./element-color";
 
@@ -206,16 +205,27 @@ export function getTenGodElement(tenGod: TenGod | string, dayStem: string): Five
 }
 
 /**
- * 십성의 Tailwind 색상 클래스(bg + text)를 반환합니다.
- * 항상 오행 색상에서 파생됩니다.
- * @param tenGod 십성 이름
- * @param dayStem 일간 천간 (예: "갑", "병" 등)
- * @returns Tailwind className 문자열
+ * 십성 칩 레이아웃용 클래스(테두리만). 배경·글자색은 `getTenGodChipStyle` + CSS 변수로 적용합니다.
  */
-export function getTenGodTw(tenGod: TenGod | string, dayStem: string): string {
+export function getTenGodTw(_tenGod: TenGod | string, _dayStem: string): string {
+  return "border border-solid";
+}
+
+/** 오행 토큰(CSS 변수) 기반 — 빌드/스캔과 무관하게 색이 항상 적용됩니다. */
+export function getTenGodChipStyle(tenGod: TenGod | string, dayStem: string): CSSProperties {
   const el = getTenGodElement(tenGod, dayStem);
-  if (!el) return "bg-muted text-muted-foreground";
-  return `${elementBgClass(el, "muted")} ${elementTextClass(el, "strong")} border ${elementBorderClass(el, "base")}`;
+  if (!el) {
+    return {
+      backgroundColor: "hsl(var(--muted))",
+      color: "hsl(var(--muted-foreground))",
+      borderColor: "hsl(var(--border))",
+    };
+  }
+  return {
+    backgroundColor: elementColorVar(el, "muted"),
+    color: elementColorVar(el, "strong"),
+    borderColor: elementColorVar(el, "base"),
+  };
 }
 
 /** @deprecated 인라인 스타일 색상은 사용하지 않습니다. */

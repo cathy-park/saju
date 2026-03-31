@@ -2,7 +2,7 @@ import type { PersonRecord } from "@/lib/storage";
 import { getFortuneForDate } from "@/lib/todayFortune";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Sparkles } from "lucide-react";
-import { getTenGodTw } from "@/lib/tenGods";
+import { getTenGodChipStyle, getTenGodTw } from "@/lib/tenGods";
 import { TWELVE_STAGE_COLOR } from "@/lib/twelveStages";
 import { charToElement, elementColorVar, type FiveElKey } from "@/lib/element-color";
 
@@ -83,12 +83,12 @@ export function TodayFortuneCard({ record, year, month, day }: TodayFortuneCardP
               </div>
               <div className="flex flex-wrap gap-1">
                 {layer.tenGod && (
-                  <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded-full ${getTenGodTw(layer.tenGod, dayStem)}`}>
+                  <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded-full ${getTenGodTw(layer.tenGod, dayStem)}`} style={getTenGodChipStyle(layer.tenGod, dayStem)}>
                     천:{layer.tenGod}
                   </span>
                 )}
                 {layer.branchTenGod && (
-                  <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded-full ${getTenGodTw(layer.branchTenGod, dayStem)}`}>
+                  <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded-full ${getTenGodTw(layer.branchTenGod, dayStem)}`} style={getTenGodChipStyle(layer.branchTenGod, dayStem)}>
                     지:{layer.branchTenGod}
                   </span>
                 )}

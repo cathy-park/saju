@@ -7,7 +7,7 @@ import {
   DrawerDescription,
 } from "@/components/ui/drawer";
 import { SHINSAL_COLOR, SHINSAL_DESC } from "@/lib/luckCycles";
-import { getTenGodTw, getTenGodDescription } from "@/lib/tenGods";
+import { getTenGodChipStyle, getTenGodTw, getTenGodDescription } from "@/lib/tenGods";
 import type { TenGod } from "@/lib/tenGods";
 import { RELATION_DETAIL, RELATION_DESC, RELATION_COLORS } from "@/lib/branchRelations";
 import type { RelationType } from "@/lib/branchRelations";
@@ -596,12 +596,12 @@ function LuckSheet({ info }: { info: Extract<InfoSheetType, { kind: "luck" }> })
         <div className="flex items-center gap-2 mb-1 flex-wrap">
           <span className="text-[13px] font-bold bg-muted text-muted-foreground px-2.5 py-1 rounded-full">{info.luckType}</span>
           {info.tenGod && (
-            <span className={`text-[13px] font-bold px-2.5 py-1 rounded-full ${getTenGodTw(info.tenGod, info.dayStem ?? "")}`}>
+            <span className={`text-[13px] font-bold px-2.5 py-1 rounded-full ${getTenGodTw(info.tenGod, info.dayStem ?? "")}`} style={getTenGodChipStyle(info.tenGod, info.dayStem ?? "")}>
               천간 {info.tenGod}
             </span>
           )}
           {info.branchTenGod && (
-            <span className={`text-[13px] font-bold px-2.5 py-1 rounded-full ${getTenGodTw(info.branchTenGod, info.dayStem ?? "")}`}>
+            <span className={`text-[13px] font-bold px-2.5 py-1 rounded-full ${getTenGodTw(info.branchTenGod, info.dayStem ?? "")}`} style={getTenGodChipStyle(info.branchTenGod, info.dayStem ?? "")}>
               지지 {info.branchTenGod}
             </span>
           )}
@@ -705,7 +705,7 @@ function TenGodGroupSheet({ group, dayStem, pct }: { group: string; dayStem?: st
         <div className="flex items-center gap-2 mb-1">
           <span className={`text-[13px] font-bold px-3 py-1 rounded-full ${detail.color}`}>{group}</span>
           {detail.members.map((m) => (
-            <span key={m} className={`text-[13px] font-bold px-2 py-0.5 rounded-full ${getTenGodTw(m, dayStem ?? "")}`}>{m}</span>
+            <span key={m} className={`text-[13px] font-bold px-2 py-0.5 rounded-full ${getTenGodTw(m, dayStem ?? "")}`} style={getTenGodChipStyle(m, dayStem ?? "")}>{m}</span>
           ))}
           {pct !== undefined && (
             <span className="ml-auto text-[13px] font-bold text-muted-foreground">{pct}%</span>

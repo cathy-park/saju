@@ -17,6 +17,7 @@ import {
   STRENGTH_SHORT_DESC,
   ELEMENT_KO,
   type StrengthLevel,
+  type StrengthResult,
 } from "@/lib/interpretSchema";
 import type { PersonRecord, ManualShinsalItem, MaritalStatus, ManualBranchRelation, ManualDerived, ManualTenGodCounts, FortuneOptions } from "@/lib/storage";
 import type { SajuProfile } from "@/lib/sajuEngine";
@@ -29,6 +30,7 @@ import {
   CONTROLS,
   elementBgClass,
   elementBorderClass,
+  elementChipColors,
   elementColorVar,
   elementTextClass,
   GENERATES,
@@ -43,6 +45,7 @@ import { getFortuneForDate } from "@/lib/todayFortune";
 import { buildLifeFlowInsights } from "@/lib/lifeFlowInsight";
 import {
   getTenGod,
+  getTenGodChipStyle,
   getTenGodTw,
   TEN_GOD_KEYWORDS, TEN_GOD_TOOLTIP, TEN_GOD_ELEMENT,
   tenGodCountsToFiveElements, autoCountTenGods,
@@ -525,8 +528,12 @@ function PillarTable({
                       {TEN_GOD_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
                     </select>
                   ) : c.effStemTG ? (
-                    <button onClick={() => toggle(i, "stem")}
-                      className={`text-[12px] font-semibold px-1 py-0.5 rounded transition-colors ${isOpen(i, "stem") ? "bg-primary/15 text-primary" : getTenGodTw(c.effStemTG, dayStem)}`}>
+                    <button
+                      type="button"
+                      onClick={() => toggle(i, "stem")}
+                      className={`text-[12px] font-semibold px-1 py-0.5 rounded transition-colors ${isOpen(i, "stem") ? "bg-primary/15 text-primary border border-transparent" : getTenGodTw(c.effStemTG, dayStem)}`}
+                      style={!isOpen(i, "stem") && c.effStemTG ? getTenGodChipStyle(c.effStemTG, dayStem) : undefined}
+                    >
                       {c.effStemTG}
                     </button>
                   ) : <span className="text-[10px] text-muted-foreground">-</span>}
@@ -563,8 +570,12 @@ function PillarTable({
                       {TEN_GOD_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
                     </select>
                   ) : c.effBranchTG ? (
-                    <button onClick={() => toggle(i, "branch")}
-                      className={`text-[12px] font-semibold px-1 py-0.5 rounded transition-colors ${isOpen(i, "branch") ? "bg-primary/15 text-primary" : getTenGodTw(c.effBranchTG, dayStem)}`}>
+                    <button
+                      type="button"
+                      onClick={() => toggle(i, "branch")}
+                      className={`text-[12px] font-semibold px-1 py-0.5 rounded transition-colors ${isOpen(i, "branch") ? "bg-primary/15 text-primary border border-transparent" : getTenGodTw(c.effBranchTG, dayStem)}`}
+                      style={!isOpen(i, "branch") && c.effBranchTG ? getTenGodChipStyle(c.effBranchTG, dayStem) : undefined}
+                    >
                       {c.effBranchTG}
                     </button>
                   ) : <span className="text-[10px] text-muted-foreground">-</span>}
@@ -634,7 +645,7 @@ function PillarTable({
           <div className="border border-border rounded-xl bg-card px-4 py-3 space-y-2 mt-2">
             <div className="flex items-center justify-between gap-2">
               <div>
-                <span className={`text-[12px] font-bold px-2 py-0.5 rounded-full ${getTenGodTw(tg, dayStem)}`}>{tg}</span>
+                <span className={`text-[12px] font-bold px-2 py-0.5 rounded-full ${getTenGodTw(tg, dayStem)}`} style={getTenGodChipStyle(tg, dayStem)}>{tg}</span>
                 <span className="ml-2 text-[13px] text-muted-foreground">{tooltip?.headline}</span>
               </div>
               <button onClick={() => setActiveTooltip(null)} className="text-muted-foreground/50 hover:text-muted-foreground text-sm">✕</button>
@@ -974,35 +985,60 @@ function TenGodDistributionSection({
           const p1 = detailed[s1] ?? 0;
           const p2 = detailed[s2] ?? 0;
           const isDominant = g === dominantGroup;
+          const rowSurface =
+            isDominant
+              ? {
+                  ...elementChipColors(elForGroup, { bg: "muted", text: "strong", border: "strong" }),
+                  borderWidth: 1,
+                  borderStyle: "solid" as const,
+                }
+              : undefined;
           return (
             <div
               key={g}
-              className={`rounded-xl px-2 py-1 transition-colors ${
-                isDominant ? `${elementBgClass(elForGroup, "muted")} border ${elementBorderClass(elForGroup, "strong")}` : ""
-              }`}
+              className="rounded-xl px-2 py-1 transition-colors"
+              style={rowSurface}
             >
               <button
+                type="button"
                 onClick={() => onTap(g, pct)}
-                className="w-full flex items-center gap-3 text-left hover:bg-black/5 rounded px-1 py-0.5 transition-colors"
+                className="w-full flex items-center gap-3 text-left rounded px-1 py-0.5 transition-opacity hover:opacity-90"
               >
-                <span className={`w-10 text-[13px] font-semibold shrink-0 ${isDominant ? elementTextClass(elForGroup, "strong") : ""}`}>{g}</span>
+                <span
+                  className={`w-10 text-[13px] font-semibold shrink-0 ${isDominant ? "" : "text-foreground"}`}
+                  style={isDominant ? { color: elementColorVar(elForGroup, "strong") } : undefined}
+                >
+                  {g}
+                </span>
                 <div className="flex-1 h-2.5 bg-muted/60 rounded-full overflow-hidden">
                   <div
-                    className={`h-full rounded-full ${elementBgClass(elForGroup, tone)}`}
-                    style={{ width: `${pct}%` }}
+                    className="h-full rounded-full"
+                    style={{
+                      width: `${pct}%`,
+                      backgroundColor: elementColorVar(elForGroup, tone),
+                    }}
                   />
                 </div>
-                <span className={`text-[13px] font-bold whitespace-nowrap text-right px-2 py-0.5 rounded-full border ${elementBgClass(elForGroup, "muted")} ${elementBorderClass(elForGroup, "base")} ${elementTextClass(elForGroup, "strong")}`}>
+                <span
+                  className="text-[13px] font-bold whitespace-nowrap text-right px-2 py-0.5 rounded-full border border-solid"
+                  style={elementChipColors(elForGroup, { bg: "muted", text: "strong", border: "base" })}
+                >
                   {pct}%
                 </span>
               </button>
               {/* Subcategory pills */}
               <div className="flex gap-1.5 mt-1 ml-11">
-                <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full border text-[11px] ${elementBgClass(elForGroup, "muted")} ${elementBorderClass(elForGroup, "base")} ${elementTextClass(elForGroup, "base")}`}>
+                <span
+                  className="flex items-center gap-1 px-2 py-0.5 rounded-full border border-solid text-[11px]"
+                  style={elementChipColors(elForGroup, { bg: "muted", text: "base", border: "base" })}
+                >
                   <span className="font-semibold">{s1}</span>
                   <span className="opacity-70">{p1}%</span>
                 </span>
-                <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full border text-[11px] ${elementBgClass(elForGroup, "muted")} ${elementBorderClass(elForGroup, "base")} ${elementTextClass(elForGroup, "base")}`}>
+                <span
+                  className="flex items-center gap-1 px-2 py-0.5 rounded-full border border-solid text-[11px]"
+                  style={elementChipColors(elForGroup, { bg: "muted", text: "base", border: "base" })}
+                >
                   <span className="font-semibold">{s2}</span>
                   <span className="opacity-70">{p2}%</span>
                 </span>
@@ -1641,8 +1677,8 @@ function FortuneCalendar({ record, dayStem, luckCycles, birthYear, adjustedDaewo
                 {/* hanja 표기는 숨김 */}
               </div>
               <div className="flex gap-1.5 mt-1.5 flex-wrap">
-                {tg && <span className={`text-[13px] font-bold px-1.5 py-0.5 rounded ${getTenGodTw(tg, dayStem ?? "")}`}>천간 {tg}</span>}
-                {btg && <span className={`text-[13px] font-bold px-1.5 py-0.5 rounded ${getTenGodTw(btg, dayStem ?? "")}`}>지지 {btg}</span>}
+                {tg && <span className={`text-[13px] font-bold px-1.5 py-0.5 rounded ${getTenGodTw(tg, dayStem ?? "")}`} style={getTenGodChipStyle(tg, dayStem ?? "")}>천간 {tg}</span>}
+                {btg && <span className={`text-[13px] font-bold px-1.5 py-0.5 rounded ${getTenGodTw(btg, dayStem ?? "")}`} style={getTenGodChipStyle(btg, dayStem ?? "")}>지지 {btg}</span>}
               </div>
             </div>
 
@@ -1760,8 +1796,8 @@ function LuckDetailCard({ luckType, ganZhi, period, tg, btg, dayStem }: {
     <div className="rounded-xl border border-amber-200 bg-amber-50/30 p-3 space-y-2.5">
       <div className="flex items-center gap-2 flex-wrap">
         <span className="text-[11px] font-bold bg-muted/60 text-muted-foreground px-2 py-0.5 rounded-full">{luckType}</span>
-        {tg && <span className={`text-[13px] font-bold px-2 py-0.5 rounded-full ${getTenGodTw(tg, dayStem ?? "")}`}>천간 {tg}</span>}
-        {btg && <span className={`text-[13px] font-bold px-2 py-0.5 rounded-full ${getTenGodTw(btg, dayStem ?? "")}`}>지지 {btg}</span>}
+        {tg && <span className={`text-[13px] font-bold px-2 py-0.5 rounded-full ${getTenGodTw(tg, dayStem ?? "")}`} style={getTenGodChipStyle(tg, dayStem ?? "")}>천간 {tg}</span>}
+        {btg && <span className={`text-[13px] font-bold px-2 py-0.5 rounded-full ${getTenGodTw(btg, dayStem ?? "")}`} style={getTenGodChipStyle(btg, dayStem ?? "")}>지지 {btg}</span>}
       </div>
       <div className="flex items-baseline gap-2">
         <span className="text-xl font-bold">
@@ -1990,7 +2026,7 @@ function LuckFlowTabs({
                       <span className={`text-lg font-bold ${be ? ELEMENT_COLORS[be] : ""}`}>{ganZhi.branch}</span>
                     </div>
                     {/* hanja 표기는 숨김 */}
-                    {tg && <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded mt-0.5 inline-block ${getTenGodTw(tg, dayStem)}`}>{tg}</span>}
+                    {tg && <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded mt-0.5 inline-block ${getTenGodTw(tg, dayStem)}`} style={getTenGodChipStyle(tg, dayStem)}>{tg}</span>}
                     {isThisYear && <p className="text-[11px] text-amber-600 font-medium mt-0.5">올해</p>}
                   </button>
                 );
@@ -2070,7 +2106,7 @@ function LuckFlowTabs({
                           <span className={`text-[15px] font-bold leading-tight ${se ? ELEMENT_COLORS[se] : ""}`}>{gz.stem}</span>
                           <span className={`text-[15px] font-bold leading-tight ${be ? ELEMENT_COLORS[be] : ""}`}>{gz.branch}</span>
                         </div>
-                        {tg && <span className={`text-[10px] font-bold px-1 py-0.5 rounded ${getTenGodTw(tg, dayStem)}`}>{tg}</span>}
+                        {tg && <span className={`text-[10px] font-bold px-1 py-0.5 rounded ${getTenGodTw(tg, dayStem)}`} style={getTenGodChipStyle(tg, dayStem)}>{tg}</span>}
                       </button>
                     );
                   })}
@@ -2093,8 +2129,8 @@ function LuckFlowTabs({
                           {/* hanja 표기는 숨김 */}
                         </div>
                         <div className="flex gap-1.5 mt-1.5 flex-wrap">
-                          {tg && <span className={`text-[13px] font-bold px-1.5 py-0.5 rounded ${getTenGodTw(tg, dayStem)}`}>천간 {tg}</span>}
-                          {btg && <span className={`text-[13px] font-bold px-1.5 py-0.5 rounded ${getTenGodTw(btg, dayStem)}`}>지지 {btg}</span>}
+                          {tg && <span className={`text-[13px] font-bold px-1.5 py-0.5 rounded ${getTenGodTw(tg, dayStem)}`} style={getTenGodChipStyle(tg, dayStem)}>천간 {tg}</span>}
+                          {btg && <span className={`text-[13px] font-bold px-1.5 py-0.5 rounded ${getTenGodTw(btg, dayStem)}`} style={getTenGodChipStyle(btg, dayStem)}>지지 {btg}</span>}
                         </div>
                       </div>
                       {wolunDaewoon && wolunSeun && dayStem && (() => {
@@ -2438,32 +2474,6 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
   const seasonalNote  = sajuPipelineResult?.interpretation.seasonalNote ?? "";
   const strengthUnified = sajuPipelineResult?.adjusted?.strengthResult ?? null;
 
-  // Debug helper (opt-in): localStorage.debugStrength === "1"
-  // Logs strength inputs/outputs once per recompute to trace mismatches across tabs.
-  if (typeof window !== "undefined") {
-    try {
-      const on = window.localStorage.getItem("debugStrength") === "1";
-      if (on && strengthUnified) {
-        // eslint-disable-next-line no-console
-        console.log("[strength-debug]", {
-          personId: record.id,
-          pillars: {
-            year: pillars.year?.hangul,
-            month: pillars.month?.hangul,
-            day: pillars.day?.hangul,
-            hour: pillars.hour?.hangul,
-          },
-          effectiveFiveElements,
-          dayStem,
-          monthBranch: pillars.month?.hangul?.[1],
-          allStems,
-          allBranches,
-          strength: strengthUnified,
-        });
-      }
-    } catch { /* ignore */ }
-  }
-
   const pillarData = [
     { label: "생시", hangul: effectivePillars.hour?.hangul ?? "", isUnknown: !effectivePillars.hour || input.timeUnknown || hourMode === "제외" },
     { label: "생일", hangul: effectivePillars.day?.hangul ?? "", isDayMaster: true },
@@ -2489,6 +2499,31 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
     effectivePillars.hour?.hangul?.[1], dayBranch,
     effectivePillars.month?.hangul?.[1], effectivePillars.year?.hangul?.[1],
   ].filter((c): c is string => !!c);
+
+  // Debug helper (opt-in): localStorage.debugStrength === "1"
+  if (typeof window !== "undefined") {
+    try {
+      const on = window.localStorage.getItem("debugStrength") === "1";
+      if (on && strengthUnified) {
+        // eslint-disable-next-line no-console
+        console.log("[strength-debug]", {
+          personId: record.id,
+          pillars: {
+            year: pillars.year?.hangul,
+            month: pillars.month?.hangul,
+            day: pillars.day?.hangul,
+            hour: pillars.hour?.hangul,
+          },
+          effectiveFiveElements,
+          dayStem,
+          monthBranch: pillars.month?.hangul?.[1],
+          allStems,
+          allBranches,
+          strength: strengthUnified,
+        });
+      }
+    } catch { /* ignore */ }
+  }
 
   const branchRelations = analyzeBranchRelations(effectivePillars as Parameters<typeof analyzeBranchRelations>[0]);
   const daewoonSuOpts: DaewoonSuOpts = {
@@ -2701,8 +2736,8 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                     {hourBranch && <span className={`text-xl font-bold ${ELEMENT_COLORS[STEM_ELEMENT[hourBranch] ?? ""] ?? ""}`}>{hourBranch}</span>}
                   </div>
                   <div className="flex gap-0.5 mt-0.5 justify-center flex-wrap">
-                    {hourStemTg && <span className={`text-[10px] font-bold px-1 py-0.5 rounded ${getTenGodTw(hourStemTg, dayStem)}`}>{hourStemTg}</span>}
-                    {hourBranchTg && <span className={`text-[10px] font-bold px-1 py-0.5 rounded ${getTenGodTw(hourBranchTg, dayStem)}`}>{hourBranchTg}</span>}
+                    {hourStemTg && <span className={`text-[10px] font-bold px-1 py-0.5 rounded ${getTenGodTw(hourStemTg, dayStem)}`} style={getTenGodChipStyle(hourStemTg, dayStem)}>{hourStemTg}</span>}
+                    {hourBranchTg && <span className={`text-[10px] font-bold px-1 py-0.5 rounded ${getTenGodTw(hourBranchTg, dayStem)}`} style={getTenGodChipStyle(hourBranchTg, dayStem)}>{hourBranchTg}</span>}
                   </div>
                 </div>
                 <div className="flex-1 min-w-0 space-y-1.5">
@@ -2775,9 +2810,11 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                             const isActive = selectedTgInfo === tg;
                             return (
                             <button
+                              type="button"
                               key={tg}
                               onClick={() => setSelectedTgInfo(isActive ? null : tg as TenGod)}
                               className={`flex items-center justify-between rounded-lg px-2.5 py-1.5 transition-all active:scale-95 ${getTenGodTw(tg, dayStem)} ${isActive ? "ring-2 ring-foreground/30" : ""}`}
+                              style={getTenGodChipStyle(tg, dayStem)}
                             >
                               <span className="text-[13px] font-bold">{tg}</span>
                               <span className="text-[13px] font-semibold">{pct}%</span>
@@ -2805,7 +2842,7 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                       ? `${selectedTgInfo}이(가) 사주에 강하게(${pct}%) 자리합니다. 성격과 삶의 흐름에 뚜렷한 영향을 미치는 핵심 기운 중 하나입니다.`
                       : `${selectedTgInfo}이(가) 사주에서 매우 강하게(${pct}%) 작용합니다. 삶 전반에 걸쳐 가장 핵심적인 영향을 미치는 지배적 기운입니다.`;
                     return (
-                    <div className={`rounded-xl px-3 py-3 space-y-2 border ${getTenGodTw(selectedTgInfo, dayStem)}`}>
+                    <div className={`rounded-xl px-3 py-3 space-y-2 ${getTenGodTw(selectedTgInfo, dayStem)}`} style={getTenGodChipStyle(selectedTgInfo, dayStem)}>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <span className="text-[14px] font-bold">{selectedTgInfo}</span>
@@ -3079,8 +3116,8 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                     )}
                   </div>
                   <div className="flex gap-1 mt-0.5 justify-center">
-                    {hourStemTg && <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded ${getTenGodTw(hourStemTg, dayStem)}`}>{hourStemTg}</span>}
-                    {hourBranchTg && <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded ${getTenGodTw(hourBranchTg, dayStem)}`}>{hourBranchTg}</span>}
+                    {hourStemTg && <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded ${getTenGodTw(hourStemTg, dayStem)}`} style={getTenGodChipStyle(hourStemTg, dayStem)}>{hourStemTg}</span>}
+                    {hourBranchTg && <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded ${getTenGodTw(hourBranchTg, dayStem)}`} style={getTenGodChipStyle(hourBranchTg, dayStem)}>{hourBranchTg}</span>}
                   </div>
                 </div>
                 <div className="flex-1 min-w-0">
@@ -3231,7 +3268,7 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                               </td>
                               <td className="py-2 px-2 text-center border-l border-border">
                                 {stemTg ? (
-                                  <span className={`text-[13px] px-1.5 py-0.5 rounded font-bold ${getTenGodTw(stemTg, dayStem)}`}>{stemTg}</span>
+                                  <span className={`text-[13px] px-1.5 py-0.5 rounded font-bold ${getTenGodTw(stemTg, dayStem)}`} style={getTenGodChipStyle(stemTg, dayStem)}>{stemTg}</span>
                                 ) : <span className="text-[13px] text-muted-foreground">-</span>}
                               </td>
                               <td className="py-2 px-2 text-center border-l border-border">
@@ -3239,7 +3276,7 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                               </td>
                               <td className="py-2 px-2 text-center border-l border-border">
                                 {branchTg ? (
-                                  <span className={`text-[13px] px-1.5 py-0.5 rounded font-bold ${getTenGodTw(branchTg, dayStem)}`}>{branchTg}</span>
+                                  <span className={`text-[13px] px-1.5 py-0.5 rounded font-bold ${getTenGodTw(branchTg, dayStem)}`} style={getTenGodChipStyle(branchTg, dayStem)}>{branchTg}</span>
                                 ) : <span className="text-[13px] text-muted-foreground">-</span>}
                               </td>
                             </tr>

@@ -26,7 +26,7 @@ import { charToElement, elementColorVar, type FiveElKey } from "@/lib/element-co
 import {
   calculateLuckCycles,
 } from "@/lib/luckCycles";
-import { getTenGod, getTenGodTw } from "@/lib/tenGods";
+import { getTenGod, getTenGodChipStyle, getTenGodTw } from "@/lib/tenGods";
 import {
   getSpousePalaceInfo,
   getMarriageTimingHint,
@@ -755,7 +755,7 @@ export default function Compatibility() {
                   <p className="text-[11px] text-muted-foreground mb-1.5">일간 관계</p>
                   <p className="text-[13px] font-bold text-foreground leading-tight">{fullReport.stemRel.label}</p>
                   {fullReport.stemRel.me2other && (
-                    <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded mt-1.5 inline-block ${getTenGodTw(fullReport.stemRel.me2other, myDayStem2)}`}>
+                    <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded mt-1.5 inline-block ${getTenGodTw(fullReport.stemRel.me2other, myDayStem2)}`} style={getTenGodChipStyle(fullReport.stemRel.me2other, myDayStem2)}>
                       {fullReport.stemRel.me2other}
                     </span>
                   )}
@@ -1008,7 +1008,7 @@ export default function Compatibility() {
                           <>
                             <p className="text-[12px] text-muted-foreground mb-1.5">{bodyLabel}</p>
                             <div className="flex items-center gap-1.5 mb-1.5">
-                              <span className={`text-[13px] font-bold px-2 py-0.5 rounded-full ${getTenGodTw(tg, tgDayStem ?? "")}`}>{tg}</span>
+                              <span className={`text-[13px] font-bold px-2 py-0.5 rounded-full ${getTenGodTw(tg, tgDayStem ?? "")}`} style={getTenGodChipStyle(tg, tgDayStem ?? "")}>{tg}</span>
                               <span className="text-[12px] text-muted-foreground">관계로 느껴집니다</span>
                             </div>
                             <p className="text-[12px] text-muted-foreground leading-relaxed">{desc}</p>

@@ -204,12 +204,12 @@
   --element-metal: 215 10% 45%;
   --element-water: 205 78% 44%;
 
-  /* Muted (secondary/minor backgrounds, low-emphasis) */
-  --element-wood-muted: 142 45% 92%;
-  --element-fire-muted: 4 75% 92%;
-  --element-earth-muted: 35 75% 92%;
-  --element-metal-muted: 215 10% 92%;
-  --element-water-muted: 205 80% 92%;
+  /* Muted (tinted chips — was 92% L, too close to ivory bg on some displays) */
+  --element-wood-muted: 142 50% 84%;
+  --element-fire-muted: 4 78% 86%;
+  --element-earth-muted: 38 72% 86%;
+  --element-metal-muted: 215 14% 86%;
+  --element-water-muted: 205 72% 86%;
 
   /* Strong (primary element emphasis) */
   --element-wood-strong: 142 55% 32%;
