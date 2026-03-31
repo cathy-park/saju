@@ -1,0 +1,146 @@
+Please update the fortune screen interaction pattern.
+
+Important change:
+I do NOT want the default behavior to open a bottom sheet when selecting 대운 / 세운 / 월운 / 일운.
+
+New desired behavior:
+
+1. When a user selects a 대운 / 세운 / 월운 / 일운 item,
+   do NOT open a bottom sheet.
+   Instead, update the inline explanation card already shown below.
+
+2. Keep the screen clean by changing only the selected card content inline:
+   - title
+   - stem/branch display
+   - ten-god label
+   - summary text
+   - combined interpretation section
+
+3. However, the previous detailed deep analysis should still exist.
+   Add a “자세히 보기” button inside each inline explanation card.
+
+4. Only when the user taps “자세히 보기”,
+   open a bottom sheet and show the full detailed analysis that used to appear before.
+
+Apply this behavior consistently to:
+- 대운
+- 세운
+- 월운
+- 일운
+
+So the final UX should be:
+
+- item selection = inline card content update only
+- “자세히 보기” tap = open bottom sheet with full detailed analysis
+
+Please also keep this consistent with the calendar/day fortune flow where appropriate.
+
+Additional requirements:
+- remove automatic bottom-sheet opening on selection
+- preserve the old detailed analysis content and move it into the bottom sheet opened by the button
+- make sure the selected item stays highlighted while the inline card changes
+- keep the interaction mobile-friendly
+
+Please audit the current logic and automatically fix any places where selecting an item still directly opens the bottom sheet.
+
+After updating, show me:
+- which files controlled the old auto-open bottom sheet behavior
+- which files now control inline card updates
+- which component now renders the “자세히 보기” button
+- confirmation that selection no longer auto-opens the bottom sheet
+
+Use bottom sheets only for optional deep-dive analysis, not for normal item selection.
+
+--------------------------------------------------
+Additional required logic improvements
+--------------------------------------------------
+
+[1] Detailed fortune interpretation depth
+The detailed analysis for 대운 / 세운 / 월운 / 일운 must be more specific and structured.
+
+For each selected fortune item, the detailed analysis should include:
+1. heavenly stem influence
+2. earthly branch influence
+3. interaction with natal chart
+4. interaction with prior fortune layers
+5. relationship / romance flow
+6. work / career flow
+7. health flow
+8. practical usage advice for this period
+
+This should not be only short summary text.
+The “자세히 보기” bottom sheet must include this deeper structured interpretation.
+
+[2] Combined interpretation logic
+Keep the combined interpretation structure:
+- 대운 = standalone major fortune interpretation
+- 세운 = current 대운 + selected 세운
+- 월운 = current 대운 + current 세운 + selected 월운
+- 일운 = current 대운 + current 세운 + current 월운 + selected 일운
+
+Make sure the inline card shows a concise summary,
+and the bottom sheet shows the full combined deep analysis.
+
+[3] Daewoon start age / Daewoon number must be correct
+The Daewoon start age and Daewoon number must be calculated correctly automatically.
+
+Current concern:
+The displayed 대운수 may be wrong.
+
+Please audit the calculation of:
+- Daewoon starting age
+- Daewoon number
+- current active Daewoon range
+
+Use the correct logic based on:
+- birth datetime
+- exact solar term timing
+- direction rule (forward/backward)
+- Korea timezone
+
+If the current calculation is wrong, fix it automatically.
+
+Please print debug output showing:
+- birth datetime
+- nearest solar term used
+- day difference
+- calculated Daewoon start age
+- calculated current Daewoon number
+
+[4] Manual override for Daewoon settings
+If accurate automatic Daewoon calculation is difficult in edge cases,
+add an optional manual override setting.
+
+The user should be able to manually override:
+- Daewoon start age
+- current Daewoon number
+
+Rules:
+- automatic calculation is the default
+- manual override is optional
+- if manual override is enabled, the app should use the user-provided value
+- the override must sync across devices
+
+Suggested structure:
+fortune_options: {
+  daewoon_start_age_auto: true,
+  daewoon_start_age_override: null,
+  daewoon_number_override: null
+}
+
+[5] Verification checklist
+Please verify and auto-fix if any item fails:
+
+1. Selecting 대운/세운/월운/일운 no longer auto-opens bottom sheet
+2. Inline explanation card updates correctly
+3. “자세히 보기” opens the previous deep analysis in bottom sheet
+4. Calendar/day flow is visually consistent
+5. Detailed analysis includes stem/branch/relationship/work/health/usage strategy
+6. Combined interpretation logic is correct for 세운, 월운, 일운
+7. Daewoon start age is calculated correctly
+8. Current Daewoon number is calculated correctly
+9. Manual override exists if needed
+10. All settings sync correctly across devices
+
+Do not leave any checklist failures unresolved.
+If a failure is found, fix it in the same pass and verify it again before reporting back.

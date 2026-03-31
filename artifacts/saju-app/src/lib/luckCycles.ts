@@ -105,8 +105,9 @@ export function calculateLuckCycles(birthInput: BirthInput, pillars: ComputedPil
   const currentMonth = now.getMonth() + 1;
   const currentDay = now.getDate();
   const daewoon = calculateDaewoon(birthInput, pillars);
-  const seun = [currentYear, currentYear + 1, currentYear + 2].map((y) => ({
-    year: y, ganZhi: getYearGanZhi(y),
+  const seun = Array.from({ length: 15 }, (_, i) => ({
+    year: currentYear - 2 + i,
+    ganZhi: getYearGanZhi(currentYear - 2 + i),
   }));
   const wolun = { year: currentYear, month: currentMonth, ganZhi: getMonthGanZhi(currentYear, currentMonth) };
   const ilun = { year: currentYear, month: currentMonth, day: currentDay, ganZhi: getDayGanZhi(currentYear, currentMonth, currentDay) };

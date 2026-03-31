@@ -34,7 +34,7 @@ import {
   type TenGod,
 } from "@/lib/tenGods";
 import { getHiddenStems, HIDDEN_STEMS_HANJA } from "@/lib/hiddenStems";
-import { InfoBottomSheet } from "@/components/InfoBottomSheet";
+import { InfoBottomSheet, TG_LUCK_MEANING } from "@/components/InfoBottomSheet";
 import type { InfoSheetType } from "@/components/InfoBottomSheet";
 import {
   analyzeBranchRelations,
@@ -49,6 +49,9 @@ import {
 import {
   calculateLuckCycles,
   calculateShinsalFull,
+  getDayGanZhi,
+  getMonthGanZhi,
+  getYearGanZhi,
   SHINSAL_COLOR,
   SHINSAL_DESC,
   ALL_SHINSAL_NAMES,
@@ -1047,7 +1050,12 @@ function getElementBalanceSummary(counts: FiveElementCount) {
 
 // ── Fortune Calendar (일운 monthly view) ──────────────────────────
 
-function FortuneCalendar({ record }: { record: PersonRecord }) {
+function FortuneCalendar({ record, dayStem, luckCycles, birthYear }: {
+  record: PersonRecord;
+  dayStem: string;
+  luckCycles: ReturnType<typeof calculateLuckCycles>;
+  birthYear: number;
+}) {
   const today = new Date();
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth() + 1);
@@ -1063,6 +1071,22 @@ function FortuneCalendar({ record }: { record: PersonRecord }) {
     }
     return arr;
   }, [record, viewYear, viewMonth, daysInMonth]);
+
+  const calCombined = useMemo(() => {
+    if (!selectedDay || !dayStem) return null;
+    const selectedAge = viewYear - birthYear;
+    const calDaewoon = luckCycles.daewoon.find(e => selectedAge >= e.startAge && selectedAge <= e.endAge);
+    if (!calDaewoon) return null;
+    const yearGZ = getYearGanZhi(viewYear);
+    const monthGZ = getMonthGanZhi(viewYear, viewMonth);
+    const dayGZ = getDayGanZhi(viewYear, viewMonth, selectedDay);
+    return getCombinedFortuneText(dayStem, [
+      { label: "대운", ganZhi: calDaewoon.ganZhi },
+      { label: "세운", ganZhi: yearGZ },
+      { label: "월운", ganZhi: monthGZ },
+      { label: "일운", ganZhi: dayGZ },
+    ]);
+  }, [selectedDay, dayStem, viewYear, viewMonth, birthYear, luckCycles]);
 
   function prevMonth() {
     if (viewMonth === 1) { setViewYear((y) => y - 1); setViewMonth(12); }
@@ -1138,8 +1162,15 @@ function FortuneCalendar({ record }: { record: PersonRecord }) {
       </div>
 
       {selectedDay !== null && selectedFortune && (
-        <div className="mt-4">
+        <div className="mt-4 space-y-3">
           <TodayFortuneCard record={record} year={viewYear} month={viewMonth} day={selectedDay} />
+          {calCombined && (
+            <div className="rounded-xl border border-rose-100 bg-rose-50/40 px-3 py-3 space-y-1.5">
+              <p className="text-[11px] font-bold text-rose-600 uppercase tracking-wide">대운 × 세운 × 월운 × 일운 결합 해석</p>
+              <p className="text-[12px] text-rose-400 font-mono">{calCombined.layerDesc}</p>
+              <p className="text-[13px] text-foreground leading-relaxed">{calCombined.combinedText}</p>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -1229,17 +1260,77 @@ function getDaewoonInterpretationText(dayStem: string, ganZhi: { hangul: string;
 
 type LuckTabKey = "대운" | "세운" | "월/일운" | "달력";
 
+function LuckDetailCard({ luckType, ganZhi, period, tg, btg }: {
+  luckType: string;
+  ganZhi: { stem: string; branch: string; hangul: string; hanja: string };
+  period: string;
+  tg: string | null;
+  btg: string | null;
+}) {
+  const tgData = tg ? TG_LUCK_MEANING[tg] : null;
+  const btgData = btg ? TG_LUCK_MEANING[btg] : null;
+  const se = getStemElement(ganZhi.stem);
+  const be = STEM_ELEMENT[ganZhi.branch] ?? null;
+  return (
+    <div className="rounded-xl border border-amber-200 bg-amber-50/30 p-3 space-y-2.5">
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-[11px] font-bold bg-muted/60 text-muted-foreground px-2 py-0.5 rounded-full">{luckType}</span>
+        {tg && <span className={`text-[13px] font-bold px-2 py-0.5 rounded-full ${TEN_GOD_COLOR[tg as TenGod] ?? "bg-muted"}`}>천간 {tg}</span>}
+        {btg && <span className={`text-[13px] font-bold px-2 py-0.5 rounded-full ${TEN_GOD_COLOR[btg as TenGod] ?? "bg-muted"}`}>지지 {btg}</span>}
+      </div>
+      <div className="flex items-baseline gap-2">
+        <span className="text-xl font-bold">
+          <span className={se ? ELEMENT_COLORS[se] : ""}>{ganZhi.stem}</span>
+          <span className={be ? ELEMENT_COLORS[be] : ""}>{ganZhi.branch}</span>
+        </span>
+        <span className="text-sm text-muted-foreground font-serif">{ganZhi.hanja}</span>
+        <span className="text-[12px] text-muted-foreground ml-1">{period}</span>
+      </div>
+      {tgData ? (
+        <div className="space-y-1.5">
+          <div className="rounded-lg bg-sky-50 border border-sky-100 px-2.5 py-2">
+            <p className="text-[11px] font-bold text-sky-700 mb-0.5">이 시기의 기운 (천간)</p>
+            <p className="text-[13px] text-foreground">{tgData.summary}</p>
+          </div>
+          <div className="grid grid-cols-2 gap-1.5">
+            <div className="rounded-lg bg-violet-50 border border-violet-100 px-2 py-1.5">
+              <p className="text-[11px] font-bold text-violet-700 mb-0.5">관계·연애</p>
+              <p className="text-[13px] text-foreground leading-snug">{tgData.relationship}</p>
+            </div>
+            <div className="rounded-lg bg-teal-50 border border-teal-100 px-2 py-1.5">
+              <p className="text-[11px] font-bold text-teal-700 mb-0.5">일·직업</p>
+              <p className="text-[13px] text-foreground leading-snug">{tgData.work}</p>
+            </div>
+          </div>
+          <div className="rounded-lg bg-green-50 border border-green-100 px-2.5 py-2">
+            <p className="text-[11px] font-bold text-green-700 mb-0.5">활용 팁</p>
+            <p className="text-[13px] text-foreground">{tgData.tip}</p>
+          </div>
+        </div>
+      ) : (
+        <p className="text-[13px] text-muted-foreground">{ganZhi.hangul}({ganZhi.hanja}) 운기입니다. 이 간지의 오행 흐름이 전반적인 운에 영향을 미칩니다.</p>
+      )}
+      {btgData && (
+        <div className="rounded-xl border border-border/50 bg-muted/10 px-3 py-2.5 space-y-1.5">
+          <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide">지지 기운 — {btg}</p>
+          <p className="text-[13px] text-foreground">{btgData.summary}</p>
+          <p className="text-[13px] text-muted-foreground">{btgData.relationship}</p>
+        </div>
+      )}
+      <p className="text-[11px] text-muted-foreground/60">※ 운세 해석은 참고용 분석으로, 절대적 예언이 아닙니다.</p>
+    </div>
+  );
+}
+
 function LuckFlowTabs({
   luckCycles,
   dayStem,
   birthYear,
-  onInfoSheet,
   record,
 }: {
   luckCycles: ReturnType<typeof calculateLuckCycles>;
   dayStem: string;
   birthYear: number;
-  onInfoSheet: (info: InfoSheetType) => void;
   record: PersonRecord;
 }) {
   const [tab, setTab] = useState<LuckTabKey>("대운");
@@ -1254,7 +1345,14 @@ function LuckFlowTabs({
   const age = now.getFullYear() - birthYear;
   const daewoonSu = luckCycles.daewoon[0]?.startAge ?? 0;
   const currentDaewoon = luckCycles.daewoon.find((e) => age >= e.startAge && age <= e.endAge) ?? null;
+  const currentDaewoonIdx = luckCycles.daewoon.findIndex((e) => age >= e.startAge && age <= e.endAge);
   const currentSeun = luckCycles.seun.find((e) => e.year === now.getFullYear()) ?? null;
+
+  const [selectedDaewoonIdx, setSelectedDaewoonIdx] = useState<number>(
+    currentDaewoonIdx >= 0 ? currentDaewoonIdx : 0
+  );
+  const [selectedSeunYear, setSelectedSeunYear] = useState<number>(now.getFullYear());
+  const selectedSeunEntry = luckCycles.seun.find((e) => e.year === selectedSeunYear) ?? null;
 
   return (
     <div className="space-y-3">
@@ -1311,19 +1409,19 @@ function LuckFlowTabs({
             <p className="text-sm text-muted-foreground text-center py-6">대운 데이터가 없습니다</p>
           ) : (
             <>
-              <p className="text-[13px] text-muted-foreground px-0.5">10년 주기 운의 흐름 · 항목을 탭하면 해석을 볼 수 있습니다</p>
+              <p className="text-[13px] text-muted-foreground px-0.5">10년 주기 운의 흐름 · 항목을 탭하면 해석이 아래에 표시됩니다</p>
               <div className="grid grid-cols-2 gap-2">
                 {luckCycles.daewoon.slice(0, 8).map((entry, i) => {
                   const stemEl = getStemElement(entry.ganZhi.stem);
                   const branchEl = STEM_ELEMENT[entry.ganZhi.branch] ?? null;
                   const tg = dayStem ? getTenGod(dayStem, entry.ganZhi.stem) : null;
                   const isCurrent = age >= entry.startAge && age <= entry.endAge;
-                  const branchTg = dayStem ? getTenGod(dayStem, entry.ganZhi.branch) : null;
+                  const isSelected = selectedDaewoonIdx === i;
                   return (
                     <button
                       key={i}
-                      onClick={() => onInfoSheet({ kind: "luck", luckType: "대운", ganZhiStr: entry.ganZhi.hangul, ganZhiHanja: entry.ganZhi.hanja, tenGod: tg, branchTenGod: branchTg, period: `${entry.startAge}~${entry.endAge}세`, dayStem })}
-                      className={`rounded-lg border p-2.5 flex items-center gap-2.5 cursor-pointer transition-all active:scale-95 hover:bg-muted/30 text-left ${isCurrent ? "border-amber-400 bg-amber-50" : "border-border bg-muted/20"}`}
+                      onClick={() => setSelectedDaewoonIdx(i)}
+                      className={`rounded-lg border p-2.5 flex items-center gap-2.5 cursor-pointer transition-all active:scale-95 hover:bg-muted/30 text-left ${isSelected ? "border-indigo-400 bg-indigo-50" : isCurrent ? "border-amber-400 bg-amber-50" : "border-border bg-muted/20"}`}
                     >
                       <div className="text-center w-14 shrink-0">
                         <p className="text-[13px] text-muted-foreground">{entry.startAge}~{entry.endAge}세</p>
@@ -1333,12 +1431,28 @@ function LuckFlowTabs({
                         <span className={`text-xl font-bold ${stemEl ? ELEMENT_COLORS[stemEl] : ""}`}>{entry.ganZhi.stem}</span>
                         <span className={`text-xl font-bold ${branchEl ? ELEMENT_COLORS[branchEl] : ""}`}>{entry.ganZhi.branch}</span>
                       </div>
-                      {tg && <span className={`text-[13px] font-bold px-1 py-0.5 rounded ml-auto ${TEN_GOD_COLOR[tg]}`}>{tg}</span>}
-                      <span className="text-[13px] text-muted-foreground opacity-40 ml-auto">▸</span>
+                      {tg && <span className={`text-[13px] font-bold px-1 py-0.5 rounded ml-auto ${TEN_GOD_COLOR[tg as TenGod] ?? "bg-muted"}`}>{tg}</span>}
                     </button>
                   );
                 })}
               </div>
+
+              {/* 선택된 대운 인라인 상세 카드 */}
+              {luckCycles.daewoon[selectedDaewoonIdx] && (() => {
+                const entry = luckCycles.daewoon[selectedDaewoonIdx];
+                const tg = dayStem ? getTenGod(dayStem, entry.ganZhi.stem) : null;
+                const btg = dayStem ? getTenGod(dayStem, entry.ganZhi.branch) : null;
+                const isCurrent = age >= entry.startAge && age <= entry.endAge;
+                return (
+                  <LuckDetailCard
+                    luckType="대운"
+                    ganZhi={entry.ganZhi}
+                    period={`${entry.startAge}~${entry.endAge}세${isCurrent ? " · 현재 대운" : ""}`}
+                    tg={tg}
+                    btg={btg}
+                  />
+                );
+              })()}
             </>
           )}
         </div>
@@ -1347,39 +1461,59 @@ function LuckFlowTabs({
       {/* 세운 panel */}
       {tab === "세운" && (
         <div className="space-y-3">
-          <p className="text-[13px] text-muted-foreground px-0.5">연간 운세 · 탭하면 해석을 볼 수 있습니다</p>
-          <div className="flex gap-2 flex-wrap">
-            {luckCycles.seun.map(({ year, ganZhi }) => {
-              const se = getStemElement(ganZhi.stem);
-              const be = STEM_ELEMENT[ganZhi.branch] ?? null;
-              const isThisYear = year === now.getFullYear();
-              const tg = dayStem ? getTenGod(dayStem, ganZhi.stem) : null;
-              const btg = dayStem ? getTenGod(dayStem, ganZhi.branch) : null;
-              return (
-                <button
-                  key={year}
-                  onClick={() => onInfoSheet({ kind: "luck", luckType: "세운", ganZhiStr: ganZhi.hangul, ganZhiHanja: ganZhi.hanja, tenGod: tg, branchTenGod: btg, period: `${year}년`, dayStem })}
-                  className={`rounded-lg border px-3 py-2 text-center cursor-pointer transition-all active:scale-95 hover:brightness-95 ${isThisYear ? "border-amber-300 bg-amber-50" : "border-border bg-muted/20"}`}
-                >
-                  <p className="text-[13px] text-muted-foreground">{year}년</p>
-                  <div className="flex gap-0.5 justify-center mt-0.5">
-                    <span className={`text-lg font-bold ${se ? ELEMENT_COLORS[se] : ""}`}>{ganZhi.stem}</span>
-                    <span className={`text-lg font-bold ${be ? ELEMENT_COLORS[be] : ""}`}>{ganZhi.branch}</span>
-                  </div>
-                  <p className="text-[13px] text-muted-foreground font-serif">{ganZhi.hanja}</p>
-                  {isThisYear
-                    ? <p className="text-[13px] text-amber-600 font-medium mt-0.5">올해 ▸</p>
-                    : <p className="text-[13px] text-muted-foreground/40 mt-0.5">▸</p>}
-                </button>
-              );
-            })}
+          <p className="text-[13px] text-muted-foreground px-0.5">연간 운세 · 탭하면 해석이 아래에 표시됩니다</p>
+          {/* 수평 스크롤 연도 목록 */}
+          <div className="overflow-x-auto -mx-1 px-1 pb-1" style={{ scrollbarWidth: "none", msOverflowStyle: "none" as "none" }}>
+            <div className="flex gap-2 min-w-max">
+              {luckCycles.seun.map(({ year, ganZhi }) => {
+                const se = getStemElement(ganZhi.stem);
+                const be = STEM_ELEMENT[ganZhi.branch] ?? null;
+                const isThisYear = year === now.getFullYear();
+                const isSelected = year === selectedSeunYear;
+                const tg = dayStem ? getTenGod(dayStem, ganZhi.stem) : null;
+                return (
+                  <button
+                    key={year}
+                    onClick={() => setSelectedSeunYear(year)}
+                    className={`shrink-0 rounded-lg border px-3 py-2 text-center cursor-pointer transition-all active:scale-95 ${
+                      isSelected ? "border-indigo-400 bg-indigo-50" : isThisYear ? "border-amber-300 bg-amber-50" : "border-border bg-muted/20"
+                    }`}
+                  >
+                    <p className="text-[13px] text-muted-foreground">{year}년</p>
+                    <div className="flex gap-0.5 justify-center mt-0.5">
+                      <span className={`text-lg font-bold ${se ? ELEMENT_COLORS[se] : ""}`}>{ganZhi.stem}</span>
+                      <span className={`text-lg font-bold ${be ? ELEMENT_COLORS[be] : ""}`}>{ganZhi.branch}</span>
+                    </div>
+                    <p className="text-[13px] text-muted-foreground font-serif">{ganZhi.hanja}</p>
+                    {tg && <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded mt-0.5 inline-block ${TEN_GOD_COLOR[tg as TenGod] ?? "bg-muted"}`}>{tg}</span>}
+                    {isThisYear && <p className="text-[11px] text-amber-600 font-medium mt-0.5">올해</p>}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
-          {/* 대운 × 세운 결합 해석 */}
-          {currentDaewoon && currentSeun && dayStem && (() => {
+          {/* 선택된 세운 인라인 상세 카드 */}
+          {selectedSeunEntry && (() => {
+            const { ganZhi } = selectedSeunEntry;
+            const tg = dayStem ? getTenGod(dayStem, ganZhi.stem) : null;
+            const btg = dayStem ? getTenGod(dayStem, ganZhi.branch) : null;
+            return (
+              <LuckDetailCard
+                luckType="세운"
+                ganZhi={ganZhi}
+                period={`${selectedSeunYear}년`}
+                tg={tg}
+                btg={btg}
+              />
+            );
+          })()}
+
+          {/* 대운 × 선택된 세운 결합 해석 */}
+          {currentDaewoon && selectedSeunEntry && dayStem && (() => {
             const { layerDesc, combinedText } = getCombinedFortuneText(dayStem, [
               { label: "대운", ganZhi: currentDaewoon.ganZhi },
-              { label: "세운", ganZhi: currentSeun.ganZhi },
+              { label: "세운", ganZhi: selectedSeunEntry.ganZhi },
             ]);
             return (
               <div className="rounded-xl border border-indigo-100 bg-indigo-50/40 px-3 py-3 space-y-1.5">
@@ -1422,18 +1556,18 @@ function LuckFlowTabs({
                 const tg = dayStem ? getTenGod(dayStem, gz.stem) : null;
                 const btg = dayStem ? getTenGod(dayStem, gz.branch) : null;
                 return (
-                  <button
-                    onClick={() => onInfoSheet({ kind: "luck", luckType: "월운", ganZhiStr: gz.hangul, ganZhiHanja: gz.hanja, tenGod: tg, branchTenGod: btg, period: `${year}년 ${month}월`, dayStem })}
-                    className="w-full rounded-xl border border-border bg-muted/20 px-3 py-3 cursor-pointer transition-all active:scale-95 hover:bg-muted/30 text-left"
-                  >
+                  <div className="w-full rounded-xl border border-border bg-muted/20 px-3 py-3">
                     <p className="text-[13px] text-muted-foreground mb-1.5">월운 · {year}년 {month}월</p>
                     <div className="flex gap-0.5 items-baseline">
                       <span className={`text-xl font-bold ${se ? ELEMENT_COLORS[se] : ""}`}>{gz.stem}</span>
                       <span className={`text-xl font-bold ${be ? ELEMENT_COLORS[be] : ""}`}>{gz.branch}</span>
                       <span className="text-[13px] text-muted-foreground font-serif ml-1">{gz.hanja}</span>
                     </div>
-                    {tg && <span className={`text-[13px] font-bold px-1.5 py-0.5 rounded mt-1.5 inline-block ${TEN_GOD_COLOR[tg]}`}>{tg}</span>}
-                  </button>
+                    <div className="flex gap-1.5 mt-1.5 flex-wrap">
+                      {tg && <span className={`text-[13px] font-bold px-1.5 py-0.5 rounded ${TEN_GOD_COLOR[tg as TenGod] ?? "bg-muted"}`}>천간 {tg}</span>}
+                      {btg && <span className={`text-[13px] font-bold px-1.5 py-0.5 rounded ${TEN_GOD_COLOR[btg as TenGod] ?? "bg-muted"}`}>지지 {btg}</span>}
+                    </div>
+                  </div>
                 );
               })()}
 
@@ -1465,18 +1599,18 @@ function LuckFlowTabs({
                 const tg = dayStem ? getTenGod(dayStem, gz.stem) : null;
                 const btg = dayStem ? getTenGod(dayStem, gz.branch) : null;
                 return (
-                  <button
-                    onClick={() => onInfoSheet({ kind: "luck", luckType: "일운", ganZhiStr: gz.hangul, ganZhiHanja: gz.hanja, tenGod: tg, branchTenGod: btg, period: `${month}월 ${day}일`, dayStem })}
-                    className="w-full rounded-xl border border-border bg-muted/20 px-3 py-3 cursor-pointer transition-all active:scale-95 hover:bg-muted/30 text-left"
-                  >
+                  <div className="w-full rounded-xl border border-border bg-muted/20 px-3 py-3">
                     <p className="text-[13px] text-muted-foreground mb-1.5">일운 · {month}월 {day}일</p>
                     <div className="flex gap-0.5 items-baseline">
                       <span className={`text-xl font-bold ${se ? ELEMENT_COLORS[se] : ""}`}>{gz.stem}</span>
                       <span className={`text-xl font-bold ${be ? ELEMENT_COLORS[be] : ""}`}>{gz.branch}</span>
                       <span className="text-[13px] text-muted-foreground font-serif ml-1">{gz.hanja}</span>
                     </div>
-                    {tg && <span className={`text-[13px] font-bold px-1.5 py-0.5 rounded mt-1.5 inline-block ${TEN_GOD_COLOR[tg]}`}>{tg}</span>}
-                  </button>
+                    <div className="flex gap-1.5 mt-1.5 flex-wrap">
+                      {tg && <span className={`text-[13px] font-bold px-1.5 py-0.5 rounded ${TEN_GOD_COLOR[tg as TenGod] ?? "bg-muted"}`}>천간 {tg}</span>}
+                      {btg && <span className={`text-[13px] font-bold px-1.5 py-0.5 rounded ${TEN_GOD_COLOR[btg as TenGod] ?? "bg-muted"}`}>지지 {btg}</span>}
+                    </div>
+                  </div>
                 );
               })()}
 
@@ -1502,7 +1636,7 @@ function LuckFlowTabs({
       )}
 
       {/* 달력 panel */}
-      {tab === "달력" && <FortuneCalendar record={record} />}
+      {tab === "달력" && <FortuneCalendar record={record} dayStem={dayStem} luckCycles={luckCycles} birthYear={birthYear} />}
     </div>
   );
 }
@@ -1689,7 +1823,7 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
   // 제외 모드: hour pillar 제거, 비교 모드: 원본 유지 + diff 표시
   const effectivePillars = useMemo(() =>
     hourMode === "제외"
-      ? { ...pillars, hour: undefined as typeof pillars.hour }
+      ? { ...pillars, hour: null as typeof pillars.hour }
       : pillars,
     [pillars, hourMode],
   );
@@ -1864,6 +1998,50 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
     [hasHourPillar, finalShinsalNames, shinsalNamesNoHour],
   );
   const anyDiff = hasAnyHourDiff(fiveElDiff, shinsalDiff);
+
+  // ── 항상 시주 포함 기준 diff (hourMode와 무관) ────────────────
+  const fiveElDiffBase = useMemo<FiveElDiffEntry[]>(() => {
+    if (!hasHourPillar) return [];
+    const { countFiveElements: countFull } = (() => {
+      // countFiveElements of full pillars
+      const counts: FiveElementCount = { 목: 0, 화: 0, 토: 0, 금: 0, 수: 0 };
+      const addEl = (ch: string | undefined) => {
+        const el = ch ? STEM_ELEMENT[ch] : null;
+        if (el && el in counts) counts[el as keyof FiveElementCount]++;
+      };
+      for (const p of Object.values(pillars)) {
+        if (!p) continue;
+        addEl(p.hangul?.[0]);
+        addEl(p.hangul?.[1]);
+      }
+      return { countFiveElements: counts };
+    })();
+    return diffFiveElements(countFull, fiveElNoHour);
+  }, [hasHourPillar, pillars, fiveElNoHour]);
+
+  const shinsalNamesWithHour = useMemo<string[]>(() => {
+    if (!dayStem || !dayBranch || !hasHourPillar) return [];
+    const withHourPillars = [
+      { pillar: "시주", stem: pillars.hour?.hangul?.[0] ?? "", branch: pillars.hour?.hangul?.[1] ?? "" },
+      { pillar: "일주", stem: pillars.day?.hangul?.[0] ?? "", branch: pillars.day?.hangul?.[1] ?? "" },
+      { pillar: "월주", stem: pillars.month?.hangul?.[0] ?? "", branch: pillars.month?.hangul?.[1] ?? "" },
+      { pillar: "년주", stem: pillars.year?.hangul?.[0] ?? "", branch: pillars.year?.hangul?.[1] ?? "" },
+    ];
+    const ps = calculateShinsalFull(dayStem, dayBranch, input.month, withHourPillars);
+    return ps.flatMap((p) => [...(p.pillarItems ?? []), ...(p.stemItems ?? []), ...(p.branchItems ?? [])]);
+  }, [dayStem, dayBranch, hasHourPillar, pillars, input.month]);
+
+  const shinsalDiffBase = useMemo<ShinsalDiff>(
+    () => (hasHourPillar ? diffShinsal(shinsalNamesWithHour, shinsalNamesNoHour) : { added: [], removed: [] }),
+    [hasHourPillar, shinsalNamesWithHour, shinsalNamesNoHour],
+  );
+  const anyDiffBase = hasAnyHourDiff(fiveElDiffBase, shinsalDiffBase);
+
+  // ── 시주 천간/지지 십성 ────────────────────────────────────────
+  const hourStem = pillars.hour?.hangul?.[0] ?? null;
+  const hourBranch = pillars.hour?.hangul?.[1] ?? null;
+  const hourStemTg = hasHourPillar && dayStem && hourStem ? getTenGod(dayStem, hourStem) : null;
+  const hourBranchTg = hasHourPillar && dayStem && hourBranch ? getTenGod(dayStem, hourBranch) : null;
 
   return (
     <div className="space-y-4">
@@ -2433,23 +2611,50 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
             </DialogContent>
           </Dialog>
 
-          {/* ── 시주 비교 diff 카드 ── */}
-          {hasHourPillar && hourMode === "비교" && (
-            <div className="rounded-xl border border-border bg-muted/20 px-4 py-3.5 space-y-3">
-              <div className="flex items-center gap-2">
-                <span className="text-[13px] font-bold text-foreground">시주 포함 vs 제외 비교</span>
-                {!anyDiff && (
-                  <span className="text-[11px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full">변화 없음</span>
-                )}
+          {/* ── 시주 영향 분석 카드 (항상 표시) ── */}
+          {hasHourPillar && (
+            <div className="rounded-xl border border-violet-200 bg-violet-50/40 px-4 py-3.5 space-y-3">
+              {/* 헤더: 시주 글자 + 십성 */}
+              <div className="flex items-start gap-3">
+                <div className="shrink-0 text-center">
+                  <p className="text-[11px] font-bold text-violet-500 uppercase tracking-wide mb-0.5">시주</p>
+                  <div className="flex gap-0.5">
+                    {hourStem && (
+                      <span className={`text-2xl font-bold ${ELEMENT_COLORS[STEM_ELEMENT[hourStem] ?? ""] ?? ""}`}>{hourStem}</span>
+                    )}
+                    {hourBranch && (
+                      <span className={`text-2xl font-bold ${ELEMENT_COLORS[STEM_ELEMENT[hourBranch] ?? ""] ?? ""}`}>{hourBranch}</span>
+                    )}
+                  </div>
+                  <div className="flex gap-1 mt-0.5 justify-center">
+                    {hourStemTg && <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded ${TEN_GOD_COLOR[hourStemTg as TenGod] ?? "bg-muted"}`}>{hourStemTg}</span>}
+                    {hourBranchTg && <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded ${TEN_GOD_COLOR[hourBranchTg as TenGod] ?? "bg-muted"}`}>{hourBranchTg}</span>}
+                  </div>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[11px] font-bold text-violet-600 uppercase tracking-wide mb-1">시주가 사주에 미치는 영향</p>
+                  {hourStemTg && (
+                    <p className="text-[12px] text-foreground leading-relaxed">
+                      {TG_LUCK_MEANING[hourStemTg as TenGod]?.summary ?? ""}
+                      {hourMode === "제외" && (
+                        <span className="ml-1 text-[11px] text-muted-foreground">(현재 해석에서 제외됨)</span>
+                      )}
+                    </p>
+                  )}
+                </div>
               </div>
-              {fiveElDiff.length > 0 && (
+
+              {/* 오행 변화 */}
+              {fiveElDiffBase.length > 0 && (
                 <div>
-                  <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5">오행 변화</p>
+                  <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5">
+                    시주 포함 시 오행 변화 {hourMode === "제외" ? <span className="text-rose-400">(현재 미적용)</span> : hourMode === "포함" ? <span className="text-emerald-600">(현재 적용)</span> : null}
+                  </p>
                   <div className="flex flex-wrap gap-1.5">
-                    {fiveElDiff.map(({ el, withHour, withoutHour, delta }) => (
+                    {fiveElDiffBase.map(({ el, withHour, withoutHour, delta }) => (
                       <div key={el} className="flex items-center gap-1 rounded-lg border border-border bg-card px-2.5 py-1">
                         <span className="text-[13px] font-bold" style={{ color: (ELEMENT_TEXT_HEX as Record<string, string>)[el] ?? undefined }}>{el}</span>
-                        <span className="text-[12px] text-muted-foreground">{withHour}→{withoutHour}</span>
+                        <span className="text-[12px] text-muted-foreground">{withoutHour}→{withHour}</span>
                         <span className={`text-[11px] font-bold ${delta > 0 ? "text-emerald-600" : "text-rose-500"}`}>
                           {delta > 0 ? `+${delta}` : delta}
                         </span>
@@ -2458,22 +2663,28 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
                   </div>
                 </div>
               )}
-              {(shinsalDiff.added.length > 0 || shinsalDiff.removed.length > 0) && (
+
+              {/* 신살 변화 */}
+              {(shinsalDiffBase.added.length > 0 || shinsalDiffBase.removed.length > 0) && (
                 <div>
                   <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5">신살 변화</p>
                   <div className="flex flex-wrap gap-1.5">
-                    {shinsalDiff.removed.map((n) => (
+                    {shinsalDiffBase.removed.map((n) => (
                       <span key={`rem-${n}`} className={`text-[12px] font-bold px-2 py-0.5 rounded-full border line-through opacity-50 ${SHINSAL_COLOR[n] ?? "bg-muted text-muted-foreground border-border"}`}>
                         {n}
                       </span>
                     ))}
-                    {shinsalDiff.added.map((n) => (
+                    {shinsalDiffBase.added.map((n) => (
                       <span key={`add-${n}`} className={`text-[12px] font-bold px-2 py-0.5 rounded-full border ${SHINSAL_COLOR[n] ?? "bg-muted text-muted-foreground border-border"}`}>
                         +{n}
                       </span>
                     ))}
                   </div>
                 </div>
+              )}
+
+              {!anyDiffBase && (
+                <p className="text-[12px] text-muted-foreground">시주를 포함해도 오행·신살 구성에 변화가 없습니다.</p>
               )}
             </div>
           )}
@@ -2651,7 +2862,6 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
                 luckCycles={luckCycles}
                 dayStem={dayStem}
                 birthYear={input.year}
-                onInfoSheet={setInfoSheet}
                 record={record}
               />
             </CardContent>

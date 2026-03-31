@@ -477,6 +477,13 @@ export default function Compatibility() {
     ? buildFullCompatibilityReport(ep1, ep2, mode === "me_other" ? (p2 as PersonRecord & { relationshipType?: RelationshipType }).relationshipType : undefined)
     : null;
   const result: CompatibilityResult | null = fullReport?.scoreResult ?? null;
+
+  // ── 시주 포함 기준 점수 (비교용) ──────────────────────────────
+  const hasHourExcluded = hourModeA === "제외" || hourModeB === "제외";
+  const fullReportBase = hasHourExcluded && p1 && p2
+    ? buildFullCompatibilityReport(p1, p2, mode === "me_other" ? (p2 as PersonRecord & { relationshipType?: RelationshipType }).relationshipType : undefined)
+    : null;
+  const resultBase: CompatibilityResult | null = fullReportBase?.scoreResult ?? null;
   // Derive all colors from result.finalType — single source of truth
   const palette = result ? (GRADE_PALETTE[result.finalType] ?? GRADE_PALETTE["노력형 궁합"]) : null;
   const myName = p1?.birthInput.name ?? "";
@@ -690,6 +697,41 @@ export default function Compatibility() {
                   </div>
                 </div>
               </div>
+
+              {/* ── 시주 제외 비교 점수 카드 ── */}
+              {hasHourExcluded && resultBase && result && (
+                <div className="rounded-xl border border-violet-200 bg-violet-50/40 px-3 py-3 space-y-2">
+                  <p className="text-[11px] font-bold text-violet-600 uppercase tracking-wide">시주 포함/제외 점수 비교</p>
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1 text-center rounded-lg border border-border bg-card py-2">
+                      <p className="text-[11px] text-muted-foreground mb-0.5">시주 포함</p>
+                      <p className="text-xl font-bold text-foreground">{resultBase.score}점</p>
+                      <p className="text-[11px] text-muted-foreground">{resultBase.finalType}</p>
+                    </div>
+                    <div className="text-center shrink-0">
+                      {result.score !== resultBase.score ? (
+                        <span className={`text-lg font-bold ${result.score > resultBase.score ? "text-emerald-600" : "text-rose-500"}`}>
+                          {result.score > resultBase.score ? `+${result.score - resultBase.score}` : result.score - resultBase.score}
+                        </span>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">변화없음</span>
+                      )}
+                    </div>
+                    <div className="flex-1 text-center rounded-lg border border-violet-300 bg-violet-50 py-2">
+                      <p className="text-[11px] text-muted-foreground mb-0.5">
+                        {hourModeA === "제외" && hourModeB === "제외" ? "시주 모두 제외" : hourModeA === "제외" ? `${p1?.birthInput.name || "A"} 시주 제외` : `${p2?.birthInput.name || "B"} 시주 제외`}
+                      </p>
+                      <p className="text-xl font-bold text-violet-700">{result.score}점</p>
+                      <p className="text-[11px] text-muted-foreground">{result.finalType}</p>
+                    </div>
+                  </div>
+                  {result.finalType !== resultBase.finalType && (
+                    <p className="text-[12px] text-violet-700">
+                      시주 포함 시 <span className="font-bold">{resultBase.finalType}</span>에서 <span className="font-bold">{result.finalType}</span>으로 변합니다.
+                    </p>
+                  )}
+                </div>
+              )}
 
               <CopyButton
                 buildText={() => buildCompatibilityClipboardText(p1!, p2!, result)}

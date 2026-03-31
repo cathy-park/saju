@@ -51,8 +51,8 @@ async function syncWithSupabase(uid: string, userMeta: SupabaseUser): Promise<vo
   try {
     await upsertUserProfile({
       id: uid,
-      email: userMeta.email,
-      user_metadata: userMeta.user_metadata as Record<string, unknown>,
+      email: userMeta.email ?? undefined,
+      user_metadata: (userMeta.user_metadata ?? {}) as Record<string, unknown>,
     });
   } catch (e) {
     console.warn("[auth] upsertUserProfile failed:", e);

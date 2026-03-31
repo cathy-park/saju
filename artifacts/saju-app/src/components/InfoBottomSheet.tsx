@@ -351,7 +351,7 @@ interface LuckItemDetail {
   tips: string[];
 }
 
-const TG_LUCK_MEANING: Record<string, { summary: string; relationship: string; work: string; tip: string }> = {
+export const TG_LUCK_MEANING: Record<string, { summary: string; relationship: string; work: string; tip: string }> = {
   비견: {
     summary: "자립과 경쟁의 기운이 강해지는 시기입니다.",
     relationship: "독립심이 강해져 파트너와 의견 충돌이 있을 수 있습니다.",
