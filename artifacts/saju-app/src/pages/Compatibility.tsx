@@ -22,7 +22,7 @@ import { buildCompatibilityClipboardText } from "@/lib/clipboardExport";
 import { Link } from "wouter";
 import { Mascot } from "@/components/Mascot";
 import type { MascotExpression } from "@/components/Mascot";
-import { charToElement, ELEMENT_TEXT_HEX, ELEMENT_HEX, ELEMENT_LIGHT_HEX } from "@/lib/element-color";
+import { charToElement, elementColorVar, type FiveElKey } from "@/lib/element-color";
 import {
   calculateLuckCycles,
 } from "@/lib/luckCycles";
@@ -158,14 +158,16 @@ function FlowRow({ label, gz, tg }: {
 function getBranchColor(ch: string): React.CSSProperties {
   const el = charToElement(ch);
   if (!el) return {};
-  return { color: ELEMENT_TEXT_HEX[el] };
+  return { color: elementColorVar(el as FiveElKey, "strong") };
 }
 
 /** 오행 배경색(연한) + 보더 인라인 스타일 */
 function getElCardStyle(el: string | null): React.CSSProperties {
-  if (!el || !(el in ELEMENT_LIGHT_HEX)) return {};
-  const k = el as keyof typeof ELEMENT_LIGHT_HEX;
-  return { background: ELEMENT_LIGHT_HEX[k], borderColor: ELEMENT_HEX[k] };
+  if (!el) return {};
+  return {
+    background: elementColorVar(el as FiveElKey, "muted"),
+    borderColor: elementColorVar(el as FiveElKey, "base"),
+  };
 }
 
 // ── Element Mirror — Mirrored Bar Chart ──────────────────────────

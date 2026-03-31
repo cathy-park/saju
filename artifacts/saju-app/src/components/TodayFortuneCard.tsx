@@ -4,8 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Sparkles } from "lucide-react";
 import { getTenGodTw } from "@/lib/tenGods";
 import { TWELVE_STAGE_COLOR } from "@/lib/twelveStages";
-import { charToElement } from "@/lib/element-color";
-import { ELEMENT_TEXT_HEX } from "@/lib/element-color";
+import { charToElement, elementColorVar, type FiveElKey } from "@/lib/element-color";
 
 const KEYWORD_COLORS = [
   "bg-rose-100 text-rose-800 border-rose-200",
@@ -17,7 +16,7 @@ const KEYWORD_COLORS = [
 
 function GanjiText({ ch }: { ch: string }) {
   const el = charToElement(ch);
-  const color = el ? ELEMENT_TEXT_HEX[el] : undefined;
+  const color = el ? elementColorVar(el as FiveElKey, "strong") : undefined;
   return <span style={color ? { color } : undefined}>{ch}</span>;
 }
 

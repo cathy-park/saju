@@ -1,61 +1,46 @@
-// ── Global Five-Element Color System ───────────────────────────────
-// Single source of truth for element-based colors across the entire app.
+// ── Five-Element (오행) design tokens ──────────────────────────────
+// IMPORTANT (design system):
+// - Do NOT use raw hex colors in UI.
+// - Use theme tokens from `src/index.css` (e.g. element-fire / element-fire-strong).
 
 export type FiveElKey = "목" | "화" | "토" | "금" | "수";
 
-// Primary hex colors (used for fills, dots, node backgrounds)
-export const ELEMENT_HEX: Record<FiveElKey, string> = {
-  목: "#4CAF50",
-  화: "#E53935",
-  토: "#E0A800",
-  금: "#9E9E9E",
-  수: "#1E88E5",
-};
+export type ElementTone = "muted" | "base" | "strong";
 
-// Light background hex (cards, highlights)
-export const ELEMENT_LIGHT_HEX: Record<FiveElKey, string> = {
-  목: "#EBF5EE",
-  화: "#FBF0EF",
-  토: "#FAF3E5",
-  금: "#F5F5F5",
-  수: "#E8F2FC",
-};
+type ElementToken = "wood" | "fire" | "earth" | "metal" | "water";
+export function elementToken(el: FiveElKey): ElementToken {
+  switch (el) {
+    case "목": return "wood";
+    case "화": return "fire";
+    case "토": return "earth";
+    case "금": return "metal";
+    case "수": return "water";
+  }
+}
 
-// Readable text hex (on white backgrounds)
-export const ELEMENT_TEXT_HEX: Record<FiveElKey, string> = {
-  목: "#3A7D44",
-  화: "#C0504A",
-  토: "#A07828",
-  금: "#5C7A9E",
-  수: "#2B6CB0",
-};
+export function elementColorVar(el: FiveElKey, tone: ElementTone = "base"): string {
+  const t = elementToken(el);
+  const suffix = tone === "base" ? "" : `-${tone}`;
+  return `hsl(var(--element-${t}${suffix}))`;
+}
 
-// Tailwind class bundles: bg + text + border (for chips/badges)
-export const ELEMENT_TW: Record<FiveElKey, string> = {
-  목: "bg-green-100 text-green-800 border-green-200",
-  화: "bg-red-100 text-red-800 border-red-200",
-  토: "bg-yellow-100 text-yellow-800 border-yellow-200",
-  금: "bg-gray-100 text-gray-700 border-gray-200",
-  수: "bg-blue-100 text-blue-800 border-blue-200",
-};
+export function elementBgClass(el: FiveElKey, tone: ElementTone = "base"): string {
+  const t = elementToken(el);
+  const suffix = tone === "base" ? "" : `-${tone}`;
+  return `bg-element-${t}${suffix}`;
+}
 
-// Tailwind text-only class
-export const ELEMENT_TW_TEXT: Record<FiveElKey, string> = {
-  목: "text-green-700",
-  화: "text-red-600",
-  토: "text-yellow-600",
-  금: "text-gray-500",
-  수: "text-blue-600",
-};
+export function elementTextClass(el: FiveElKey, tone: ElementTone = "base"): string {
+  const t = elementToken(el);
+  const suffix = tone === "base" ? "" : `-${tone}`;
+  return `text-element-${t}${suffix}`;
+}
 
-// Tailwind bg-only class (for bars, fills)
-export const ELEMENT_TW_BG: Record<FiveElKey, string> = {
-  목: "bg-green-500",
-  화: "bg-red-500",
-  토: "bg-yellow-500",
-  금: "bg-gray-400",
-  수: "bg-blue-500",
-};
+export function elementBorderClass(el: FiveElKey, tone: ElementTone = "base"): string {
+  const t = elementToken(el);
+  const suffix = tone === "base" ? "" : `-${tone}`;
+  return `border-element-${t}${suffix}`;
+}
 
 // ── Character → Element lookup ─────────────────────────────────────
 

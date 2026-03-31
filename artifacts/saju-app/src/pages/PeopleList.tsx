@@ -27,6 +27,7 @@ import { Search, UserPlus, Trash2, Pencil, Heart, Check } from "lucide-react";
 import { Mascot } from "@/components/Mascot";
 import { useAuth } from "@/lib/authContext";
 import { deletePartnerProfile } from "@/lib/db";
+import { charToElement, elementBgClass, type FiveElKey } from "@/lib/element-color";
 
 type TabKey = "전체" | RelationshipType;
 
@@ -59,9 +60,8 @@ function PersonCard({
   const dayBranch = pillars.day?.hangul?.[1] ?? "";
   const dayHangul = pillars.day?.hangul ?? "";
   const zodiac    = getZodiacFromDayPillar(dayHangul);
-  const STEM_EL: Record<string, string> = { 갑:"목",을:"목",병:"화",정:"화",무:"토",기:"토",경:"금",신:"금",임:"수",계:"수" };
-  const EL_PASTEL: Record<string, string> = { 목:"#DFF4E4",화:"#FFE3E3",토:"#FFF1D6",금:"#F2F2F2",수:"#E3F1FF" };
-  const thumbBg = dayStem ? (EL_PASTEL[STEM_EL[dayStem]] ?? "#F0F0F0") : "#F0F0F0";
+  const dayEl = (dayStem ? charToElement(dayStem) : null) as FiveElKey | null;
+  const thumbBgClass = dayEl ? elementBgClass(dayEl, "muted") : "bg-muted";
 
   return (
     <div
@@ -83,7 +83,7 @@ function PersonCard({
               {selected && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
             </div>
           )}
-          <div className="w-9 h-9 rounded-full shrink-0 overflow-hidden flex items-center justify-center" style={{ background: `radial-gradient(circle at 50% 60%, ${thumbBg} 0%, ${thumbBg}88 100%)` }}>
+          <div className={`w-9 h-9 rounded-full shrink-0 overflow-hidden flex items-center justify-center ${thumbBgClass}`}>
             {zodiac ? (
               <img src={zodiac.src} alt={zodiac.label} className="w-full h-full object-cover" />
             ) : (

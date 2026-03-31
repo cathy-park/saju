@@ -23,7 +23,26 @@ export interface ManualDerived {
 }
 
 export type MaritalStatus = "솔로" | "연애중" | "기혼" | "모름";
+export type RelationshipStatus = "single" | "dating" | "married" | "other";
 export type RelationshipType = "lover" | "spouse" | "friend" | "coworker" | "family" | "other";
+
+export const RELATIONSHIP_STATUS_LABEL: Record<RelationshipStatus, string> = {
+  single: "솔로",
+  dating: "연애중",
+  married: "기혼",
+  other: "기타",
+};
+
+export function toRelationshipStatus(
+  v: RelationshipStatus | MaritalStatus | undefined
+): RelationshipStatus | null {
+  if (!v) return null;
+  if (v === "single" || v === "dating" || v === "married" || v === "other") return v;
+  if (v === "솔로") return "single";
+  if (v === "연애중") return "dating";
+  if (v === "기혼") return "married";
+  return "other";
+}
 
 export const RELATIONSHIP_TYPE_LABEL: Record<RelationshipType, string> = {
   lover:    "연인",
@@ -98,6 +117,7 @@ export interface PersonRecord {
   manualShinsal?: ManualShinsalItem[];
   excludedAutoShinsal?: ManualShinsalItem[];
   maritalStatus?: MaritalStatus;
+  relationshipStatus?: RelationshipStatus;
   relationshipType?: RelationshipType;
   manualStrengthLevel?: string;
   manualYongshin?: string;

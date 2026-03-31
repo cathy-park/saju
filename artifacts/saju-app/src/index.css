@@ -64,6 +64,25 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+
+  /* Five-element design tokens (오행) */
+  --color-element-wood: hsl(var(--element-wood));
+  --color-element-fire: hsl(var(--element-fire));
+  --color-element-earth: hsl(var(--element-earth));
+  --color-element-metal: hsl(var(--element-metal));
+  --color-element-water: hsl(var(--element-water));
+
+  --color-element-wood-muted: hsl(var(--element-wood-muted));
+  --color-element-fire-muted: hsl(var(--element-fire-muted));
+  --color-element-earth-muted: hsl(var(--element-earth-muted));
+  --color-element-metal-muted: hsl(var(--element-metal-muted));
+  --color-element-water-muted: hsl(var(--element-water-muted));
+
+  --color-element-wood-strong: hsl(var(--element-wood-strong));
+  --color-element-fire-strong: hsl(var(--element-fire-strong));
+  --color-element-earth-strong: hsl(var(--element-earth-strong));
+  --color-element-metal-strong: hsl(var(--element-metal-strong));
+  --color-element-water-strong: hsl(var(--element-water-strong));
 }
 
 /* LIGHT MODE — warm ivory + coral accent palette */
@@ -165,6 +184,28 @@
   --chip-lavender-fg: #5B3FA0;
   --chip-sky-bg: #E3F2FC;
   --chip-sky-fg: #1565A8;
+
+  /* ── Five-element (오행) tokens (HSL) ───────────────────────────── */
+  /* Base (default) */
+  --element-wood: 142 45% 40%;
+  --element-fire: 4 72% 50%;
+  --element-earth: 35 72% 44%;
+  --element-metal: 215 10% 45%;
+  --element-water: 205 78% 44%;
+
+  /* Muted (secondary/minor backgrounds, low-emphasis) */
+  --element-wood-muted: 142 45% 92%;
+  --element-fire-muted: 4 75% 92%;
+  --element-earth-muted: 35 75% 92%;
+  --element-metal-muted: 215 10% 92%;
+  --element-water-muted: 205 80% 92%;
+
+  /* Strong (primary element emphasis) */
+  --element-wood-strong: 142 55% 32%;
+  --element-fire-strong: 4 78% 42%;
+  --element-earth-strong: 35 78% 36%;
+  --element-metal-strong: 215 12% 30%;
+  --element-water-strong: 205 85% 36%;
 }
 
 .dark {
@@ -254,6 +295,25 @@
   --chip-lavender-fg: #A993E0;
   --chip-sky-bg: #0D2235;
   --chip-sky-fg: #60B0F0;
+
+  /* ── Five-element (오행) tokens (HSL) ───────────────────────────── */
+  --element-wood: 142 45% 55%;
+  --element-fire: 4 75% 60%;
+  --element-earth: 35 72% 58%;
+  --element-metal: 215 10% 70%;
+  --element-water: 205 80% 62%;
+
+  --element-wood-muted: 142 25% 18%;
+  --element-fire-muted: 4 30% 18%;
+  --element-earth-muted: 35 30% 18%;
+  --element-metal-muted: 215 12% 18%;
+  --element-water-muted: 205 30% 18%;
+
+  --element-wood-strong: 142 55% 62%;
+  --element-fire-strong: 4 80% 66%;
+  --element-earth-strong: 35 78% 64%;
+  --element-metal-strong: 215 12% 82%;
+  --element-water-strong: 205 88% 68%;
 }
 
 @layer base {

@@ -1,8 +1,7 @@
 import {
-  ELEMENT_TW,
-  ELEMENT_HEX,
-  ELEMENT_LIGHT_HEX,
-  ELEMENT_TEXT_HEX,
+  elementBgClass,
+  elementBorderClass,
+  elementTextClass,
   type FiveElKey,
 } from "./element-color";
 
@@ -216,35 +215,10 @@ export function getTenGodElement(tenGod: TenGod | string, dayStem: string): Five
 export function getTenGodTw(tenGod: TenGod | string, dayStem: string): string {
   const el = getTenGodElement(tenGod, dayStem);
   if (!el) return "bg-muted text-muted-foreground";
-  return ELEMENT_TW[el];
+  return `${elementBgClass(el, "muted")} ${elementTextClass(el, "strong")} border ${elementBorderClass(el, "base")}`;
 }
 
-/**
- * 십성의 hex 색상들을 반환합니다 (인라인 스타일용).
- */
-export function getTenGodColors(tenGod: TenGod | string, dayStem: string): {
-  hex: string;
-  lightHex: string;
-  textHex: string;
-} {
-  const el = getTenGodElement(tenGod, dayStem) ?? "토";
-  return {
-    hex: ELEMENT_HEX[el],
-    lightHex: ELEMENT_LIGHT_HEX[el],
-    textHex: ELEMENT_TEXT_HEX[el],
-  };
+/** @deprecated 인라인 스타일 색상은 사용하지 않습니다. */
+export function getTenGodColors(): never {
+  throw new Error("getTenGodColors has been removed. Use theme tokens via getTenGodTw().");
 }
-
-/** @deprecated 오행 색상 헬퍼 getTenGodTw(tenGod, dayStem) 사용 권장 */
-export const TEN_GOD_COLOR: Record<TenGod, string> = {
-  비견: "bg-green-100 text-green-800",
-  겁재: "bg-emerald-100 text-emerald-800",
-  식신: "bg-red-100 text-red-800",
-  상관: "bg-orange-100 text-orange-800",
-  편재: "bg-yellow-100 text-yellow-800",
-  정재: "bg-amber-100 text-amber-800",
-  편관: "bg-blue-100 text-blue-800",
-  정관: "bg-indigo-100 text-indigo-800",
-  편인: "bg-purple-100 text-purple-800",
-  정인: "bg-violet-100 text-violet-800",
-};

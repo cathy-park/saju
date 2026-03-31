@@ -24,7 +24,16 @@ import { getFinalPillars, getMyProfile, getPeople, saveManualShinsal, saveExclud
 import { upsertMyProfile, upsertPartnerProfile } from "@/lib/db";
 import { useAuth } from "@/lib/authContext";
 import { computeSajuPipeline } from "@/lib/sajuPipeline";
-import { charToElement, ELEMENT_TEXT_HEX, ELEMENT_HEX, ELEMENT_LIGHT_HEX, ELEMENT_TW, getTenGodGroup, type FiveElKey } from "@/lib/element-color";
+import {
+  charToElement,
+  elementBgClass,
+  elementBorderClass,
+  elementColorVar,
+  elementTextClass,
+  getTenGodGroup,
+  type ElementTone,
+  type FiveElKey,
+} from "@/lib/element-color";
 import { TodayFortuneCard } from "@/components/TodayFortuneCard";
 import { getFortuneForDate } from "@/lib/todayFortune";
 import { buildLifeFlowInsights } from "@/lib/lifeFlowInsight";
@@ -331,7 +340,9 @@ function CoreInsightChips({
                 isElement: true,
                 elementKey: elKey,
               })}
-              className={`text-[13px] font-bold px-3 py-1 rounded-full border transition-all active:scale-95 hover:shadow-sm ${ELEMENT_TW[elKey as FiveElKey] ?? "bg-muted text-foreground border-border"}`}
+              className={`text-[13px] font-bold px-3 py-1 rounded-full border transition-all active:scale-95 hover:shadow-sm ${
+                elementBgClass(elKey as FiveElKey, "muted")
+              } ${elementBorderClass(elKey as FiveElKey, "base")} ${elementTextClass(elKey as FiveElKey, "strong")}`}
             >
               {ELEMENT_EXTRA_LABEL[elKey]}
             </button>
@@ -638,15 +649,90 @@ function PillarTable({
 
 // ── Five-element pentagon diagram ────────────────────────────────
 
-const TENGOD_GROUP_HEX: Record<string, string> = {
-  비겁: "#15803d", 식상: "#991b1b", 재성: "#854d0e", 관성: "#374151", 인성: "#1e40af",
-};
+type ElementTier = "primary" | "secondary" | "minor";
 
-function FiveElementSection({ counts, dayStem }: { counts: FiveElementCount; dayStem?: string }) {
+function computePrimaryElement(args: {
+  counts: FiveElementCount;
+  monthBranch?: string;
+  dayBranch?: string;
+  allStems?: string[];
+  allBranches?: string[];
+}): FiveElKey {
+  const elements: FiveElKey[] = ["목", "화", "토", "금", "수"];
+  const max = Math.max(...elements.map((e) => args.counts[e] ?? 0));
+  const tied = elements.filter((e) => (args.counts[e] ?? 0) === max);
+  if (tied.length <= 1) return tied[0] ?? "토";
+
+  const monthEl = args.monthBranch ? (STEM_ELEMENT[args.monthBranch] as FiveElKey | undefined) : undefined;
+  const dayEl = args.dayBranch ? (STEM_ELEMENT[args.dayBranch] as FiveElKey | undefined) : undefined;
+  const stemCounts: Partial<Record<FiveElKey, number>> = {};
+  const branchCounts: Partial<Record<FiveElKey, number>> = {};
+  for (const s of (args.allStems ?? [])) {
+    const el = STEM_ELEMENT[s] as FiveElKey | undefined;
+    if (el) stemCounts[el] = (stemCounts[el] ?? 0) + 1;
+  }
+  for (const b of (args.allBranches ?? [])) {
+    const el = STEM_ELEMENT[b] as FiveElKey | undefined;
+    if (el) branchCounts[el] = (branchCounts[el] ?? 0) + 1;
+  }
+
+  // Tie-breaker priority: 득령 > 득지 > 득세
+  // - 득령: monthBranch element match
+  // - 득지: branch abundance
+  // - 득세: stem abundance
+  return tied.sort((a, b) => {
+    const ar = (monthEl && a === monthEl) ? 1 : 0;
+    const br = (monthEl && b === monthEl) ? 1 : 0;
+    if (ar !== br) return br - ar;
+    const ad = (dayEl && a === dayEl) ? 1 : 0;
+    const bd = (dayEl && b === dayEl) ? 1 : 0;
+    if (ad !== bd) return bd - ad;
+    const aj = branchCounts[a] ?? 0;
+    const bj = branchCounts[b] ?? 0;
+    if (aj !== bj) return bj - aj;
+    const as = stemCounts[a] ?? 0;
+    const bs = stemCounts[b] ?? 0;
+    if (as !== bs) return bs - as;
+    return 0;
+  })[0];
+}
+
+function computeElementTiers(counts: FiveElementCount, primary: FiveElKey): Record<FiveElKey, ElementTier> {
+  const els: FiveElKey[] = ["목", "화", "토", "금", "수"];
+  const max = Math.max(...els.map((e) => counts[e] ?? 0), 0);
+  const secondMax = Math.max(...els.filter((e) => e !== primary).map((e) => counts[e] ?? 0), 0);
+  const threshold = Math.max(1, Math.ceil(max * 0.6));
+  const tiers: Record<FiveElKey, ElementTier> = { 목: "minor", 화: "minor", 토: "minor", 금: "minor", 수: "minor" };
+  tiers[primary] = "primary";
+  for (const el of els) {
+    if (el === primary) continue;
+    const v = counts[el] ?? 0;
+    tiers[el] = (v >= threshold || v === secondMax) ? "secondary" : "minor";
+  }
+  return tiers;
+}
+
+function FiveElementSection({
+  counts,
+  dayStem,
+  monthBranch,
+  dayBranch,
+  allStems,
+  allBranches,
+}: {
+  counts: FiveElementCount;
+  dayStem?: string;
+  monthBranch?: string;
+  dayBranch?: string;
+  allStems?: string[];
+  allBranches?: string[];
+}) {
   // Pentagon order starting from top, clockwise: 화→토→금→수→목
   const elements: FiveElKey[] = ["화", "토", "금", "수", "목"];
   const total = elements.reduce((s, e) => s + (counts[e] ?? 0), 0) || 1;
   const dayEl = dayStem ? (STEM_ELEMENT[dayStem] as FiveElKey | undefined) : undefined;
+  const primaryEl = computePrimaryElement({ counts, monthBranch, dayBranch, allStems, allBranches });
+  const tiers = computeElementTiers(counts, primaryEl);
 
   // Pentagon positions: center (148, 148), radius 82
   const CX = 148, CY = 148, R = 82, NODE_R = 32;
@@ -696,13 +782,19 @@ function FiveElementSection({ counts, dayStem }: { counts: FiveElementCount; day
           <span className="text-red-500 font-bold">→</span> 상극
         </span>
       </div>
+      <div className="self-start flex items-center gap-2">
+        <span className={`text-[12px] font-bold px-2 py-0.5 rounded-full border ${elementBgClass(primaryEl, "muted")} ${elementBorderClass(primaryEl, "strong")}`}>
+          대표 오행
+        </span>
+        <span className={`text-[13px] font-black ${elementTextClass(primaryEl, "strong")}`}>{primaryEl}</span>
+      </div>
       <svg viewBox="0 0 296 296" width="100%" style={{ maxWidth: 444 }}>
         <defs>
           <marker id="arr-gen" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto">
-            <path d="M0 0 L7 3.5 L0 7 Z" fill="#3B82F6" opacity="0.8" />
+            <path d="M0 0 L7 3.5 L0 7 Z" fill="hsl(var(--chart-5))" opacity="0.8" />
           </marker>
           <marker id="arr-ctrl" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto">
-            <path d="M0 0 L7 3.5 L0 7 Z" fill="#EF4444" opacity="0.8" />
+            <path d="M0 0 L7 3.5 L0 7 Z" fill="hsl(var(--destructive))" opacity="0.8" />
           </marker>
           {nodes.map(({ el, x, y }) => (
             <clipPath key={el} id={`pclip-${el}`}>
@@ -714,13 +806,13 @@ function FiveElementSection({ counts, dayStem }: { counts: FiveElementCount; day
         {/* 상생 arrows (blue) */}
         {generatesArrows.map(({ from, to }, i) => {
           const d = arrowD(from, to);
-          return d ? <path key={i} d={d} stroke="#3B82F6" strokeWidth="1.5" fill="none" markerEnd="url(#arr-gen)" opacity="0.7" /> : null;
+          return d ? <path key={i} d={d} stroke="hsl(var(--chart-5))" strokeWidth="1.5" fill="none" markerEnd="url(#arr-gen)" opacity="0.7" /> : null;
         })}
 
         {/* 상극 arrows (red star) */}
         {controlsArrows.map(({ from, to }, i) => {
           const d = arrowD(from, to);
-          return d ? <path key={i} d={d} stroke="#EF4444" strokeWidth="1.5" fill="none" markerEnd="url(#arr-ctrl)" opacity="0.7" /> : null;
+          return d ? <path key={i} d={d} stroke="hsl(var(--destructive))" strokeWidth="1.5" fill="none" markerEnd="url(#arr-ctrl)" opacity="0.7" /> : null;
         })}
 
         {/* Element nodes */}
@@ -728,16 +820,27 @@ function FiveElementSection({ counts, dayStem }: { counts: FiveElementCount; day
           const fillY = y + NODE_R * (1 - 2 * pct);
           const fillH = 2 * NODE_R * pct;
           const isDay = el === dayEl;
+          const isPrimary = el === primaryEl;
+          const tier = tiers[el];
+          const tone: ElementTone = tier === "primary" ? "strong" : tier === "secondary" ? "base" : "muted";
+          const stroke = isPrimary ? elementColorVar(el, "strong") : isDay ? elementColorVar(el, "base") : "hsl(var(--border))";
           return (
             <g key={el}>
-              <circle cx={x} cy={y} r={NODE_R} fill="white" stroke={isDay ? ELEMENT_HEX[el] : "#e5e7eb"} strokeWidth={isDay ? 2.5 : 1.5} />
+              <circle
+                cx={x}
+                cy={y}
+                r={NODE_R}
+                fill="hsl(var(--card))"
+                stroke={stroke}
+                strokeWidth={isPrimary ? 3.5 : isDay ? 2.5 : 1.5}
+              />
               <rect x={x - NODE_R} y={fillY} width={NODE_R * 2} height={Math.max(0, fillH)}
-                fill={ELEMENT_HEX[el]} opacity={0.35} clipPath={`url(#pclip-${el})`} />
-              <text x={x} y={y - (tenGodGroup ? 9 : 4)} textAnchor="middle" fontSize="15" fontWeight="700" fill={ELEMENT_TEXT_HEX[el]}>{el}</text>
+                fill={elementColorVar(el, tone)} opacity={tier === "minor" ? 0.22 : 0.32} clipPath={`url(#pclip-${el})`} />
+              <text x={x} y={y - (tenGodGroup ? 9 : 4)} textAnchor="middle" fontSize="15" fontWeight={isPrimary ? "900" : "700"} fill={elementColorVar(el, isPrimary ? "strong" : "base")}>{el}</text>
               {tenGodGroup && (
-                <text x={x} y={y + 5} textAnchor="middle" fontSize="10" fontWeight="600" fill={TENGOD_GROUP_HEX[tenGodGroup] ?? "#9ca3af"}>({tenGodGroup})</text>
+                <text x={x} y={y + 5} textAnchor="middle" fontSize="10" fontWeight="700" fill="hsl(var(--muted-foreground))">({tenGodGroup})</text>
               )}
-              <text x={x} y={y + (tenGodGroup ? 18 : 11)} textAnchor="middle" fontSize="11" fill="#6b7280">
+              <text x={x} y={y + (tenGodGroup ? 18 : 11)} textAnchor="middle" fontSize="11" fill="hsl(var(--muted-foreground))">
                 {count}개 {Math.round(pct * 100)}%
               </text>
             </g>
@@ -750,13 +853,13 @@ function FiveElementSection({ counts, dayStem }: { counts: FiveElementCount; day
 
 // ── Ten-God Distribution Section ──────────────────────────────────
 
-const TG_GROUP_COLORS: Record<string, { bar: string; bg: string; text: string; subBg: string; subText: string }> = {
-  비겁: { bar: "bg-green-500",  bg: "bg-green-100 border-green-200",   text: "text-green-800",  subBg: "bg-green-50 border-green-200",  subText: "text-green-700" },
-  식상: { bar: "bg-red-500",    bg: "bg-red-100 border-red-200",       text: "text-red-800",    subBg: "bg-red-50 border-red-200",      subText: "text-red-700" },
-  재성: { bar: "bg-yellow-500", bg: "bg-yellow-100 border-yellow-200", text: "text-yellow-800", subBg: "bg-yellow-50 border-yellow-200",subText: "text-yellow-700" },
-  관성: { bar: "bg-gray-400",   bg: "bg-gray-100 border-gray-200",     text: "text-gray-700",   subBg: "bg-gray-50 border-gray-200",    subText: "text-gray-600" },
-  인성: { bar: "bg-blue-500",   bg: "bg-blue-100 border-blue-200",     text: "text-blue-800",   subBg: "bg-blue-50 border-blue-200",    subText: "text-blue-700" },
-};
+function tenGodGroupElement(dayEl: FiveElKey, group: string): FiveElKey {
+  if (group === "비겁") return dayEl;
+  if (group === "인성") return getGenerator(dayEl);
+  if (group === "식상") return GENERATES[dayEl];
+  if (group === "재성") return CONTROLS[dayEl];
+  return getController(dayEl); // 관성
+}
 
 const TG_SUB_PAIRS: Record<string, [string, string]> = {
   비겁: ["비견", "겁재"],
@@ -851,7 +954,8 @@ function TenGodDistributionSection({
 
   const dominantGroup = groups.reduce<string>((max, g) => (topLevel[g] > (topLevel[max] ?? 0) ? g : max), groups[0]);
   const dominantPct = topLevel[dominantGroup] ?? 0;
-  const dominantColor = TG_GROUP_COLORS[dominantGroup as keyof typeof TG_GROUP_COLORS];
+  const primaryEl = computePrimaryElement({ counts: effectiveFiveElements });
+  const tiers = computeElementTiers(effectiveFiveElements, primaryEl);
 
   return (
     <div className="space-y-3">
@@ -859,32 +963,42 @@ function TenGodDistributionSection({
       <div className="space-y-3">
         {groups.map((g) => {
           const pct = topLevel[g];
-          const c = TG_GROUP_COLORS[g];
+          const elForGroup = dayEl ? tenGodGroupElement(dayEl, g) : "토";
+          const tier = tiers[elForGroup];
+          const tone: ElementTone = tier === "primary" ? "strong" : tier === "secondary" ? "base" : "muted";
           const [s1, s2] = TG_SUB_PAIRS[g];
           const p1 = detailed[s1] ?? 0;
           const p2 = detailed[s2] ?? 0;
           const isDominant = g === dominantGroup;
           return (
-            <div key={g} className={`rounded-xl px-2 py-1 transition-colors ${isDominant ? `${c.bg} border border-current/10` : ""}`}>
+            <div
+              key={g}
+              className={`rounded-xl px-2 py-1 transition-colors ${
+                isDominant ? `${elementBgClass(elForGroup, "muted")} border ${elementBorderClass(elForGroup, "strong")}` : ""
+              }`}
+            >
               <button
                 onClick={() => onTap(g, pct)}
                 className="w-full flex items-center gap-3 text-left hover:bg-black/5 rounded px-1 py-0.5 transition-colors"
               >
-                <span className={`w-10 text-[13px] font-semibold shrink-0 ${isDominant ? c.text : ""}`}>{g}</span>
+                <span className={`w-10 text-[13px] font-semibold shrink-0 ${isDominant ? elementTextClass(elForGroup, "strong") : ""}`}>{g}</span>
                 <div className="flex-1 h-2.5 bg-muted/60 rounded-full overflow-hidden">
-                  <div className={`h-full rounded-full ${c.bar}`} style={{ width: `${pct}%` }} />
+                  <div
+                    className={`h-full rounded-full ${elementBgClass(elForGroup, tone)}`}
+                    style={{ width: `${pct}%` }}
+                  />
                 </div>
-                <span className={`text-[13px] font-bold whitespace-nowrap text-right px-2 py-0.5 rounded-full border ${c.bg} ${c.text}`}>
+                <span className={`text-[13px] font-bold whitespace-nowrap text-right px-2 py-0.5 rounded-full border ${elementBgClass(elForGroup, "muted")} ${elementBorderClass(elForGroup, "base")} ${elementTextClass(elForGroup, "strong")}`}>
                   {pct}%
                 </span>
               </button>
               {/* Subcategory pills */}
               <div className="flex gap-1.5 mt-1 ml-11">
-                <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full border text-[11px] ${c.subBg} ${c.subText}`}>
+                <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full border text-[11px] ${elementBgClass(elForGroup, "muted")} ${elementBorderClass(elForGroup, "base")} ${elementTextClass(elForGroup, "base")}`}>
                   <span className="font-semibold">{s1}</span>
                   <span className="opacity-70">{p1}%</span>
                 </span>
-                <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full border text-[11px] ${c.subBg} ${c.subText}`}>
+                <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full border text-[11px] ${elementBgClass(elForGroup, "muted")} ${elementBorderClass(elForGroup, "base")} ${elementTextClass(elForGroup, "base")}`}>
                   <span className="font-semibold">{s2}</span>
                   <span className="opacity-70">{p2}%</span>
                 </span>
@@ -1220,14 +1334,15 @@ function SajuStructureSummary({
             <div className="flex gap-2">
               {(["목", "화", "토", "금", "수"] as const).map((el) => {
                 const isActive = getTypeElements(activeYongshinType).includes(el);
-                const hex = ELEMENT_TEXT_HEX[el] ?? "#555";
-                const lightHex = ELEMENT_LIGHT_HEX[el] ?? "#F9F9F9";
                 return (
                   <button
                     key={el}
                     onClick={() => toggleElement(activeYongshinType, el)}
-                    style={{ background: isActive ? hex : lightHex, color: isActive ? "#FFF" : hex, border: `1.5px solid ${isActive ? hex : hex + "55"}` }}
-                    className="flex-1 py-2 rounded-xl text-sm font-bold transition-all active:scale-95"
+                    className={`flex-1 py-2 rounded-xl text-sm font-bold transition-all active:scale-95 border ${
+                      isActive
+                        ? `${elementBgClass(el, "strong")} ${elementBorderClass(el, "strong")} text-white`
+                        : `${elementBgClass(el, "muted")} ${elementBorderClass(el, "base")} ${elementTextClass(el, "strong")}`
+                    }`}
                   >
                     {el}
                   </button>
@@ -1496,8 +1611,8 @@ function FortuneCalendar({ record, dayStem, luckCycles, birthYear, adjustedDaewo
                 {day}
               </span>
               <span className="text-[11px] font-bold leading-none">
-                <span style={{ color: stemEl ? ELEMENT_TEXT_HEX[stemEl] : "#555" }}>{ganjiStr[0] ?? ""}</span>
-                <span style={{ color: branchEl ? ELEMENT_TEXT_HEX[branchEl] : "#555" }}>{ganjiStr[1] ?? ""}</span>
+                <span style={{ color: stemEl ? elementColorVar(stemEl, "base") : "hsl(var(--muted-foreground))" }}>{ganjiStr[0] ?? ""}</span>
+                <span style={{ color: branchEl ? elementColorVar(branchEl, "base") : "hsl(var(--muted-foreground))" }}>{ganjiStr[1] ?? ""}</span>
               </span>
               <span className="w-1.5 h-1.5 rounded-full mt-0.5 shrink-0" style={{ background: dot }} />
             </button>
@@ -2593,7 +2708,7 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                     <div className="flex flex-wrap gap-1">
                       {fiveElDiffBase.map(({ el, withHour, withoutHour, delta }) => (
                         <div key={el} className="flex items-center gap-0.5 rounded-lg border border-border bg-white px-2 py-0.5">
-                          <span className="text-[12px] font-bold" style={{ color: (ELEMENT_TEXT_HEX as Record<string, string>)[el] ?? undefined }}>{el}</span>
+                          <span className={`text-[12px] font-black ${elementTextClass(el as FiveElKey, "strong")}`}>{el}</span>
                           <span className="text-[11px] text-muted-foreground">{withoutHour}→{withHour}</span>
                           <span className={`text-[10px] font-bold ${delta > 0 ? "text-emerald-600" : "text-rose-500"}`}>{delta > 0 ? `+${delta}` : delta}</span>
                         </div>
@@ -2755,7 +2870,14 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
           <AccSection
             title="오행 분포"
           >
-            <FiveElementSection counts={effectiveFiveElements} dayStem={dayStem} />
+            <FiveElementSection
+              counts={effectiveFiveElements}
+              dayStem={dayStem}
+              monthBranch={pillars.month?.hangul?.[1]}
+              dayBranch={dayBranch}
+              allStems={allStems}
+              allBranches={allBranches}
+            />
           </AccSection>
 
           {/* 신살 */}
@@ -2935,112 +3057,7 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
           {/* 계산 설정(전문가) UI는 결과 편집 방지를 위해 숨김 처리 */}
 
           {/* 수동 지지관계 추가 다이얼로그 */}
-          <Dialog open={showBranchAddSheet} onOpenChange={(o) => { if (!o) { setShowBranchAddSheet(false); setBranchAddPick1(""); setBranchAddPick2(""); } }}>
-            <DialogContent className="max-w-sm">
-              <DialogHeader>
-                <DialogTitle className="text-base">천간·지지 관계 수동 추가</DialogTitle>
-                <p className="text-[13px] text-muted-foreground mt-1">관계 유형을 먼저 선택하면 해당 글자 목록이 바뀝니다</p>
-              </DialogHeader>
-              <div className="space-y-4 pt-1">
-                <div>
-                  <p className="text-[11px] font-bold text-muted-foreground mb-2 uppercase">관계 유형</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {(["천간합", "지지육합", "지지삼합", "지지방합", "천간충", "지지충", "형", "파", "해", "원진", "공망"] as const).map((t) => (
-                      <button
-                        key={t}
-                        onClick={() => {
-                          const wasStem = STEM_RELATION_TYPES.has(branchAddType);
-                          const isStem = STEM_RELATION_TYPES.has(t);
-                          if (wasStem !== isStem) { setBranchAddPick1(""); setBranchAddPick2(""); }
-                          setBranchAddType(t);
-                        }}
-                        className={`text-[12px] font-bold px-2.5 py-1 rounded-full border transition-all active:scale-95 ${branchAddType === t ? RELATION_COLORS[t] : "bg-muted/30 text-muted-foreground border-border"}`}
-                      >
-                        {t}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  {STEM_RELATION_TYPES.has(branchAddType) ? (
-                    <>
-                      <p className="text-[11px] font-bold text-muted-foreground mb-2 uppercase">천간 선택 (두 개) — 갑·을·병·정·무·기·경·신·임·계</p>
-                      <div className="grid grid-cols-5 gap-1.5">
-                        {["갑", "을", "병", "정", "무", "기", "경", "신", "임", "계"].map((s) => {
-                          const el = charToElement(s);
-                          const isP1 = branchAddPick1 === s;
-                          const isP2 = branchAddPick2 === s;
-                          return (
-                            <button
-                              key={s}
-                              onClick={() => {
-                                if (isP1) { setBranchAddPick1(""); return; }
-                                if (isP2) { setBranchAddPick2(""); return; }
-                                if (!branchAddPick1) setBranchAddPick1(s);
-                                else if (!branchAddPick2) setBranchAddPick2(s);
-                                else { setBranchAddPick1(branchAddPick2); setBranchAddPick2(s); }
-                              }}
-                              style={el ? { color: isP1 || isP2 ? "#FFF" : ELEMENT_TEXT_HEX[el], background: isP1 || isP2 ? ELEMENT_HEX[el] : ELEMENT_LIGHT_HEX[el] } : {}}
-                              className={`text-center py-2.5 rounded-lg text-sm font-bold border transition-all ${isP1 || isP2 ? "border-current shadow-sm scale-105" : "border-transparent"}`}
-                            >
-                              {s}
-                              {isP1 && <span className="block text-[9px] opacity-80">①</span>}
-                              {isP2 && <span className="block text-[9px] opacity-80">②</span>}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <p className="text-[11px] font-bold text-muted-foreground mb-2 uppercase">지지 선택 (두 개) — 자·축·인·묘·진·사·오·미·신·유·술·해</p>
-                      <div className="grid grid-cols-6 gap-1.5">
-                        {["자", "축", "인", "묘", "진", "사", "오", "미", "신", "유", "술", "해"].map((b) => {
-                          const el = charToElement(b);
-                          const isP1 = branchAddPick1 === b;
-                          const isP2 = branchAddPick2 === b;
-                          return (
-                            <button
-                              key={b}
-                              onClick={() => {
-                                if (isP1) { setBranchAddPick1(""); return; }
-                                if (isP2) { setBranchAddPick2(""); return; }
-                                if (!branchAddPick1) setBranchAddPick1(b);
-                                else if (!branchAddPick2) setBranchAddPick2(b);
-                                else { setBranchAddPick1(branchAddPick2); setBranchAddPick2(b); }
-                              }}
-                              style={el ? { color: isP1 || isP2 ? "#FFF" : ELEMENT_TEXT_HEX[el], background: isP1 || isP2 ? ELEMENT_HEX[el] : ELEMENT_LIGHT_HEX[el] } : {}}
-                              className={`text-center py-2 rounded-lg text-sm font-bold border transition-all ${isP1 || isP2 ? "border-current shadow-sm scale-105" : "border-transparent"}`}
-                            >
-                              {b}
-                              {isP1 && <span className="block text-[9px] opacity-80">①</span>}
-                              {isP2 && <span className="block text-[9px] opacity-80">②</span>}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </>
-                  )}
-                </div>
-                <button
-                  disabled={!branchAddPick1 || !branchAddPick2}
-                  onClick={() => {
-                    const item: ManualBranchRelation = { type: branchAddType, branch1: branchAddPick1, branch2: branchAddPick2 };
-                    const next = [...manualBranchAdd, item];
-                    setManualBranchAdd(next);
-                    updatePersonRecord(record.id, { manualBranchRelationAdd: next });
-                    scheduleSync();
-                    setShowBranchAddSheet(false);
-                    setBranchAddPick1("");
-                    setBranchAddPick2("");
-                  }}
-                  className="w-full py-2.5 rounded-xl bg-green-600 text-white font-bold text-sm disabled:opacity-40 active:scale-95 transition-all"
-                >
-                  추가하기
-                </button>
-              </div>
-            </DialogContent>
-          </Dialog>
+          {/* 관계 수동 추가 다이얼로그는 read-only 정책으로 제거 */}
 
           {/* ── 시주 영향 분석 카드 (비교 모드에서만 표시) ── */}
           {hasHourPillar && hourMode === "비교" && (
@@ -3084,7 +3101,7 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                   <div className="flex flex-wrap gap-1.5">
                     {fiveElDiffBase.map(({ el, withHour, withoutHour, delta }) => (
                       <div key={el} className="flex items-center gap-1 rounded-lg border border-border bg-card px-2.5 py-1">
-                        <span className="text-[13px] font-bold" style={{ color: (ELEMENT_TEXT_HEX as Record<string, string>)[el] ?? undefined }}>{el}</span>
+                        <span className={`text-[13px] font-black ${elementTextClass(el as FiveElKey, "strong")}`}>{el}</span>
                         <span className="text-[12px] text-muted-foreground">{withoutHour}→{withHour}</span>
                         <span className={`text-[11px] font-bold ${delta > 0 ? "text-emerald-600" : "text-rose-500"}`}>
                           {delta > 0 ? `+${delta}` : delta}
@@ -3156,7 +3173,14 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
             <div className="rounded-lg border border-sky-100 bg-sky-50/40 px-3 py-2.5">
               <p className="text-sm">{getElementBalanceSummary(effectiveFiveElements)}</p>
             </div>
-            <FiveElementSection counts={effectiveFiveElements} dayStem={dayStem} />
+            <FiveElementSection
+              counts={effectiveFiveElements}
+              dayStem={dayStem}
+              monthBranch={pillars.month?.hangul?.[1]}
+              dayBranch={dayBranch}
+              allStems={allStems}
+              allBranches={allBranches}
+            />
           </AccSection>
 
           {/* 십성 분포 */}

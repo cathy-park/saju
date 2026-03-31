@@ -8,7 +8,7 @@ import { Pencil } from "lucide-react";
 import { useAuth } from "@/lib/authContext";
 import { getZodiacFromDayPillar, DEFAULT_ZODIAC } from "@/lib/zodiacAnimal";
 import type { ZodiacInfo } from "@/lib/zodiacAnimal";
-import { ELEMENT_HEX, ELEMENT_TEXT_HEX, ELEMENT_LIGHT_HEX, charToElement } from "@/lib/element-color";
+import { charToElement, elementColorVar } from "@/lib/element-color";
 import type { FiveElKey } from "@/lib/element-color";
 import gyeolDefault from "@assets/image_24_1774912053926.png";
 
@@ -270,7 +270,7 @@ function Dashboard({ record }: { record: PersonRecord }) {
             <span style={{ fontSize: 17, fontWeight: 800, letterSpacing: "0.05em" }}>
               {fortune.dayGanZhiStr.split("").map((ch, i) => {
                 const el = charToElement(ch);
-                return <span key={i} style={{ color: el ? ELEMENT_TEXT_HEX[el] : "#111" }}>{ch}</span>;
+                return <span key={i} style={{ color: el ? elementColorVar(el, "strong") : "hsl(var(--foreground))" }}>{ch}</span>;
               })}
             </span>
             {/* hanja 표기는 숨김 */}
@@ -368,8 +368,8 @@ function Dashboard({ record }: { record: PersonRecord }) {
                 <span style={{ fontSize: 10, fontWeight: 700, color: "#AAAAAA", letterSpacing: "0.05em" }}>오늘 일운 해석</span>
               </div>
               {items.map((item, idx) => {
-                const tc = item.el ? ELEMENT_TEXT_HEX[item.el] : "#6366F1";
-                const bg = item.el ? ELEMENT_LIGHT_HEX[item.el] : "rgba(99,102,241,0.10)";
+                const tc = item.el ? elementColorVar(item.el, "strong") : "hsl(var(--primary))";
+                const bg = item.el ? elementColorVar(item.el, "muted") : "hsl(var(--muted))";
                 return (
                   <div key={idx} style={{ padding: "10px 14px", borderBottom: idx < items.length - 1 ? "1px solid #F7F7F7" : "none" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
@@ -396,9 +396,9 @@ function Dashboard({ record }: { record: PersonRecord }) {
           style={{ border: "1px solid #EBEBEB", borderRadius: 16, background: "#FFF", padding: "12px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
           {fortune.luckLayers.map((layer) => {
             const stemEl = charToElement(layer.ganZhi[0]);
-            const stemColor = stemEl ? ELEMENT_TEXT_HEX[stemEl as FiveElKey] : "#111";
+            const stemColor = stemEl ? elementColorVar(stemEl as FiveElKey, "strong") : "hsl(var(--foreground))";
             const branchEl = charToElement(layer.ganZhi[1]);
-            const branchColor = branchEl ? ELEMENT_TEXT_HEX[branchEl as FiveElKey] : "#111";
+            const branchColor = branchEl ? elementColorVar(branchEl as FiveElKey, "strong") : "hsl(var(--foreground))";
             return (
               <div
                 key={layer.label}
@@ -509,9 +509,9 @@ function LuckInterpretSheet({ fortune, onClose }: { fortune: ReturnType<typeof g
             const stemF   = getTenGodFortune(layer.tenGod);
             const branchF = getTenGodFortune(layer.branchTenGod);
             const el = charToElement(layer.ganZhi[0]);
-            const stemColor  = el ? ELEMENT_TEXT_HEX[el as FiveElKey] : "#111";
+            const stemColor  = el ? elementColorVar(el as FiveElKey, "strong") : "hsl(var(--foreground))";
             const brEl = charToElement(layer.ganZhi[1]);
-            const branchColor = brEl ? ELEMENT_TEXT_HEX[brEl as FiveElKey] : "#111";
+            const branchColor = brEl ? elementColorVar(brEl as FiveElKey, "strong") : "hsl(var(--foreground))";
             return (
               <div key={layer.label} style={{ marginBottom: 16, border: "1px solid #F0F0F0", borderRadius: 14, overflow: "hidden" }}>
                 {/* Layer header */}

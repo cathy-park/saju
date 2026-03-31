@@ -22,6 +22,7 @@ import { Pencil, Trash2 } from "lucide-react";
 import { MaritalField, MaritalBadge, MARITAL_OPTIONS } from "@/components/MaritalField";
 import { CopyButton } from "@/components/CopyButton";
 import { buildPersonClipboardText } from "@/lib/clipboardExport";
+import { charToElement, elementBgClass, type FiveElKey } from "@/lib/element-color";
 
 export default function MyProfile() {
   const [editing, setEditing] = useState(false);
@@ -140,9 +141,8 @@ export default function MyProfile() {
   const dayStem   = dayHangul[0] ?? "";
   const dayBranch = dayHangul[1] ?? "";
   const zodiac    = getZodiacFromDayPillar(dayHangul);
-  const STEM_EL: Record<string, string> = { 갑:"목",을:"목",병:"화",정:"화",무:"토",기:"토",경:"금",신:"금",임:"수",계:"수" };
-  const EL_PASTEL: Record<string, string> = { 목:"#DFF4E4",화:"#FFE3E3",토:"#FFF1D6",금:"#F2F2F2",수:"#E3F1FF" };
-  const thumbBg = dayStem ? (EL_PASTEL[STEM_EL[dayStem]] ?? "#F5F5F5") : "#F5F5F5";
+  const dayEl = (dayStem ? charToElement(dayStem) : null) as FiveElKey | null;
+  const thumbBgClass = dayEl ? elementBgClass(dayEl, "muted") : "bg-muted";
 
   return (
     <div className="max-w-lg mx-auto px-4 py-8 space-y-5">
@@ -193,7 +193,7 @@ export default function MyProfile() {
         )}
 
         <div className="flex items-start gap-4">
-          <div className="shrink-0 w-[72px] h-[72px] rounded-2xl flex items-center justify-center overflow-hidden" style={{ background: `radial-gradient(circle at 50% 60%, ${thumbBg} 0%, ${thumbBg}88 100%)` }}>
+          <div className={`shrink-0 w-[72px] h-[72px] rounded-2xl flex items-center justify-center overflow-hidden ${thumbBgClass}`}>
             {zodiac ? (
               <img src={zodiac.src} alt={zodiac.label} className="w-full h-full object-cover" />
             ) : (
