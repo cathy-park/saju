@@ -29,12 +29,17 @@ function sunLongitudeDeg(date: Date): number {
 // 백로(165)→유, 한로(195)→술, 입동(225)→해, 대설(255)→자
 const JULGGI_LONS = [285, 315, 345, 15, 45, 75, 105, 135, 165, 195, 225, 255] as const;
 
-// Find the date when the sun reaches targetLon (degrees), searching near year
+// Find the date when the sun reaches targetLon (degrees), searching near year.
+// FIXED: use Jan 1 (lon ≈ 280°) as reference instead of March equinox (lon ≈ 0°).
+// The old March-equinox reference caused 소한/입춘/경칩 (285°/315°/345°) to always
+// resolve to the NEXT year, inflating 대운수 to 10 for early-year births.
 function findSolarTermDate(year: number, targetLon: number): Date {
-  // Initial estimate: map from March equinox (~Mar 20, lon≈0°)
-  const daysFromEquinox = ((targetLon - 0 + 360) % 360) / 360 * 365.25;
-  const marchEquinox = new Date(Date.UTC(year, 2, 20, 12));
-  let d = new Date(marchEquinox.getTime() + daysFromEquinox * 86400000);
+  // Compute actual sun longitude on Jan 1 of the target year (KST noon = UTC 03:00)
+  const jan1 = new Date(Date.UTC(year, 0, 1, 12));
+  const jan1Lon = sunLongitudeDeg(jan1);
+  // Forward distance from jan1Lon to targetLon (always positive, 0–360)
+  const daysFromJan1 = ((targetLon - jan1Lon + 360) % 360) / 360 * 365.25;
+  let d = new Date(jan1.getTime() + daysFromJan1 * 86400000);
   // Newton-Raphson refinement (converges in ~5 iterations)
   for (let i = 0; i < 12; i++) {
     const lon = sunLongitudeDeg(d);
@@ -99,10 +104,10 @@ export function calculateDaewoonSu(birthInput: BirthInput, pillars: ComputedPill
 
     const birthLon = sunLongitudeDeg(birthDate);
 
+    let bestLon = -1; // hoisted so debug log can reference it after if/else
     let targetDate: Date;
     if (isForward) {
       // Find the closest solar term AFTER birth (smallest positive longitude diff)
-      let bestLon = -1;
       let bestDiff = Infinity;
       for (const l of JULGGI_LONS) {
         let diff = l - birthLon;
@@ -114,7 +119,6 @@ export function calculateDaewoonSu(birthInput: BirthInput, pillars: ComputedPill
       targetDate = c0.getTime() > birthDate.getTime() ? c0 : c1;
     } else {
       // Find the closest solar term BEFORE birth (smallest positive longitude diff going backward)
-      let bestLon = -1;
       let bestDiff = Infinity;
       for (const l of JULGGI_LONS) {
         let diff = birthLon - l;
@@ -126,10 +130,35 @@ export function calculateDaewoonSu(birthInput: BirthInput, pillars: ComputedPill
       targetDate = c0.getTime() < birthDate.getTime() ? c0 : cm1;
     }
 
-    const diffDays = Math.round(Math.abs(targetDate.getTime() - birthDate.getTime()) / 86400000);
+    const JULGGI_NAMES: Record<number, string> = {
+      285: "소한(小寒)", 315: "입춘(立春)", 345: "경칩(驚蟄)",
+       15: "청명(淸明)",  45: "입하(立夏)",  75: "망종(芒種)",
+      105: "소서(小暑)", 135: "입추(立秋)", 165: "백로(白露)",
+      195: "한로(寒露)", 225: "입동(立冬)", 255: "대설(大雪)",
+    };
+    const diffMs = Math.abs(targetDate.getTime() - birthDate.getTime());
+    const diffDaysExact = diffMs / 86400000;
+    const diffDays = Math.round(diffDaysExact);
     const su = Math.ceil(diffDays / 3);
-    return Math.max(1, Math.min(10, su));
-  } catch {
+    const result = Math.max(1, Math.min(10, su));
+
+    // ── Debug log (visible in browser DevTools console) ───────────────
+    console.group("🔢 대운수 계산 디버그");
+    console.log("출생 UTC:", birthDate.toISOString());
+    console.log("출생 KST:", new Date(birthDate.getTime() + 9 * 3600000).toISOString().replace("Z", " KST"));
+    console.log("출생 태양황경:", sunLongitudeDeg(birthDate).toFixed(4) + "°");
+    console.log("방향:", isForward ? "순행(Forward)" : "역행(Backward)", `[${isMale ? "남" : "여"}, 년간 ${yearStem} (${isYangYear ? "양" : "음"})]`);
+    console.log("목표 절기:", JULGGI_NAMES[bestLon as keyof typeof JULGGI_NAMES] ?? bestLon + "°");
+    console.log("절기 일시 UTC:", targetDate.toISOString());
+    console.log("절기 일시 KST:", new Date(targetDate.getTime() + 9 * 3600000).toISOString().replace("Z", " KST"));
+    console.log("차이 (정확):", diffDaysExact.toFixed(3) + " 일");
+    console.log("차이 (반올림):", diffDays + " 일");
+    console.log(`대운수 = ceil(${diffDays} ÷ 3) = ceil(${(diffDays/3).toFixed(3)}) = ${su} → 최종: ${result}`);
+    console.groupEnd();
+
+    return result;
+  } catch (e) {
+    console.error("대운수 계산 오류:", e);
     return 5;
   }
 }
