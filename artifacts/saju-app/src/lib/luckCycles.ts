@@ -1,5 +1,6 @@
 import type { BirthInput, ComputedPillars } from "./sajuEngine";
 import { equationOfTimeMins } from "./sajuEngine";
+import { lunarToSolar } from "@fullstackfamily/manseryeok";
 
 export const STEMS = ["갑", "을", "병", "정", "무", "기", "경", "신", "임", "계"];
 export const BRANCHES = ["자", "축", "인", "묘", "진", "사", "오", "미", "신", "유", "술", "해"];
@@ -109,6 +110,22 @@ const JULGGI_NAMES: Record<number, string> = {
  */
 export function calculateDaewoonSu(birthInput: BirthInput, pillars: ComputedPillars, opts?: DaewoonSuOpts): number {
   try {
+    // ── 0. 음력 → 양력 변환 (음력 입력 시 절기 계산이 틀리는 버그 방지) ──
+    //    birthInput.year/month/day 가 음력이면 양력으로 먼저 변환
+    let solarYear  = birthInput.year;
+    let solarMonth = birthInput.month;
+    let solarDay   = birthInput.day;
+    if (birthInput.calendarType === "lunar") {
+      try {
+        const conv = lunarToSolar(birthInput.year, birthInput.month, birthInput.day, false);
+        solarYear  = conv.solar.year;
+        solarMonth = conv.solar.month;
+        solarDay   = conv.solar.day;
+      } catch {
+        // 변환 실패 시 원본 날짜 그대로 사용
+      }
+    }
+
     // ── 1. 출생 시각을 UTC로 변환 (KST = UTC+9) ──────────────────────
     const useExact = opts?.exactSolarTermBoundaryOn ?? true;
     let hKST = useExact && !birthInput.timeUnknown ? (birthInput.hour   ?? 12) : 12;
@@ -116,13 +133,15 @@ export function calculateDaewoonSu(birthInput: BirthInput, pillars: ComputedPill
 
     // 균시차(Equation of Time) 보정 — 옵션 활성화 시
     if (useExact && !birthInput.timeUnknown && (opts?.trueSolarTimeOn ?? false)) {
-      mKST += Math.round(equationOfTimeMins(birthInput.year, birthInput.month, birthInput.day));
+      // 균시차 보정은 양력 날짜 기준으로 계산
+      mKST += Math.round(equationOfTimeMins(solarYear, solarMonth, solarDay));
     }
     while (mKST < 0)   { mKST += 60; hKST -= 1; }
     while (mKST >= 60) { mKST -= 60; hKST += 1; }
 
+    // 양력 날짜(solarYear/Month/Day) 기준으로 UTC 생성
     const birthDate = new Date(Date.UTC(
-      birthInput.year, birthInput.month - 1, birthInput.day,
+      solarYear, solarMonth - 1, solarDay,
       hKST - 9, mKST,   // KST → UTC (−9h)
     ));
 
@@ -135,11 +154,12 @@ export function calculateDaewoonSu(birthInput: BirthInput, pillars: ComputedPill
     // 역행: (음년간+남) OR (양년간+여)
     const isForward  = (isMale && isYangYear) || (!isMale && !isYangYear);
 
-    // ── 3. 출생연도 ±1년 범위의 모든 절기 36개를 시간순 정렬 ────────
+    // ── 3. 양력 출생연도 ±1년 범위의 모든 절기 36개를 시간순 정렬 ────
     //    → 연도 경계·연초 절기(소한·입춘·경칩) 오인 문제 원천 차단
+    //    → 반드시 양력 solarYear 기준으로 탐색 (음력 year 사용 금지)
     const allTerms: { lon: number; name: string; date: Date }[] = [];
     for (const lon of JULGGI_LONS) {
-      for (const y of [birthInput.year - 1, birthInput.year, birthInput.year + 1]) {
+      for (const y of [solarYear - 1, solarYear, solarYear + 1]) {
         allTerms.push({ lon, name: JULGGI_NAMES[lon] ?? String(lon), date: findSolarTermDate(y, lon) });
       }
     }
@@ -167,18 +187,27 @@ export function calculateDaewoonSu(birthInput: BirthInput, pillars: ComputedPill
     const diffDays   = Math.abs(targetTerm.date.getTime() - birthDate.getTime()) / 86400000;
     const wholeDays  = Math.floor(diffDays);           // 소수점 이하 시/분 제거
     const remainder  = wholeDays % 3;                  // 0·1·2
-    const su         = Math.max(1, Math.floor((wholeDays + 1) / 3));
+    const rawSu      = Math.floor((wholeDays + 1) / 3);
+    // 0대운 처리 (전통 명리):
+    //   wholeDays=0 (절기와 동일일): rawSu=0 → 10으로 치환 (0대운 없음)
+    //   wholeDays=1, 나머지1→버림→rawSu=0: 최소 1 (1~2일 차이는 대운수 1세)
+    const su         = wholeDays === 0 ? 10 : Math.max(1, rawSu);
 
     // ── 디버그 로그 (브라우저 콘솔 F12에서 확인) ─────────────────────
     const kst = 9 * 3600000;
     console.group("🔢 대운수 계산");
+    if (birthInput.calendarType === "lunar") {
+      console.log("입력(음력):", birthInput.year + "-" + birthInput.month + "-" + birthInput.day,
+        "→ 양력 변환:", solarYear + "-" + solarMonth + "-" + solarDay);
+    }
     console.log("출생 KST :", new Date(birthDate.getTime() + kst).toISOString().slice(0, 16) + " KST");
     console.log("방향     :", isForward ? "순행(Forward)" : "역행(Backward)",
       `[${isMale ? "남" : "여"}, 년간 ${yearStem}(${isYangYear ? "양" : "음"})]`);
     console.log("대상 절기:", targetTerm.name,
       "→", new Date(targetTerm.date.getTime() + kst).toISOString().slice(0, 16) + " KST");
     console.log("차이     :", diffDays.toFixed(3) + "일 (정수: " + wholeDays + "일, 나머지: " + remainder + ")");
-    console.log("대운수   : floor((" + wholeDays + "+1)/3) = floor(" + (wholeDays + 1) + "/3) = " + su,
+    console.log("대운수   : floor((" + wholeDays + "+1)/3) = " + rawSu + (rawSu === 0 ? " → 0대운 없음→10으로 치환" : ""),
+      "→ 최종:", su,
       remainder === 0 ? "(나머지0 → 그대로)" : remainder === 1 ? "(나머지1 → 버림)" : "(나머지2 → 올림)");
     console.groupEnd();
 
