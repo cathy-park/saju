@@ -84,7 +84,10 @@ import {
   Layers,
   ChevronDown,
   User,
+  RotateCcw,
+  AlertTriangle,
 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 // ── Constants ──────────────────────────────────────────────────────
 
@@ -1768,6 +1771,9 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
   });
   const [hourMode, setHourMode] = useState<"포함" | "제외" | "비교">("포함");
   const [selectedTgInfo, setSelectedTgInfo] = useState<TenGod | null>(null);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+
+  const { toast } = useToast();
 
   // ── Debounced Supabase sync ─────────────────────────────────────
   // Any manual edit (shinsal, strength, yongshin, five-elements, etc.)
@@ -1795,6 +1801,49 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
       }
     }, 1500);
   }, [user, record.id]);
+
+  // ── 자동 계산 초기화 ────────────────────────────────────────────
+  // Clears ALL manual override fields and re-runs the full calculation pipeline
+  // using the stored birth input + current fortune options (time corrections etc.).
+  const handleResetToAuto = useCallback(() => {
+    const freshProfile = calculateProfileFromBirth(record.birthInput, {
+      localMeridianOn: record.fortuneOptions?.localMeridianOn ?? true,
+      trueSolarTimeOn: record.fortuneOptions?.trueSolarTimeOn ?? false,
+    });
+
+    updatePersonRecord(record.id, {
+      profile: freshProfile,
+      // ── Clear all manual overrides ──────────────────────────────
+      manualPillars:           undefined,
+      manualShinsal:           undefined,
+      excludedAutoShinsal:     undefined,
+      manualStrengthLevel:     undefined,
+      manualYongshin:          undefined,
+      manualYongshinData:      undefined,
+      manualFiveElements:      undefined,
+      manualTenGodCounts:      undefined,
+      manualDerived:           undefined,
+      manualBranchRelationAdd: undefined,
+      manualBranchRelationRemove: undefined,
+    });
+
+    // Sync local component states that mirror the cleared fields
+    setLocalStrengthLevel(null);
+    setLocalYongshinData([]);
+    setManualDerived({});
+    setManualFiveElements(undefined);
+    setManualTenGodCounts(undefined);
+    setManualBranchRemove([]);
+    setManualBranchAdd([]);
+
+    scheduleSync();
+    setShowResetConfirm(false);
+
+    toast({
+      description: "자동 계산값으로 초기화되었습니다",
+      duration: 3000,
+    });
+  }, [record.id, record.birthInput, record.fortuneOptions, scheduleSync, toast]);
 
   // ── Interpretation subtab state ────────────────────────────────
   const INTERPRET_TABS = [
@@ -1906,7 +1955,19 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
   const pillars = getFinalPillars(record);
   const profile = record.profile;
   const input = record.birthInput;
-  const isManuallyEdited = !!(record.manualPillars && Object.keys(record.manualPillars).length > 0);
+  const isManuallyEdited = !!(
+    (record.manualPillars           && Object.keys(record.manualPillars).length > 0) ||
+    (record.manualFiveElements      !== undefined) ||
+    (record.manualTenGodCounts      !== undefined) ||
+    (record.manualStrengthLevel     !== undefined) ||
+    (record.manualYongshin          !== undefined) ||
+    (record.manualYongshinData      && record.manualYongshinData.length > 0) ||
+    (record.manualShinsal           && record.manualShinsal.length > 0) ||
+    (record.excludedAutoShinsal     && record.excludedAutoShinsal.length > 0) ||
+    (record.manualBranchRelationAdd    && record.manualBranchRelationAdd.length > 0) ||
+    (record.manualBranchRelationRemove && record.manualBranchRelationRemove.length > 0) ||
+    (record.manualDerived           && Object.values(record.manualDerived).some(v => v && Object.keys(v).length > 0))
+  );
 
   // ── 시주 포함/제외 전환 ──────────────────────────────────────────
   // 제외 모드: hour pillar 제거, 비교 모드: 원본 유지 + diff 표시
@@ -3509,6 +3570,48 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
         </div>
       )}
 
+      {/* ── 자동 계산 초기화 확인 Dialog ── */}
+      <Dialog open={showResetConfirm} onOpenChange={setShowResetConfirm}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <div className="flex items-center gap-2 mb-1">
+              <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0" />
+              <DialogTitle className="text-base">자동 계산값으로 초기화</DialogTitle>
+            </div>
+          </DialogHeader>
+          <div className="space-y-3 pt-1">
+            <p className="text-[13px] text-muted-foreground leading-relaxed">
+              아래 수동 수정 내역이 모두 삭제되고 최신 엔진으로 다시 계산됩니다.
+            </p>
+            <ul className="text-[12px] text-muted-foreground space-y-0.5 pl-4 list-disc">
+              <li>오행 분포 수동 수정</li>
+              <li>십신 수동 수정</li>
+              <li>신강·신약 수동 설정</li>
+              <li>용신·보조용신 수동 설정</li>
+              <li>신살 추가·제외 내역</li>
+              <li>천간·지지 관계 수동 추가·제거</li>
+            </ul>
+            <p className="text-[12px] text-muted-foreground">
+              생년월일시·성별·출생지·역법 설정은 유지됩니다.
+            </p>
+            <div className="flex gap-2 pt-1">
+              <button
+                onClick={() => setShowResetConfirm(false)}
+                className="flex-1 py-2 text-[13px] font-semibold rounded-xl border border-border bg-muted/30 text-muted-foreground hover:bg-muted transition-colors"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleResetToAuto}
+                className="flex-1 py-2 text-[13px] font-bold rounded-xl bg-amber-500 text-white hover:bg-amber-600 transition-colors"
+              >
+                초기화
+              </button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* ── 저장 상태 (항상 표시) ── */}
       {showSaveStatus && (
         <Card>
@@ -3542,6 +3645,15 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
                     : " · 시간 미상"}
                 </span>
               </div>
+
+              {/* 자동 계산 초기화 버튼 */}
+              <button
+                onClick={() => setShowResetConfirm(true)}
+                className="mt-1 flex items-center justify-center gap-2 w-full py-2.5 rounded-xl border border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors text-[13px] font-semibold active:scale-95"
+              >
+                <RotateCcw className="h-4 w-4" />
+                자동 계산값으로 초기화
+              </button>
             </div>
           </CardContent>
         </Card>
