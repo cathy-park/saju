@@ -98,6 +98,19 @@ calculateSaju(year, month, day, hour?, minute?, options?) → SajuResult
 - **자동 재계산**: `SajuReport.tsx`에서 `useMemo` 기반으로 오행/신강약/용신 변경 시 즉시 재실행  
 - **격국 판정**: 월지 십성 기반 단순 판정 (건록격·식신격·재격·관격·인수격·잡격)
 
+#### 정확도 개선 (2026-03-31)
+
+| 항목 | 이전 | 이후 |
+|------|------|------|
+| 대운수 계산 | 하드코딩 5세 | 절기 기반 실제 계산 (VSOP87 간략식, ±1일 정확도) |
+| 신강약 점수 | 일간 자체를 보조 천간으로 이중 계산 | `if (s === dayStem) continue` 제외 |
+| 신강약 임계값 | 구 임계값 | 일간 제외 후 점수 분포에 맞춰 전체 -1 조정 |
+| 공망 | 미구현 | 일주 旬(순)에서 자동 계산, 신살 목록에 표시 |
+
+- **`calculateDaewoonSu()`** (`luckCycles.ts`): 출생일 태양경도 → 순행/역행 방향 → 최근 절기까지 일수 ÷ 3 = 대운수
+- **`gongmangBranches`** (`calculateShinsalFull`): `dayPillarIdx / 10` 旬 인덱스 → 공허 지지 2개 자동 산출
+- 신강약 점수 계산 시 천간 루프에서 일간(day stem) 제외: `computeStrengthScore()` in `interpretSchema.ts`
+
 #### 화면
 
 | 경로 | 파일 | 기능 |

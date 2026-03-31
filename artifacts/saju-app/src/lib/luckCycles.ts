@@ -7,6 +7,97 @@ const BRANCHES_HANJA = ["子", "丑", "寅", "卯", "辰", "巳", "午", "未", 
 
 const YANG_STEMS = new Set(["갑", "병", "무", "경", "임"]);
 
+// ── Solar term calculator for accurate 대운수 ─────────────────────
+// Computes sun's ecliptic longitude (degrees) for a given Date (UTC)
+// Uses simplified VSOP87 — accurate to ~0.01° for years 1900–2100
+function sunLongitudeDeg(date: Date): number {
+  const JD = date.getTime() / 86400000 + 2440587.5;
+  const T = (JD - 2451545.0) / 36525;
+  const L0 = 280.46646 + 36000.76983 * T + 0.0003032 * T * T;
+  const M = (((357.52911 + 35999.05029 * T - 0.0001537 * T * T) % 360) + 360) % 360;
+  const Mrad = M * Math.PI / 180;
+  const C = Math.sin(Mrad) * (1.9146 - 0.004817 * T - 0.000014 * T * T)
+          + Math.sin(2 * Mrad) * (0.019993 - 0.000101 * T)
+          + Math.sin(3 * Mrad) * 0.00029;
+  return ((L0 + C) % 360 + 360) % 360;
+}
+
+// 12 month-boundary 절기 (節) — solar longitudes where month pillar changes
+// 소한(285)→축, 입춘(315)→인, 경칩(345)→묘, 청명(15)→진,
+// 입하(45)→사,  망종(75)→오,  소서(105)→미, 입추(135)→신,
+// 백로(165)→유, 한로(195)→술, 입동(225)→해, 대설(255)→자
+const JULGGI_LONS = [285, 315, 345, 15, 45, 75, 105, 135, 165, 195, 225, 255] as const;
+
+// Find the date when the sun reaches targetLon (degrees), searching near year
+function findSolarTermDate(year: number, targetLon: number): Date {
+  // Initial estimate: map from March equinox (~Mar 20, lon≈0°)
+  const daysFromEquinox = ((targetLon - 0 + 360) % 360) / 360 * 365.25;
+  const marchEquinox = new Date(Date.UTC(year, 2, 20, 12));
+  let d = new Date(marchEquinox.getTime() + daysFromEquinox * 86400000);
+  // Newton-Raphson refinement (converges in ~5 iterations)
+  for (let i = 0; i < 12; i++) {
+    const lon = sunLongitudeDeg(d);
+    let diff = targetLon - lon;
+    if (diff > 180) diff -= 360;
+    if (diff < -180) diff += 360;
+    d = new Date(d.getTime() + (diff / 360) * 365.25 * 86400000);
+  }
+  return d;
+}
+
+/**
+ * Calculate 대운수 (대운 start age) from solar term distance.
+ * Traditional rule: each 3 days between birth and nearest 절기 = 1 year of 대운수.
+ * Forward direction (양남음녀): distance to NEXT 절기.
+ * Backward direction (양녀음남): distance to PREVIOUS 절기.
+ */
+export function calculateDaewoonSu(birthInput: BirthInput, pillars: ComputedPillars): number {
+  try {
+    const birthDate = new Date(Date.UTC(birthInput.year, birthInput.month - 1, birthInput.day, 12));
+    const yearStem = pillars.year?.hangul?.[0];
+    if (!yearStem) return 5;
+
+    const isYangYear = YANG_STEMS.has(yearStem);
+    const isMale = birthInput.gender === "남";
+    const isForward = (isMale && isYangYear) || (!isMale && !isYangYear);
+
+    const birthLon = sunLongitudeDeg(birthDate);
+
+    let targetDate: Date;
+    if (isForward) {
+      // Find the closest solar term AFTER birth (smallest positive longitude diff)
+      let bestLon = -1;
+      let bestDiff = Infinity;
+      for (const l of JULGGI_LONS) {
+        let diff = l - birthLon;
+        if (diff <= 0) diff += 360;
+        if (diff < bestDiff) { bestDiff = diff; bestLon = l; }
+      }
+      const c0 = findSolarTermDate(birthInput.year, bestLon);
+      const c1 = findSolarTermDate(birthInput.year + 1, bestLon);
+      targetDate = c0.getTime() > birthDate.getTime() ? c0 : c1;
+    } else {
+      // Find the closest solar term BEFORE birth (smallest positive longitude diff going backward)
+      let bestLon = -1;
+      let bestDiff = Infinity;
+      for (const l of JULGGI_LONS) {
+        let diff = birthLon - l;
+        if (diff <= 0) diff += 360;
+        if (diff < bestDiff) { bestDiff = diff; bestLon = l; }
+      }
+      const c0 = findSolarTermDate(birthInput.year, bestLon);
+      const cm1 = findSolarTermDate(birthInput.year - 1, bestLon);
+      targetDate = c0.getTime() < birthDate.getTime() ? c0 : cm1;
+    }
+
+    const diffDays = Math.round(Math.abs(targetDate.getTime() - birthDate.getTime()) / 86400000);
+    const su = Math.ceil(diffDays / 3);
+    return Math.max(1, Math.min(10, su));
+  } catch {
+    return 5;
+  }
+}
+
 export interface GanZhi {
   stem: string;
   branch: string;
@@ -52,11 +143,15 @@ export function calculateDaewoon(birthInput: BirthInput, pillars: ComputedPillar
   const isMale = birthInput.gender === "남";
   const isForward = (isMale && isYangYear) || (!isMale && !isYangYear);
   const startIdx = ganZhiIndex(monthPillar.hangul[0], monthPillar.hangul[1]);
+
+  // Calculate proper 대운수 from solar term distance (replaces hardcoded 5)
+  const daewoonSu = calculateDaewoonSu(birthInput, pillars);
+
   const entries: DaewoonEntry[] = [];
   for (let i = 0; i < 10; i++) {
     const offset = isForward ? i + 1 : -(i + 1);
     const ganzhi = ganZhiFromIndex(startIdx + offset);
-    const startAge = 5 + i * 10;
+    const startAge = daewoonSu + i * 10;
     entries.push({ startAge, endAge: startAge + 9, ganZhi: ganzhi });
   }
   return entries;
@@ -309,6 +404,16 @@ export function calculateShinsalFull(
   birthMonth: number,
   pillars: { pillar: string; stem: string; branch: string }[]
 ): PillarShinsal[] {
+  // 공망 (空亡): void branches from day pillar's 旬 (decade group)
+  // 甲子순→술·해, 甲戌순→신·유, 甲申순→오·미,
+  // 甲午순→진·사, 甲辰순→인·묘, 甲寅순→자·축
+  const dayPillarIdx = ganZhiIndex(dayStem, dayBranch);
+  const dayZhun = Math.floor(dayPillarIdx / 10);
+  const gongmangBranches = [
+    BRANCHES[(10 - dayZhun * 2 + 12) % 12],
+    BRANCHES[(11 - dayZhun * 2 + 12) % 12],
+  ];
+
   const dowhwaTarget = DOWHWA_T[dayBranch] ?? "";
   const yeongmaTarget = YEONGMA_T[dayBranch] ?? "";
   const hwagaeTarget = HWAGAE_T[dayBranch] ?? "";
@@ -374,6 +479,8 @@ export function calculateShinsalFull(
       if (cheonuiTarget && branch === cheonuiTarget && pillar !== "년주") branchItems.push("천의성");
       // 천문성 (天門星): 술(戌)·해(亥) 지지에 발동 — 하늘 문이 열리는 기운, 영적 감수성·종교적 직관
       if (branch === "술" || branch === "해") branchItems.push("천문성");
+      // 공망 (空亡): void branch — day pillar is excluded (it defines the void)
+      if (pillar !== "일주" && gongmangBranches.includes(branch)) branchItems.push("공망");
     }
 
     if (stem) {
@@ -452,6 +559,8 @@ export const ALL_SHINSAL_NAMES: string[] = [
   "반안살", "장성살",
   // 기타
   "화개", "육해살", "귀문관살", "현침살", "천의성", "천문성", "재살",
+  // 허(虛) 계열
+  "공망",
 ];
 
 export const SHINSAL_GROUPS: { label: string; names: string[] }[] = [
@@ -484,6 +593,10 @@ export const SHINSAL_GROUPS: { label: string; names: string[] }[] = [
   {
     label: "기타",
     names: ["화개", "육해살", "귀문관살", "현침살", "천의성", "천문성", "재살"],
+  },
+  {
+    label: "허(虛) 계열",
+    names: ["공망"],
   },
 ];
 
@@ -531,6 +644,7 @@ export const SHINSAL_DESC: Record<string, string> = {
   천의성: "치유와 봉사 기운이 강해지나, 과도한 희생으로 에너지가 소진될 수 있습니다",
   천문성: "하늘의 문이 열리는 기운으로 영적 직관과 종교적 감수성이 높아지나, 현실 감각을 함께 유지해야 합니다",
   재살: "재난·사고 위험이 있으니, 이동 중 안전과 건강 관리에 주의하세요",
+  공망: "해당 지지가 비어 있어 그 기운이 약화되나, 정신·영적 세계에서는 오히려 선명하게 작용합니다",
 };
 
 export const SHINSAL_COLOR: Record<string, string> = {
@@ -577,4 +691,6 @@ export const SHINSAL_COLOR: Record<string, string> = {
   천의성: "bg-teal-50 text-teal-700 border-teal-200",
   천문성: "bg-indigo-50 text-indigo-700 border-indigo-200",
   재살: "bg-orange-50 text-orange-700 border-orange-200",
+  // 허(虛) 계열
+  공망: "bg-gray-50 text-gray-500 border-gray-200",
 };

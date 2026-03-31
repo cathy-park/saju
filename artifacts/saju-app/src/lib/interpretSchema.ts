@@ -105,8 +105,9 @@ export function computeStrengthScore(
     else if (bEl === jaeEl) score -= 0.5;
   }
 
-  // 3. Stem chars (excluding day master stem itself)
+  // 3. Stem chars (excluding day master stem itself — it IS the reference point)
   for (const s of allStems) {
+    if (s === dayStem) continue;
     const sEl = STEM_ELEMENT[s] as FiveElKey | undefined;
     if (!sEl) continue;
     if (sEl === dmEl)   score += 1;
@@ -129,12 +130,13 @@ export function computeStrengthLevel(
   // Use weighted model when detailed data is provided
   if (allStems && allBranches) {
     const score = computeStrengthScore(dayStem, monthBranch, allStems, allBranches);
-    if (score < -4)   return "극신약";
-    if (score < -2)   return "태약";
-    if (score < -0.5) return "신약";
-    if (score < 2)    return "중화";
-    if (score < 4)    return "신강";
-    if (score < 6)    return "태강";
+    // Thresholds calibrated for 3-stem model (day master excluded from allStems loop)
+    if (score < -5)   return "극신약";
+    if (score < -3)   return "태약";
+    if (score < -1.5) return "신약";
+    if (score < 1)    return "중화";
+    if (score < 3)    return "신강";
+    if (score < 5)    return "태강";
     return "극신강";
   }
 
