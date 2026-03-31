@@ -1719,14 +1719,7 @@ function LuckFlowTabs({
   const age = now.getFullYear() - birthYear;
   const daewoonSu = luckCycles.daewoon[0]?.startAge ?? 0;
   const currentSeun = luckCycles.seun.find((e) => e.year === now.getFullYear()) ?? null;
-
-  // ── 대운수 수동 편집 ──────────────────────────────────────────
-  const [daewoonSuOverride, setDaewoonSuOverride] = useState<number | null>(
-    record.fortuneOptions?.daewoonStartAgeOverride ?? null
-  );
-  const [editingDaewoonSu, setEditingDaewoonSu] = useState(false);
-  const [daewoonSuDraft, setDaewoonSuDraft] = useState<string>("");
-  const displayDaewoonSu = daewoonSuOverride != null ? daewoonSuOverride : daewoonSu;
+  const displayDaewoonSu = daewoonSu;
 
   // ── 대운수 기준으로 전체 연령 재계산 ─────────────────────────
   const adjustedDaewoon = useMemo(
@@ -1746,22 +1739,7 @@ function LuckFlowTabs({
   const [selectedSeunYear, setSelectedSeunYear] = useState<number>(now.getFullYear());
   const selectedSeunEntry = luckCycles.seun.find((e) => e.year === selectedSeunYear) ?? null;
 
-  function saveDaewoonSuOverride() {
-    const val = parseInt(daewoonSuDraft, 10);
-    if (!isNaN(val) && val >= 0 && val <= 10) {
-      setDaewoonSuOverride(val);
-      updatePersonRecord(record.id, { fortuneOptions: { ...record.fortuneOptions, daewoonStartAgeOverride: val } });
-    } else {
-      setDaewoonSuOverride(null);
-      updatePersonRecord(record.id, { fortuneOptions: { ...record.fortuneOptions, daewoonStartAgeOverride: null } });
-    }
-    setEditingDaewoonSu(false);
-  }
-
-  function resetDaewoonSuOverride() {
-    setDaewoonSuOverride(null);
-    updatePersonRecord(record.id, { fortuneOptions: { ...record.fortuneOptions, daewoonStartAgeOverride: null } });
-  }
+  // Read-only: 대운수는 엔진 자동 계산값만 표시합니다.
 
   return (
     <div className="space-y-3">
@@ -1789,47 +1767,12 @@ function LuckFlowTabs({
           <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-amber-50/60 border border-amber-100">
             <div className="text-center shrink-0">
               <p className="text-[11px] font-semibold text-amber-600 uppercase tracking-wide">대운수</p>
-              {editingDaewoonSu ? (
-                <div className="flex items-center gap-1 mt-0.5">
-                  <input
-                    type="number"
-                    min={0}
-                    max={10}
-                    value={daewoonSuDraft}
-                    onChange={(e) => setDaewoonSuDraft(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === "Enter") saveDaewoonSuOverride(); if (e.key === "Escape") setEditingDaewoonSu(false); }}
-                    autoFocus
-                    className="w-12 text-center text-lg font-bold border border-amber-400 rounded-md px-1 py-0.5 bg-white focus:outline-none"
-                  />
-                  <button onClick={saveDaewoonSuOverride} className="text-[11px] bg-amber-500 text-white rounded px-1.5 py-1 font-bold">저장</button>
-                </div>
-              ) : (
-                <div className="flex items-center gap-1">
-                  <p className="text-2xl font-bold text-amber-700">{displayDaewoonSu}</p>
-                  <button
-                    onClick={() => { setDaewoonSuDraft(String(displayDaewoonSu)); setEditingDaewoonSu(true); }}
-                    className="text-[11px] text-amber-500 border border-amber-300 rounded px-1.5 py-0.5 hover:bg-amber-100 transition-colors"
-                    title="대운수 수동 수정"
-                  >
-                    수정
-                  </button>
-                  {daewoonSuOverride != null && (
-                    <button
-                      onClick={resetDaewoonSuOverride}
-                      className="text-[10px] text-muted-foreground border border-border rounded px-1 py-0.5 hover:bg-muted/40"
-                      title="자동 계산으로 되돌리기"
-                    >
-                      자동
-                    </button>
-                  )}
-                </div>
-              )}
+              <p className="text-2xl font-bold text-amber-700">{displayDaewoonSu}</p>
             </div>
             <div className="w-px h-10 bg-amber-200 shrink-0" />
             <div className="flex-1 min-w-0">
               <p className="text-[12px] text-amber-700">
                 만 <span className="font-bold">{displayDaewoonSu}세</span>부터 대운이 시작됩니다
-                {daewoonSuOverride != null && <span className="ml-1 text-[10px] text-amber-500">(수동 설정)</span>}
               </p>
               {currentDaewoon && (
                 <p className="text-[12px] text-amber-600 mt-0.5">
@@ -2321,26 +2264,13 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
     scheduleSync();
   }
 
-  // ── Computed values ────────────────────────────────────────────
-  // Use localProfile (reactive local state) so that time-correction toggles
-  // (localMeridianOn / trueSolarTimeOn) immediately update the pillar display.
-  // record.manualPillars overrides are still applied on top via getFinalPillars.
-  const pillars = getFinalPillars({ ...record, profile: localProfile });
+  // ── Computed values (read-only results) ─────────────────────────
+  // Results are engine-derived and must remain read-only.
+  // Ignore any legacy manual override fields (manualPillars/manualFiveElements/etc).
   const profile = localProfile;
+  const pillars = profile.computedPillars;
   const input = record.birthInput;
-  const isManuallyEdited = !!(
-    (record.manualPillars           && Object.keys(record.manualPillars).length > 0) ||
-    (record.manualFiveElements      !== undefined) ||
-    (record.manualTenGodCounts      !== undefined) ||
-    (record.manualStrengthLevel     !== undefined) ||
-    (record.manualYongshin          !== undefined) ||
-    (record.manualYongshinData      && record.manualYongshinData.length > 0) ||
-    (record.manualShinsal           && record.manualShinsal.length > 0) ||
-    (record.excludedAutoShinsal     && record.excludedAutoShinsal.length > 0) ||
-    (record.manualBranchRelationAdd    && record.manualBranchRelationAdd.length > 0) ||
-    (record.manualBranchRelationRemove && record.manualBranchRelationRemove.length > 0) ||
-    (record.manualDerived           && Object.values(record.manualDerived).some(v => v && Object.keys(v).length > 0))
-  );
+  const isManuallyEdited = false;
 
   // ── 시주 포함/제외 전환 ──────────────────────────────────────────
   // 제외 모드: hour pillar 제거, 비교 모드: 원본 유지 + diff 표시
@@ -2351,16 +2281,11 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
     [pillars, hourMode],
   );
 
-  // ── 효과적 오행: 십성 편집 > 오행 직접 편집 > 자동 계산 ─────────
+  // ── 효과적 오행 (read-only): always auto-count from pillars ─────
   const dayStemForCompute = pillars.day?.hangul?.[0] ?? "";
   const effectiveFiveElements = useMemo<FiveElementCount>(() => {
-    if (manualTenGodCounts && dayStemForCompute) {
-      const derived = tenGodCountsToFiveElements(manualTenGodCounts, dayStemForCompute);
-      return { 목: 0, 화: 0, 토: 0, 금: 0, 수: 0, ...derived } as FiveElementCount;
-    }
-    if (manualFiveElements) return manualFiveElements;
     return countFiveElements(effectivePillars as ComputedPillars);
-  }, [manualTenGodCounts, manualFiveElements, effectivePillars, dayStemForCompute]);
+  }, [effectivePillars, dayStemForCompute]);
 
   // ── 4-Layer Saju Pipeline (auto-recomputes when any input changes) ──
   // 오행·십성·신강약·조후·용신·규칙 해석을 한 번에 재계산합니다.
@@ -2383,13 +2308,11 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
       allStems: allStemsNow,
       allBranches: allBranchesNow,
       effectiveFiveElements,
-      manualStrengthLevel: localStrengthLevel,
-      manualYongshinData: localYongshinData,
       expertOptions: {
-        seasonalAdjustmentOff: fortuneOpts?.seasonalAdjustmentOff ?? false,
+        seasonalAdjustmentOff: false,
       },
     });
-  }, [effectiveFiveElements, effectivePillars, localStrengthLevel, localYongshinData, fortuneOpts?.seasonalAdjustmentOff]);
+  }, [effectiveFiveElements, effectivePillars]);
 
   const ruleInsights = sajuPipelineResult?.interpretation.ruleInsights ?? [];
   const structureType = sajuPipelineResult?.interpretation.structureType ?? "";
@@ -2500,13 +2423,12 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
     const stemItems = [...(ps.pillarItems ?? []), ...(ps.stemItems ?? [])];
     const branchItems = ps.branchItems ?? [];
     for (const n of stemItems) {
-      if (!excludedAutoShinsal.some((e) => e.position === pos.stem && e.name === n)) finalShinsalNames.add(n);
+      finalShinsalNames.add(n);
     }
     for (const n of branchItems) {
-      if (!excludedAutoShinsal.some((e) => e.position === pos.branch && e.name === n)) finalShinsalNames.add(n);
+      finalShinsalNames.add(n);
     }
   }
-  for (const m of manualShinsal) finalShinsalNames.add(m.name);
 
   const lifeFlowData = buildLifeFlowInsights(
     { ...record, maritalStatus },
@@ -2542,9 +2464,9 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
       { pillar: "월주", stem: pillars.month?.hangul?.[0] ?? "", branch: pillars.month?.hangul?.[1] ?? "" },
       { pillar: "년주", stem: pillars.year?.hangul?.[0] ?? "", branch: pillars.year?.hangul?.[1] ?? "" },
     ];
-    const ps = calculateShinsalFull(dayStem, dayBranch, input.month, noHourPillars, fortuneOpts?.shinsalMode ?? "default");
+    const ps = calculateShinsalFull(dayStem, dayBranch, input.month, noHourPillars, "default");
     return ps.flatMap((p) => [...(p.pillarItems ?? []), ...(p.stemItems ?? []), ...(p.branchItems ?? [])]);
-  }, [dayStem, dayBranch, pillars, input.month, fortuneOpts?.shinsalMode]);
+  }, [dayStem, dayBranch, pillars, input.month]);
 
   const fiveElDiff = useMemo<FiveElDiffEntry[]>(
     () => (hasHourPillar ? diffFiveElements(effectiveFiveElements, fiveElNoHour) : []),
@@ -2584,9 +2506,9 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
       { pillar: "월주", stem: pillars.month?.hangul?.[0] ?? "", branch: pillars.month?.hangul?.[1] ?? "" },
       { pillar: "년주", stem: pillars.year?.hangul?.[0] ?? "", branch: pillars.year?.hangul?.[1] ?? "" },
     ];
-    const ps = calculateShinsalFull(dayStem, dayBranch, input.month, withHourPillars, fortuneOpts?.shinsalMode ?? "default");
+    const ps = calculateShinsalFull(dayStem, dayBranch, input.month, withHourPillars, "default");
     return ps.flatMap((p) => [...(p.pillarItems ?? []), ...(p.stemItems ?? []), ...(p.branchItems ?? [])]);
-  }, [dayStem, dayBranch, hasHourPillar, pillars, input.month, fortuneOpts?.shinsalMode]);
+  }, [dayStem, dayBranch, hasHourPillar, pillars, input.month]);
 
   const shinsalDiffBase = useMemo<ShinsalDiff>(
     () => (hasHourPillar ? diffShinsal(shinsalNamesWithHour, shinsalNamesNoHour) : { added: [], removed: [] }),
@@ -2701,29 +2623,18 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
             pillars={pillarData}
             dayStem={dayStem}
             shinsalBranchItems={shinsalBranchItems}
-            manualDerived={manualDerived}
-            onSaveDerived={async (d) => {
-              setManualDerived(d);
-              await updatePersonRecord(record.id, { manualDerived: d });
-              scheduleSync();
-            }}
           />
 
-          {/* ── 십성 직접 편집 (Primary) ── */}
+          {/* ── 십성 분포 (read-only) ── */}
           {dayStem && (() => {
             const autoTgCounts = autoCountTenGods(dayStem, [
               ...allStems.filter((s) => s !== dayStem), ...allBranches,
             ]) as ManualTenGodCounts;
-            const displayCounts: ManualTenGodCounts = manualTenGodCounts ?? autoTgCounts;
+            const displayCounts: ManualTenGodCounts = autoTgCounts;
             return (
               <AccSection
                 title="십성 분포"
                 defaultOpen
-                titleExtra={
-                  manualTenGodCounts ? (
-                    <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-bold">수정됨</span>
-                  ) : undefined
-                }
               >
                 {(() => {
                     const allTgTotal = Object.values(displayCounts).reduce((s, c) => s + c, 0) || 1;
@@ -2813,11 +2724,6 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                     </div>
                     );
                   })()}
-                  {manualTenGodCounts && (
-                    <p className="text-[11px] text-amber-600 bg-amber-50 rounded-lg px-2.5 py-1.5">
-                      ✎ 직접 편집된 십성 — 오행 분포가 십성 기준으로 재계산됩니다
-                    </p>
-                  )}
                   </div>
                     );
                   })()}
@@ -2848,11 +2754,6 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
 
           <AccSection
             title="오행 분포"
-            titleExtra={
-              manualTenGodCounts ? (
-                <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-bold">십성 파생</span>
-              ) : undefined
-            }
           >
             <FiveElementSection counts={effectiveFiveElements} dayStem={dayStem} />
           </AccSection>
@@ -2879,16 +2780,10 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                   // (기존: 일천간 행에 섞여 보이던 케이스로 '누락'처럼 보일 수 있어 조정)
                   const autoStemRaw = pillar === "일주" ? [...stemItems] : [...pillarItems, ...stemItems];
                   const autoBranchRaw = pillar === "일주" ? [...branchItems, ...pillarItems] : branchItems;
-                  const visibleAutoStem = autoStemRaw.filter((n) => !excludedAutoShinsal.some((e) => e.position === positions.stem && e.name === n));
-                  const visibleAutoBranch = autoBranchRaw.filter((n) => !excludedAutoShinsal.some((e) => e.position === positions.branch && e.name === n));
-                  const manualStem = manualShinsal.filter((m) => m.position === positions.stem);
-                  const manualBranch = manualShinsal.filter((m) => m.position === positions.branch);
-                    const renderPositionRow = (label: string, pos: string, autoItems: string[], rawAutoItems: string[], manualItems: ManualShinsalItem[], isLast: boolean) => {
-                    const excludedAtPos = rawAutoItems.filter((n) => excludedAutoShinsal.some((e) => e.position === pos && e.name === n));
-                    const mergedNames = new Set(autoItems.filter((n) => manualItems.some((m) => m.name === n)));
-                    const autoOnly = autoItems.filter((n) => !mergedNames.has(n));
-                    const manualOnly = manualItems.filter((m) => !mergedNames.has(m.name));
-                    const isEmpty = autoItems.length === 0 && manualItems.length === 0 && excludedAtPos.length === 0;
+                  const visibleAutoStem = autoStemRaw;
+                  const visibleAutoBranch = autoBranchRaw;
+                  const renderPositionRow = (label: string, _pos: string, autoItems: string[], isLast: boolean) => {
+                    const isEmpty = autoItems.length === 0;
                     return (
                       <div className={`flex items-start gap-2 px-3 py-2.5 ${isLast ? "" : "border-b border-border/40"}`}>
                         <span className="text-[13px] text-muted-foreground w-14 shrink-0 pt-1 font-medium">{label}</span>
@@ -2896,8 +2791,8 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                           <span className="text-[13px] text-muted-foreground italic pt-0.5">미상</span>
                         ) : (
                           <div className="flex flex-wrap gap-1.5 flex-1">
-                            {[...mergedNames].map((n) => (
-                            <div key={`merged-${pos}-${n}`} className="flex items-center gap-0.5">
+                            {autoItems.map((n) => (
+                              <div key={`auto-${label}-${n}`} className="flex items-center gap-0.5">
                                 <button
                                   onClick={() =>
                                     setInfoSheet({
@@ -2907,45 +2802,13 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                                       trigger: ps?.triggerInfo?.[n],
                                     })
                                   }
-                                  className={`text-[13px] font-bold px-2.5 py-1 rounded-full border transition-all active:scale-95 hover:brightness-95 ${SHINSAL_COLOR[n] ?? "bg-muted text-muted-foreground border-border"}`}>
+                                  className={`text-[13px] font-bold px-2.5 py-1 rounded-full border transition-all active:scale-95 hover:brightness-95 ${SHINSAL_COLOR[n] ?? "bg-muted text-muted-foreground border-border"}`}
+                                >
                                   {n}
                                 </button>
-                              </div>
-                            ))}
-                            {autoOnly.map((n) => (
-                              <div key={`auto-${pos}-${n}`} className="flex items-center gap-0.5">
-                                <button
-                                  onClick={() =>
-                                    setInfoSheet({
-                                      kind: "shinsal",
-                                      name: n,
-                                      source: "auto",
-                                      trigger: ps?.triggerInfo?.[n],
-                                    })
-                                  }
-                                  className={`text-[13px] font-bold px-2.5 py-1 rounded-full border transition-all active:scale-95 hover:brightness-95 ${SHINSAL_COLOR[n] ?? "bg-muted text-muted-foreground border-border"}`}>
-                                  {n}
-                                </button>
-                              </div>
-                            ))}
-                            {manualOnly.map((m) => (
-                              <div key={`manual-${pos}-${m.name}`} className="flex items-center gap-0.5">
-                                <button onClick={() => setInfoSheet({ kind: "shinsal", name: m.name, source: "manual" })}
-                                  className={`text-[13px] font-bold px-2.5 py-1 rounded-full border border-dashed transition-all active:scale-95 hover:brightness-95 ${SHINSAL_COLOR[m.name] ?? "bg-muted text-muted-foreground border-border"}`}>
-                                  {m.name}
-                                </button>
-                              </div>
-                            ))}
-                            {excludedAtPos.map((n) => (
-                              <div key={`excl-${pos}-${n}`} className="flex items-center gap-0.5">
-                                <span className="text-[13px] text-muted-foreground/40 px-2 py-0.5 rounded-full border border-dashed border-border line-through">{n}</span>
-                                <button title="복원" onClick={() => handleRestoreAutoShinsal(pos, n)}
-                                  className="text-[13px] text-blue-500 hover:text-blue-700 px-1 py-0.5 rounded border border-blue-200 bg-blue-50 hover:bg-blue-100 transition-colors font-bold shrink-0">↺</button>
                               </div>
                             ))}
                             {isEmpty && <span className="text-[13px] text-muted-foreground opacity-50">없음</span>}
-                            <button onClick={() => setPickerForPosition(pos)}
-                              className="text-[13px] font-bold px-2 py-0.5 rounded-full border border-dashed border-border/70 text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors">+ 추가</button>
                           </div>
                         )}
                       </div>
@@ -2964,57 +2827,11 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                         {isDay && <span className="text-[11px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-semibold ml-auto">일간</span>}
                         {isUnknown && <span className="text-[13px] text-muted-foreground ml-auto">시간 미상</span>}
                       </div>
-                      {renderPositionRow(stemLabel, positions.stem, visibleAutoStem, autoStemRaw, manualStem, false)}
-                      {renderPositionRow(branchLabel, positions.branch, visibleAutoBranch, autoBranchRaw, manualBranch, true)}
+                      {renderPositionRow(stemLabel, positions.stem, visibleAutoStem, false)}
+                      {renderPositionRow(branchLabel, positions.branch, visibleAutoBranch, true)}
                     </div>
                   );
                 })}
-                <Dialog open={pickerForPosition !== null} onOpenChange={(o) => { if (!o) setPickerForPosition(null); }}>
-                  <DialogContent className="max-w-sm max-h-[82vh] overflow-y-auto">
-                    <DialogHeader>
-                      <DialogTitle className="text-base">신살 추가</DialogTitle>
-                      <p className="text-[13px] text-muted-foreground mt-1">
-                        <span className="font-bold text-foreground">{pickerForPosition}</span>에 추가할 신살을 선택하세요
-                      </p>
-                    </DialogHeader>
-                    <div className="space-y-4 pt-1">
-                      {SHINSAL_GROUPS.map((group) => {
-                        const visibleNames = group.names.filter((name) => ALL_SHINSAL_NAMES.includes(name));
-                        if (visibleNames.length === 0) return null;
-                        return (
-                          <div key={group.label}>
-                            <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-2 border-b border-border/40 pb-1">{group.label}</p>
-                            <div className="flex flex-wrap gap-1.5">
-                              {visibleNames.map((name) => {
-                                const isAlreadyManual = manualShinsal.some((m) => m.position === pickerForPosition && m.name === name);
-                                const isAlreadyAutoHere = pickerForPosition
-                                  ? (autoShinsalByPosition.get(pickerForPosition)?.has(name) ?? false)
-                                    && !excludedAutoShinsal.some((e) => e.position === pickerForPosition && e.name === name)
-                                  : false;
-                                const isAutoElsewhere = !isAlreadyAutoHere && autoShinsalSet.has(name);
-                                const isDisabled = isAlreadyManual || isAlreadyAutoHere;
-                                return (
-                                  <button key={name} disabled={isDisabled} onClick={() => handleAddShinsal(name)}
-                                    className={`text-[13px] font-bold px-2.5 py-1 rounded-full border transition-all active:scale-95 ${
-                                      isDisabled ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
-                                        : SHINSAL_COLOR[name] ?? "bg-muted text-foreground border-border hover:brightness-95"
-                                    }`}>
-                                    {name}
-                                    {isAlreadyManual && <span className="ml-1 text-[11px] opacity-70">이미추가</span>}
-                                    {isAlreadyAutoHere && <span className="ml-1 text-[11px] opacity-60">자동있음</span>}
-                                    {isAutoElsewhere && !isDisabled && <span className="ml-1 text-[11px] opacity-40">타위치있음</span>}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                    <button onClick={() => setPickerForPosition(null)}
-                      className="mt-4 w-full py-2 rounded-lg border border-border text-sm text-muted-foreground hover:bg-muted/40 transition-colors">취소</button>
-                  </DialogContent>
-                </Dialog>
               </div>
             </AccSection>
           )}
@@ -3093,258 +2910,29 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
 
           {/* 천간·지지 관계 */}
           <AccSection title="천간 · 지지 관계">
-            {(() => {
-              const visibleAuto = branchRelations.filter((rel) => {
-                const key = `${rel.type}:${rel.description}`;
-                return !manualBranchRemove.includes(key);
-              });
-              const allVisible = [
-                ...visibleAuto.map((r) => ({ ...r, isManual: false as const, manualRef: null })),
-                ...manualBranchAdd.map((r) => ({
-                  type: r.type as typeof branchRelations[number]["type"],
-                  description: `${r.branch1}${r.branch2} ${r.type}`,
-                  isManual: true as const,
-                  manualRef: r,
-                })),
-              ];
-              return (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <p className="text-[11px] text-muted-foreground">탭하면 상세 해석 · 편집 모드에서 추가/삭제</p>
-                    <button
-                      onClick={() => setBranchEditMode((m) => !m)}
-                      className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border transition-colors active:scale-95 ${branchEditMode ? "bg-orange-100 text-orange-700 border-orange-300" : "bg-muted/40 text-muted-foreground border-border"}`}
-                    >
-                      {branchEditMode ? "완료" : "편집"}
-                    </button>
-                  </div>
-                  {allVisible.length === 0 && (
-                    <p className="text-sm text-muted-foreground py-1">특별한 지지 관계가 없습니다.</p>
-                  )}
-                  {allVisible.map((rel, i) => {
-                    const relBranches = rel.description.match(/[자축인묘진사오미신유술해]/g) ?? [];
-                    const autoKey = `${rel.type}:${rel.description}`;
-                    return (
-                      <div key={i} className="flex items-center gap-1.5">
-                        <button
-                          className="flex-1 flex items-center gap-2 rounded-lg border border-border/60 bg-muted/10 px-3 py-2 text-left active:bg-muted/30 transition-colors"
-                          onClick={() => setInfoSheet({ kind: "branchRelation", relationType: rel.type, branches: relBranches })}
-                        >
-                          <span className={`text-[13px] font-bold px-2 py-0.5 rounded-full shrink-0 ${RELATION_COLORS[rel.type]}`}>{rel.type}</span>
-                          <span className="text-sm font-medium flex-1">{rel.description}</span>
-                          {rel.isManual && <span className="text-[10px] text-green-700 bg-green-50 border border-green-200 rounded px-1 ml-1 shrink-0">수동</span>}
-                          {!branchEditMode && <span className="text-[11px] text-muted-foreground ml-auto shrink-0">›</span>}
-                        </button>
-                        {branchEditMode && (
-                          <button
-                            onClick={() => {
-                              if (rel.isManual && rel.manualRef) {
-                                const next = manualBranchAdd.filter(
-                                  (r) => !(r.branch1 === rel.manualRef!.branch1 && r.branch2 === rel.manualRef!.branch2 && r.type === rel.manualRef!.type)
-                                );
-                                setManualBranchAdd(next);
-                                updatePersonRecord(record.id, { manualBranchRelationAdd: next });
-                                scheduleSync();
-                              } else {
-                                const next = [...manualBranchRemove, autoKey];
-                                setManualBranchRemove(next);
-                                updatePersonRecord(record.id, { manualBranchRelationRemove: next });
-                                scheduleSync();
-                              }
-                            }}
-                            className="w-7 h-7 rounded-full bg-red-100 text-red-600 flex items-center justify-center text-xs font-bold border border-red-200 shrink-0 active:scale-95 transition-all"
-                          >
-                            ✕
-                          </button>
-                        )}
-                      </div>
-                    );
-                  })}
-                  {branchEditMode && (
-                    <button
-                      onClick={() => setShowBranchAddSheet(true)}
-                      className="w-full flex items-center justify-center gap-1.5 rounded-lg border border-dashed border-green-400 text-green-700 bg-green-50/60 px-3 py-2 text-[13px] font-bold active:scale-95 transition-all"
-                    >
-                      + 관계 수동 추가
-                    </button>
-                  )}
-                  {manualBranchRemove.length > 0 && branchEditMode && (
-                    <button
-                      onClick={() => { setManualBranchRemove([]); updatePersonRecord(record.id, { manualBranchRelationRemove: [] }); scheduleSync(); }}
-                      className="text-[11px] text-muted-foreground underline px-1"
-                    >
-                      숨긴 자동관계 복원
-                    </button>
-                  )}
-                </div>
-              );
-            })()}
-          </AccSection>
-
-          {/* 전문가 계산 설정 */}
-          <AccSection title="계산 설정 (전문가)">
-            <div className="space-y-3 text-[13px]">
-              <p className="text-[11px] text-muted-foreground leading-relaxed">
-                아래 옵션은 사주 계산 방식을 세밀하게 조정합니다. 기본값이 표준 만세력 동작에 가장 가깝습니다.
-              </p>
-
-              {/* 조후 보정 on/off */}
-              <div className="flex items-center justify-between py-2 border-b border-border/40">
-                <div className="flex-1 min-w-0 pr-3">
-                  <p className="font-semibold text-foreground text-[13px]">조후 보정</p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">
-                    겨울 수 편중 → 화 보조, 여름 화 편중 → 수 보조 자동 반영
-                  </p>
-                </div>
-                <button
-                  onClick={() => {
-                    applyFortuneOption({ seasonalAdjustmentOff: !(fortuneOpts?.seasonalAdjustmentOff ?? false) });
-                  }}
-                  className={`shrink-0 w-11 h-6 rounded-full border transition-colors relative ${
-                    !(fortuneOpts?.seasonalAdjustmentOff ?? false)
-                      ? "bg-indigo-500 border-indigo-500"
-                      : "bg-muted border-border"
-                  }`}
-                  title="조후 보정 켜기/끄기"
-                >
-                  <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${
-                    !(fortuneOpts?.seasonalAdjustmentOff ?? false) ? "left-[22px]" : "left-0.5"
-                  }`} />
-                </button>
-              </div>
-
-              {/* 신살 보수 모드 */}
-              <div className="flex items-center justify-between py-2">
-                <div className="flex-1 min-w-0 pr-3">
-                  <p className="font-semibold text-foreground text-[13px]">천문성 적용 범위</p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">
-                    <span className="font-semibold">기본</span>: 4개 기둥 모두 (전통 만세력 기준) &nbsp;
-                    <span className="font-semibold">보수</span>: 연지·일지만 (과도 발동 방지)
-                  </p>
-                </div>
-                <div className="shrink-0 flex gap-1">
-                  {(["보수", "기본"] as const).map((mode) => {
-                    const isActive = mode === "보수"
-                      ? (fortuneOpts?.shinsalMode ?? "default") === "conservative"
-                      : (fortuneOpts?.shinsalMode ?? "default") === "default";
-                    return (
-                      <button
-                        key={mode}
-                        onClick={() => {
-                          const val = mode === "보수" ? "conservative" : "default";
-                          applyFortuneOption({ shinsalMode: val });
-                        }}
-                        className={`text-[11px] px-2.5 py-1 rounded-full border font-semibold transition-all ${
-                          isActive
-                            ? "bg-indigo-500 text-white border-indigo-500"
-                            : "bg-muted/30 text-muted-foreground border-border"
-                        }`}
-                      >
-                        {mode}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* ── 시간 보정 섹션 구분선 ── */}
-              <div className="pt-2 pb-1">
-                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">시간 보정 옵션</p>
-                <p className="text-[10px] text-muted-foreground/70 mt-0.5">
-                  시주가 입력된 경우에만 영향을 줍니다. 변경 시 년·월·일·시주와 대운수가 즉시 재계산됩니다.
-                </p>
-              </div>
-
-              {/* 지역시 (Local Mean Time) */}
-              <div className="flex items-center justify-between py-2 border-t border-border/40">
-                <div className="flex-1 min-w-0 pr-3">
-                  <p className="font-semibold text-foreground text-[13px]">지역시 보정</p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">
-                    출생 경도 기준 지방 평균시 적용 (기준 동경 135° 대비 ±4분/도). 서울(127°) 기준 −32분.
-                  </p>
-                </div>
-                <button
-                  onClick={() => {
-                    const nextOn = !(fortuneOpts?.localMeridianOn ?? true);
-                    const newProfile = calculateProfileFromBirth(record.birthInput, {
-                      localMeridianOn: nextOn,
-                      trueSolarTimeOn: fortuneOpts?.trueSolarTimeOn ?? false,
-                    });
-                    applyFortuneOption({ localMeridianOn: nextOn }, newProfile);
-                  }}
-                  className={`shrink-0 w-11 h-6 rounded-full border transition-colors relative ${
-                    (fortuneOpts?.localMeridianOn ?? true)
-                      ? "bg-indigo-500 border-indigo-500"
-                      : "bg-muted border-border"
-                  }`}
-                  title="지역시 보정 켜기/끄기"
-                >
-                  <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${
-                    (fortuneOpts?.localMeridianOn ?? true) ? "left-[22px]" : "left-0.5"
-                  }`} />
-                </button>
-              </div>
-
-              {/* 진태양시 (True Solar Time / 균시차) */}
-              <div className="flex items-center justify-between py-2 border-t border-border/40">
-                <div className="flex-1 min-w-0 pr-3">
-                  <p className="font-semibold text-foreground text-[13px]">진태양시 보정</p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">
-                    지역시에 균시차(Equation of Time, ±최대 16분)를 추가 적용. 태양의 실제 위치를 반영합니다.
-                  </p>
-                </div>
-                <button
-                  onClick={() => {
-                    const nextOn = !(fortuneOpts?.trueSolarTimeOn ?? false);
-                    const newProfile = calculateProfileFromBirth(record.birthInput, {
-                      localMeridianOn: fortuneOpts?.localMeridianOn ?? true,
-                      trueSolarTimeOn: nextOn,
-                    });
-                    applyFortuneOption({ trueSolarTimeOn: nextOn }, newProfile);
-                  }}
-                  className={`shrink-0 w-11 h-6 rounded-full border transition-colors relative ${
-                    (fortuneOpts?.trueSolarTimeOn ?? false)
-                      ? "bg-indigo-500 border-indigo-500"
-                      : "bg-muted border-border"
-                  }`}
-                  title="진태양시 켜기/끄기"
-                >
-                  <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${
-                    (fortuneOpts?.trueSolarTimeOn ?? false) ? "left-[22px]" : "left-0.5"
-                  }`} />
-                </button>
-              </div>
-
-              {/* 절입시각 정확 계산 */}
-              <div className="flex items-center justify-between py-2 border-t border-border/40">
-                <div className="flex-1 min-w-0 pr-3">
-                  <p className="font-semibold text-foreground text-[13px]">절입시각 정확 계산</p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">
-                    대운수 계산 시 실제 출생 시각(KST→UTC)을 기준점으로 사용. OFF 시 정오 기준 (구버전 호환).
-                  </p>
-                </div>
-                <button
-                  onClick={() => {
-                    applyFortuneOption({ exactSolarTermBoundaryOn: !(fortuneOpts?.exactSolarTermBoundaryOn ?? true) });
-                  }}
-                  className={`shrink-0 w-11 h-6 rounded-full border transition-colors relative ${
-                    (fortuneOpts?.exactSolarTermBoundaryOn ?? true)
-                      ? "bg-indigo-500 border-indigo-500"
-                      : "bg-muted border-border"
-                  }`}
-                  title="절입시각 정확 계산 켜기/끄기"
-                >
-                  <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${
-                    (fortuneOpts?.exactSolarTermBoundaryOn ?? true) ? "left-[22px]" : "left-0.5"
-                  }`} />
-                </button>
-              </div>
-
-              <p className="text-[10px] text-muted-foreground/70 pt-1 border-t border-border/30 mt-1">
-                대운수 수동 수정은 '운세' 탭에서 가능합니다. 지장간 통근 보정·지지충 약화·VSOP87 절기 계산은 항상 자동 적용됩니다.
-              </p>
+            <div className="space-y-2">
+              <p className="text-[11px] text-muted-foreground">탭하면 상세 해석</p>
+              {branchRelations.length === 0 && (
+                <p className="text-sm text-muted-foreground py-1">특별한 지지 관계가 없습니다.</p>
+              )}
+              {branchRelations.map((rel, i) => {
+                const relBranches = rel.description.match(/[자축인묘진사오미신유술해]/g) ?? [];
+                return (
+                  <button
+                    key={i}
+                    className="w-full flex items-center gap-2 rounded-lg border border-border/60 bg-muted/10 px-3 py-2 text-left active:bg-muted/30 transition-colors"
+                    onClick={() => setInfoSheet({ kind: "branchRelation", relationType: rel.type, branches: relBranches })}
+                  >
+                    <span className={`text-[13px] font-bold px-2 py-0.5 rounded-full shrink-0 ${RELATION_COLORS[rel.type]}`}>{rel.type}</span>
+                    <span className="text-sm font-medium flex-1">{rel.description}</span>
+                    <span className="text-[11px] text-muted-foreground ml-auto shrink-0">›</span>
+                  </button>
+                );
+              })}
             </div>
           </AccSection>
+
+          {/* 계산 설정(전문가) UI는 결과 편집 방지를 위해 숨김 처리 */}
 
           {/* 수동 지지관계 추가 다이얼로그 */}
           <Dialog open={showBranchAddSheet} onOpenChange={(o) => { if (!o) { setShowBranchAddSheet(false); setBranchAddPick1(""); setBranchAddPick2(""); } }}>
@@ -3550,18 +3138,6 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
               pipelineYongshinPrimary={sajuPipelineResult?.adjusted?.effectiveYongshin ?? null}
               pipelineYongshinSecondary={sajuPipelineResult?.adjusted?.effectiveYongshinSecondary ?? null}
               pipelineSeasonalNote={sajuPipelineResult?.interpretation?.seasonalNote ?? null}
-              overrideStrengthLevel={localStrengthLevel}
-              overrideYongshinData={localYongshinData}
-              onStrengthLevelChange={(lv) => {
-                setLocalStrengthLevel(lv);
-                updatePersonRecord(record.id, { manualStrengthLevel: lv ?? undefined });
-                scheduleSync();
-              }}
-              onYongshinDataChange={(data) => {
-                setLocalYongshinData(data);
-                updatePersonRecord(record.id, { manualYongshinData: data });
-                scheduleSync();
-              }}
             />
           )}
 
@@ -4036,191 +3612,9 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
         </div>
       )}
 
-      {/* ── 자동 계산 초기화 확인 Bottom Sheet ── */}
-      <Sheet open={showResetConfirm} onOpenChange={setShowResetConfirm}>
-        <SheetContent side="bottom" className="rounded-t-3xl px-5 pb-6 pt-5">
-          <SheetHeader className="text-left">
-            <div className="flex items-center gap-2 mb-1">
-              <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0" />
-              <SheetTitle className="text-base">자동 계산값으로 초기화</SheetTitle>
-            </div>
-          </SheetHeader>
-          <div className="space-y-3 pt-1">
-            <p className="text-[13px] text-muted-foreground leading-relaxed">
-              아래 수동 수정 내역이 모두 삭제되고 최신 엔진으로 다시 계산됩니다.
-            </p>
-            <ul className="text-[12px] text-muted-foreground space-y-0.5 pl-4 list-disc">
-              <li>오행 분포 수동 수정</li>
-              <li>십신 수동 수정</li>
-              <li>신강·신약 수동 설정</li>
-              <li>용신·보조용신 수동 설정</li>
-              <li>신살 추가·제외 내역</li>
-              <li>천간·지지 관계 수동 추가·제거</li>
-            </ul>
-            <p className="text-[12px] text-muted-foreground">
-              생년월일시·성별·출생지·역법 설정은 유지됩니다.
-            </p>
-            <div className="flex gap-2 pt-1">
-              <button
-                onClick={() => setShowResetConfirm(false)}
-                className="flex-1 py-2 text-[13px] font-semibold rounded-xl border border-border bg-muted/30 text-muted-foreground hover:bg-muted transition-colors"
-              >
-                취소
-              </button>
-              <button
-                onClick={handleResetToAuto}
-                className="flex-1 py-2 text-[13px] font-bold rounded-xl bg-amber-500 text-white hover:bg-amber-600 transition-colors"
-              >
-                초기화
-              </button>
-            </div>
-          </div>
-        </SheetContent>
-      </Sheet>
+      {/* 결과(엔진 계산)는 read-only: 초기화/수동편집 UI 제거 */}
 
-      {/* ── 자동 계산 초기화 버튼 ── */}
-      {showSaveStatus && (
-        <button
-          onClick={() => setShowResetConfirm(true)}
-          className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl border border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors text-[13px] font-semibold active:scale-95"
-        >
-          <RotateCcw className="h-4 w-4" />
-          자동 계산값으로 초기화
-        </button>
-      )}
-
-      {/* ── 오행 수동 편집 Bottom Sheet ── */}
-      <Sheet open={showFiveElEdit} onOpenChange={setShowFiveElEdit}>
-        <SheetContent side="bottom" className="rounded-t-3xl px-5 pb-6 pt-5">
-          <SheetHeader className="text-left">
-            <SheetTitle className="text-base font-bold">오행 직접 수정</SheetTitle>
-          </SheetHeader>
-          <div className="space-y-1 pt-1">
-            <p className="text-[13px] text-muted-foreground mb-4">
-              자동 계산값이 실제와 다를 때 직접 수정하세요. 각 오행의 개수를 설정합니다.
-            </p>
-            {(["목", "화", "토", "금", "수"] as const).map((el) => {
-              const hex = ELEMENT_HEX[el];
-              return (
-                <div key={el} className="flex items-center gap-3 py-2">
-                  <div
-                    className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[14px] font-bold shrink-0"
-                    style={{ backgroundColor: hex }}
-                  >
-                    {el}
-                  </div>
-                  <div className="flex items-center gap-2 ml-auto">
-                    <button
-                      onClick={() => setDraftFiveEl((p) => ({ ...p, [el]: Math.max(0, (p[el] ?? 0) - 1) }))}
-                      className="w-8 h-8 rounded-full border border-border flex items-center justify-center text-lg font-bold text-muted-foreground hover:bg-muted transition-colors"
-                    >
-                      −
-                    </button>
-                    <span className="w-6 text-center text-[16px] font-bold tabular-nums">
-                      {draftFiveEl[el] ?? 0}
-                    </span>
-                    <button
-                      onClick={() => setDraftFiveEl((p) => ({ ...p, [el]: (p[el] ?? 0) + 1 }))}
-                      className="w-8 h-8 rounded-full border border-border flex items-center justify-center text-lg font-bold text-muted-foreground hover:bg-muted transition-colors"
-                    >
-                      +
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-          <div className="flex gap-2 pt-2">
-            {manualFiveElements && (
-              <button
-                onClick={resetFiveElEdit}
-                className="flex-1 py-2.5 text-[13px] font-semibold rounded-xl border border-border text-muted-foreground hover:bg-muted transition-colors"
-              >
-                자동 계산으로 초기화
-              </button>
-            )}
-            <button
-              onClick={saveFiveElEdit}
-              className="flex-1 py-2.5 text-[13px] font-semibold rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-            >
-              저장
-            </button>
-          </div>
-        </SheetContent>
-      </Sheet>
-
-      {/* ── 십성 직접 편집 Bottom Sheet ── */}
-      <Sheet open={showTenGodEdit} onOpenChange={setShowTenGodEdit}>
-        <SheetContent side="bottom" className="rounded-t-3xl px-5 pb-6 pt-5 max-h-[88vh] overflow-y-auto">
-          <SheetHeader className="text-left">
-            <SheetTitle className="text-base font-bold">십성 직접 편집</SheetTitle>
-          </SheetHeader>
-          <p className="text-[13px] text-muted-foreground">
-            각 십성의 비율(%)을 설정하면 오행 분포와 해석이 자동으로 재계산됩니다.
-          </p>
-          <div className="space-y-3 pt-1">
-            {Object.values(draftTenGod).reduce((s, c) => s + c, 0) !== 100 && (
-              <div className="flex items-center justify-between px-3 py-1.5 rounded-lg bg-amber-50 border border-amber-200">
-                <span className="text-[12px] text-amber-700 font-semibold">합계</span>
-                <span className="text-[12px] font-bold text-amber-600">
-                  {Object.values(draftTenGod).reduce((s, c) => s + c, 0)}%
-                </span>
-              </div>
-            )}
-            {Object.entries(TEN_GOD_GROUPS).map(([group, members]) => {
-              const groupPct = members.reduce((s, tg) => s + (draftTenGod[tg] ?? 0), 0);
-              return (
-                <div key={group} className="rounded-xl border border-border overflow-hidden">
-                  <div className="flex items-center justify-between px-3 py-2 bg-muted/30 border-b border-border">
-                    <span className="text-[13px] font-bold">{group}</span>
-                    <span className="text-[12px] font-semibold text-muted-foreground">{groupPct}%</span>
-                  </div>
-                  {members.map((tg, i) => (
-                    <div key={tg} className={`flex items-center px-3 py-2 ${i < members.length - 1 ? "border-b border-border/50" : ""}`}>
-                      <span className={`text-[13px] font-bold px-2 py-0.5 rounded-full mr-2 ${getTenGodTw(tg, dayStem)}`}>{tg}</span>
-                      <div className="flex items-center gap-2 ml-auto">
-                        <button
-                          onClick={() => setDraftTenGod((p) => ({ ...p, [tg]: Math.max(0, (p[tg] ?? 0) - 1) }))}
-                          className="w-7 h-7 rounded-full border border-border flex items-center justify-center text-lg font-bold text-muted-foreground hover:bg-muted transition-colors"
-                        >−</button>
-                        <span className="w-8 text-center text-[15px] font-bold tabular-nums">{draftTenGod[tg as TenGod] ?? 0}%</span>
-                        <button
-                          onClick={() => setDraftTenGod((p) => ({ ...p, [tg]: (p[tg] ?? 0) + 1 }))}
-                          className="w-7 h-7 rounded-full border border-border flex items-center justify-center text-lg font-bold text-muted-foreground hover:bg-muted transition-colors"
-                        >+</button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              );
-            })}
-            {dayStem && (
-              <div className="rounded-xl bg-muted/20 border border-border px-3 py-2.5">
-                <p className="text-[11px] font-bold text-muted-foreground mb-1">편집 후 오행 미리보기</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {(Object.entries(tenGodCountsToFiveElements(draftTenGod, dayStem)) as [string, number][])
-                    .filter(([, c]) => c > 0)
-                    .map(([el, cnt]) => (
-                      <span key={el} className="text-[12px] font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: (ELEMENT_HEX as Record<string, string>)[el], color: "#fff" }}>
-                        {el} {Math.round(cnt)}%
-                      </span>
-                    ))}
-                </div>
-              </div>
-            )}
-          </div>
-          <div className="flex gap-2 pt-2">
-            {manualTenGodCounts && (
-              <button onClick={resetTenGodEdit} className="flex-1 py-2.5 text-[13px] font-semibold rounded-xl border border-border text-muted-foreground hover:bg-muted transition-colors">
-                자동 계산으로 초기화
-              </button>
-            )}
-            <button onClick={saveTenGodEdit} className="flex-1 py-2.5 text-[13px] font-semibold rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
-              저장
-            </button>
-          </div>
-        </SheetContent>
-      </Sheet>
+      {/* 오행/십성 수동 편집 UI는 read-only 정책으로 제거 */}
 
       {/* ── Bottom Sheet ── */}
       <InfoBottomSheet info={infoSheet} onClose={() => setInfoSheet(null)} />
