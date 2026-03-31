@@ -66,6 +66,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import {
   Drawer,
   DrawerContent,
@@ -248,31 +249,31 @@ const DAY_STEM_KEYWORD_BASIS: Record<string, Record<string, string>> = {
 
 const ELEMENT_ENERGY_MEANING: Record<string, { title: string; nature: string; traits: string; inLife: string }> = {
   목: {
-    title: "목(木) — 봄의 에너지",
+    title: "목 — 봄의 에너지",
     nature: "목은 씨앗이 땅을 뚫고 솟아나는 봄의 기운입니다. 위로 뻗어나가고 성장하려는 강한 의지가 핵심이며, 생명력과 창조의 에너지를 상징합니다.",
     traits: "인(仁)·사랑·리더십·시작하는 힘·뻗어나가는 의지. 강하게 뿌리를 내리면서도 위로 자라나는 이중적 에너지를 지닙니다.",
     inLife: "목 기운이 강한 사주는 성장과 도전을 즐기며 새로운 것을 시작하는 힘이 강합니다. 리더십과 추진력이 뛰어나지만 고집이 생길 수 있으니 유연함을 기르는 것이 좋습니다.",
   },
   화: {
-    title: "화(火) — 여름의 에너지",
+    title: "화 — 여름의 에너지",
     nature: "화는 태양과 불꽃처럼 밝게 타오르는 여름의 기운입니다. 열정·표현·확산의 에너지로 주변을 밝히고 따뜻하게 만드는 힘을 상징합니다.",
     traits: "예(禮)·열정·표현력·사교성·빛과 따뜻함. 밝게 타오르며 주변에 에너지를 전파하는 기운입니다.",
     inLife: "화 기운이 강한 사주는 밝고 사교적이며 표현력이 뛰어납니다. 열정적으로 살아가지만 과열되면 조급함이나 감정 기복이 생길 수 있어 여유를 갖는 것이 도움됩니다.",
   },
   토: {
-    title: "토(土) — 환절기의 에너지",
+    title: "토 — 환절기의 에너지",
     nature: "토는 모든 계절의 전환점에서 중심을 잡아주는 대지의 기운입니다. 오행의 중심에서 균형을 유지하고 조화를 이루는 신뢰와 안정의 에너지입니다.",
     traits: "신(信)·신뢰·안정·중용·포용력. 흔들리지 않는 토대처럼 모든 것을 받아들이고 중심을 잡습니다.",
     inLife: "토 기운이 강한 사주는 신뢰감이 높고 안정적입니다. 흔들리지 않는 강인함이 있지만 변화를 싫어하거나 고집스러울 수 있어 유연성을 갖는 것이 중요합니다.",
   },
   금: {
-    title: "금(金) — 가을의 에너지",
+    title: "금 — 가을의 에너지",
     nature: "금은 단단한 광석과 보석의 기운으로 가을의 결실을 상징합니다. 정제·결단·수확의 에너지이며 불필요한 것을 걸러내는 의(義)의 힘입니다.",
     traits: "의(義)·결단력·원칙·강직함·정밀함. 날카롭고 단단하게 본질을 꿰뚫는 힘을 지닙니다.",
     inLife: "금 기운이 강한 사주는 결단력이 강하고 원칙을 중시합니다. 강직함이 장점이지만 지나치면 냉정하거나 고집스러워 보일 수 있어 따뜻함을 더하는 것이 좋습니다.",
   },
   수: {
-    title: "수(水) — 겨울의 에너지",
+    title: "수 — 겨울의 에너지",
     nature: "수는 바다와 강처럼 깊고 유연한 겨울의 기운입니다. 지혜·통찰·적응·저장의 에너지이며 모든 것을 품고 흘려보내는 지(智)의 힘을 상징합니다.",
     traits: "지(智)·지혜·감수성·유연성·통찰. 깊은 곳에서 흐르며 본질을 꿰뚫어 보는 힘입니다.",
     inLife: "수 기운이 강한 사주는 지혜롭고 감수성이 풍부합니다. 적응력이 뛰어나지만 과도하면 우유부단해지거나 감정에 빠질 수 있어 결단력을 기르는 것이 도움됩니다.",
@@ -1957,7 +1958,7 @@ interface SajuReportProps {
   showSaveStatus?: boolean;
 }
 
-export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
+export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) {
   const { user } = useAuth();
   const [infoSheet, setInfoSheet] = useState<InfoSheetType | null>(null);
   const [manualShinsal, setManualShinsal] = useState<ManualShinsalItem[]>(record.manualShinsal ?? []);
@@ -2870,7 +2871,7 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
           <AccSection title="지장간 · 12운성">
             <div className="space-y-4">
               <div>
-                <p className="text-[13px] font-semibold text-muted-foreground mb-2">지장간 地藏干</p>
+                <p className="text-[13px] font-semibold text-muted-foreground mb-2">지장간</p>
                 <div className="grid grid-cols-4 gap-0 rounded-xl overflow-hidden border border-border">
                   {[
                     { label: "시지", branch: pillars.hour?.hangul?.[1], isDay: false },
@@ -3039,7 +3040,7 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
               {/* 조후 보정 on/off */}
               <div className="flex items-center justify-between py-2 border-b border-border/40">
                 <div className="flex-1 min-w-0 pr-3">
-                  <p className="font-semibold text-foreground text-[13px]">조후 보정 (調候用神)</p>
+                  <p className="font-semibold text-foreground text-[13px]">조후 보정</p>
                   <p className="text-[11px] text-muted-foreground mt-0.5">
                     겨울 수(水) 편중 → 화(火) 보조, 여름 화(火) 편중 → 수(水) 보조 자동 반영
                   </p>
@@ -3106,7 +3107,7 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
               {/* 지역시 (Local Mean Time) */}
               <div className="flex items-center justify-between py-2 border-t border-border/40">
                 <div className="flex-1 min-w-0 pr-3">
-                  <p className="font-semibold text-foreground text-[13px]">지역시 보정 (地域時)</p>
+                  <p className="font-semibold text-foreground text-[13px]">지역시 보정</p>
                   <p className="text-[11px] text-muted-foreground mt-0.5">
                     출생 경도 기준 지방 평균시 적용 (기준 동경 135° 대비 ±4분/도). 서울(127°) 기준 −32분.
                   </p>
@@ -3136,7 +3137,7 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
               {/* 진태양시 (True Solar Time / 균시차) */}
               <div className="flex items-center justify-between py-2 border-t border-border/40">
                 <div className="flex-1 min-w-0 pr-3">
-                  <p className="font-semibold text-foreground text-[13px]">진태양시 (均時差 보정)</p>
+                  <p className="font-semibold text-foreground text-[13px]">진태양시 보정</p>
                   <p className="text-[11px] text-muted-foreground mt-0.5">
                     지역시에 균시차(Equation of Time, ±최대 16분)를 추가 적용. 태양의 실제 위치를 반영합니다.
                   </p>
@@ -3876,15 +3877,15 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
         </div>
       )}
 
-      {/* ── 자동 계산 초기화 확인 Dialog ── */}
-      <Dialog open={showResetConfirm} onOpenChange={setShowResetConfirm}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
+      {/* ── 자동 계산 초기화 확인 Bottom Sheet ── */}
+      <Sheet open={showResetConfirm} onOpenChange={setShowResetConfirm}>
+        <SheetContent side="bottom" className="rounded-t-3xl px-5 pb-6 pt-5">
+          <SheetHeader className="text-left">
             <div className="flex items-center gap-2 mb-1">
               <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0" />
-              <DialogTitle className="text-base">자동 계산값으로 초기화</DialogTitle>
+              <SheetTitle className="text-base">자동 계산값으로 초기화</SheetTitle>
             </div>
-          </DialogHeader>
+          </SheetHeader>
           <div className="space-y-3 pt-1">
             <p className="text-[13px] text-muted-foreground leading-relaxed">
               아래 수동 수정 내역이 모두 삭제되고 최신 엔진으로 다시 계산됩니다.
@@ -3915,8 +3916,8 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
               </button>
             </div>
           </div>
-        </DialogContent>
-      </Dialog>
+        </SheetContent>
+      </Sheet>
 
       {/* ── 자동 계산 초기화 버튼 ── */}
       {showSaveStatus && (
@@ -3929,12 +3930,12 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
         </button>
       )}
 
-      {/* ── 오행 수동 편집 Dialog ── */}
-      <Dialog open={showFiveElEdit} onOpenChange={setShowFiveElEdit}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="text-base font-bold">오행 직접 수정</DialogTitle>
-          </DialogHeader>
+      {/* ── 오행 수동 편집 Bottom Sheet ── */}
+      <Sheet open={showFiveElEdit} onOpenChange={setShowFiveElEdit}>
+        <SheetContent side="bottom" className="rounded-t-3xl px-5 pb-6 pt-5">
+          <SheetHeader className="text-left">
+            <SheetTitle className="text-base font-bold">오행 직접 수정</SheetTitle>
+          </SheetHeader>
           <div className="space-y-1 pt-1">
             <p className="text-[13px] text-muted-foreground mb-4">
               자동 계산값이 실제와 다를 때 직접 수정하세요. 각 오행의 개수를 설정합니다.
@@ -3986,15 +3987,15 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
               저장
             </button>
           </div>
-        </DialogContent>
-      </Dialog>
+        </SheetContent>
+      </Sheet>
 
-      {/* ── 십성 직접 편집 다이얼로그 ── */}
-      <Dialog open={showTenGodEdit} onOpenChange={setShowTenGodEdit}>
-        <DialogContent className="max-w-sm max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-base font-bold">십성 직접 편집</DialogTitle>
-          </DialogHeader>
+      {/* ── 십성 직접 편집 Bottom Sheet ── */}
+      <Sheet open={showTenGodEdit} onOpenChange={setShowTenGodEdit}>
+        <SheetContent side="bottom" className="rounded-t-3xl px-5 pb-6 pt-5 max-h-[88vh] overflow-y-auto">
+          <SheetHeader className="text-left">
+            <SheetTitle className="text-base font-bold">십성 직접 편집</SheetTitle>
+          </SheetHeader>
           <p className="text-[13px] text-muted-foreground">
             각 십성의 비율(%)을 설정하면 오행 분포와 해석이 자동으로 재계산됩니다.
           </p>
@@ -4059,8 +4060,8 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
               저장
             </button>
           </div>
-        </DialogContent>
-      </Dialog>
+        </SheetContent>
+      </Sheet>
 
       {/* ── Bottom Sheet ── */}
       <InfoBottomSheet info={infoSheet} onClose={() => setInfoSheet(null)} />

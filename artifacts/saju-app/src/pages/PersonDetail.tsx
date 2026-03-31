@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { SajuReport } from "@/components/SajuReport";
 import { getPeople, getFinalPillars } from "@/lib/storage";
 import { getZodiacFromDayPillar } from "@/lib/zodiacAnimal";
-import { ArrowLeft, Pencil, Heart } from "lucide-react";
+import { ArrowLeft, Heart } from "lucide-react";
 import { CopyButton } from "@/components/CopyButton";
 import { buildPersonClipboardText } from "@/lib/clipboardExport";
 
@@ -44,12 +44,6 @@ export default function PersonDetail() {
 
       {/* ── Unified Identity Card (same structure as MyProfile) ── */}
       <div className="rounded-2xl border border-border bg-card p-5 relative">
-        <Link href={`/people/${person.id}/edit`}>
-          <button className="absolute top-4 right-4 h-8 w-8 rounded-lg flex items-center justify-center text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted/50 transition-colors">
-            <Pencil className="h-3.5 w-3.5" />
-          </button>
-        </Link>
-
         <div className="flex items-start gap-4">
           {/* Zodiac mascot — element-based pastel background (same as PeopleList card) */}
           <div
@@ -111,7 +105,7 @@ export default function PersonDetail() {
 
       <CopyButton buildText={() => buildPersonClipboardText(person)} label="상대 사주 분석 전체 복사" />
 
-      <SajuReport record={person} showSaveStatus={true} />
+      <SajuReport record={person} />
 
       {/* Bottom actions */}
       <div className="flex gap-3 pt-2">
