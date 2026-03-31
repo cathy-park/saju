@@ -42,15 +42,6 @@ export default function PersonDetail() {
   return (
     <div className="max-w-lg mx-auto px-4 py-8 space-y-5">
 
-      {/* Back row */}
-      <div className="flex items-center gap-2">
-        <Link href="/people">
-          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-        </Link>
-      </div>
-
       {/* ── Unified Identity Card (same structure as MyProfile) ── */}
       <div className="rounded-2xl border border-border bg-card p-5 relative">
         <Link href={`/people/${person.id}/edit`}>
