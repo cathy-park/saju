@@ -209,6 +209,17 @@ export async function upsertMyProfile(userId: string, record: PersonRecord): Pro
   }
 }
 
+export async function deleteMyProfileFromDb(userId: string): Promise<void> {
+  const { error } = await supabase
+    .from("my_saju_profiles")
+    .delete()
+    .eq("user_id", userId);
+  if (error) {
+    console.error("[db] deleteMyProfile:", error);
+    throw new Error(error.message);
+  }
+}
+
 // ── Partner Profiles ──────────────────────────────────────────────
 
 export async function fetchPartnerProfiles(userId: string): Promise<PersonRecord[]> {

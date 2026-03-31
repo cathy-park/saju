@@ -7,6 +7,7 @@ import { calculateProfileFromBirth, type BirthInput } from "@/lib/sajuEngine";
 import {
   getMyProfile,
   saveMyProfile,
+  deleteMyProfile,
   saveMaritalStatus,
   createRecord,
   type PersonRecord,
@@ -16,14 +17,15 @@ import { toast } from "@/hooks/use-toast";
 import { getFinalPillars } from "@/lib/storage";
 import { getZodiacFromDayPillar } from "@/lib/zodiacAnimal";
 import { useAuth } from "@/lib/authContext";
-import { upsertMyProfile } from "@/lib/db";
-import { Pencil } from "lucide-react";
+import { upsertMyProfile, deleteMyProfileFromDb } from "@/lib/db";
+import { Pencil, Trash2 } from "lucide-react";
 import { MaritalField, MaritalBadge, MARITAL_OPTIONS } from "@/components/MaritalField";
 import { CopyButton } from "@/components/CopyButton";
 import { buildPersonClipboardText } from "@/lib/clipboardExport";
 
 export default function MyProfile() {
   const [editing, setEditing] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [record, setRecord] = useState<PersonRecord | null>(() => getMyProfile());
   const [formMarital, setFormMarital] = useState<MaritalStatus | undefined>(() => getMyProfile()?.maritalStatus);
   const { user, dbSynced } = useAuth();
@@ -81,6 +83,20 @@ export default function MyProfile() {
     }
   }
 
+  async function handleDelete() {
+    deleteMyProfile();
+    setRecord(null);
+    setShowDeleteConfirm(false);
+    if (user) {
+      try {
+        await deleteMyProfileFromDb(user.id);
+      } catch (e) {
+        console.error("[MyProfile] delete from db failed:", e);
+      }
+    }
+    toast({ description: "내 사주가 삭제되었습니다", duration: 3000 });
+  }
+
   if (!record || editing) {
     return (
       <div className="max-w-lg mx-auto px-4 py-8">
@@ -133,12 +149,48 @@ export default function MyProfile() {
 
       {/* ── Unified Identity Card ── */}
       <div className="rounded-2xl border border-border bg-card p-5 relative">
-        <button
-          onClick={() => setEditing(true)}
-          className="absolute top-4 right-4 h-8 w-8 rounded-lg flex items-center justify-center text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted/50 transition-colors"
-        >
-          <Pencil className="h-3.5 w-3.5" />
-        </button>
+        <div className="absolute top-4 right-4 flex gap-1">
+          <button
+            onClick={() => setEditing(true)}
+            className="h-8 w-8 rounded-lg flex items-center justify-center text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted/50 transition-colors"
+            title="수정"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </button>
+          <button
+            onClick={() => setShowDeleteConfirm(true)}
+            className="h-8 w-8 rounded-lg flex items-center justify-center text-muted-foreground/50 hover:text-red-500 hover:bg-red-50 transition-colors"
+            title="삭제"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+        </div>
+
+        {/* ── 삭제 확인 오버레이 ── */}
+        {showDeleteConfirm && (
+          <div className="absolute inset-0 z-10 rounded-2xl bg-card/95 backdrop-blur-sm flex flex-col items-center justify-center gap-3 p-5">
+            <p className="text-sm font-semibold text-foreground text-center">
+              내 사주를 삭제할까요?
+            </p>
+            <p className="text-xs text-muted-foreground text-center">
+              모든 설정과 분석 데이터가 사라지며 되돌릴 수 없습니다.
+            </p>
+            <div className="flex gap-2 mt-1">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="px-4 py-1.5 rounded-full text-sm border border-border bg-muted/40 hover:bg-muted text-foreground transition-colors"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleDelete}
+                className="px-4 py-1.5 rounded-full text-sm bg-red-500 hover:bg-red-600 text-white font-semibold transition-colors"
+              >
+                삭제
+              </button>
+            </div>
+          </div>
+        )}
 
         <div className="flex items-start gap-4">
           <div className="shrink-0 w-[72px] h-[72px] rounded-2xl flex items-center justify-center overflow-hidden" style={{ background: `radial-gradient(circle at 50% 60%, ${thumbBg} 0%, ${thumbBg}88 100%)` }}>

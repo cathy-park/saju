@@ -143,6 +143,12 @@ export function saveMyProfile(record: PersonRecord): void {
   save(data);
 }
 
+export function deleteMyProfile(): void {
+  const data = load();
+  data.myProfile = null;
+  save(data);
+}
+
 export function getPeople(): PersonRecord[] {
   return load().people;
 }

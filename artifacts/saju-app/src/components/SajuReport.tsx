@@ -2094,7 +2094,7 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
         { pillar: "일주", stem: effectivePillars.day?.hangul?.[0] ?? "", branch: effectivePillars.day?.hangul?.[1] ?? "" },
         { pillar: "월주", stem: effectivePillars.month?.hangul?.[0] ?? "", branch: effectivePillars.month?.hangul?.[1] ?? "" },
         { pillar: "년주", stem: effectivePillars.year?.hangul?.[0] ?? "", branch: effectivePillars.year?.hangul?.[1] ?? "" },
-      ])
+      ], fortuneOpts?.shinsalMode ?? "default")
     : [];
 
   const shinsalBranchItems = (["시주", "일주", "월주", "년주"] as const).map(
@@ -2175,9 +2175,9 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
       { pillar: "월주", stem: pillars.month?.hangul?.[0] ?? "", branch: pillars.month?.hangul?.[1] ?? "" },
       { pillar: "년주", stem: pillars.year?.hangul?.[0] ?? "", branch: pillars.year?.hangul?.[1] ?? "" },
     ];
-    const ps = calculateShinsalFull(dayStem, dayBranch, input.month, noHourPillars);
+    const ps = calculateShinsalFull(dayStem, dayBranch, input.month, noHourPillars, fortuneOpts?.shinsalMode ?? "default");
     return ps.flatMap((p) => [...(p.pillarItems ?? []), ...(p.stemItems ?? []), ...(p.branchItems ?? [])]);
-  }, [dayStem, dayBranch, pillars, input.month]);
+  }, [dayStem, dayBranch, pillars, input.month, fortuneOpts?.shinsalMode]);
 
   const fiveElDiff = useMemo<FiveElDiffEntry[]>(
     () => (hasHourPillar ? diffFiveElements(effectiveFiveElements, fiveElNoHour) : []),
@@ -2217,9 +2217,9 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
       { pillar: "월주", stem: pillars.month?.hangul?.[0] ?? "", branch: pillars.month?.hangul?.[1] ?? "" },
       { pillar: "년주", stem: pillars.year?.hangul?.[0] ?? "", branch: pillars.year?.hangul?.[1] ?? "" },
     ];
-    const ps = calculateShinsalFull(dayStem, dayBranch, input.month, withHourPillars);
+    const ps = calculateShinsalFull(dayStem, dayBranch, input.month, withHourPillars, fortuneOpts?.shinsalMode ?? "default");
     return ps.flatMap((p) => [...(p.pillarItems ?? []), ...(p.stemItems ?? []), ...(p.branchItems ?? [])]);
-  }, [dayStem, dayBranch, hasHourPillar, pillars, input.month]);
+  }, [dayStem, dayBranch, hasHourPillar, pillars, input.month, fortuneOpts?.shinsalMode]);
 
   const shinsalDiffBase = useMemo<ShinsalDiff>(
     () => (hasHourPillar ? diffShinsal(shinsalNamesWithHour, shinsalNamesNoHour) : { added: [], removed: [] }),
@@ -2818,9 +2818,10 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
               {/* 신살 보수 모드 */}
               <div className="flex items-center justify-between py-2">
                 <div className="flex-1 min-w-0 pr-3">
-                  <p className="font-semibold text-foreground text-[13px]">신살 보수 모드</p>
+                  <p className="font-semibold text-foreground text-[13px]">천문성 적용 범위</p>
                   <p className="text-[11px] text-muted-foreground mt-0.5">
-                    천문성을 연지·일지만 적용 (기본 활성화). 확장 모드는 월지·시지까지 포함합니다.
+                    <span className="font-semibold">기본</span>: 4개 기둥 모두 (전통 만세력 기준) &nbsp;
+                    <span className="font-semibold">보수</span>: 연지·일지만 (과도 발동 방지)
                   </p>
                 </div>
                 <div className="shrink-0 flex gap-1">

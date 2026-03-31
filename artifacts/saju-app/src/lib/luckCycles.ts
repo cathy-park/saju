@@ -438,7 +438,8 @@ export function calculateShinsalFull(
   dayStem: string,
   dayBranch: string,
   birthMonth: number,
-  pillars: { pillar: string; stem: string; branch: string }[]
+  pillars: { pillar: string; stem: string; branch: string }[],
+  shinsalMode: "conservative" | "default" | "expanded" = "default"
 ): PillarShinsal[] {
   // 공망 (空亡): void branches from day pillar's 旬 (decade group)
   // 甲子순→술·해, 甲戌순→신·유, 甲申순→오·미,
@@ -514,10 +515,13 @@ export function calculateShinsalFull(
       if (cheonbokTarget && branch === cheonbokTarget) branchItems.push("천복귀인");
       if (cheonuiTarget && branch === cheonuiTarget && pillar !== "년주") branchItems.push("천의성");
       // 천문성 (天門星): 술(戌)·해(亥) 지지에 발동 — 하늘 문이 열리는 기운, 영적 감수성·종교적 직관
-      // 과도발동 방지: 년주·일주에만 적용 (월주·시주는 제외)
-      // 전통 기준: 연지·일지에서 술·해가 天門을 열고 종교·영적 감수성을 활성화함
-      if ((branch === "술" || branch === "해") && (pillar === "년주" || pillar === "일주")) {
-        branchItems.push("천문성");
+      // 보수 모드: 년주·일주에만 적용 (과도발동 방지)
+      // 기본 모드: 4개 기둥 모두 적용 (전통 만세력 기준)
+      if (branch === "술" || branch === "해") {
+        const allowedByMode = shinsalMode === "conservative"
+          ? (pillar === "년주" || pillar === "일주")
+          : true; // default: all pillars
+        if (allowedByMode) branchItems.push("천문성");
       }
       // 공망 (空亡): void branch — day pillar is excluded (it defines the void)
       if (pillar !== "일주" && gongmangBranches.includes(branch)) branchItems.push("공망");
