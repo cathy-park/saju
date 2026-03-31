@@ -196,52 +196,52 @@ const DAY_STEM_KEYWORDS: Record<string, string[]> = {
 
 const DAY_STEM_KEYWORD_BASIS: Record<string, Record<string, string>> = {
   갑: {
-    리더십: "갑목(甲木)은 천간의 첫 번째 자리로, 처음을 여는 양간입니다. 하늘을 향해 곧게 뻗는 큰 나무처럼 앞장서서 이끄는 성질이 강해 리더십이 자연스럽게 발현됩니다.",
+    리더십: "갑목은 천간의 첫 번째 자리로, 처음을 여는 양간입니다. 하늘을 향해 곧게 뻗는 큰 나무처럼 앞장서서 이끄는 성질이 강해 리더십이 자연스럽게 발현됩니다.",
     성장: "갑목의 본질은 끊임없이 위로 뻗어나가는 성장 에너지입니다. 현재에 안주하지 않고 더 높은 곳을 향해 나아가려는 의지가 강하게 작용합니다.",
-    도전: "양목(陽木)의 에너지는 장애물을 뚫고 나아가는 힘입니다. 어떤 어려움에도 굴하지 않고 새로운 길을 개척하려는 도전 정신이 핵심 기질로 나타납니다.",
+    도전: "양목의 에너지는 장애물을 뚫고 나아가는 힘입니다. 어떤 어려움에도 굴하지 않고 새로운 길을 개척하려는 도전 정신이 핵심 기질로 나타납니다.",
   },
   을: {
-    유연함: "을목(乙木)은 바람에 휘어지면서도 꺾이지 않는 덩굴식물의 기운입니다. 상황에 따라 적절히 굽히며 적응하는 유연한 지혜가 본질입니다.",
-    섬세함: "음목(陰木)의 기운은 작은 것까지 세밀하게 관찰하는 능력을 줍니다. 타인의 마음과 환경의 미묘한 변화를 민감하게 감지하는 섬세한 감수성이 특성입니다.",
+    유연함: "을목은 바람에 휘어지면서도 꺾이지 않는 덩굴식물의 기운입니다. 상황에 따라 적절히 굽히며 적응하는 유연한 지혜가 본질입니다.",
+    섬세함: "음목의 기운은 작은 것까지 세밀하게 관찰하는 능력을 줍니다. 타인의 마음과 환경의 미묘한 변화를 민감하게 감지하는 섬세한 감수성이 특성입니다.",
     조화: "을목은 주변과 어울리며 함께 자라는 성질을 지닙니다. 갈등보다 균형과 공존을 추구하며 자연스럽게 화합의 분위기를 만들어냅니다.",
   },
   병: {
-    열정: "병화(丙火)는 태양의 기운으로 불꽃처럼 타오르는 양간입니다. 내면에서 뿜어져 나오는 뜨거운 에너지가 열정이라는 키워드로 나타납니다.",
+    열정: "병화는 태양의 기운으로 불꽃처럼 타오르는 양간입니다. 내면에서 뿜어져 나오는 뜨거운 에너지가 열정이라는 키워드로 나타납니다.",
     표현력: "태양처럼 빛을 발산하는 병화는 자신을 드러내는 힘이 강합니다. 감정과 생각을 솔직하고 풍부하게 표현하는 능력이 자연스럽게 발현됩니다.",
     활력: "병화는 하루를 밝히는 태양처럼 주변에 생기를 불어넣습니다. 스스로 에너지가 넘치고 주위 사람들도 활기차게 만드는 특성을 지닙니다.",
   },
   정: {
-    직관: "정화(丁火)는 촛불처럼 은은하게 타는 음화(陰火)입니다. 강렬한 외표보다 내면에서 빛나는 예리한 통찰과 직관이 강점으로 발현됩니다.",
+    직관: "정화는 촛불처럼 은은하게 타는 음화입니다. 강렬한 외표보다 내면에서 빛나는 예리한 통찰과 직관이 강점으로 발현됩니다.",
     헌신: "촛불은 자신을 태워 주변을 밝힙니다. 정화 일간은 이처럼 아끼는 사람과 목표를 위해 자신을 아낌없이 내어주는 헌신의 기질이 강합니다.",
     세심함: "정화는 작고 세밀한 빛으로 구석구석을 비춥니다. 타인의 감정과 상황을 세심하게 살피고 배려하는 능력이 뛰어난 특성입니다.",
   },
   무: {
-    신뢰: "무토(戊土)는 거대한 산의 기운입니다. 흔들리지 않는 산처럼 일관된 태도를 유지하며 주변에서 믿고 의지할 수 있는 신뢰의 존재로 여겨집니다.",
+    신뢰: "무토는 거대한 산의 기운입니다. 흔들리지 않는 산처럼 일관된 태도를 유지하며 주변에서 믿고 의지할 수 있는 신뢰의 존재로 여겨집니다.",
     안정: "산은 오랜 시간 한자리를 지킵니다. 무토 일간은 이처럼 요동치지 않는 안정감을 지니며 주변에 심리적 안전감을 제공합니다.",
-    중용: "무토는 오행의 중심에서 균형을 잡는 토(土) 기운 중 가장 강한 형태입니다. 어느 한쪽으로 치우치지 않는 중용의 지혜가 핵심 특성입니다.",
+    중용: "무토는 오행의 중심에서 균형을 잡는 토 기운 중 가장 강한 형태입니다. 어느 한쪽으로 치우치지 않는 중용의 지혜가 핵심 특성입니다.",
   },
   기: {
-    꼼꼼함: "기토(己土)는 비옥한 논밭의 기운으로 음토(陰土)입니다. 세세한 것까지 챙기고 관리하는 능력이 뛰어나 꼼꼼함이 자연스럽게 발현됩니다.",
+    꼼꼼함: "기토는 비옥한 논밭의 기운으로 음토입니다. 세세한 것까지 챙기고 관리하는 능력이 뛰어나 꼼꼼함이 자연스럽게 발현됩니다.",
     인내: "기토는 씨앗이 뿌리를 내리고 싹을 틔울 수 있는 토양입니다. 결과가 나올 때까지 묵묵히 기다리는 인내력이 강한 특성입니다.",
     실용: "논밭은 실질적인 결실을 위한 공간입니다. 기토 일간은 현실적이고 실용적인 관점으로 문제를 해결하는 능력이 뛰어납니다.",
   },
   경: {
-    결단력: "경금(庚金)은 바위처럼 단단한 양금(陽金)의 기운입니다. 흔들리지 않는 강한 의지와 과감한 결단으로 상황을 돌파하는 능력이 강합니다.",
+    결단력: "경금은 바위처럼 단단한 양금의 기운입니다. 흔들리지 않는 강한 의지와 과감한 결단으로 상황을 돌파하는 능력이 강합니다.",
     원칙: "단단한 금속처럼 경금은 자신의 기준을 쉽게 구부리지 않습니다. 원칙과 규칙을 중시하며 일관된 기준으로 행동하는 특성이 나타납니다.",
     강직함: "경금의 기운은 날카롭고 곧은 검과 같습니다. 불의에 굴하지 않고 옳다고 믿는 것을 직접적으로 말하고 행동하는 강직한 성품이 특성입니다.",
   },
   신: {
-    완벽주의: "신금(辛金)은 가공된 보석과 귀금속의 기운으로 음금(陰金)입니다. 흠집 없이 완벽한 보석을 추구하듯 높은 기준을 추구하는 완벽주의적 성향이 나타납니다.",
+    완벽주의: "신금은 가공된 보석과 귀금속의 기운으로 음금입니다. 흠집 없이 완벽한 보석을 추구하듯 높은 기준을 추구하는 완벽주의적 성향이 나타납니다.",
     예민함: "신금은 아주 미세한 흠도 감지하는 예리함을 지닙니다. 환경과 사람의 미묘한 변화에 민감하게 반응하며 섬세하게 느끼는 예민한 감수성이 특성입니다.",
     정밀함: "귀금속 가공에는 높은 정밀도가 필요합니다. 신금 일간은 어떤 일이든 디테일을 놓치지 않고 정교하게 처리하는 정밀함이 강점입니다.",
   },
   임: {
-    창의: "임수(壬水)는 넓고 깊은 바다의 기운으로 양수(陽水)입니다. 끝없이 넓은 바다처럼 무한한 상상력과 창의적인 아이디어가 넘치는 특성입니다.",
+    창의: "임수는 넓고 깊은 바다의 기운으로 양수입니다. 끝없이 넓은 바다처럼 무한한 상상력과 창의적인 아이디어가 넘치는 특성입니다.",
     유연성: "물은 어떤 그릇에도 담깁니다. 임수 일간은 다양한 상황과 사람에 자연스럽게 적응하는 뛰어난 유연성이 강점으로 발현됩니다.",
     통찰: "깊은 바다는 수면 아래 많은 것을 품습니다. 임수는 표면 너머의 본질을 꿰뚫어 보는 깊은 통찰력과 지혜를 타고납니다.",
   },
   계: {
-    감성: "계수(癸水)는 이슬·빗물처럼 섬세한 음수(陰水)입니다. 풍부한 감수성으로 세상의 아름다움과 타인의 감정을 깊이 느끼는 감성적 기질이 강합니다.",
+    감성: "계수는 이슬·빗물처럼 섬세한 음수입니다. 풍부한 감수성으로 세상의 아름다움과 타인의 감정을 깊이 느끼는 감성적 기질이 강합니다.",
     적응력: "계수는 작은 물방울처럼 어디든 스며드는 성질을 지닙니다. 어떤 환경이든 유연하게 적응하며 자신의 자리를 만들어나가는 능력이 뛰어납니다.",
     지혜: "계수는 조용히 스며드는 물처럼 깊이 생각하고 느끼는 능력을 지닙니다. 직접적인 경험과 내면의 성찰로 세상의 이치를 파악하는 지혜가 특성입니다.",
   },
@@ -251,31 +251,31 @@ const ELEMENT_ENERGY_MEANING: Record<string, { title: string; nature: string; tr
   목: {
     title: "목 — 봄의 에너지",
     nature: "목은 씨앗이 땅을 뚫고 솟아나는 봄의 기운입니다. 위로 뻗어나가고 성장하려는 강한 의지가 핵심이며, 생명력과 창조의 에너지를 상징합니다.",
-    traits: "인(仁)·사랑·리더십·시작하는 힘·뻗어나가는 의지. 강하게 뿌리를 내리면서도 위로 자라나는 이중적 에너지를 지닙니다.",
+    traits: "인·사랑·리더십·시작하는 힘·뻗어나가는 의지. 강하게 뿌리를 내리면서도 위로 자라나는 이중적 에너지를 지닙니다.",
     inLife: "목 기운이 강한 사주는 성장과 도전을 즐기며 새로운 것을 시작하는 힘이 강합니다. 리더십과 추진력이 뛰어나지만 고집이 생길 수 있으니 유연함을 기르는 것이 좋습니다.",
   },
   화: {
     title: "화 — 여름의 에너지",
     nature: "화는 태양과 불꽃처럼 밝게 타오르는 여름의 기운입니다. 열정·표현·확산의 에너지로 주변을 밝히고 따뜻하게 만드는 힘을 상징합니다.",
-    traits: "예(禮)·열정·표현력·사교성·빛과 따뜻함. 밝게 타오르며 주변에 에너지를 전파하는 기운입니다.",
+    traits: "예·열정·표현력·사교성·빛과 따뜻함. 밝게 타오르며 주변에 에너지를 전파하는 기운입니다.",
     inLife: "화 기운이 강한 사주는 밝고 사교적이며 표현력이 뛰어납니다. 열정적으로 살아가지만 과열되면 조급함이나 감정 기복이 생길 수 있어 여유를 갖는 것이 도움됩니다.",
   },
   토: {
     title: "토 — 환절기의 에너지",
     nature: "토는 모든 계절의 전환점에서 중심을 잡아주는 대지의 기운입니다. 오행의 중심에서 균형을 유지하고 조화를 이루는 신뢰와 안정의 에너지입니다.",
-    traits: "신(信)·신뢰·안정·중용·포용력. 흔들리지 않는 토대처럼 모든 것을 받아들이고 중심을 잡습니다.",
+    traits: "신·신뢰·안정·중용·포용력. 흔들리지 않는 토대처럼 모든 것을 받아들이고 중심을 잡습니다.",
     inLife: "토 기운이 강한 사주는 신뢰감이 높고 안정적입니다. 흔들리지 않는 강인함이 있지만 변화를 싫어하거나 고집스러울 수 있어 유연성을 갖는 것이 중요합니다.",
   },
   금: {
     title: "금 — 가을의 에너지",
-    nature: "금은 단단한 광석과 보석의 기운으로 가을의 결실을 상징합니다. 정제·결단·수확의 에너지이며 불필요한 것을 걸러내는 의(義)의 힘입니다.",
-    traits: "의(義)·결단력·원칙·강직함·정밀함. 날카롭고 단단하게 본질을 꿰뚫는 힘을 지닙니다.",
+    nature: "금은 단단한 광석과 보석의 기운으로 가을의 결실을 상징합니다. 정제·결단·수확의 에너지이며 불필요한 것을 걸러내는 의의 힘입니다.",
+    traits: "의·결단력·원칙·강직함·정밀함. 날카롭고 단단하게 본질을 꿰뚫는 힘을 지닙니다.",
     inLife: "금 기운이 강한 사주는 결단력이 강하고 원칙을 중시합니다. 강직함이 장점이지만 지나치면 냉정하거나 고집스러워 보일 수 있어 따뜻함을 더하는 것이 좋습니다.",
   },
   수: {
     title: "수 — 겨울의 에너지",
-    nature: "수는 바다와 강처럼 깊고 유연한 겨울의 기운입니다. 지혜·통찰·적응·저장의 에너지이며 모든 것을 품고 흘려보내는 지(智)의 힘을 상징합니다.",
-    traits: "지(智)·지혜·감수성·유연성·통찰. 깊은 곳에서 흐르며 본질을 꿰뚫어 보는 힘입니다.",
+    nature: "수는 바다와 강처럼 깊고 유연한 겨울의 기운입니다. 지혜·통찰·적응·저장의 에너지이며 모든 것을 품고 흘려보내는 지의 힘을 상징합니다.",
+    traits: "지·지혜·감수성·유연성·통찰. 깊은 곳에서 흐르며 본질을 꿰뚫어 보는 힘입니다.",
     inLife: "수 기운이 강한 사주는 지혜롭고 감수성이 풍부합니다. 적응력이 뛰어나지만 과도하면 우유부단해지거나 감정에 빠질 수 있어 결단력을 기르는 것이 도움됩니다.",
   },
 };
@@ -490,7 +490,7 @@ function PillarTable({
                   {c.isUnknown ? <span className="text-xl text-muted-foreground">?</span> : (
                     <div className="flex flex-col items-center">
                       <span className={`text-xl font-bold leading-tight ${c.stemEl ? ELEMENT_COLORS[c.stemEl] : ""}`}>
-                        {c.stemChar}<span className="text-base font-normal font-serif">{c.hanja[0]}</span>
+                        {c.stemChar}
                       </span>
                       <span className="text-[10px] text-muted-foreground">{STEM_SIGN[c.stemChar] ?? ""}</span>
                     </div>
@@ -527,7 +527,7 @@ function PillarTable({
                   {c.isUnknown ? <span className="text-xl text-muted-foreground">?</span> : (
                     <div className="flex flex-col items-center">
                       <span className={`text-xl font-bold leading-tight ${c.branchEl ? ELEMENT_COLORS[c.branchEl] : ""}`}>
-                        {c.branchChar}<span className="text-base font-normal font-serif">{c.hanja[1]}</span>
+                        {c.branchChar}
                       </span>
                       <span className="text-[10px] text-muted-foreground">{BRANCH_SIGN[c.branchChar] ?? ""}</span>
                     </div>
@@ -682,10 +682,10 @@ function FiveElementSection({ counts, dayStem }: { counts: FiveElementCount; day
       )}
       <div className="flex gap-4 text-[12px] self-start">
         <span className="flex items-center gap-1 text-muted-foreground">
-          <span className="text-blue-500 font-bold">→</span> 생(生)
+          <span className="text-blue-500 font-bold">→</span> 상생
         </span>
         <span className="flex items-center gap-1 text-muted-foreground">
-          <span className="text-red-500 font-bold">→</span> 극(剋)
+          <span className="text-red-500 font-bold">→</span> 상극
         </span>
       </div>
       <svg viewBox="0 0 296 296" width="100%" style={{ maxWidth: 444 }}>
@@ -1214,7 +1214,7 @@ function GukgukSection({
   const patterns = detectStructurePatterns(dayStem, allStems, allBranches, monthBranch);
   if (!gukguk) return null;
 
-  const toneLabel = gukguk.tone === "길" ? "길格" : gukguk.tone === "흉" ? "흉格" : "중성格";
+  const toneLabel = gukguk.tone === "길" ? "길격" : gukguk.tone === "흉" ? "흉격" : "중성격";
   const toneBadge = gukguk.tone === "길"
     ? "bg-emerald-100 text-emerald-700"
     : gukguk.tone === "흉"
@@ -1232,7 +1232,7 @@ function GukgukSection({
           </div>
           <div className="text-right">
             <span className="text-[11px] text-current/60">
-              월지 {monthBranch}{BRANCH_HANJA[monthBranch] ? `(${BRANCH_HANJA[monthBranch]})` : ""}
+              월지 {monthBranch}
               {gukguk.transparentStem ? ` · ${gukguk.transparentStem} 투출` : ""}
             </span>
           </div>
@@ -1261,7 +1261,7 @@ function GukgukSection({
               className={`rounded-xl border px-3 py-2.5 flex items-start gap-2 ${STRUCTURE_TYPE_COLOR[p.type]}`}
             >
               <span className="text-[11px] font-bold mt-0.5 shrink-0 opacity-70">
-                {p.type === "상생" ? "生" : p.type === "상극" ? "克" : "◎"}
+                {p.type === "상생" ? "생" : p.type === "상극" ? "극" : "◎"}
               </span>
               <div>
                 <p className="text-[13px] font-bold leading-tight">{p.name}</p>
@@ -1403,7 +1403,7 @@ function FortuneCalendar({ record, dayStem, luckCycles, birthYear, adjustedDaewo
               <div className="flex gap-0.5 items-baseline">
                 <span className={`text-xl font-bold ${se ? ELEMENT_COLORS[se] : ""}`}>{dayGZ.stem}</span>
                 <span className={`text-xl font-bold ${be ? ELEMENT_COLORS[be] : ""}`}>{dayGZ.branch}</span>
-                <span className="text-[13px] text-muted-foreground font-serif ml-1">{dayGZ.hanja}</span>
+                {/* hanja 표기는 숨김 */}
               </div>
               <div className="flex gap-1.5 mt-1.5 flex-wrap">
                 {tg && <span className={`text-[13px] font-bold px-1.5 py-0.5 rounded ${getTenGodTw(tg, dayStem ?? "")}`}>천간 {tg}</span>}
@@ -1533,7 +1533,7 @@ function LuckDetailCard({ luckType, ganZhi, period, tg, btg, dayStem }: {
           <span className={se ? ELEMENT_COLORS[se] : ""}>{ganZhi.stem}</span>
           <span className={be ? ELEMENT_COLORS[be] : ""}>{ganZhi.branch}</span>
         </span>
-        <span className="text-sm text-muted-foreground font-serif">{ganZhi.hanja}</span>
+        {/* hanja 표기는 숨김 */}
         <span className="text-[12px] text-muted-foreground ml-1">{period}</span>
       </div>
       {tgData ? (
@@ -1558,7 +1558,7 @@ function LuckDetailCard({ luckType, ganZhi, period, tg, btg, dayStem }: {
           </div>
         </div>
       ) : (
-        <p className="text-[13px] text-muted-foreground">{ganZhi.hangul}({ganZhi.hanja}) 운기입니다. 이 간지의 오행 흐름이 전반적인 운에 영향을 미칩니다.</p>
+        <p className="text-[13px] text-muted-foreground">{ganZhi.hangul} 운기입니다. 이 간지의 오행 흐름이 전반적인 운에 영향을 미칩니다.</p>
       )}
       {btgData && (
         <div className="rounded-xl border border-border/50 bg-muted/10 px-3 py-2.5 space-y-1.5">
@@ -1811,7 +1811,7 @@ function LuckFlowTabs({
                       <span className={`text-lg font-bold ${se ? ELEMENT_COLORS[se] : ""}`}>{ganZhi.stem}</span>
                       <span className={`text-lg font-bold ${be ? ELEMENT_COLORS[be] : ""}`}>{ganZhi.branch}</span>
                     </div>
-                    <p className="text-[13px] text-muted-foreground font-serif">{ganZhi.hanja}</p>
+                    {/* hanja 표기는 숨김 */}
                     {tg && <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded mt-0.5 inline-block ${getTenGodTw(tg, dayStem)}`}>{tg}</span>}
                     {isThisYear && <p className="text-[11px] text-amber-600 font-medium mt-0.5">올해</p>}
                   </button>
@@ -1912,7 +1912,7 @@ function LuckFlowTabs({
                         <div className="flex gap-0.5 items-baseline">
                           <span className={`text-xl font-bold ${se ? ELEMENT_COLORS[se] : ""}`}>{gz.stem}</span>
                           <span className={`text-xl font-bold ${be ? ELEMENT_COLORS[be] : ""}`}>{gz.branch}</span>
-                          <span className="text-[13px] text-muted-foreground font-serif ml-1">{gz.hanja}</span>
+                          {/* hanja 표기는 숨김 */}
                         </div>
                         <div className="flex gap-1.5 mt-1.5 flex-wrap">
                           {tg && <span className={`text-[13px] font-bold px-1.5 py-0.5 rounded ${getTenGodTw(tg, dayStem)}`}>천간 {tg}</span>}
@@ -2280,10 +2280,10 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
   const seasonalNote  = sajuPipelineResult?.interpretation.seasonalNote ?? "";
 
   const pillarData = [
-    { label: "생시", hangul: effectivePillars.hour?.hangul ?? "", hanja: effectivePillars.hour?.hanja ?? "", isUnknown: !effectivePillars.hour || input.timeUnknown || hourMode === "제외" },
-    { label: "생일", hangul: effectivePillars.day?.hangul ?? "", hanja: effectivePillars.day?.hanja ?? "", isDayMaster: true },
-    { label: "생월", hangul: effectivePillars.month?.hangul ?? "", hanja: effectivePillars.month?.hanja ?? "" },
-    { label: "생년", hangul: effectivePillars.year?.hangul ?? "", hanja: effectivePillars.year?.hanja ?? "" },
+    { label: "생시", hangul: effectivePillars.hour?.hangul ?? "", isUnknown: !effectivePillars.hour || input.timeUnknown || hourMode === "제외" },
+    { label: "생일", hangul: effectivePillars.day?.hangul ?? "", isDayMaster: true },
+    { label: "생월", hangul: effectivePillars.month?.hangul ?? "" },
+    { label: "생년", hangul: effectivePillars.year?.hangul ?? "" },
   ];
 
   const dayStem = pillars.day?.hangul?.[0] ?? "";
@@ -2880,7 +2880,6 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                     { label: "년지", branch: pillars.year?.hangul?.[1], isDay: false },
                   ].map(({ label, branch, isDay }, i) => {
                     const hidden = branch ? getHiddenStems(branch) : [];
-                    const hiddenHanja = branch ? (HIDDEN_STEMS_HANJA[branch] ?? []) : [];
                     return (
                       <div key={i} className={`border-r last:border-r-0 border-border ${isDay ? "bg-amber-50" : "bg-card"}`}>
                         <div className="text-center text-[13px] font-medium text-muted-foreground py-1.5 border-b border-border bg-muted/40">{label}</div>
@@ -2894,7 +2893,7 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                                     const el = STEM_ELEMENT[s];
                                     return (
                                       <span key={j} className={`text-[13px] font-semibold px-1.5 py-0.5 rounded-sm ${el ? ELEMENT_BG_COLORS[el] : "bg-muted"}`}>
-                                        {s}<span className="text-[13px] ml-0.5 opacity-70">{hiddenHanja[j]}</span>
+                                        {s}
                                       </span>
                                     );
                                   })}
@@ -3042,7 +3041,7 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                 <div className="flex-1 min-w-0 pr-3">
                   <p className="font-semibold text-foreground text-[13px]">조후 보정</p>
                   <p className="text-[11px] text-muted-foreground mt-0.5">
-                    겨울 수(水) 편중 → 화(火) 보조, 여름 화(火) 편중 → 수(水) 보조 자동 반영
+                    겨울 수 편중 → 화 보조, 여름 화 편중 → 수 보조 자동 반영
                   </p>
                 </div>
                 <button

@@ -734,8 +734,8 @@ export function calculateShinsalFull(
 
     if (branch) {
       // 12신살 계열 (일지 기준)
-      if (branch === dowhwaTarget)    addB("도화",    `일지 ${dayBranch}(日支) 기준 → ${pillar} ${branch}에 도화 발동`);
-      if (branch === hongyeomTarget)  addB("홍염",    `일간 ${dayStem}(日干) 기준 → ${pillar} ${branch}에 홍염 발동`);
+      if (branch === dowhwaTarget)    addB("도화",    `일지 ${dayBranch}와 ${pillar} ${branch}의 조합(${dayBranch}${branch})으로 도화 발동`);
+      if (branch === hongyeomTarget)  addB("홍염",    `일간 ${dayStem} 기준으로 ${pillar} ${branch}에서 홍염 발동`);
       if (branch === yeongmaTarget)   addB("역마",    `일지 ${dayBranch} 기준 → ${pillar} ${branch}에 역마 발동`);
       if (branch === hwagaeTarget)    addB("화개",    `일지 ${dayBranch} 기준 → ${pillar} ${branch}에 화개 발동`);
       if (branch === jangseongTarget) addB("장성살",  `일지 ${dayBranch} 기준 → ${pillar} ${branch}에 장성살 발동`);
@@ -800,15 +800,15 @@ export function calculateShinsalFull(
       if (SAMHYEONG_GROUP_A.has(branch) && hasSamhyeongA)
         addB(
           "삼형살(인사신)",
-          `사주 지지에 인(寅)·사(巳)·신(申)이 모두 있어 삼형살(인사신) 형성`
+          "사주 지지에 인·사·신이 모두 있어 삼형살(인사신) 형성"
         );
       if (SAMHYEONG_GROUP_B.has(branch) && hasSamhyeongB)
         addB(
           "삼형살(축술미)",
-          `사주 지지에 축(丑)·술(戌)·미(未)가 모두 있어 삼형살(축술미) 형성`
+          "사주 지지에 축·술·미가 모두 있어 삼형살(축술미) 형성"
         );
       if ((branch === "자" || branch === "묘") && hasSanghyeong)
-        addB("상형살(자묘)", `사주 지지에 자(子)·묘(卯)가 함께 있어 상형살(자묘) 형성`);
+        addB("상형살(자묘)", "사주 지지에 자·묘가 함께 있어 상형살(자묘) 형성");
       if (JAJYEONG_BRANCHES.has(branch) && jajyeongActive.has(branch))
         addB(
           "자형살",
@@ -834,9 +834,9 @@ export function calculateShinsalFull(
 
     // 일주 기반 신살 (일주에만 표시)
     if (pillar === "일주") {
-      if (isGoranSal)      addP("고란살",   `일주 ${dayHangul}은 고란살 일주 — 독수공방의 기운`);
-      if (isEunyangChacha) addP("음양차착살",`일주 ${dayHangul}은 음양차착살 일주 — 음양 기운의 착오`);
-      if (isIlgwiin)       addP("일귀인",   `일주 ${dayHangul}은 일귀인 일주 — 자연스러운 귀인의 기운`);
+      if (isGoranSal)      addP("고란살",   `일주 ${dayHangul}은 고란살 일주로 분류됩니다`);
+      if (isEunyangChacha) addP("음양차착살",`일주 ${dayHangul}은 음양차착살 일주로 분류됩니다`);
+      if (isIlgwiin)       addP("일귀인",   `일주 ${dayHangul}은 일귀인 일주로 분류됩니다`);
     }
 
     // 일주 전체 패턴 (백호·괴강)

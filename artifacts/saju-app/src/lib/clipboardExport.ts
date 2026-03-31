@@ -91,28 +91,28 @@ export function buildPersonClipboardText(record: PersonRecord): string {
   const drainCount   = allChars.filter(c => { const e = STEM_EL[c]; return e === sikanEl || e === jaeEl || e === gwansEl; }).length;
   const deungseStr   = supportCount > drainCount ? "yes" : supportCount === drainCount ? "partial" : "no";
 
-  // 격국 (格局): 월지 십성 기반
+  // 격국: 월지 십성 기반
   const monthTG = dayStem && monthBranch ? getTenGod(dayStem, monthBranch) : null;
   const geokgukMap: Record<string, string> = {
-    비견: "비겁격(比劫格)", 겁재: "비겁격(比劫格)",
-    식신: "식신격(食神格)", 상관: "상관격(傷官格)",
-    편재: "편재격(偏財格)", 정재: "정재격(正財格)",
-    편관: "편관격(七殺格)", 정관: "정관격(正官格)",
-    편인: "편인격(梟神格)", 정인: "정인격(正印格)",
+    비견: "비겁격", 겁재: "비겁격",
+    식신: "식신격", 상관: "상관격",
+    편재: "편재격", 정재: "정재격",
+    편관: "편관격", 정관: "정관격",
+    편인: "편인격", 정인: "정인격",
   };
-  const geokguk = monthTG ? (geokgukMap[monthTG] ?? `${monthTG}格`) : "불명";
+  const geokguk = monthTG ? (geokgukMap[monthTG] ?? `${monthTG}격`) : "불명";
 
-  // 조후 필요 오행 (調候): 계절 기반 온도 보정 원소
+  // 조후 필요 오행: 계절 기반 온도 보정 원소
   let johu = "조후 보완 불필요";
   if (WINTER_BR.includes(monthBranch)) {
-    johu = "병(丙)·정(丁)화 — 한냉 해소 필요";
+    johu = "병·정화 — 한냉 해소 필요";
   } else if (SUMMER_BR.includes(monthBranch)) {
     if (["병", "정", "무", "기"].includes(dayStem)) {
-      johu = "임(壬)·계(癸)수 — 조열 해소 필요";
+      johu = "임·계수 — 조열 해소 필요";
     } else if (["경", "신"].includes(dayStem)) {
-      johu = "임(壬)수 또는 토(土) — 조열 해소 필요";
+      johu = "임수 또는 토 — 조열 해소 필요";
     } else {
-      johu = "수(水) 보완 권장";
+      johu = "수 보완 권장";
     }
   }
 
@@ -188,7 +188,7 @@ export function buildPersonClipboardText(record: PersonRecord): string {
   const PILLAR_LABELS: Record<string, string> = { year: "년주", month: "월주", day: "일주", hour: "시주" };
   for (const key of ["year", "month", "day", "hour"] as const) {
     const p = pillars[key];
-    if (p) lines.push(`  ${PILLAR_LABELS[key]}: ${p.hangul}  (${p.hanja ?? ""})`);
+    if (p) lines.push(`  ${PILLAR_LABELS[key]}: ${p.hangul}`);
   }
   lines.push("");
 
@@ -196,9 +196,9 @@ export function buildPersonClipboardText(record: PersonRecord): string {
   lines.push(`[일간]`);
   lines.push(`  ${dayStem}(${STEM_EL[dayStem] ?? ""}일간) — ${STRENGTH_DISPLAY_LABEL[strengthLevel] ?? schema.strengthDisplayLabel} [${strengthLevel}]`);
   lines.push(`  ${schema.strengthDesc}`);
-  lines.push(`  득령(得令): ${deungryeong ? "O" : "X"}  득지(得地): ${deungjiStr === "yes" ? "O" : deungjiStr === "partial" ? "△" : "X"}  득세(得勢): ${deungseStr === "yes" ? "O" : deungseStr === "partial" ? "△" : "X"}`);
-  lines.push(`  격국(格局): ${geokguk}`);
-  lines.push(`  조후(調候): ${johu}`);
+  lines.push(`  득령: ${deungryeong ? "O" : "X"}  득지: ${deungjiStr === "yes" ? "O" : deungjiStr === "partial" ? "△" : "X"}  득세: ${deungseStr === "yes" ? "O" : deungseStr === "partial" ? "△" : "X"}`);
+  lines.push(`  격국: ${geokguk}`);
+  lines.push(`  조후: ${johu}`);
   lines.push("");
 
   // 오행 분포
@@ -246,10 +246,10 @@ export function buildPersonClipboardText(record: PersonRecord): string {
 
   // 용신 그룹 (희신/기신/구신)
   lines.push(`[희신 / 기신 / 구신]`);
-  lines.push(`  용신(用神): ${yongshinEl}  (${schema.yongshinTenGodGroup}격, 신뢰도: ${schema.yongshinConfidence})`);
-  lines.push(`  희신(喜神): ${heeshinEl || "없음"}`);
-  lines.push(`  기신(忌神): ${gishinEls.join("·") || "없음"}`);
-  lines.push(`  구신(仇神): ${[...new Set(gushinEls)].join("·") || "없음"}`);
+  lines.push(`  용신: ${yongshinEl}  (${schema.yongshinTenGodGroup}격, 신뢰도: ${schema.yongshinConfidence})`);
+  lines.push(`  희신: ${heeshinEl || "없음"}`);
+  lines.push(`  기신: ${gishinEls.join("·") || "없음"}`);
+  lines.push(`  구신: ${[...new Set(gushinEls)].join("·") || "없음"}`);
   lines.push("");
 
   // 배우자궁

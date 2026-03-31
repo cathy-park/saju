@@ -301,7 +301,7 @@ export interface TenGodGroupDetail {
 export const TEN_GOD_GROUPS: TenGodGroupDetail[] = [
   {
     group: "비겁",
-    title: "비겁 比劫 — 자아와 경쟁",
+    title: "비겁 — 자아와 경쟁",
     meaning: "일간(나)과 같은 오행으로, 자아·경쟁·형제를 상징합니다. 비견(동성)과 겁재(이성)로 나뉩니다.",
     chartPoint: "비겁이 많으면 자기주장이 강하고 독립적입니다. 적으면 의지력이 부족할 수 있습니다.",
     relationship: "경쟁자나 라이벌 관계가 생기기 쉽습니다. 형제·자매와의 관계를 나타냅니다.",
@@ -312,8 +312,8 @@ export const TEN_GOD_GROUPS: TenGodGroupDetail[] = [
   },
   {
     group: "식상",
-    title: "식상 食傷 — 표현과 창의",
-    meaning: "일간이 생(生)하는 오행으로, 표현·창의·자녀를 상징합니다. 식신(동성 생)과 상관(이성 생)으로 나뉩니다.",
+    title: "식상 — 표현과 창의",
+    meaning: "일간이 생하는 오행으로, 표현·창의·자녀를 상징합니다. 식신(동성 생)과 상관(이성 생)으로 나뉩니다.",
     chartPoint: "식상이 많으면 표현력이 풍부하고 창의적입니다. 적으면 표현이 서툴 수 있습니다.",
     relationship: "자녀운과 연결됩니다. 자신을 표현하는 방식이 이성 관계에 영향을 미칩니다.",
     work: "예술, 교육, 요식업, 연예, 기획 분야에서 두각을 나타냅니다.",
@@ -323,8 +323,8 @@ export const TEN_GOD_GROUPS: TenGodGroupDetail[] = [
   },
   {
     group: "재성",
-    title: "재성 財星 — 재물과 실행",
-    meaning: "일간이 극(剋)하는 오행으로, 재물·아버지·아내(남성 기준)를 상징합니다.",
+    title: "재성 — 재물과 실행",
+    meaning: "일간이 극하는 오행으로, 재물·아버지·아내(남성 기준)를 상징합니다.",
     chartPoint: "재성이 강하면 재물 운이 좋고 현실적입니다. 너무 많으면 탐욕이나 피로가 생깁니다.",
     relationship: "남성에게는 배우자 인연을 나타냅니다. 재물을 통한 만남이 이루어질 수 있습니다.",
     work: "사업, 금융, 유통, 영업 분야에서 능력을 발휘합니다.",
@@ -334,8 +334,8 @@ export const TEN_GOD_GROUPS: TenGodGroupDetail[] = [
   },
   {
     group: "관성",
-    title: "관성 官星 — 명예와 규율",
-    meaning: "일간을 극(剋)하는 오행으로, 직업·명예·남편(여성 기준)·자녀(남성 기준)를 상징합니다.",
+    title: "관성 — 명예와 규율",
+    meaning: "일간을 극하는 오행으로, 직업·명예·남편(여성 기준)·자녀(남성 기준)를 상징합니다.",
     chartPoint: "관성이 강하면 책임감과 명예 의식이 강합니다. 너무 많으면 압박감을 느낄 수 있습니다.",
     relationship: "여성에게는 배우자 인연을 나타냅니다. 사회적 지위를 통한 인연이 생깁니다.",
     work: "공직, 법조, 경영, 교육, 의료 분야에서 뛰어납니다.",
@@ -345,8 +345,8 @@ export const TEN_GOD_GROUPS: TenGodGroupDetail[] = [
   },
   {
     group: "인성",
-    title: "인성 印星 — 학문과 보호",
-    meaning: "일간을 생(生)하는 오행으로, 학문·어머니·보호·명예를 상징합니다.",
+    title: "인성 — 학문과 보호",
+    meaning: "일간을 생하는 오행으로, 학문·어머니·보호·명예를 상징합니다.",
     chartPoint: "인성이 강하면 학문적이고 보수적입니다. 너무 많으면 게으르거나 의존적이 될 수 있습니다.",
     relationship: "어머니·윗사람의 보살핌이 크게 작용합니다. 안정적인 관계를 선호합니다.",
     work: "교육, 연구, 행정, 의료, 종교 분야에서 강점을 보입니다.",
@@ -608,7 +608,7 @@ function LuckSheet({ info }: { info: Extract<InfoSheetType, { kind: "luck" }> })
         </div>
         <DrawerTitle className="text-2xl font-bold">{info.ganZhiStr}</DrawerTitle>
         <DrawerDescription>
-          {info.ganZhiHanja} — {luckTypeDesc[info.luckType]}
+        {luckTypeDesc[info.luckType]}
           {info.period && ` · ${info.period}`}
         </DrawerDescription>
       </DrawerHeader>
@@ -624,7 +624,7 @@ function LuckSheet({ info }: { info: Extract<InfoSheetType, { kind: "luck" }> })
           <Section
             color="sky"
             label="이 시기의 기운"
-            content={`${info.ganZhiStr}(${info.ganZhiHanja}) 운기입니다. ${info.luckType === "일운" ? "오늘 하루의 일진으로, 이 기운에 맞는 활동을 선택하면 좋습니다." : "이 간지의 오행 흐름이 전반적인 운에 영향을 미칩니다."}`}
+            content={`${info.ganZhiStr} 운기입니다. ${info.luckType === "일운" ? "오늘 하루의 일진으로, 이 기운에 맞는 활동을 선택하면 좋습니다." : "이 간지의 오행 흐름이 전반적인 운에 영향을 미칩니다."}`}
           />
         )}
         {branchTgLuck && (

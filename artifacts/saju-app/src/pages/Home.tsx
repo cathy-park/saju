@@ -273,7 +273,7 @@ function Dashboard({ record }: { record: PersonRecord }) {
                 return <span key={i} style={{ color: el ? ELEMENT_TEXT_HEX[el] : "#111" }}>{ch}</span>;
               })}
             </span>
-            <span style={{ fontSize: 12, color: "#CCCCCC", fontFamily: "serif" }}>{fortune.dayGanZhiHanja}</span>
+            {/* hanja 표기는 숨김 */}
           </div>
 
           {/* 키워드 chips (오른쪽) */}
@@ -415,7 +415,7 @@ function Dashboard({ record }: { record: PersonRecord }) {
                     <span style={{ color: stemColor }}>{layer.ganZhi[0]}</span>
                     <span style={{ color: branchColor }}>{layer.ganZhi[1]}</span>
                   </span>
-                  {layer.hanja && <span style={{ fontSize: 11, color: "#CCCCCC", fontFamily: "serif" }}>{layer.hanja}</span>}
+                  {/* hanja 표기는 숨김 */}
                 </div>
                 <div style={{ display: "flex", gap: 3, flexWrap: "wrap" }}>
                   {layer.tenGod && (
@@ -521,7 +521,7 @@ function LuckInterpretSheet({ fortune, onClose }: { fortune: ReturnType<typeof g
                     <span style={{ color: stemColor }}>{layer.ganZhi[0]}</span>
                     <span style={{ color: branchColor }}>{layer.ganZhi[1]}</span>
                   </span>
-                  {layer.hanja && <span style={{ fontSize: 12, color: "#CCCCCC", fontFamily: "serif" }}>{layer.hanja}</span>}
+                  {/* hanja 표기는 숨김 */}
                   {layer.twelveStage && (
                     <span style={{ fontSize: 10, fontWeight: 700, color: "#888", background: "rgba(0,0,0,0.06)", borderRadius: 20, padding: "2px 7px", marginLeft: "auto" }}>
                       {layer.twelveStage}

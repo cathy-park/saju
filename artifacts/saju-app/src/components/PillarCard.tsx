@@ -41,9 +41,6 @@ export function PillarCard({ label, pillar, unknown, highlight }: PillarCardProp
             }`}
           >
             {stemChar}
-            <div className="text-[13px] font-normal text-muted-foreground font-serif">
-              {pillar.hanja?.[0]}
-            </div>
           </div>
           <div
             className={`py-1.5 font-bold text-base ${
@@ -51,9 +48,6 @@ export function PillarCard({ label, pillar, unknown, highlight }: PillarCardProp
             }`}
           >
             {branchChar}
-            <div className="text-[13px] font-normal text-muted-foreground font-serif">
-              {pillar.hanja?.[1]}
-            </div>
           </div>
         </>
       )}

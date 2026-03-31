@@ -54,7 +54,6 @@ export function TodayFortuneCard({ record, year, month, day }: TodayFortuneCardP
                 <GanjiText key={i} ch={ch} />
               ))}
             </p>
-            <p className="text-[13px] text-muted-foreground font-serif">{fortune.dayGanZhiHanja}</p>
           </div>
           <div className="flex-1">
             <p className="text-sm font-semibold text-foreground mb-1">{fortune.summary}</p>
@@ -82,7 +81,6 @@ export function TodayFortuneCard({ record, year, month, day }: TodayFortuneCardP
                 <span className="font-bold text-sm">
                   {layer.ganZhi.split("").map((ch, i) => <GanjiText key={i} ch={ch} />)}
                 </span>
-                <span className="text-[11px] text-muted-foreground/60 font-serif ml-0.5">{layer.hanja}</span>
               </div>
               <div className="flex flex-wrap gap-1">
                 {layer.tenGod && (
