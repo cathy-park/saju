@@ -29,6 +29,51 @@ import {
 } from "./interpretSchema";
 import { applyInterpretationRules, type RuleResult } from "./interpretationRules";
 
+// ── 지장간 오행 증폭 (地藏干 Augmentation) ────────────────────────
+// Adds hidden stem elements to a five-element count with fractional weights.
+// Used ONLY for 용신 (yongshin) calculation to improve element-balance accuracy.
+// NOT used for display — the UI always shows the raw surface count.
+//
+// Weight rationale (여기 0.05 / 중기 0.12 / 본기 0.00):
+//   본기 is already captured by the branch's surface element, so weight=0.
+//   여기 and 중기 represent the non-본기 qi that standard scoring misses.
+const _JIJANGGAN_AUG: Record<string, string[]> = {
+  자: ["임", "계"],         축: ["계", "신", "기"],
+  인: ["무", "병", "갑"],   묘: ["갑", "을"],
+  진: ["을", "계", "무"],   사: ["무", "경", "병"],
+  오: ["병", "기", "정"],   미: ["정", "을", "기"],
+  신: ["무", "임", "경"],   유: ["경", "신"],
+  술: ["신", "정", "무"],   해: ["무", "갑", "임"],
+};
+const _JZG_AUG_W = [0.05, 0.12, 0.00] as const; // 여기, 중기, 본기
+
+const _STEM_TO_EL_AUG: Record<string, FiveElKey> = {
+  갑: "목", 을: "목", 병: "화", 정: "화", 무: "토", 기: "토",
+  경: "금", 신: "금", 임: "수", 계: "수",
+};
+
+/**
+ * Augment a surface five-element count with fractional hidden stem (지장간)
+ * contributions. The result reflects the REAL qi balance more accurately
+ * than the surface 8-character count alone.
+ */
+function augmentWithJijanggan(
+  base: FiveElementCount,
+  allBranches: string[],
+): FiveElementCount {
+  const result: FiveElementCount = { ...base };
+  for (const b of allBranches) {
+    const hiddens = _JIJANGGAN_AUG[b] ?? [];
+    for (let j = 0; j < hiddens.length; j++) {
+      const w = _JZG_AUG_W[Math.min(j, _JZG_AUG_W.length - 1)];
+      if (w === 0) continue;
+      const el = _STEM_TO_EL_AUG[hiddens[j]];
+      if (el) result[el] = (result[el] ?? 0) + w;
+    }
+  }
+  return result;
+}
+
 // ── Layer 1: Raw Inputs ────────────────────────────────────────────
 
 export interface PipelineInput {
@@ -40,6 +85,11 @@ export interface PipelineInput {
   effectiveFiveElements: FiveElementCount;
   manualStrengthLevel?: string | null;
   manualYongshinData?: Array<{ type: string; elements: string[] }> | null;
+  /** Expert options — all optional, defaults match legacy behavior */
+  expertOptions?: {
+    /** Disable 조후 보정 (seasonal yongshin secondary injection) */
+    seasonalAdjustmentOff?: boolean;
+  };
 }
 
 // ── Layer 2: Base Structure Calculation ───────────────────────────
@@ -70,7 +120,12 @@ function computeBaseStructure(input: PipelineInput): BaseStructure {
 
   const strengthScore = computeStrengthScore(dayStem, monthBranch, allStems, allBranches);
   const strengthLevel = computeStrengthLevel(dayStem, effectiveFiveElements, monthBranch, allStems, allBranches);
-  const yongshinResult = computeYongshinFull(dayStem, strengthLevel, effectiveFiveElements);
+
+  // Use 지장간-augmented element counts for yongshin.
+  // This gives a more accurate picture of the qi balance (including 여기/중기 hidden stems)
+  // without changing the displayed 오행 distribution.
+  const augmentedForYongshin = augmentWithJijanggan(effectiveFiveElements, allBranches);
+  const yongshinResult = computeYongshinFull(dayStem, strengthLevel, augmentedForYongshin);
 
   return { fiveElements: effectiveFiveElements, tenGodGroups, strengthScore, strengthLevel, yongshinResult, dayMasterElement };
 }
@@ -140,12 +195,43 @@ function computeAdjustedStructure(
     ? (input.manualStrengthLevel as StrengthLevel)
     : base.strengthLevel;
 
-  // Recompute yongshin from effective strength level
-  const recalcYongshin = computeYongshinFull(input.dayStem, effectiveStrengthLevel, input.effectiveFiveElements);
-  const effectiveYongshin = recalcYongshin.primary;
-  const effectiveYongshinSecondary = recalcYongshin.secondary;
+  // Recompute yongshin from effective strength level using 지장간-augmented counts
+  const _augForRecalc = augmentWithJijanggan(input.effectiveFiveElements, input.allBranches);
+  const recalcYongshin = computeYongshinFull(input.dayStem, effectiveStrengthLevel, _augForRecalc);
+  let effectiveYongshin = recalcYongshin.primary;
+  let effectiveYongshinSecondary = recalcYongshin.secondary;
 
   const seasonalAdjustment = computeSeasonalAdjustment(input.monthBranch, input.effectiveFiveElements);
+
+  // ── 조후용신 연결 (調候用神) ──────────────────────────────────────
+  // If seasonal adjustment is needed and the user hasn't manually overridden,
+  // inject the 조후용신 as secondary (or promote to primary if very strong).
+  //
+  // Rule:
+  //   • 겨울 + 수 편중 → 화(火) 필요 (warming 조후)
+  //   • 여름 + 화 편중 → 수(水) 필요 (cooling 조후)
+  //
+  // We only ADD the 조후 element as secondary if it isn't already present.
+  // If the 억부용신 already agrees with 조후, no change is needed.
+  // Expert option: can be disabled via seasonalAdjustmentOff.
+  if (!isYongshinOverridden && !input.expertOptions?.seasonalAdjustmentOff) {
+    if (seasonalAdjustment.needsFireBoost) {
+      // 조후: 화(火) 필요
+      if (effectiveYongshin !== "화") {
+        // 억부 primary isn't 화 — inject 화 as secondary or swap if very imbalanced
+        if (effectiveYongshinSecondary !== "화") {
+          effectiveYongshinSecondary = "화";
+        }
+      }
+    } else if (seasonalAdjustment.needsWaterBoost) {
+      // 조후: 수(水) 필요
+      if (effectiveYongshin !== "수") {
+        if (effectiveYongshinSecondary !== "수") {
+          effectiveYongshinSecondary = "수";
+        }
+      }
+    }
+  }
 
   return {
     ...base,

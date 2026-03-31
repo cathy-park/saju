@@ -1950,8 +1950,11 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
       effectiveFiveElements,
       manualStrengthLevel: localStrengthLevel,
       manualYongshinData: localYongshinData,
+      expertOptions: {
+        seasonalAdjustmentOff: record.fortuneOptions?.seasonalAdjustmentOff ?? false,
+      },
     });
-  }, [effectiveFiveElements, effectivePillars, localStrengthLevel, localYongshinData]);
+  }, [effectiveFiveElements, effectivePillars, localStrengthLevel, localYongshinData, record.fortuneOptions?.seasonalAdjustmentOff]);
 
   const ruleInsights = sajuPipelineResult?.interpretation.ruleInsights ?? [];
   const structureType = sajuPipelineResult?.interpretation.structureType ?? "";
@@ -2679,6 +2682,82 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
                 </div>
               );
             })()}
+          </AccSection>
+
+          {/* 전문가 계산 설정 */}
+          <AccSection title="계산 설정 (전문가)">
+            <div className="space-y-3 text-[13px]">
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                아래 옵션은 사주 계산 방식을 세밀하게 조정합니다. 기본값이 표준 만세력 동작에 가장 가깝습니다.
+              </p>
+
+              {/* 조후 보정 on/off */}
+              <div className="flex items-center justify-between py-2 border-b border-border/40">
+                <div className="flex-1 min-w-0 pr-3">
+                  <p className="font-semibold text-foreground text-[13px]">조후 보정 (調候用神)</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    겨울 수(水) 편중 → 화(火) 보조, 여름 화(火) 편중 → 수(水) 보조 자동 반영
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    const current = record.fortuneOptions?.seasonalAdjustmentOff ?? false;
+                    updatePersonRecord(record.id, {
+                      fortuneOptions: { ...record.fortuneOptions, seasonalAdjustmentOff: !current }
+                    });
+                  }}
+                  className={`shrink-0 w-11 h-6 rounded-full border transition-colors relative ${
+                    !(record.fortuneOptions?.seasonalAdjustmentOff ?? false)
+                      ? "bg-indigo-500 border-indigo-500"
+                      : "bg-muted border-border"
+                  }`}
+                  title="조후 보정 켜기/끄기"
+                >
+                  <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${
+                    !(record.fortuneOptions?.seasonalAdjustmentOff ?? false) ? "left-[22px]" : "left-0.5"
+                  }`} />
+                </button>
+              </div>
+
+              {/* 신살 보수 모드 */}
+              <div className="flex items-center justify-between py-2">
+                <div className="flex-1 min-w-0 pr-3">
+                  <p className="font-semibold text-foreground text-[13px]">신살 보수 모드</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    천문성을 연지·일지만 적용 (기본 활성화). 확장 모드는 월지·시지까지 포함합니다.
+                  </p>
+                </div>
+                <div className="shrink-0 flex gap-1">
+                  {(["보수", "기본"] as const).map((mode) => {
+                    const isActive = mode === "보수"
+                      ? (record.fortuneOptions?.shinsalMode ?? "default") === "conservative"
+                      : (record.fortuneOptions?.shinsalMode ?? "default") === "default";
+                    return (
+                      <button
+                        key={mode}
+                        onClick={() => {
+                          const val = mode === "보수" ? "conservative" : "default";
+                          updatePersonRecord(record.id, {
+                            fortuneOptions: { ...record.fortuneOptions, shinsalMode: val }
+                          });
+                        }}
+                        className={`text-[11px] px-2.5 py-1 rounded-full border font-semibold transition-all ${
+                          isActive
+                            ? "bg-indigo-500 text-white border-indigo-500"
+                            : "bg-muted/30 text-muted-foreground border-border"
+                        }`}
+                      >
+                        {mode}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <p className="text-[10px] text-muted-foreground/70 pt-1">
+                대운수 수동 수정은 '운세' 탭에서 가능합니다. 지장간 통근 보정·지지충 약화·절기 기반 대운수는 항상 자동 적용됩니다.
+              </p>
+            </div>
           </AccSection>
 
           {/* 수동 지지관계 추가 다이얼로그 */}

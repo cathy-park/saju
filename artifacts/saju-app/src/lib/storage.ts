@@ -50,6 +50,24 @@ export interface ManualBranchRelation {
 
 export interface FortuneOptions {
   daewoonStartAgeOverride?: number | null;
+  /**
+   * Expert option: Shinsal rule strictness.
+   * "conservative" → only high-confidence shinsal (smaller set, fewer false positives)
+   * "expanded"     → full shinsal set including minor / contextual ones
+   * Default: "default" (balanced — current auto behavior)
+   */
+  shinsalMode?: "conservative" | "default" | "expanded";
+  /**
+   * Expert option: Disable 조후 보정 (seasonal adjustment on yongshin secondary).
+   * When true, yongshin secondary is determined purely by 억부법, ignoring season.
+   */
+  seasonalAdjustmentOff?: boolean;
+  /**
+   * Expert option: Apply 천간합화 (Heavenly Stem Combination Transformation).
+   * When two matching stems combine (e.g. 甲+己→土), their element contribution changes.
+   * Disabled by default because it is complex and context-dependent.
+   */
+  ganhapChemyong?: boolean;
 }
 
 export interface PersonRecord {

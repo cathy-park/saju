@@ -25,6 +25,29 @@ const STEM_ELEMENT: Record<string, FiveElKey> = {
   해: "수", 자: "수",
 };
 
+// ── 지장간 (地藏干) — hidden stems per branch ─────────────────────
+// Order: [여기(餘氣), 중기(中氣), 본기(本氣)]  (본기 = last element)
+// Used for: strength overlay, yongshin augmentation
+const JIJANGGAN: Record<string, string[]> = {
+  자: ["임", "계"],           // 壬(여기) 癸(본기)
+  축: ["계", "신", "기"],     // 癸(여기) 辛(중기) 己(본기)
+  인: ["무", "병", "갑"],     // 戊(여기) 丙(중기) 甲(본기)
+  묘: ["갑", "을"],           // 甲(여기) 乙(본기)
+  진: ["을", "계", "무"],     // 乙(여기) 癸(중기) 戊(본기)
+  사: ["무", "경", "병"],     // 戊(여기) 庚(중기) 丙(본기)
+  오: ["병", "기", "정"],     // 丙(여기) 己(중기) 丁(본기)
+  미: ["정", "을", "기"],     // 丁(여기) 乙(중기) 己(본기)
+  신: ["무", "임", "경"],     // 戊(여기) 壬(중기) 庚(본기)
+  유: ["경", "신"],           // 庚(여기) 辛(본기)
+  술: ["신", "정", "무"],     // 辛(여기) 丁(중기) 戊(본기)
+  해: ["무", "갑", "임"],     // 戊(여기) 甲(중기) 壬(본기)
+};
+// Weights per jijanggan position: [여기 w, 중기 w, 본기 w]
+// 본기 is the same as the branch's main element (already scored in step 1/2),
+// so we use SMALL weights here — this is purely an ADDITIVE CORRECTION for
+// the non-본기 stems that the surface scoring misses.
+const JZG_W = [0.05, 0.12, 0.00] as const; // 본기=0 (not double-counted; main branch already captures it)
+
 // ── Strength level (7-level for graph visualization) ─────────────
 
 export type StrengthLevel =
@@ -115,6 +138,79 @@ export function computeStrengthScore(
     else if (sEl === gwaEl) score -= 1;
     else if (sEl === sikEl) score -= 0.5;
     else if (sEl === jaeEl) score -= 0.3;
+  }
+
+  // 4. 지지충 약화 보정 (地支沖) — branches in 충 with each other lose 40% effectiveness
+  //
+  // When two branches are in 충 (direct opposition), they clash and weaken each other.
+  // Critically: if the MONTH BRANCH is being 충'd, 得令 (seasonal power) is disrupted.
+  //
+  // Implementation: for each branch in 충, subtract back 40% of what it contributed in step 2.
+  // This is equivalent to scoring it at 60% effectiveness instead of 100%.
+  const CHUNG_OPPOSITE: Record<string, string> = {
+    자: "오", 오: "자", 축: "미", 미: "축",
+    인: "신", 신: "인", 묘: "유", 유: "묘",
+    진: "술", 술: "진", 사: "해", 해: "사",
+  };
+
+  // 4a. 월령충 (月令沖): month branch being 충'd — 得令 power disrupted
+  if (monthBranch) {
+    const mChungPartner = CHUNG_OPPOSITE[monthBranch];
+    const mOtherBranches = allBranches.filter(b => b !== monthBranch);
+    if (mChungPartner && mOtherBranches.includes(mChungPartner)) {
+      const mEl = STEM_ELEMENT[monthBranch] as FiveElKey | undefined;
+      if (mEl) {
+        const mContrib =
+          mEl === dmEl  ? 3 : mEl === genEl ? 2.5 : mEl === gwaEl ? -2.5
+          : mEl === sikEl ? -1.5 : mEl === jaeEl ? -1 : 0;
+        score -= mContrib * 0.4; // undo 40% of month branch (得令 충파)
+      }
+    }
+  }
+
+  // 4b. 일반 지지충 (non-month branches)
+  for (const b of allBranches) {
+    if (b === monthBranch) continue; // already handled above
+    const partner = CHUNG_OPPOSITE[b];
+    if (!partner || !allBranches.includes(partner)) continue;
+    const bEl = STEM_ELEMENT[b] as FiveElKey | undefined;
+    if (!bEl) continue;
+    const contrib =
+      bEl === dmEl  ? 1.5 : bEl === genEl ? 1.5 : bEl === gwaEl ? -1.5
+      : bEl === sikEl ? -0.8 : bEl === jaeEl ? -0.5 : 0;
+    score -= contrib * 0.4; // undo 40% of clashed branch contribution
+  }
+
+  // 5. 지장간 통근 보정 (地藏干 通根 Overlay)
+  //
+  // The branch scoring above uses only the branch's 본기 (main qi) element.
+  // But branches also contain 여기/중기 hidden stems with DIFFERENT elements —
+  // most notably the four earth branches (진술축미) which hide 목/화/수 stems
+  // that can support or drain day masters the surface element doesn't reveal.
+  //
+  // Example corrections:
+  //   술(戌, main=土): hides 정(丁, 火) — partially supports 병(丙) DM
+  //   진(辰, main=土): hides 을(乙, 木), 계(癸, 水) — supports 목 and 수 DMs
+  //   축(丑, main=土): hides 계(癸, 水), 신(辛, 金) — supports 수 and 금 DMs
+  //   미(未, main=土): hides 정(丁, 火), 을(乙, 木) — supports 화 and 목 DMs
+  //   인(寅, main=木): hides 무(戊, 土), 병(丙, 火) —토 DMs get partial root here
+  //   해(亥, main=水): hides 무(戊, 土), 갑(甲, 木) — 토/목 DMs get partial root
+  //
+  // We skip 본기 (weight=0) to avoid double-counting with the main branch score.
+  for (const b of allBranches) {
+    const mainEl = STEM_ELEMENT[b] as FiveElKey | undefined;
+    const hiddens = JIJANGGAN[b] ?? [];
+    for (let j = 0; j < hiddens.length; j++) {
+      const w = JZG_W[Math.min(j, JZG_W.length - 1)];
+      if (w === 0) continue; // 본기 — already captured by main branch element
+      const hEl = STEM_ELEMENT[hiddens[j]] as FiveElKey | undefined;
+      if (!hEl || hEl === mainEl) continue; // same element as 본기 → already scored
+      if (hEl === dmEl)       score += w * 1.5;
+      else if (hEl === genEl) score += w * 1.0;
+      else if (hEl === gwaEl) score -= w * 1.0;
+      else if (hEl === sikEl) score -= w * 0.5;
+      else if (hEl === jaeEl) score -= w * 0.3;
+    }
   }
 
   return score;
