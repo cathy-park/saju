@@ -207,7 +207,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signInWithGoogle = async () => {
-    const redirectTo = `${window.location.origin}/auth/callback`;
+    const baseUrl = import.meta.env.BASE_URL ?? "/";
+    const normalizedBase = baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`;
+    // Redirect back to the app root instead of a deep-link.
+    // This avoids 404s on hosts that aren't configured for SPA rewrites.
+    // Supabase will still parse the session from the URL on load.
+    const redirectTo = new URL(normalizedBase, window.location.origin).toString();
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo, queryParams: { prompt: "select_account" } },

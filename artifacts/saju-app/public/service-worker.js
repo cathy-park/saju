@@ -1,9 +1,8 @@
-const CACHE_NAME = "naheuleum-v2";
+const CACHE_NAME = "naheuleum-v3";
 const STATIC_ASSETS = [
-  "/",
   "/manifest.json",
   "/icon-192.png",
-  "/icon-512.png"
+  "/icon-512.png",
 ];
 
 self.addEventListener("install", (event) => {
@@ -27,9 +26,20 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
   if (url.origin !== self.location.origin) return;
 
+  // Never cache navigations / HTML. This prevents "old UI" issues
+  // where a previously cached index.html keeps getting served.
+  const accept = event.request.headers.get("accept") || "";
+  if (event.request.mode === "navigate" || accept.includes("text/html")) {
+    event.respondWith(fetch(event.request));
+    return;
+  }
+
   event.respondWith(
     fetch(event.request)
       .then((response) => {
+        if (!response || response.status !== 200) return response;
+        const contentType = response.headers.get("content-type") || "";
+        if (contentType.includes("text/html")) return response;
         const clone = response.clone();
         caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
         return response;

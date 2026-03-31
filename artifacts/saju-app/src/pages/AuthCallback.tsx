@@ -7,15 +7,36 @@ export default function AuthCallback() {
   const [, setLocation] = useLocation();
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    (async () => {
+      try {
+        // Handle both flows:
+        // - PKCE: `?code=...` (exchangeCodeForSession)
+        // - Implicit: `#access_token=...` (getSessionFromUrl)
+        const authAny = supabase.auth as unknown as {
+          getSessionFromUrl?: (opts?: { storeSession?: boolean }) => Promise<unknown>;
+        };
+
+        if (typeof authAny.getSessionFromUrl === "function") {
+          await authAny.getSessionFromUrl({ storeSession: true });
+        }
+      } catch {
+        // ignore and fall back to other methods
+      }
+
+      const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         setLocation("/");
-      } else {
-        supabase.auth.exchangeCodeForSession(window.location.href).then(() => {
-          setLocation("/");
-        });
+        return;
       }
-    });
+
+      // PKCE fallback (when the provider returns a `code`)
+      try {
+        await supabase.auth.exchangeCodeForSession(window.location.href);
+      } catch {
+        // ignore; we'll rely on auth state listener in AuthProvider if session appears later
+      }
+      setLocation("/");
+    })();
   }, [setLocation]);
 
   return (

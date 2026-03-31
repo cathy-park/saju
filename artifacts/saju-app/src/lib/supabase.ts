@@ -7,15 +7,41 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
   console.warn("[supabase] Missing env vars: VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY - running in local-only mode");
 }
 
-const safeUrl = SUPABASE_URL || "https://placeholder.supabase.co";
-const safeKey = SUPABASE_ANON_KEY || "placeholder-key";
+type SupabaseLike = ReturnType<typeof createClient>;
 
-export const supabase = createClient(safeUrl, safeKey, {
-  auth: {
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: true,
-  },
-});
+function createNoopSupabase(): SupabaseLike {
+  // Minimal stub that prevents hard crashes when Supabase env/config is missing
+  // or WebCrypto/PKCE features are unavailable on the current runtime.
+  const err = () => Promise.reject(new Error("Supabase is not configured"));
+  const noopAuth = {
+    getSession: async () => ({ data: { session: null }, error: null }),
+    onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
+    signInWithOAuth: async () => {},
+    signOut: async () => {},
+    exchangeCodeForSession: async () => ({ data: { session: null }, error: null }),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    getSessionFromUrl: async (_opts?: any) => ({ data: { session: null }, error: null }),
+  };
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return { auth: noopAuth, from: () => ({ select: err, upsert: err, delete: err, insert: err, eq: () => ({}) }) } as any;
+}
+
+export const supabase: SupabaseLike = (() => {
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return createNoopSupabase();
+  try {
+    return createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: {
+        flowType: "pkce",
+        autoRefreshToken: true,
+        persistSession: true,
+        detectSessionInUrl: true,
+      },
+    });
+  } catch (e) {
+    console.warn("[supabase] Failed to initialize client; falling back to noop.", e);
+    return createNoopSupabase();
+  }
+})();
 
 export type SupabaseUser = Awaited<ReturnType<typeof supabase.auth.getUser>>["data"]["user"];
