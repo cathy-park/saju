@@ -1011,11 +1011,6 @@ export const SHINSAL_DESC: Record<string, string> = {
   고란살: "독수공방살로 고독과 이별의 기운이 있습니다. 연애·결혼에서 어려움이 있을 수 있으나 독립심이 강합니다",
   음양차착살: "음양의 기운이 어긋나는 일주로 배우자와의 갈등이나 행로의 엇갈림을 나타냅니다",
   일귀인: "일귀인(日貴人) 일주로 자연스러운 귀인의 기운이 일상에서 작동합니다",
-  // 기타 신살
-  복성귀인: "위기 회복력이 높아지나, 무모한 도전은 자제하는 것이 좋습니다",
-  천관귀인: "명예 기운이 강해지나, 체면에 집착하면 오히려 역효과를 낼 수 있습니다",
-  천주귀인: "귀인 보호의 기운이나, 수동적 자세는 오히려 기회를 놓칠 수 있습니다",
-  학당귀인: "학습 집중력이 올라가는 시기이나, 지나친 이론 편중에 주의하세요",
   급각살: "빠른 변화와 급작스러운 사고를 주의해야 합니다. 서두름보다 신중함이 필요합니다",
   낙정관살: "우물에 빠지는 살로, 함정이나 속임수에 주의가 필요합니다. 충동적 결정을 경계하세요",
   탕화살: "뜨거운 불과 물의 살로 화상·화재·물 사고에 주의가 필요합니다. 감정 과열에도 주의하세요",
@@ -1080,10 +1075,6 @@ export const SHINSAL_COLOR: Record<string, string> = {
   음양차착살: "bg-pink-100 text-pink-800 border-pink-300",
   일귀인: "bg-yellow-50 text-yellow-800 border-yellow-200",
   // 기타
-  복성귀인: "bg-lime-50 text-lime-700 border-lime-200",
-  천관귀인: "bg-violet-50 text-violet-700 border-violet-200",
-  천주귀인: "bg-purple-50 text-purple-700 border-purple-200",
-  학당귀인: "bg-blue-50 text-blue-700 border-blue-200",
   급각살: "bg-orange-100 text-orange-700 border-orange-300",
   낙정관살: "bg-slate-100 text-slate-700 border-slate-300",
   탕화살: "bg-red-50 text-red-700 border-red-200",
