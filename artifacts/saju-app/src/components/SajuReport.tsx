@@ -1161,18 +1161,39 @@ function FortuneCalendar({ record, dayStem, luckCycles, birthYear }: {
         })}
       </div>
 
-      {selectedDay !== null && selectedFortune && (
-        <div className="mt-4 space-y-3">
-          <TodayFortuneCard record={record} year={viewYear} month={viewMonth} day={selectedDay} />
-          {calCombined && (
-            <div className="rounded-xl border border-rose-100 bg-rose-50/40 px-3 py-3 space-y-1.5">
-              <p className="text-[11px] font-bold text-rose-600 uppercase tracking-wide">대운 × 세운 × 월운 × 일운 결합 해석</p>
-              <p className="text-[12px] text-rose-400 font-mono">{calCombined.layerDesc}</p>
-              <p className="text-[13px] text-foreground leading-relaxed">{calCombined.combinedText}</p>
+      {selectedDay !== null && (() => {
+        const dayGZ = getDayGanZhi(viewYear, viewMonth, selectedDay);
+        const se = getStemElement(dayGZ.stem);
+        const be = STEM_ELEMENT[dayGZ.branch] ?? null;
+        const tg = dayStem ? getTenGod(dayStem, dayGZ.stem) : null;
+        const btg = dayStem ? getTenGod(dayStem, dayGZ.branch) : null;
+        return (
+          <div className="mt-4 space-y-3">
+            {/* 일운 형식 카드 */}
+            <div className="w-full rounded-xl border border-border bg-muted/20 px-3 py-3">
+              <p className="text-[13px] text-muted-foreground mb-1.5">일운 · {viewMonth}월 {selectedDay}일</p>
+              <div className="flex gap-0.5 items-baseline">
+                <span className={`text-xl font-bold ${se ? ELEMENT_COLORS[se] : ""}`}>{dayGZ.stem}</span>
+                <span className={`text-xl font-bold ${be ? ELEMENT_COLORS[be] : ""}`}>{dayGZ.branch}</span>
+                <span className="text-[13px] text-muted-foreground font-serif ml-1">{dayGZ.hanja}</span>
+              </div>
+              <div className="flex gap-1.5 mt-1.5 flex-wrap">
+                {tg && <span className={`text-[13px] font-bold px-1.5 py-0.5 rounded ${TEN_GOD_COLOR[tg as TenGod] ?? "bg-muted"}`}>천간 {tg}</span>}
+                {btg && <span className={`text-[13px] font-bold px-1.5 py-0.5 rounded ${TEN_GOD_COLOR[btg as TenGod] ?? "bg-muted"}`}>지지 {btg}</span>}
+              </div>
             </div>
-          )}
-        </div>
-      )}
+
+            {/* 결합 해석 */}
+            {calCombined && (
+              <div className="rounded-xl border border-rose-100 bg-rose-50/40 px-3 py-3 space-y-1.5">
+                <p className="text-[11px] font-bold text-rose-600 uppercase tracking-wide">대운 × 세운 × 월운 × 일운 결합 해석</p>
+                <p className="text-[12px] text-rose-400 font-mono">{calCombined.layerDesc}</p>
+                <p className="text-[13px] text-foreground leading-relaxed">{calCombined.combinedText}</p>
+              </div>
+            )}
+          </div>
+        );
+      })()}
     </div>
   );
 }
@@ -1354,6 +1375,22 @@ function LuckFlowTabs({
   const [selectedSeunYear, setSelectedSeunYear] = useState<number>(now.getFullYear());
   const selectedSeunEntry = luckCycles.seun.find((e) => e.year === selectedSeunYear) ?? null;
 
+  // ── 대운수 수동 편집 ──────────────────────────────────────────
+  const storedOverride = record.fortuneOptions?.daewoonStartAgeOverride ?? null;
+  const [editingDaewoonSu, setEditingDaewoonSu] = useState(false);
+  const [daewoonSuDraft, setDaewoonSuDraft] = useState<string>("");
+  const displayDaewoonSu = storedOverride != null ? storedOverride : daewoonSu;
+
+  function saveDaewoonSuOverride() {
+    const val = parseInt(daewoonSuDraft, 10);
+    if (!isNaN(val) && val >= 0 && val <= 10) {
+      updatePersonRecord(record.id, { fortuneOptions: { ...record.fortuneOptions, daewoonStartAgeOverride: val } });
+    } else if (daewoonSuDraft === "" || daewoonSuDraft === "자동") {
+      updatePersonRecord(record.id, { fortuneOptions: { ...record.fortuneOptions, daewoonStartAgeOverride: null } });
+    }
+    setEditingDaewoonSu(false);
+  }
+
   return (
     <div className="space-y-3">
       {/* Tab switcher */}
@@ -1380,12 +1417,47 @@ function LuckFlowTabs({
           <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-amber-50/60 border border-amber-100">
             <div className="text-center shrink-0">
               <p className="text-[11px] font-semibold text-amber-600 uppercase tracking-wide">대운수</p>
-              <p className="text-2xl font-bold text-amber-700">{daewoonSu}</p>
+              {editingDaewoonSu ? (
+                <div className="flex items-center gap-1 mt-0.5">
+                  <input
+                    type="number"
+                    min={0}
+                    max={10}
+                    value={daewoonSuDraft}
+                    onChange={(e) => setDaewoonSuDraft(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") saveDaewoonSuOverride(); if (e.key === "Escape") setEditingDaewoonSu(false); }}
+                    autoFocus
+                    className="w-12 text-center text-lg font-bold border border-amber-400 rounded-md px-1 py-0.5 bg-white focus:outline-none"
+                  />
+                  <button onClick={saveDaewoonSuOverride} className="text-[11px] bg-amber-500 text-white rounded px-1.5 py-1 font-bold">저장</button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1">
+                  <p className="text-2xl font-bold text-amber-700">{displayDaewoonSu}</p>
+                  <button
+                    onClick={() => { setDaewoonSuDraft(String(displayDaewoonSu)); setEditingDaewoonSu(true); }}
+                    className="text-[11px] text-amber-500 border border-amber-300 rounded px-1.5 py-0.5 hover:bg-amber-100 transition-colors"
+                    title="대운수 수동 수정"
+                  >
+                    수정
+                  </button>
+                  {storedOverride != null && (
+                    <button
+                      onClick={() => updatePersonRecord(record.id, { fortuneOptions: { ...record.fortuneOptions, daewoonStartAgeOverride: null } })}
+                      className="text-[10px] text-muted-foreground border border-border rounded px-1 py-0.5 hover:bg-muted/40"
+                      title="자동 계산으로 되돌리기"
+                    >
+                      자동
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
             <div className="w-px h-10 bg-amber-200 shrink-0" />
             <div className="flex-1 min-w-0">
               <p className="text-[12px] text-amber-700">
-                만 <span className="font-bold">{daewoonSu}세</span>부터 대운이 시작됩니다
+                만 <span className="font-bold">{displayDaewoonSu}세</span>부터 대운이 시작됩니다
+                {storedOverride != null && <span className="ml-1 text-[10px] text-amber-500">(수동 설정)</span>}
               </p>
               {currentDaewoon && (
                 <p className="text-[12px] text-amber-600 mt-0.5">
@@ -1493,6 +1565,21 @@ function LuckFlowTabs({
             </div>
           </div>
 
+          {/* 대운 × 선택된 세운 결합 해석 (상세 카드 위) */}
+          {currentDaewoon && selectedSeunEntry && dayStem && (() => {
+            const { layerDesc, combinedText } = getCombinedFortuneText(dayStem, [
+              { label: "대운", ganZhi: currentDaewoon.ganZhi },
+              { label: "세운", ganZhi: selectedSeunEntry.ganZhi },
+            ]);
+            return (
+              <div className="rounded-xl border border-indigo-100 bg-indigo-50/40 px-3 py-3 space-y-1.5">
+                <p className="text-[11px] font-bold text-indigo-600 uppercase tracking-wide">대운 × 세운 결합 해석</p>
+                <p className="text-[12px] text-indigo-400 font-mono">{layerDesc}</p>
+                <p className="text-[13px] text-foreground leading-relaxed">{combinedText}</p>
+              </div>
+            );
+          })()}
+
           {/* 선택된 세운 인라인 상세 카드 */}
           {selectedSeunEntry && (() => {
             const { ganZhi } = selectedSeunEntry;
@@ -1506,21 +1593,6 @@ function LuckFlowTabs({
                 tg={tg}
                 btg={btg}
               />
-            );
-          })()}
-
-          {/* 대운 × 선택된 세운 결합 해석 */}
-          {currentDaewoon && selectedSeunEntry && dayStem && (() => {
-            const { layerDesc, combinedText } = getCombinedFortuneText(dayStem, [
-              { label: "대운", ganZhi: currentDaewoon.ganZhi },
-              { label: "세운", ganZhi: selectedSeunEntry.ganZhi },
-            ]);
-            return (
-              <div className="rounded-xl border border-indigo-100 bg-indigo-50/40 px-3 py-3 space-y-1.5">
-                <p className="text-[11px] font-bold text-indigo-600 uppercase tracking-wide">대운 × 세운 결합 해석</p>
-                <p className="text-[12px] text-indigo-400 font-mono">{layerDesc}</p>
-                <p className="text-[13px] text-foreground leading-relaxed">{combinedText}</p>
-              </div>
             );
           })()}
         </div>

@@ -44,15 +44,15 @@ const AuthContext = createContext<AuthState>({
  *
  * Each step is isolated so one failure doesn't block the rest.
  */
-async function syncWithSupabase(uid: string, userMeta: SupabaseUser): Promise<void> {
+async function syncWithSupabase(uid: string, userMeta: SupabaseUser | null): Promise<void> {
   const errors: string[] = [];
 
   // 1. Mirror auth user metadata (best-effort)
   try {
     await upsertUserProfile({
       id: uid,
-      email: userMeta.email ?? undefined,
-      user_metadata: (userMeta.user_metadata ?? {}) as Record<string, unknown>,
+      email: userMeta?.email ?? undefined,
+      user_metadata: (userMeta?.user_metadata ?? {}) as Record<string, unknown>,
     });
   } catch (e) {
     console.warn("[auth] upsertUserProfile failed:", e);

@@ -48,6 +48,10 @@ export interface ManualBranchRelation {
   branch2: string;
 }
 
+export interface FortuneOptions {
+  daewoonStartAgeOverride?: number | null;
+}
+
 export interface PersonRecord {
   id: string;
   birthInput: BirthInput;
@@ -65,6 +69,7 @@ export interface PersonRecord {
   manualDerived?: ManualDerived;
   manualFiveElements?: FiveElementCount;
   manualTenGodCounts?: ManualTenGodCounts;
+  fortuneOptions?: FortuneOptions;
   createdAt: string;
   updatedAt: string;
 }
