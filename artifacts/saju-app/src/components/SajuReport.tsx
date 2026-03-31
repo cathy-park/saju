@@ -2690,7 +2690,7 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
 
           {/* 格局 및 구조 분석 */}
           {dayStem && (
-            <AccSection title="格局 및 구조 분석">
+            <AccSection title="격국 및 구조 분석">
               <GukgukSection
                 dayStem={dayStem}
                 monthBranch={effectivePillars.month?.hangul?.[1]}
@@ -2702,7 +2702,7 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
 
           {/* 신살 */}
           {dayStem && dayBranch && (
-            <AccSection title="신살 神殺">
+            <AccSection title="신살">
               <div className="space-y-3">
                 <p className="text-[13px] text-muted-foreground">
                   일간 <span className="font-bold text-foreground">{dayStem}</span> · 일지 <span className="font-bold text-foreground">{dayBranch}</span> 기준
@@ -2850,7 +2850,7 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
           )}
 
           {/* 지장간·12운성 */}
-          <AccSection title="지장간 · 12운성 地藏干">
+          <AccSection title="지장간 · 12운성">
             <div className="space-y-4">
               <div>
                 <p className="text-[13px] font-semibold text-muted-foreground mb-2">지장간 地藏干</p>
@@ -2923,7 +2923,7 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
           </AccSection>
 
           {/* 천간·지지 관계 */}
-          <AccSection title="천간 · 지지 관계 干支關係">
+          <AccSection title="천간 · 지지 관계">
             {(() => {
               const visibleAuto = branchRelations.filter((rel) => {
                 const key = `${rel.type}:${rel.description}`;
@@ -3401,7 +3401,7 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
           )}
 
           {/* 오행 균형 */}
-          <AccSection title="오행 균형 五行均衡">
+          <AccSection title="오행 균형">
             <div className="rounded-lg border border-sky-100 bg-sky-50/40 px-3 py-2.5">
               <p className="text-sm">{getElementBalanceSummary(effectiveFiveElements)}</p>
             </div>
@@ -3409,7 +3409,7 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
           </AccSection>
 
           {/* 십성 분포 */}
-          <AccSection title="십성 분포 十星分布" defaultOpen>
+          <AccSection title="십성 분포" defaultOpen>
             {dayStem ? (
               <div className="space-y-4">
                 <div>
@@ -3478,7 +3478,7 @@ export function SajuReport({ record, showSaveStatus = true }: SajuReportProps) {
 
           {/* 배우자궁 */}
           {spousePalace && (
-            <AccSection title="배우자궁 配偶者宮" defaultOpen>
+            <AccSection title="배우자궁" defaultOpen>
               <div className="rounded-xl border border-rose-100 bg-rose-50/40 p-4 space-y-3">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-rose-100 border border-rose-200 flex items-center justify-center">
