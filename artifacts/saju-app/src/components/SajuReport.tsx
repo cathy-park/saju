@@ -1280,7 +1280,7 @@ function getDaewoonInterpretationText(dayStem: string, ganZhi: { hangul: string;
 
 // ── Luck Flow Tabs ─────────────────────────────────────────────────
 
-type LuckTabKey = "대운" | "세운" | "월/일운" | "달력";
+type LuckTabKey = "대운" | "세운" | "월운" | "일운";
 
 function LuckDetailCard({ luckType, ganZhi, period, tg, btg }: {
   luckType: string;
@@ -1356,12 +1356,11 @@ function LuckFlowTabs({
   record: PersonRecord;
 }) {
   const [tab, setTab] = useState<LuckTabKey>("대운");
-  const [subTab, setSubTab] = useState<"월운" | "일운">("월운");
   const TABS: { key: LuckTabKey; label: string }[] = [
     { key: "대운", label: "대운" },
     { key: "세운", label: "세운" },
-    { key: "월/일운", label: "월/일운" },
-    { key: "달력", label: "달력" },
+    { key: "월운", label: "월운" },
+    { key: "일운", label: "일운" },
   ];
   const now = new Date();
   const [selectedWolunYear, setSelectedWolunYear] = useState(now.getFullYear());
@@ -1620,28 +1619,11 @@ function LuckFlowTabs({
         </div>
       )}
 
-      {/* 월/일운 panel */}
-      {tab === "월/일운" && (
+      {/* 월운 panel */}
+      {tab === "월운" && (
         <div className="space-y-3">
-          {/* Sub-tabs */}
-          <div className="flex gap-1.5">
-            {(["월운", "일운"] as const).map((st) => (
-              <button
-                key={st}
-                onClick={() => setSubTab(st)}
-                className={`flex-1 py-1.5 text-sm font-semibold rounded-xl border transition-all active:scale-95 ${
-                  subTab === st
-                    ? "bg-foreground text-background border-foreground"
-                    : "bg-muted/30 text-muted-foreground border-border"
-                }`}
-              >
-                {st}
-              </button>
-            ))}
-          </div>
-
-          {/* 월운 sub */}
-          {subTab === "월운" && (() => {
+          {/* 월운 content */}
+          {(() => {
             const thisYear = now.getFullYear();
             const thisMonth = now.getMonth() + 1;
             const wolunSeun = luckCycles.seun.find(e => e.year === selectedWolunYear) ?? null;
@@ -1723,54 +1705,11 @@ function LuckFlowTabs({
             );
           })()}
 
-          {/* 일운 sub */}
-          {subTab === "일운" && (
-            <div className="space-y-3">
-              {(() => {
-                const { ganZhi: gz, month, day } = luckCycles.ilun;
-                const se = getStemElement(gz.stem);
-                const be = STEM_ELEMENT[gz.branch] ?? null;
-                const tg = dayStem ? getTenGod(dayStem, gz.stem) : null;
-                const btg = dayStem ? getTenGod(dayStem, gz.branch) : null;
-                return (
-                  <div className="w-full rounded-xl border border-border bg-muted/20 px-3 py-3">
-                    <p className="text-[13px] text-muted-foreground mb-1.5">일운 · {month}월 {day}일</p>
-                    <div className="flex gap-0.5 items-baseline">
-                      <span className={`text-xl font-bold ${se ? ELEMENT_COLORS[se] : ""}`}>{gz.stem}</span>
-                      <span className={`text-xl font-bold ${be ? ELEMENT_COLORS[be] : ""}`}>{gz.branch}</span>
-                      <span className="text-[13px] text-muted-foreground font-serif ml-1">{gz.hanja}</span>
-                    </div>
-                    <div className="flex gap-1.5 mt-1.5 flex-wrap">
-                      {tg && <span className={`text-[13px] font-bold px-1.5 py-0.5 rounded ${TEN_GOD_COLOR[tg as TenGod] ?? "bg-muted"}`}>천간 {tg}</span>}
-                      {btg && <span className={`text-[13px] font-bold px-1.5 py-0.5 rounded ${TEN_GOD_COLOR[btg as TenGod] ?? "bg-muted"}`}>지지 {btg}</span>}
-                    </div>
-                  </div>
-                );
-              })()}
-
-              {/* 대운 × 세운 × 월운 × 일운 결합 */}
-              {currentDaewoon && currentSeun && dayStem && (() => {
-                const { layerDesc, combinedText } = getCombinedFortuneText(dayStem, [
-                  { label: "대운", ganZhi: currentDaewoon.ganZhi },
-                  { label: "세운", ganZhi: currentSeun.ganZhi },
-                  { label: "월운", ganZhi: luckCycles.wolun.ganZhi },
-                  { label: "일운", ganZhi: luckCycles.ilun.ganZhi },
-                ]);
-                return (
-                  <div className="rounded-xl border border-rose-100 bg-rose-50/40 px-3 py-3 space-y-1.5">
-                    <p className="text-[11px] font-bold text-rose-600 uppercase tracking-wide">대운 × 세운 × 월운 × 일운 결합 해석</p>
-                    <p className="text-[12px] text-rose-400 font-mono">{layerDesc}</p>
-                    <p className="text-[13px] text-foreground leading-relaxed">{combinedText}</p>
-                  </div>
-                );
-              })()}
-            </div>
-          )}
         </div>
       )}
 
-      {/* 달력 panel */}
-      {tab === "달력" && <FortuneCalendar record={record} dayStem={dayStem} luckCycles={luckCycles} birthYear={birthYear} adjustedDaewoon={adjustedDaewoon} />}
+      {/* 일운 panel (달력) */}
+      {tab === "일운" && <FortuneCalendar record={record} dayStem={dayStem} luckCycles={luckCycles} birthYear={birthYear} adjustedDaewoon={adjustedDaewoon} />}
     </div>
   );
 }
