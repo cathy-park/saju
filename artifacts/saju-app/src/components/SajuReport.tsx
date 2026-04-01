@@ -228,6 +228,19 @@ function AccSection({
 
 type ShinsalTagRef = { id: string; name: string };
 
+function ShinsalChip({ name }: { name: string }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex max-w-full whitespace-normal break-words rounded-full border px-2.5 py-1 text-left text-[13px] font-bold",
+        SHINSAL_COLOR[name] ?? "border-border bg-muted text-foreground",
+      )}
+    >
+      {name}
+    </span>
+  );
+}
+
 function ShinsalTagStrip({
   tags,
   selectedId,
@@ -3219,6 +3232,33 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
     return cols;
   }, [shinsalInterpretEntries]);
 
+  const orderedShinsalInsights = useMemo(() => {
+    // Order follows the same visual order as YuanGuo PillarTable:
+    // 시→일→월→년 columns, and within each column: 천간 tags → 지지 tags.
+    const orderedNames: string[] = [];
+    for (const col of shinsalPerColumn) {
+      for (const t of col.stem) orderedNames.push(t.name);
+      for (const t of col.branch) orderedNames.push(t.name);
+    }
+    const seen = new Set<string>();
+    const uniqueOrdered = orderedNames.filter((n) => {
+      if (seen.has(n)) return false;
+      seen.add(n);
+      return true;
+    });
+
+    const byName = new Map<string, ShinsalInterpretationEntry>();
+    for (const e of shinsalInterpretEntries) {
+      if (!byName.has(e.name)) byName.set(e.name, e);
+    }
+
+    const names = uniqueOrdered.length > 0 ? uniqueOrdered : [...finalShinsalNames];
+    return names
+      .filter((n) => finalShinsalNames.has(n))
+      .map((name) => ({ name, oneLine: byName.get(name)?.oneLine ?? "" }))
+      .filter((x) => x.oneLine);
+  }, [finalShinsalNames, shinsalInterpretEntries, shinsalPerColumn]);
+
   const selectedShinsalEntry = useMemo(() => {
     if (yuanGuoInlineDetail?.kind !== "shinsal") return null;
     return shinsalInterpretEntries.find((e) => e.id === yuanGuoInlineDetail.id) ?? null;
@@ -4326,14 +4366,21 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
           )}
 
           {/* 신살 해석 */}
-          {lifeFlowData.shinsalInsight && (interpretTab === "전체" || interpretTab === "사랑" || interpretTab === "배우자운") && (
+          {orderedShinsalInsights.length > 0 && (interpretTab === "전체" || interpretTab === "사랑" || interpretTab === "배우자운") && (
             <div className="rounded-xl border border-amber-200 bg-amber-50/40 px-3.5 py-3 space-y-2">
               <p className="text-[13px] font-semibold text-amber-700 uppercase tracking-wide flex items-center gap-1">
                 <Star className="h-3 w-3" />
                 신살 기운 해석
               </p>
-              <div className="ds-inline-detail-nested space-y-0">
-                <p className="text-[13px] text-foreground leading-relaxed">{lifeFlowData.shinsalInsight}</p>
+              <div className="space-y-2">
+                {orderedShinsalInsights.map(({ name, oneLine }) => (
+                  <div key={name} className="ds-inline-detail-nested p-3 space-y-2">
+                    <ShinsalChip name={name} />
+                    <div className="ds-inline-detail-nested">
+                      <p className="text-[13px] text-foreground leading-relaxed">{oneLine}</p>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           )}
