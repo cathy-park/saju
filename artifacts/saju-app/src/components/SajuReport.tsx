@@ -1245,12 +1245,14 @@ function computeTenGodDistribution(
 function pickDominantTenGodGroups(args: {
   groupRaw: Record<string, number>;
   rawTotal: number;
-  order?: readonly ["비겁", "식상", "재성", "관성", "인성"];
+  order?: readonly ("비겁" | "식상" | "재성" | "관성" | "인성")[];
 }): {
   primary: { group: "비겁" | "식상" | "재성" | "관성" | "인성"; pctExact: number; pctRounded: number; raw: number } | null;
   secondary: { group: "비겁" | "식상" | "재성" | "관성" | "인성"; pctExact: number; pctRounded: number; raw: number } | null;
 } {
-  const order = args.order ?? (["비겁", "식상", "재성", "관성", "인성"] as const);
+  const order = (args.order ?? ["비겁", "식상", "재성", "관성", "인성"]) as Array<
+    "비겁" | "식상" | "재성" | "관성" | "인성"
+  >;
   const items = order.map((g) => {
     const raw = args.groupRaw[g] ?? 0;
     const pctExact = (raw / (args.rawTotal || 1));
@@ -3055,24 +3057,6 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
     effectivePillars.year?.hangul?.[0], effectivePillars.year?.hangul?.[1],
   ].filter((c): c is string => !!c);
 
-  // ── 대표 십성(그룹) 단일 source ───────────────────────────────
-  const dominantTenGodPair = useMemo(() => {
-    if (!dayStem) return { primary: null as ReturnType<typeof pickDominantTenGodGroups>["primary"], secondary: null as ReturnType<typeof pickDominantTenGodGroups>["secondary"] };
-    const dayElStem = STEM_ELEMENT[dayStem] as FiveElKey | undefined;
-    const { groupRaw, rawTotal } = computeTenGodDistribution(dayStem, dayElStem, allChars, effectiveFiveElements);
-    return pickDominantTenGodGroups({ groupRaw, rawTotal });
-  }, [dayStem, allChars, effectiveFiveElements]);
-
-  useEffect(() => {
-    if (reportTab !== "성격해석" || !dayStem) return;
-    if (personalityTengodSeededRef.current) return;
-    personalityTengodSeededRef.current = true;
-    if (dominantTenGodPair.primary) {
-      setSelectedTgGroupInline({ group: dominantTenGodPair.primary.group, pct: dominantTenGodPair.primary.pctRounded });
-      setPersonalityTengodUserPicked(false);
-    }
-  }, [reportTab, dayStem, dominantTenGodPair.primary]);
-
   const allStems = [
     effectivePillars.hour?.hangul?.[0], dayStem,
     effectivePillars.month?.hangul?.[0], effectivePillars.year?.hangul?.[0],
@@ -3097,6 +3081,35 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
       allBranches,
     });
   }, [effectiveFiveElements, effectivePillars, dayStemForCompute, allStems, allBranches]);
+
+  // ── 대표 십성(그룹) 단일 source ───────────────────────────────
+  // 동률(예: 비겁38% vs 식상38%)일 때는 "대표 오행(atAGlancePrimary)"이 가리키는 십성 그룹을 우선합니다.
+  // 이렇게 해야 원국 탭의 대표 오행/대표 십성과 성격해석 탭 대표가 어긋나지 않습니다.
+  const dominantTenGodPair = useMemo(() => {
+    if (!dayStem) {
+      return {
+        primary: null as ReturnType<typeof pickDominantTenGodGroups>["primary"],
+        secondary: null as ReturnType<typeof pickDominantTenGodGroups>["secondary"],
+      };
+    }
+    const dayMasterEl = STEM_ELEMENT[dayStem] as FiveElKey | undefined;
+    const preferred =
+      dayMasterEl && atAGlancePrimary ? (getTenGodGroup(dayMasterEl, atAGlancePrimary) as "비겁" | "식상" | "재성" | "관성" | "인성") : null;
+    const base = ["비겁", "식상", "재성", "관성", "인성"] as const;
+    const order = preferred ? [preferred, ...base.filter((g) => g !== preferred)] : base;
+    const { groupRaw, rawTotal } = computeTenGodDistribution(dayStem, dayMasterEl, allChars, effectiveFiveElements);
+    return pickDominantTenGodGroups({ groupRaw, rawTotal, order });
+  }, [dayStem, atAGlancePrimary, allChars, effectiveFiveElements]);
+
+  useEffect(() => {
+    if (reportTab !== "성격해석" || !dayStem) return;
+    if (personalityTengodSeededRef.current) return;
+    personalityTengodSeededRef.current = true;
+    if (dominantTenGodPair.primary) {
+      setSelectedTgGroupInline({ group: dominantTenGodPair.primary.group, pct: dominantTenGodPair.primary.pctRounded });
+      setPersonalityTengodUserPicked(false);
+    }
+  }, [reportTab, dayStem, dominantTenGodPair.primary]);
 
   // Debug helper (opt-in): localStorage.debugStrength === "1"
   if (typeof window !== "undefined") {
