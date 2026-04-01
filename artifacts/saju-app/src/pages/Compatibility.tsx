@@ -2,7 +2,6 @@ import { useState, useCallback, useMemo } from "react";
 import { useParams } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PillarCard } from "@/components/PillarCard";
 import type { CompatibilityResult, CompatibilityTone } from "@/lib/compatibilityScore";
 import { buildFullCompatibilityReport, COMPAT_TONE_COLOR } from "@/lib/compatibilityReport";
@@ -57,7 +56,6 @@ function MiniPersonCard({
   gender,
   dayHangul,
   zodiac,
-  extraBadge,
   hourMode,
   onHourModeChange,
 }: {
@@ -66,7 +64,6 @@ function MiniPersonCard({
   gender: string;
   dayHangul: string;
   zodiac: ZodiacInfo | null;
-  extraBadge?: { label: string; className?: string } | null;
   hourMode: "포함" | "제외";
   onHourModeChange: (m: "포함" | "제외") => void;
 }) {
@@ -88,11 +85,6 @@ function MiniPersonCard({
             <GenderSymbol gender={gender} />
           </div>
           <p className="mt-0.5 text-[12px] font-semibold text-muted-foreground">{dayText}</p>
-          {extraBadge ? (
-            <div className="mt-1">
-              <span className={cn("ds-badge text-[11px] font-semibold shadow-none", extraBadge.className)}>{extraBadge.label}</span>
-            </div>
-          ) : null}
         </div>
       </div>
 
@@ -327,6 +319,16 @@ function getElCardStyle(el: string | null): React.CSSProperties {
   };
 }
 
+function getDayPillarCardStyle(dayHangul: string): React.CSSProperties {
+  const stem = dayHangul?.[0] ?? "";
+  const el = charToElement(stem);
+  if (!el) return {};
+  return {
+    background: elementColorVar(el as FiveElKey, "muted"),
+    borderColor: elementColorVar(el as FiveElKey, "base"),
+  };
+}
+
 // ── Element Mirror — Mirrored Bar Chart ──────────────────────────
 
 // Generating (a → b): a generates b
@@ -453,6 +455,36 @@ function AccSection({
         />
       </button>
       <div className={cn("space-y-4 pb-2", !open && "hidden")}>{children}</div>
+    </div>
+  );
+}
+
+function CardAccordion({
+  title,
+  defaultOpen = false,
+  children,
+}: {
+  title: string;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="rounded-xl border border-border overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between px-4 py-3 bg-muted/20 hover:bg-muted/35 transition-colors"
+      >
+        <span className="text-sm font-bold text-foreground">{title}</span>
+        <ChevronDown
+          className={cn(
+            "h-4 w-4 text-muted-foreground transition-transform duration-200",
+            open && "rotate-180",
+          )}
+        />
+      </button>
+      {open && <div className="p-4 space-y-4">{children}</div>}
     </div>
   );
 }
@@ -715,24 +747,26 @@ export default function Compatibility() {
           <p className="ds-subtitle mt-1">아래에서 두 분을 선택하면 궁합 리포트가 이어집니다.</p>
         )}
       </div>
-      {/* ── 모드 탭 (내 사주 segmented control 동일 컴포넌트) ── */}
+      {/* ── 모드 탭: 사주 포함/제외 세그먼트와 동일 스타일 ── */}
       {canUsePairMode && (
-        <Tabs value={mode} onValueChange={(v) => setMode(v as "me_other" | "pair")}>
-          <TabsList className="min-h-10 w-full rounded-xl border border-border shadow-none">
-            <TabsTrigger
-              className="flex-1 text-[12px] data-[state=active]:font-extrabold data-[state=active]:border-primary/40"
-              value="me_other"
+        <div className="ds-segment-list min-h-10 w-full rounded-xl border border-border shadow-none">
+          {([
+            { key: "me_other" as const, label: "나 ↔ 상대" },
+            { key: "pair" as const, label: "상대끼리" },
+          ]).map(({ key, label }) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setMode(key)}
+              className={cn(
+                "ds-segment-item flex-1 text-[12px] font-bold shadow-none",
+                mode === key ? "ds-segment-item-active" : "ds-segment-item-inactive",
+              )}
             >
-              나 ↔ 상대
-            </TabsTrigger>
-            <TabsTrigger
-              className="flex-1 text-[12px] data-[state=active]:font-extrabold data-[state=active]:border-primary/40"
-              value="pair"
-            >
-              상대끼리
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
+              {label}
+            </button>
+          ))}
+        </div>
       )}
       {people.length === 0 ? (
         <Card>
@@ -815,7 +849,6 @@ export default function Compatibility() {
                         gender={myGender}
                         dayHangul={myPillarsForZodiac?.day?.hangul ?? ""}
                         zodiac={myZodiac}
-                        extraBadge={null}
                         hourMode={hourModeA}
                         onHourModeChange={setHourModeA}
                       />
@@ -828,46 +861,9 @@ export default function Compatibility() {
                         gender={otherGender}
                         dayHangul={otherPillarsFull?.day?.hangul ?? ""}
                         zodiac={otherZodiac}
-                        extraBadge={
-                          mode === "me_other"
-                            ? {
-                                label: `${RELATIONSHIP_TYPE_EMOJI[(p2 as PersonRecord & { relationshipType?: RelationshipType }).relationshipType ?? "other"]} ${(p2 as PersonRecord & { relationshipType?: RelationshipType }).relationshipType ? ({ lover: "연인", spouse: "배우자", friend: "친구", coworker: "동료", family: "가족", other: "기타" } as const)[(p2 as PersonRecord & { relationshipType?: RelationshipType }).relationshipType ?? "other"] : "관계"}`,
-                                className: "border-border bg-muted/40 text-foreground",
-                              }
-                            : null
-                        }
                         hourMode={hourModeB}
                         onHourModeChange={setHourModeB}
                       />
-                  </div>
-
-                  {/* 요약 타일 (일간 관계 / 배우자궁) — 스샷 5.20.35 */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="ds-inline-detail-nested p-4 text-center">
-                      <p className="text-[12px] font-semibold text-muted-foreground">일간 관계</p>
-                      <p className="mt-2 text-[15px] font-extrabold leading-snug text-foreground">
-                        {fullReport.stemRel.label}
-                      </p>
-                      {fullReport.stemRel.me2other ? (
-                        <div className="mt-3">
-                          <span
-                            className={cn("ds-badge text-[12px] font-bold shadow-none", getTenGodTw(fullReport.stemRel.me2other, myDayStem2))}
-                            style={getTenGodChipStyle(fullReport.stemRel.me2other, myDayStem2)}
-                          >
-                            {fullReport.stemRel.me2other}
-                          </span>
-                        </div>
-                      ) : null}
-                    </div>
-                    <div className="ds-inline-detail-nested p-4 text-center">
-                      <p className="text-[12px] font-semibold text-muted-foreground">배우자궁</p>
-                      <p className="mt-2 text-[15px] font-extrabold leading-snug text-foreground">
-                        <span style={getBranchColor(fullReport.branchComp.myBranch)}>{fullReport.branchComp.myBranch}</span>{" "}
-                        ↔{" "}
-                        <span style={getBranchColor(fullReport.branchComp.otherBranch)}>{fullReport.branchComp.otherBranch}</span>
-                      </p>
-                      <p className="mt-2 text-[13px] font-semibold text-muted-foreground">{fullReport.branchComp.tone}</p>
-                    </div>
                   </div>
 
                   <div>
@@ -905,6 +901,35 @@ export default function Compatibility() {
                   </div>
                   </div>
                 </div>
+
+              {/* 요약 타일 (일간 관계 / 배우자궁) — 궁합 한눈에보기 카드 아래로 이동 */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="ds-inline-detail-nested p-4 text-center">
+                  <p className="text-[12px] font-semibold text-muted-foreground">일간 관계</p>
+                  <p className="mt-2 text-[15px] font-extrabold leading-snug text-foreground">
+                    {fullReport.stemRel.label}
+                  </p>
+                  {fullReport.stemRel.me2other ? (
+                    <div className="mt-3">
+                      <span
+                        className={cn("ds-badge text-[12px] font-bold shadow-none", getTenGodTw(fullReport.stemRel.me2other, myDayStem2))}
+                        style={getTenGodChipStyle(fullReport.stemRel.me2other, myDayStem2)}
+                      >
+                        {fullReport.stemRel.me2other}
+                      </span>
+                    </div>
+                  ) : null}
+                </div>
+                <div className="ds-inline-detail-nested p-4 text-center">
+                  <p className="text-[12px] font-semibold text-muted-foreground">배우자궁</p>
+                  <p className="mt-2 text-[15px] font-extrabold leading-snug text-foreground">
+                    <span style={getBranchColor(fullReport.branchComp.myBranch)}>{fullReport.branchComp.myBranch}</span>{" "}
+                    ↔{" "}
+                    <span style={getBranchColor(fullReport.branchComp.otherBranch)}>{fullReport.branchComp.otherBranch}</span>
+                  </p>
+                  <p className="mt-2 text-[13px] font-semibold text-muted-foreground">{fullReport.branchComp.tone}</p>
+                </div>
+              </div>
 
               {/* ── 2. 관계 구조 분석: 섹션 pastel → 카드/네스티드 white ── */}
                 <div className="ds-card overflow-hidden shadow-none">
@@ -1248,9 +1273,9 @@ export default function Compatibility() {
                 );
               })()}
 
-              {/* ── 5. 상세/흐름/레이어 ── */}
-              <div className="ds-card ds-card-pad">
-                  <AccSection title="상세 분석">
+              {/* ── 5. 상세/흐름/레이어 (내 사주 아코디언 스타일) ── */}
+              <div className="space-y-3">
+                <CardAccordion title="상세 분석" defaultOpen={false}>
                 {/* 양쪽 사주 요약 */}
                 <div>
                   <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-2">사주 비교</p>
@@ -1260,8 +1285,14 @@ export default function Compatibility() {
                       { record: p2!, label: otherName, gender: otherGender },
                     ].map(({ record, label, gender }) => {
                       const p = getFinalPillars(record);
+                      const dayHangul = p.day?.hangul ?? "";
                       return (
-                        <div key={label} className="ds-inline-detail-nested p-2.5">
+                        <div
+                          key={label}
+                          className="rounded-xl border p-2"
+                          style={getDayPillarCardStyle(dayHangul)}
+                        >
+                          <div className="ds-inline-detail-nested p-2.5">
                           <p className="text-[13px] text-muted-foreground mb-2 inline-flex items-center gap-0.5">
                             <GenderSymbol gender={gender} />{label}
                           </p>
@@ -1274,6 +1305,7 @@ export default function Compatibility() {
                             ].map(({ lbl, pillar }) => (
                               <PillarCard key={lbl} label={lbl} pillar={pillar} unknown={!pillar} highlight={lbl === "일"} />
                             ))}
+                          </div>
                           </div>
                         </div>
                       );
@@ -1344,37 +1376,43 @@ export default function Compatibility() {
                   <div className="space-y-2">
                     <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">세부 분석</p>
                     {result.details.map((d, i) => (
-                      <div
-                        key={i}
-                        className={cn(
-                          "ds-inline-detail-nested flex items-start gap-3",
-                          d.isPositive ? "border-l-2 border-l-primary/35" : "border-l-2 border-l-muted-foreground/35",
-                        )}
-                      >
-                        {d.isPositive ? (
-                          <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-primary/80" />
-                        ) : (
-                          <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-                        )}
-                        <div>
-                          <p className="text-sm font-semibold text-foreground">{d.title}</p>
-                          <p className="mt-0.5 text-[13px] text-muted-foreground">{d.description}</p>
+                      d.isPositive ? (
+                        <div
+                          key={i}
+                          className="flex items-start gap-2 rounded-xl border border-emerald-100 bg-emerald-50/70 px-3 py-2 text-[13px] leading-relaxed text-foreground"
+                        >
+                          <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-foreground">{d.title}</p>
+                            <p className="mt-0.5 text-[13px] text-foreground/80">{d.description}</p>
+                          </div>
                         </div>
-                      </div>
+                      ) : (
+                        <div
+                          key={i}
+                          className="flex items-start gap-2 rounded-xl border border-amber-100 bg-amber-50/60 px-3 py-2 text-[13px] leading-relaxed text-foreground"
+                        >
+                          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-foreground">{d.title}</p>
+                            <p className="mt-0.5 text-[13px] text-foreground/80">{d.description}</p>
+                          </div>
+                        </div>
+                      )
                     ))}
                   </div>
                 )}
-                  </AccSection>
+                </CardAccordion>
 
               {/* ── 현재 관계 흐름 (상세 이후) ── */}
               {flowA && flowB && combinedFlow && (
-                <AccSection title="현재 관계 흐름" defaultOpen={true}>
+                <CardAccordion title="현재 관계 흐름" defaultOpen={true}>
                   <div className="grid grid-cols-2 gap-2">
                     {([
                       { flow: flowA, gender: myGender },
                       { flow: flowB, gender: otherGender },
                     ] as const).map(({ flow, gender }) => (
-                      <div key={flow.name} className="ds-inline-detail-nested space-y-1 p-3">
+                      <div key={flow.name} className="ds-inline-detail-nested space-y-1 p-3 bg-white">
                         <div className="mb-1.5 flex items-center justify-between">
                           <span className="inline-flex items-center gap-0.5 text-[12px] font-bold text-foreground">
                             <GenderSymbol gender={gender} />
@@ -1446,10 +1484,10 @@ export default function Compatibility() {
                   <p className="text-[11px] leading-relaxed text-muted-foreground/60">
                     ※ 운 흐름은 규칙 기반 간략 추정으로, 절대적 예언이 아닙니다.
                   </p>
-                </AccSection>
+                </CardAccordion>
               )}
 
-              <AccSection title="배우자 성향 · 관계운 레이어" defaultOpen={false}>
+              <CardAccordion title="배우자 성향 · 관계운 레이어" defaultOpen={false}>
                 <p className="-mt-1 text-[12px] leading-relaxed text-muted-foreground">
                   궁합 점수와는 <span className="font-semibold text-foreground">따로 놓고</span> 읽어 주세요. 각자 원국에 스며 있는 배우자 성향과 관계운의 흐름만 담았습니다.
                 </p>
@@ -1514,7 +1552,7 @@ export default function Compatibility() {
                 <p className="border-t border-border pt-2.5 text-[11px] leading-relaxed text-muted-foreground/60">
                   * 궁합은 운명이 아닙니다. 두 원국 구조가 어떻게 상호작용하는 경향이 있는지를 보여주는 참고 정보입니다.
                 </p>
-              </AccSection>
+              </CardAccordion>
               </div>
 
               {/* ── 행동 가이드 ── */}
@@ -1528,10 +1566,13 @@ export default function Compatibility() {
                   <div className="space-y-4 p-4">
                     <div>
                       <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">추천 행동</p>
-                      <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-3 space-y-2">
+                      <div className="space-y-2">
                         {result.advice.map((t, i) => (
-                          <div key={i} className="ds-inline-detail-nested flex gap-2 text-[13px] text-foreground">
-                            <span className="shrink-0 font-bold text-emerald-700">·</span>
+                          <div
+                            key={i}
+                            className="flex items-start gap-2 rounded-xl border border-emerald-100 bg-emerald-50/70 px-3 py-2 text-[13px] leading-relaxed text-foreground"
+                          >
+                            <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
                             <span>{t}</span>
                           </div>
                         ))}
@@ -1539,21 +1580,31 @@ export default function Compatibility() {
                     </div>
                     <div>
                       <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">주의 행동</p>
-                      <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-3 space-y-2">
+                      <div className="space-y-2">
                         {(fullReport.conflictPoints.length > 0
                           ? fullReport.conflictPoints.slice(0, 3)
                           : ["반복되는 갈등 패턴을 미리 짚고, 감정이 격해질 때 잠시 거리를 두는 연습을 해보세요."]).map((item, i) => (
-                          <BulletRow key={i} text={item} positive={false} />
+                          <div
+                            key={i}
+                            className="flex items-start gap-2 rounded-xl border border-amber-100 bg-amber-50/60 px-3 py-2 text-[13px] leading-relaxed text-foreground"
+                          >
+                            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+                            <span>{item}</span>
+                          </div>
                         ))}
                       </div>
                     </div>
                     {fullReport.tips.length > 0 && (
                       <div>
                         <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">관계 유지 팁</p>
-                        <div className="ds-inline-detail-nested space-y-2">
-                          <ul className="space-y-1.5">
+                        <div className="rounded-xl border border-border bg-muted/15 p-4">
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="text-[14px]">💡</span>
+                            <p className="text-sm font-bold text-foreground">관계 유지 팁</p>
+                          </div>
+                          <ul className="space-y-2">
                             {fullReport.tips.slice(0, 5).map((tip, i) => (
-                              <li key={i} className="flex items-start gap-2 text-[13px] text-muted-foreground">
+                              <li key={i} className="flex items-start gap-2 text-[13px] leading-relaxed text-muted-foreground">
                                 <span className="mt-0.5 shrink-0">•</span>
                                 <span>{tip}</span>
                               </li>
