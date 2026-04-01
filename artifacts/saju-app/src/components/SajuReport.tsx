@@ -2700,6 +2700,9 @@ const REPORT_TAB_LABEL: Record<ReportMainTab, string> = {
   오늘운세: "오늘운세",
 };
 
+/** AppHeader `h-14` — must match when pinning report tabs below it */
+const APP_HEADER_OFFSET_PX = 56;
+
 /** 조후 문장이 이 길이를 넘을 때만 바텀시트「상세」노출 (짧은 문장은 인라인만) */
 const LONG_SEASONAL_CHARS = 200;
 
@@ -2782,6 +2785,9 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
       setTodayHeroInline(null);
     }
   }, [reportTab]);
+
+  const reportMainTabsAnchorRef = useRef<HTMLDivElement>(null);
+  const [reportMainTabsPinned, setReportMainTabsPinned] = useState(false);
 
   const scrollToYuanAnchor = useCallback((id: string) => {
     requestAnimationFrame(() => {
@@ -3495,6 +3501,22 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
   );
   const anyDiffBase = hasAnyHourDiff(fiveElDiffBase, shinsalDiffBase);
 
+  useEffect(() => {
+    const anchor = reportMainTabsAnchorRef.current;
+    if (!anchor) return;
+    const updatePinned = () => {
+      const top = anchor.getBoundingClientRect().top;
+      setReportMainTabsPinned(top < APP_HEADER_OFFSET_PX);
+    };
+    updatePinned();
+    window.addEventListener("scroll", updatePinned, { passive: true });
+    window.addEventListener("resize", updatePinned);
+    return () => {
+      window.removeEventListener("scroll", updatePinned);
+      window.removeEventListener("resize", updatePinned);
+    };
+  }, [hasHourPillar, hourMode, record.id]);
+
   // ── 시주 천간/지지 십성 ────────────────────────────────────────
   const hourStem = pillars.hour?.hangul?.[0] ?? null;
   const hourBranch = pillars.hour?.hangul?.[1] ?? null;
@@ -3575,21 +3597,39 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
         </div>
       )}
 
-      <div className="sticky top-14 z-30 -mx-4 px-4 py-2 bg-background/95 backdrop-blur-sm supports-[backdrop-filter]:bg-background/85 border-b border-border/50">
-        <div className="ds-segment-list min-h-11 rounded-xl border border-border shadow-none">
-          {REPORT_MAIN_TABS.map((tab) => (
-            <button
-              key={tab}
-              type="button"
-              onClick={() => setReportTab(tab)}
-              className={cn(
-                "ds-segment-item text-sm shadow-none",
-                reportTab === tab ? "ds-segment-item-active" : "ds-segment-item-inactive",
-              )}
-            >
-              {REPORT_TAB_LABEL[tab]}
-            </button>
-          ))}
+      <div ref={reportMainTabsAnchorRef}>
+        {reportMainTabsPinned && (
+          <div
+            className="shrink-0 border-b border-transparent"
+            style={{ height: "calc(1rem + 2.75rem + 1px)" }}
+            aria-hidden
+          />
+        )}
+        <div
+          className={cn(
+            "z-30 border-b border-border/50 bg-background supports-[backdrop-filter]:bg-background/95 backdrop-blur-sm",
+            reportMainTabsPinned
+              ? "fixed top-14 left-0 right-0 py-2"
+              : "-mx-4 px-4 py-2 supports-[backdrop-filter]:bg-background/85",
+          )}
+        >
+          <div className={cn(reportMainTabsPinned && "mx-auto max-w-lg px-4")}>
+            <div className="ds-segment-list min-h-11 rounded-xl border border-border shadow-none">
+              {REPORT_MAIN_TABS.map((tab) => (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => setReportTab(tab)}
+                  className={cn(
+                    "ds-segment-item text-sm shadow-none",
+                    reportTab === tab ? "ds-segment-item-active" : "ds-segment-item-inactive",
+                  )}
+                >
+                  {REPORT_TAB_LABEL[tab]}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
 
