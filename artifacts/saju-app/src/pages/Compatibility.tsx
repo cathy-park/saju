@@ -313,8 +313,10 @@ function getBranchColor(ch: string): React.CSSProperties {
 /** 오행 배경색(연한) + 보더 인라인 스타일 */
 function getElCardStyle(el: string | null): React.CSSProperties {
   if (!el) return {};
+  const bg = elementColorVar(el as FiveElKey, "muted");
   return {
-    background: elementColorVar(el as FiveElKey, "muted"),
+    // lighten pastel by +10% white
+    background: `color-mix(in oklab, ${bg} 90%, white 10%)`,
     borderColor: elementColorVar(el as FiveElKey, "base"),
   };
 }
@@ -323,8 +325,10 @@ function getDayPillarCardStyle(dayHangul: string): React.CSSProperties {
   const stem = dayHangul?.[0] ?? "";
   const el = charToElement(stem);
   if (!el) return {};
+  const bg = elementColorVar(el as FiveElKey, "muted");
   return {
-    background: elementColorVar(el as FiveElKey, "muted"),
+    // lighten pastel by +10% white
+    background: `color-mix(in oklab, ${bg} 90%, white 10%)`,
     borderColor: elementColorVar(el as FiveElKey, "base"),
   };
 }
@@ -1382,31 +1386,33 @@ export default function Compatibility() {
                 {result.details.length > 0 && (
                   <div className="space-y-2">
                     <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">세부 분석</p>
-                    {result.details.map((d, i) => (
-                      d.isPositive ? (
-                        <div
-                          key={i}
-                          className="flex items-start gap-2 rounded-xl border border-emerald-100 bg-emerald-50/70 px-3 py-2 text-[13px] leading-relaxed text-foreground"
-                        >
-                          <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
-                          <div className="min-w-0">
-                            <p className="text-sm font-semibold text-foreground">{d.title}</p>
-                            <p className="mt-0.5 text-[13px] text-foreground/80">{d.description}</p>
+                    <div className="ds-inline-detail-nested p-3 space-y-2">
+                      {result.details.map((d, i) => (
+                        d.isPositive ? (
+                          <div
+                            key={i}
+                            className="flex items-start gap-2 rounded-xl border border-emerald-100 bg-emerald-50/70 px-3 py-2 text-[13px] leading-relaxed text-foreground"
+                          >
+                            <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+                            <div className="min-w-0">
+                              <p className="text-sm font-semibold text-foreground">{d.title}</p>
+                              <p className="mt-0.5 text-[13px] text-foreground/80">{d.description}</p>
+                            </div>
                           </div>
-                        </div>
-                      ) : (
-                        <div
-                          key={i}
-                          className="flex items-start gap-2 rounded-xl border border-amber-100 bg-amber-50/60 px-3 py-2 text-[13px] leading-relaxed text-foreground"
-                        >
-                          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
-                          <div className="min-w-0">
-                            <p className="text-sm font-semibold text-foreground">{d.title}</p>
-                            <p className="mt-0.5 text-[13px] text-foreground/80">{d.description}</p>
+                        ) : (
+                          <div
+                            key={i}
+                            className="flex items-start gap-2 rounded-xl border border-amber-100 bg-amber-50/60 px-3 py-2 text-[13px] leading-relaxed text-foreground"
+                          >
+                            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+                            <div className="min-w-0">
+                              <p className="text-sm font-semibold text-foreground">{d.title}</p>
+                              <p className="mt-0.5 text-[13px] text-foreground/80">{d.description}</p>
+                            </div>
                           </div>
-                        </div>
-                      )
-                    ))}
+                        )
+                      ))}
+                    </div>
                   </div>
                 )}
                 </CardAccordion>
@@ -1419,8 +1425,8 @@ export default function Compatibility() {
                       { flow: flowA, gender: myGender },
                       { flow: flowB, gender: otherGender },
                     ] as const).map(({ flow, gender }) => (
-                      <div key={flow.name} className="ds-inline-detail-nested space-y-1 p-3 bg-white">
-                        <div className="mb-1.5 flex items-center justify-between">
+                      <div key={flow.name} className="ds-inline-detail-nested space-y-3 p-3 bg-white">
+                        <div className="flex items-center justify-between gap-2">
                           <span className="inline-flex items-center gap-0.5 text-[12px] font-bold text-foreground">
                             <GenderSymbol gender={gender} />
                             {flow.name}
@@ -1429,27 +1435,19 @@ export default function Compatibility() {
                             {flow.flowLabel}
                           </span>
                         </div>
-                        {flow.daywoon && (
-                          <FlowRow label="대운" gz={flow.daywoon.ganZhi} tg={flow.daywoonTenGod} />
-                        )}
-                        <FlowRow label="세운" gz={flow.sewoon} tg={flow.sewoonTenGod} />
-                        <FlowRow label="월운" gz={flow.wolwoon} tg={flow.wolwoonTenGod} />
-                        <FlowRow label="일운" gz={flow.ilwoon} tg={flow.ilwoonTenGod} />
-                      </div>
-                    ))}
-                  </div>
 
-                  <div className="grid grid-cols-2 gap-2">
-                    {([
-                      { flow: flowA, gender: myGender },
-                      { flow: flowB, gender: otherGender },
-                    ] as const).map(({ flow, gender }) => (
-                      <div key={flow.name} className="ds-inline-detail-nested space-y-2 p-3">
-                        <p className="inline-flex items-center gap-0.5 text-[12px] font-bold text-foreground">
-                          <GenderSymbol gender={gender} />
-                          {flow.name}의 현재 흐름
-                        </p>
-                        <div className="space-y-1.5">
+                        <div className="ds-inline-detail-nested space-y-1 p-2.5">
+                          <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">운 흐름</p>
+                          {flow.daywoon && (
+                            <FlowRow label="대운" gz={flow.daywoon.ganZhi} tg={flow.daywoonTenGod} />
+                          )}
+                          <FlowRow label="세운" gz={flow.sewoon} tg={flow.sewoonTenGod} />
+                          <FlowRow label="월운" gz={flow.wolwoon} tg={flow.wolwoonTenGod} />
+                          <FlowRow label="일운" gz={flow.ilwoon} tg={flow.ilwoonTenGod} />
+                        </div>
+
+                        <div className="ds-inline-detail-nested space-y-2 p-2.5">
+                          <p className="mb-0.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">요약</p>
                           <div>
                             <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">감정</p>
                             <p className="text-[12px] leading-snug text-foreground">{flow.emotionalTendency}</p>
