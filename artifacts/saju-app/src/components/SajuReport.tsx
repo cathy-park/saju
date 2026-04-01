@@ -662,22 +662,14 @@ function PillarTable({
 
 // ── Five-element pentagon diagram ────────────────────────────────
 
-type ElementTier = "primary" | "secondary" | "minor";
-
-function computeElementTiers(counts: FiveElementCount, primary: FiveElKey): Record<FiveElKey, ElementTier> {
-  const els: FiveElKey[] = ["목", "화", "토", "금", "수"];
-  const max = Math.max(...els.map((e) => counts[e] ?? 0), 0);
-  const secondMax = Math.max(...els.filter((e) => e !== primary).map((e) => counts[e] ?? 0), 0);
-  const threshold = Math.max(1, Math.ceil(max * 0.6));
-  const tiers: Record<FiveElKey, ElementTier> = { 목: "minor", 화: "minor", 토: "minor", 금: "minor", 수: "minor" };
-  tiers[primary] = "primary";
-  for (const el of els) {
-    if (el === primary) continue;
-    const v = counts[el] ?? 0;
-    tiers[el] = (v >= threshold || v === secondMax) ? "secondary" : "minor";
-  }
-  return tiers;
-}
+/** 오행도 원 하단 채움 — 디자인 스펙 파스텔(과도한 채도 방지) */
+const ELEMENT_PENTAGON_FILL: Record<FiveElKey, string> = {
+  수: "#DFEDF5",
+  목: "#E1F4E9",
+  화: "#FAE2E0",
+  토: "#F8EDD2",
+  금: "#E8EAED",
+};
 
 function FiveElementSection({
   counts,
@@ -699,7 +691,6 @@ function FiveElementSection({
   const total = elements.reduce((s, e) => s + (counts[e] ?? 0), 0) || 1;
   const dayEl = dayStem ? (STEM_ELEMENT[dayStem] as FiveElKey | undefined) : undefined;
   const primaryEl = computePrimaryElement({ counts, monthBranch, dayBranch, allStems, allBranches });
-  const tiers = computeElementTiers(counts, primaryEl);
 
   // Pentagon positions: center (148, 148), radius 82
   const CX = 148, CY = 148, R = 82, NODE_R = 32;
@@ -788,11 +779,9 @@ function FiveElementSection({
           const fillH = count > 0 ? Math.max(fillHRaw, 4) : 0;
           const fillY = y + NODE_R - fillH;
           const isPrimary = el === primaryEl;
-          const tier = tiers[el];
-          const stroke = isPrimary ? elementColorVar(el, "strong") : "hsl(var(--border))";
-          /* 범주색(base) 유지 + 높은 불투명도 — muted+저알파는 화·토가 거의 안 보이던 문제 방지 */
-          const fillOpacity =
-            count <= 0 ? 0 : tier === "minor" ? 0.82 : tier === "secondary" ? 0.88 : 0.92;
+          const stroke = isPrimary
+            ? elementHslAlpha(el, "base", 0.4)
+            : "hsl(var(--border))";
           return (
             <g key={el}>
               <circle
@@ -801,11 +790,11 @@ function FiveElementSection({
                 r={NODE_R}
                 fill="hsl(var(--card))"
                 stroke={stroke}
-                strokeWidth={isPrimary ? 2 : 1.5}
+                strokeWidth={isPrimary ? 1.75 : 1.5}
               />
               {fillH > 0 && (
               <rect x={x - NODE_R} y={fillY} width={NODE_R * 2} height={fillH}
-                fill={elementColorVar(el, "base")} opacity={fillOpacity} clipPath={`url(#pclip-${el})`} />
+                fill={ELEMENT_PENTAGON_FILL[el]} clipPath={`url(#pclip-${el})`} />
               )}
               <text
                 x={x}
@@ -813,7 +802,7 @@ function FiveElementSection({
                 textAnchor="middle"
                 fontSize="15"
                 fontWeight={isPrimary ? "800" : "600"}
-                fill={isPrimary ? elementColorVar(el, "strong") : "hsl(var(--foreground))"}
+                fill="hsl(var(--foreground))"
               >
                 {el}
               </text>
