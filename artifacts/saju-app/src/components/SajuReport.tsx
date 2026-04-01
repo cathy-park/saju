@@ -1065,6 +1065,7 @@ function FiveElementSection({
         <span className={`text-[13px] font-black ${elementTextClass(primaryEl, "strong")}`}>{primaryEl}</span>
       </div>
       {/* graph wrapper padding (common rule): py-5 = 20px top/bottom */}
+      {/* NOTE: 그래프 원 크기는 바꾸지 않고, wrapper 세로 패딩만 통일합니다. */}
       <div className="w-full py-5">
         <svg viewBox="0 0 296 296" width="100%" className="mx-auto block w-full max-w-[444px]">
         <defs>
@@ -4539,6 +4540,28 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                           const sh = todayOrderedShinsalInsights.slice(0, 4).map((x) => x.name);
                           const basis = todayFortune.basisKeywords?.slice(0, 4) ?? [];
                           const layerText = todayFortune.luckLayers?.map((l) => `${l.label} ${l.ganZhi}`) ?? [];
+                          const tenGodText = todayFortune.dayTenGod ? `${todayFortune.dayTenGod} 작용` : "십성 정보 없음";
+
+                          const RECOMMEND_BY_DOMAIN: Record<typeof todayDomainOpen, string[]> = {
+                            사랑: ["대화는 짧고 명확하게", "배려 표현 1번은 먼저", "거리/빈도 조절"],
+                            일: ["우선순위 1~2개만 고정", "계획 세우기", "마감·정리부터"],
+                            건강: ["수면/휴식 확보", "가벼운 유산소", "과로·과식 줄이기"],
+                            대인관계: ["약속은 간단히", "경계선 지키기", "오해는 바로 정리"],
+                            학업: ["공부/독서 30~60분", "글쓰기/정리", "복습 위주로"],
+                          };
+                          const CAUTION_BY_DOMAIN: Record<typeof todayDomainOpen, string[]> = {
+                            사랑: ["감정적 말싸움", "확답 압박", "상대 마음 추측 확대"],
+                            일: ["즉흥적 일정 확장", "한 번에 큰 결정", "불필요한 회의/잡일"],
+                            건강: ["무리한 운동", "야식/카페인 과다", "스트레스 방치"],
+                            대인관계: ["감정적 반응", "험담/단정", "과한 기대/실망 반복"],
+                            학업: ["멀티태스킹", "완벽주의로 시작 지연", "밤샘 몰아치기"],
+                          };
+
+                          const summaryLines: string[] = [];
+                          summaryLines.push(`오늘은 ${todayDomainOpen} 영역에서 ${row.state} 흐름이 두드러집니다.`);
+                          if (row.hint) summaryLines.push(`오늘은 ${row.hint}`);
+                          summaryLines.push(`오늘은 ${tenGodText}이 중심이라, ${todayDomainOpen}에서는 “정리·조절·선택”이 유리합니다.`);
+
                           return (
                             <div className="ds-inline-detail mt-2 overflow-visible">
                               <div className="ds-inline-detail-header">
@@ -4565,12 +4588,39 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                                 </button>
                               </div>
                               <div className="ds-inline-detail-body space-y-2">
-                                {row.hint && (
-                                  <div className="ds-inline-detail-nested">
-                                    <p className="text-[12px] font-bold uppercase tracking-wide text-muted-foreground">오늘 영향</p>
-                                    <p className="mt-1 text-[13px] text-foreground leading-relaxed">{row.hint}</p>
+                                {/* 1) 오늘 해석 요약 */}
+                                <div className="ds-inline-detail-nested">
+                                  <p className="text-[12px] font-bold uppercase tracking-wide text-muted-foreground">오늘 해석 요약</p>
+                                  <div className="mt-1 space-y-1">
+                                    {summaryLines.slice(0, 3).map((t, i) => (
+                                      <p key={i} className="text-[13px] text-foreground leading-relaxed">{t}</p>
+                                    ))}
                                   </div>
-                                )}
+                                </div>
+
+                                {/* 2) 추천 행동 */}
+                                <div className="ds-inline-detail-nested">
+                                  <p className="text-[12px] font-bold uppercase tracking-wide text-muted-foreground">추천 행동</p>
+                                  <ul className="mt-1 space-y-1">
+                                    {(RECOMMEND_BY_DOMAIN[todayDomainOpen] ?? []).slice(0, 3).map((t) => (
+                                      <li key={t} className="text-[13px] text-foreground leading-relaxed">- {t}</li>
+                                    ))}
+                                  </ul>
+                                </div>
+
+                                {/* 3) 주의 행동 */}
+                                <div className="ds-inline-detail-nested">
+                                  <p className="text-[12px] font-bold uppercase tracking-wide text-muted-foreground">주의 행동</p>
+                                  <ul className="mt-1 space-y-1">
+                                    {(CAUTION_BY_DOMAIN[todayDomainOpen] ?? []).slice(0, 3).map((t) => (
+                                      <li key={t} className="text-[13px] text-foreground leading-relaxed">- {t}</li>
+                                    ))}
+                                  </ul>
+                                </div>
+
+                                <div className="h-px w-full bg-border/60" />
+
+                                {/* 4) 근거 영역 */}
                                 <div className="ds-inline-detail-nested">
                                   <p className="text-[12px] font-bold uppercase tracking-wide text-muted-foreground">오늘 십성 작동</p>
                                   <p className="mt-1 text-[13px] text-foreground leading-relaxed">
