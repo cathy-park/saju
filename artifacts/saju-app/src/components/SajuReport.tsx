@@ -396,13 +396,23 @@ function TenGodGroupInlineCard({
 }) {
   const detail = TEN_GOD_GROUP_DETAILS.find((g) => g.group === group);
   if (!detail) return null;
+  const chipEl = getTenGodGroupElementForDayStem(group, dayStem) ?? ("토" as FiveElKey);
   const pctContext = getTenGodGroupPctContext(group, pct);
   return (
     <div className="ds-inline-detail mt-0 overflow-visible">
       <div className="ds-inline-detail-header">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-1.5">
-            <span className={cn("ds-badge text-[12px] font-bold shadow-none", detail.color)}>{group}</span>
+            <span
+              className="ds-badge text-[12px] font-bold shadow-none"
+              style={{
+                backgroundColor: elementHslAlpha(chipEl, "strong", 0.16),
+                borderColor: elementHslAlpha(chipEl, "strong", 0.32),
+                color: elementColorVar(chipEl, "strong"),
+              }}
+            >
+              {group}
+            </span>
             <span className="text-[12px] font-semibold text-muted-foreground">{pct}%</span>
           </div>
           <p className="mt-1 text-[10px] text-muted-foreground">행동 스타일·기질 해석</p>
@@ -1309,8 +1319,8 @@ function TenGodDistributionSection({
           const p2 = detailed[s2] ?? 0;
           const isDominantRow = dominantGroup === g;
           const isRowSelected = selectedGroup === g;
-          const showRepChip =
-            rowHighlightMode === "personality" && isDominantRow && !personalityUserHasTapped;
+          // 대표 배지는 정적 표시(선택 상태와 완전히 분리)
+          const showDominantBadge = rowHighlightMode === "personality" && isDominantRow;
 
           let rowStyle: CSSProperties | undefined;
           let rowBorder = "border border-transparent";
@@ -1346,9 +1356,6 @@ function TenGodDistributionSection({
 
           const rowClass = cn("rounded-xl px-2 py-2 transition-colors", rowBorder);
 
-          const showDominantHint =
-            rowHighlightMode === "personality" && isDominantRow && personalityUserHasTapped;
-
           return (
             <div key={g} className="space-y-2">
               <div className={rowClass} style={rowStyle}>
@@ -1359,7 +1366,7 @@ function TenGodDistributionSection({
                 >
                   <div className="flex w-full min-w-0 items-center gap-2">
                     <span className="flex shrink-0 items-center gap-1.5">
-                      {showRepChip ? (
+                      {showDominantBadge ? (
                         <span
                           className="inline-flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-black leading-none shadow-md"
                           style={{
@@ -1373,13 +1380,6 @@ function TenGodDistributionSection({
                             ⭐
                           </span>
                           <span className="tracking-tight">대표</span>
-                        </span>
-                      ) : showDominantHint ? (
-                        <span
-                          className="shrink-0 rounded-full border border-dashed px-1.5 py-px text-[9px] font-bold text-muted-foreground"
-                          style={{ borderColor: elementHslAlpha(rowEl, "strong", 0.35) }}
-                        >
-                          대표
                         </span>
                       ) : null}
                       <span className={cn("whitespace-nowrap text-[13px] font-bold", elementTextClass(rowEl, "strong"))}>
@@ -2730,6 +2730,8 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
   useEffect(() => {
     setYuanGuoInlineDetail(null);
     personalityTengodSeededRef.current = false;
+    setSelectedTgGroupInline(null);
+    setPersonalityTengodUserPicked(false);
   }, [record.id]);
 
   useEffect(() => {
