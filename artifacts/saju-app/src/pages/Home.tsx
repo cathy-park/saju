@@ -218,23 +218,18 @@ function Dashboard({ record }: { record: PersonRecord }) {
         <div className="px-4 pt-0">
           <div className="ds-card relative overflow-hidden border-violet-200/80 p-5 shadow-none">
             <div className="pointer-events-none absolute -right-5 -top-5 h-20 w-20 rounded-full bg-indigo-500/[0.08]" aria-hidden />
-            <div className="mb-7 flex items-center gap-2">
+            <div className="mb-4 flex items-center gap-2">
               <span className="text-[13px] font-extrabold text-indigo-600">✦ 오늘의 전체 흐름</span>
             </div>
-            <p
-              className={cn(
-                "ds-body font-medium text-foreground leading-relaxed",
-                lifeFlow.overall.activityFlow ? "mb-7" : "mb-10",
-              )}
-            >
+            <p className="ds-body mb-4 font-medium text-foreground leading-relaxed">
               {lifeFlow.overall.fullText}
             </p>
             {lifeFlow.overall.activityFlow && (
-              <p className="mb-10 text-xs font-semibold text-indigo-600 leading-relaxed">
+              <p className="mb-4 text-xs font-semibold text-indigo-600 leading-relaxed">
                 {lifeFlow.overall.activityFlow}
               </p>
             )}
-            <div className="grid grid-cols-2 gap-4 pt-1">
+            <div className="grid grid-cols-2 gap-4">
               {[
                 { label: "감정 흐름", text: lifeFlow.overall.emotional },
                 { label: "결정 타이밍", text: lifeFlow.overall.decisionTiming },
@@ -248,7 +243,7 @@ function Dashboard({ record }: { record: PersonRecord }) {
             <Button
               type="button"
               onClick={goToTodayFortune}
-              className="mt-6 w-full border-0 bg-gradient-to-r from-indigo-600 to-violet-600 text-primary-foreground shadow-none hover:from-indigo-600 hover:to-violet-600"
+              className="mt-4 w-full border-0 bg-gradient-to-r from-indigo-600 to-violet-600 text-primary-foreground shadow-none hover:from-indigo-600 hover:to-violet-600"
             >
               오늘 운세 보러가기 →
             </Button>
