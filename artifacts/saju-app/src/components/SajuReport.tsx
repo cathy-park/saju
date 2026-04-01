@@ -1163,6 +1163,8 @@ function computeTenGodDistribution(
 ): {
   topLevel: Record<string, number>;   // group → % (0-100)
   detailed: Record<string, number>;   // ten-god → % (0-100)
+  groupRaw: Record<string, number>;   // group → raw count (for tie-break)
+  rawTotal: number;
 } {
   const groups = ["비겁", "식상", "재성", "관성", "인성"] as const;
   const fiveElKeys: FiveElKey[] = ["목", "화", "토", "금", "수"];
@@ -1216,7 +1218,28 @@ function computeTenGodDistribution(
     }
   }
 
-  return { topLevel, detailed };
+  return { topLevel, detailed, groupRaw, rawTotal };
+}
+
+function pickDominantTenGodGroups(args: {
+  groupRaw: Record<string, number>;
+  rawTotal: number;
+  order?: readonly ["비겁", "식상", "재성", "관성", "인성"];
+}): {
+  primary: { group: "비겁" | "식상" | "재성" | "관성" | "인성"; pctExact: number; pctRounded: number; raw: number } | null;
+  secondary: { group: "비겁" | "식상" | "재성" | "관성" | "인성"; pctExact: number; pctRounded: number; raw: number } | null;
+} {
+  const order = args.order ?? (["비겁", "식상", "재성", "관성", "인성"] as const);
+  const items = order.map((g) => {
+    const raw = args.groupRaw[g] ?? 0;
+    const pctExact = (raw / (args.rawTotal || 1));
+    const pctRounded = Math.round(pctExact * 100);
+    return { group: g, raw, pctExact, pctRounded };
+  });
+  items.sort((a, b) => (b.pctExact - a.pctExact) || (b.raw - a.raw) || (order.indexOf(a.group) - order.indexOf(b.group)));
+  const primary = items[0] && items[0].raw > 0 ? items[0] : null;
+  const secondary = items[1] && items[1].raw > 0 ? items[1] : null;
+  return { primary, secondary };
 }
 
 function TenGodDistributionSection({
@@ -1251,21 +1274,24 @@ function TenGodDistributionSection({
   allBranches?: string[];
 }) {
   const groups = ["비겁", "식상", "재성", "관성", "인성"] as const;
-  const { topLevel, detailed } = computeTenGodDistribution(dayStem, dayEl, allChars, effectiveFiveElements);
-
-  let dominantGroup: (typeof groups)[number] | null = null;
-  let dominantPct = -1;
-  for (const g of groups) {
-    const p = topLevel[g];
-    if (p > dominantPct) {
-      dominantPct = p;
-      dominantGroup = g;
-    }
-  }
-  if (dominantPct <= 0) dominantGroup = null;
+  const { topLevel, detailed, groupRaw, rawTotal } = computeTenGodDistribution(dayStem, dayEl, allChars, effectiveFiveElements);
+  const { primary, secondary } = pickDominantTenGodGroups({ groupRaw, rawTotal });
+  const dominantGroup = primary?.group ?? null;
 
   return (
     <div className="space-y-3">
+      {primary && secondary && (
+        <div className="ds-inline-detail-nested space-y-1.5 p-3">
+          <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide">최종 조합 해설</p>
+          <p className="text-sm text-foreground">
+            대표 흐름은 <span className="font-semibold">{primary.group}</span>({primary.pctRounded}%)이고, 다음 축은{" "}
+            <span className="font-semibold">{secondary.group}</span>({secondary.pctRounded}%)입니다.
+          </p>
+          <p className="text-[12px] leading-relaxed text-muted-foreground">
+            {COMBINED_FORTUNE_TEXTS[primary.group]?.[secondary.group] ?? `${primary.group}과 ${secondary.group}의 기운이 함께 작용합니다.`}
+          </p>
+        </div>
+      )}
       <div className="space-y-3">
         {groups.map((g) => {
           const pct = topLevel[g];
@@ -2616,7 +2642,7 @@ const REPORT_MAIN_TABS: ReportMainTab[] = ["원국", "성격해석", "운세", "
 
 const REPORT_TAB_LABEL: Record<ReportMainTab, string> = {
   원국: "원국",
-  성격해석: "성격 해석",
+  성격해석: "성격해석",
   운세: "운세",
   오늘운세: "오늘운세",
 };
@@ -2996,18 +3022,10 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
     if (personalityTengodSeededRef.current) return;
     personalityTengodSeededRef.current = true;
     const dayElStem = STEM_ELEMENT[dayStem] as FiveElKey | undefined;
-    const { topLevel } = computeTenGodDistribution(dayStem, dayElStem, allChars, effectiveFiveElements);
-    const order = ["비겁", "식상", "재성", "관성", "인성"] as const;
-    let best: (typeof order)[number] | null = null;
-    let bp = -1;
-    for (const g of order) {
-      if (topLevel[g] > bp) {
-        bp = topLevel[g];
-        best = g;
-      }
-    }
-    if (best != null && bp > 0) {
-      setSelectedTgGroupInline({ group: best, pct: topLevel[best] });
+    const { groupRaw, rawTotal } = computeTenGodDistribution(dayStem, dayElStem, allChars, effectiveFiveElements);
+    const { primary } = pickDominantTenGodGroups({ groupRaw, rawTotal });
+    if (primary) {
+      setSelectedTgGroupInline({ group: primary.group, pct: primary.pctRounded });
       setPersonalityTengodUserPicked(false);
     }
   }, [reportTab, dayStem, allChars, effectiveFiveElements]);
@@ -3341,7 +3359,40 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
             <span className="font-semibold text-foreground">성격 해석</span> 탭을 이용하세요.
           </div>
 
-          {/* ── 시주 비교 카드 (비교 모드일 때 원국 위에 표시) ── */}
+          {/* 사주팔자 — 항상 표시 */}
+          <PillarTable
+            pillars={pillarData}
+            dayStem={dayStem}
+            shinsalBranchItems={shinsalBranchItems}
+            shinsalPerColumn={dayStem && dayBranch ? shinsalPerColumn : undefined}
+            selectedShinsalId={yuanGuoInlineDetail?.kind === "shinsal" ? yuanGuoInlineDetail.id : null}
+            onShinsalSelect={
+              dayStem && dayBranch
+                ? (id) =>
+                    setYuanGuoInlineDetail((prev) =>
+                      prev?.kind === "shinsal" && prev.id === id ? null : { kind: "shinsal", id },
+                    )
+                : undefined
+            }
+          />
+
+          {yuanGuoInlineDetail?.kind === "shinsal" && selectedShinsalEntry ? (
+            <SelectedShinsalInlineCard
+              layout="panel"
+              entry={selectedShinsalEntry}
+              onClose={() => setYuanGuoInlineDetail(null)}
+              onMore={() =>
+                setInfoSheet({
+                  kind: "shinsal",
+                  name: selectedShinsalEntry.name,
+                  source: "auto",
+                  trigger: selectedShinsalEntry.triggerDetail || undefined,
+                })
+              }
+            />
+          ) : null}
+
+          {/* ── 시주 비교 카드 (비교 모드일 때 원국표 바로 아래 표시) ── */}
           {hasHourPillar && hourMode === "비교" && (
             <div className="rounded-xl border border-violet-200 bg-violet-50/40 px-3 py-3 space-y-2.5">
               <div className="flex items-center gap-3">
@@ -3392,39 +3443,6 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
               </div>
             </div>
           )}
-
-          {/* 사주팔자 — 항상 표시 */}
-          <PillarTable
-            pillars={pillarData}
-            dayStem={dayStem}
-            shinsalBranchItems={shinsalBranchItems}
-            shinsalPerColumn={dayStem && dayBranch ? shinsalPerColumn : undefined}
-            selectedShinsalId={yuanGuoInlineDetail?.kind === "shinsal" ? yuanGuoInlineDetail.id : null}
-            onShinsalSelect={
-              dayStem && dayBranch
-                ? (id) =>
-                    setYuanGuoInlineDetail((prev) =>
-                      prev?.kind === "shinsal" && prev.id === id ? null : { kind: "shinsal", id },
-                    )
-                : undefined
-            }
-          />
-
-          {yuanGuoInlineDetail?.kind === "shinsal" && selectedShinsalEntry ? (
-            <SelectedShinsalInlineCard
-              layout="panel"
-              entry={selectedShinsalEntry}
-              onClose={() => setYuanGuoInlineDetail(null)}
-              onMore={() =>
-                setInfoSheet({
-                  kind: "shinsal",
-                  name: selectedShinsalEntry.name,
-                  source: "auto",
-                  trigger: selectedShinsalEntry.triggerDetail || undefined,
-                })
-              }
-            />
-          ) : null}
 
           {dayStem && dayBranch && shinsalComboNotes.length > 0 ? (
             <div>
@@ -3721,7 +3739,7 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
           <AccSection id="yuan-branch-relations" title="천간 · 지지 관계" defaultOpen={false}>
             <div className="space-y-2">
               <p className="text-[11px] text-muted-foreground">
-                항목을 누르면 <span className="font-semibold text-foreground">이 섹션 아래</span>에 관계 상세가 열립니다. 긴 해석은「더보기」를 이용하세요.
+                항목을 누르면 <span className="font-semibold text-foreground">바로 아래</span>에 관계 상세가 열립니다. 긴 해석은「더보기」를 이용하세요.
               </p>
               {branchRelations.length === 0 && (
                 <p className="text-sm text-muted-foreground py-1">특별한 지지 관계가 없습니다.</p>
@@ -3732,45 +3750,44 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                   yuanGuoInlineDetail.relation.type === rel.type &&
                   yuanGuoInlineDetail.relation.description === rel.description;
                 return (
-                  <button
-                    key={i}
-                    type="button"
-                    className={cn(
-                      "w-full flex items-center gap-2 rounded-xl border border-border bg-white px-3 py-2 text-left transition-colors active:bg-muted/15 dark:bg-card",
-                      isSel && "border border-primary bg-primary/[0.06]",
+                  <div key={i} className="space-y-2">
+                    <button
+                      type="button"
+                      className={cn(
+                        "w-full flex items-center gap-2 rounded-xl border border-border bg-white px-3 py-2 text-left transition-colors active:bg-muted/15 dark:bg-card",
+                        isSel && "border border-primary bg-primary/[0.06]",
+                      )}
+                      onClick={() =>
+                        setYuanGuoInlineDetail((prev) =>
+                          prev?.kind === "branchRelation" &&
+                          prev.relation.type === rel.type &&
+                          prev.relation.description === rel.description
+                            ? null
+                            : { kind: "branchRelation", relation: rel },
+                        )
+                      }
+                    >
+                      <span className={`text-[13px] font-bold px-2 py-0.5 rounded-full shrink-0 ${RELATION_COLORS[rel.type]}`}>{rel.type}</span>
+                      <span className="text-sm font-medium flex-1 min-w-0 break-words">{rel.description}</span>
+                    </button>
+
+                    {isSel && (
+                      <BranchRelationInlineCard
+                        relation={rel}
+                        onClose={() => setYuanGuoInlineDetail(null)}
+                        onMore={() => {
+                          const relBranches = rel.description.match(/[자축인묘진사오미신유술해]/g) ?? [];
+                          setInfoSheet({
+                            kind: "branchRelation",
+                            relationType: rel.type,
+                            branches: relBranches,
+                          });
+                        }}
+                      />
                     )}
-                    onClick={() =>
-                      setYuanGuoInlineDetail((prev) =>
-                        prev?.kind === "branchRelation" &&
-                        prev.relation.type === rel.type &&
-                        prev.relation.description === rel.description
-                          ? null
-                          : { kind: "branchRelation", relation: rel },
-                      )
-                    }
-                  >
-                    <span className={`text-[13px] font-bold px-2 py-0.5 rounded-full shrink-0 ${RELATION_COLORS[rel.type]}`}>{rel.type}</span>
-                    <span className="text-sm font-medium flex-1 min-w-0 break-words">{rel.description}</span>
-                  </button>
+                  </div>
                 );
               })}
-              {yuanGuoInlineDetail?.kind === "branchRelation" ? (
-                <div className="mt-2">
-                  <BranchRelationInlineCard
-                    relation={yuanGuoInlineDetail.relation}
-                    onClose={() => setYuanGuoInlineDetail(null)}
-                    onMore={() => {
-                      const rel = yuanGuoInlineDetail.relation;
-                      const relBranches = rel.description.match(/[자축인묘진사오미신유술해]/g) ?? [];
-                      setInfoSheet({
-                        kind: "branchRelation",
-                        relationType: rel.type,
-                        branches: relBranches,
-                      });
-                    }}
-                  />
-                </div>
-              ) : null}
             </div>
           </AccSection>
 
