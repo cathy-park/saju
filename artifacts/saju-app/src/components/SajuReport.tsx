@@ -2752,6 +2752,11 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
   const personalityTengodSeededRef = useRef(false);
   const [todayDomainOpen, setTodayDomainOpen] = useState<"사랑" | "일" | "돈" | "건강" | "대인관계" | "학업" | null>(null);
   const [todayDomainUserPicked, setTodayDomainUserPicked] = useState(false);
+  const [todayHeroInline, setTodayHeroInline] = useState<
+    | { kind: "keyword"; keyword: string }
+    | { kind: "tengod"; tenGod: TenGod }
+    | null
+  >(null);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   useEffect(() => {
@@ -2761,6 +2766,7 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
     setPersonalityTengodUserPicked(false);
     setTodayDomainOpen(null);
     setTodayDomainUserPicked(false);
+    setTodayHeroInline(null);
   }, [record.id]);
 
   useEffect(() => {
@@ -2773,6 +2779,7 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
     if (reportTab !== "오늘운세") {
       setTodayDomainOpen(null);
       setTodayDomainUserPicked(false);
+      setTodayHeroInline(null);
     }
   }, [reportTab]);
 
@@ -4518,14 +4525,61 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                               {fortune.keywords.length > 0 && (
                                 <div className="flex flex-wrap justify-end gap-1">
                                   {fortune.keywords.slice(0, 3).map((kw, i) => (
-                                    <span key={kw} className={cn("ds-badge text-[10px] font-bold shadow-none", KEYWORD_STYLES[i % KEYWORD_STYLES.length])}>
+                                    <button
+                                      key={kw}
+                                      type="button"
+                                      onClick={() =>
+                                        setTodayHeroInline((prev) =>
+                                          prev?.kind === "keyword" && prev.keyword === kw ? null : { kind: "keyword", keyword: kw },
+                                        )
+                                      }
+                                      className={cn("ds-badge text-[10px] font-bold shadow-none", KEYWORD_STYLES[i % KEYWORD_STYLES.length])}
+                                    >
                                       {kw}
-                                    </span>
+                                    </button>
                                   ))}
                                 </div>
                               )}
                             </div>
                           </div>
+
+                          {/* 키워드 인라인 근거 카드 */}
+                          {todayHeroInline?.kind === "keyword" && (
+                            <div className="ds-inline-detail overflow-visible">
+                              <div className="ds-inline-detail-header">
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex flex-wrap items-center gap-1.5">
+                                    <span className="ds-badge text-[12px] font-bold shadow-none border-border bg-muted/50 text-foreground">
+                                      {todayHeroInline.keyword}
+                                    </span>
+                                    <span className="text-[12px] font-semibold text-muted-foreground">키워드 근거</span>
+                                  </div>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => setTodayHeroInline(null)}
+                                  className="shrink-0 px-2 text-sm text-muted-foreground hover:text-foreground"
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                              <div className="ds-inline-detail-body space-y-2">
+                                <div className="ds-inline-detail-nested">
+                                  <p className="text-[13px] text-foreground leading-relaxed">
+                                    이 키워드는 오늘 해석(일진·십성·신살·운흐름)을 요약한 근거 라벨이에요.
+                                  </p>
+                                </div>
+                                {todayFortune.basisKeywords?.length ? (
+                                  <div className="ds-inline-detail-nested">
+                                    <p className="text-[12px] font-bold uppercase tracking-wide text-muted-foreground">근거</p>
+                                    <p className="mt-1 text-[13px] text-foreground leading-relaxed">
+                                      {todayFortune.basisKeywords.slice(0, 6).join(" · ")}
+                                    </p>
+                                  </div>
+                                ) : null}
+                              </div>
+                            </div>
+                          )}
 
                           {/* 핵심 메시지 / 오늘 십성 / 한 줄 설명 */}
                           <div className="rounded-2xl border border-border/50 bg-white/60 backdrop-blur-sm px-4 py-3">
@@ -4535,15 +4589,70 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                               <div className="mt-1 flex flex-wrap items-center gap-1.5">
                                 <span className="text-[11px] font-semibold text-muted-foreground/80">오늘 십성</span>
                                 {tgStem && (
-                                  <span className={`ds-badge text-[10px] font-bold shadow-none ${getTenGodTw(tgStem, dayStem)}`} style={getTenGodChipStyle(tgStem, dayStem)}>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setTodayHeroInline((prev) =>
+                                        prev?.kind === "tengod" && prev.tenGod === tgStem ? null : { kind: "tengod", tenGod: tgStem },
+                                      )
+                                    }
+                                    className={`ds-badge text-[10px] font-bold shadow-none ${getTenGodTw(tgStem, dayStem)}`}
+                                    style={getTenGodChipStyle(tgStem, dayStem)}
+                                  >
                                     {tgStem}
-                                  </span>
+                                  </button>
                                 )}
                                 {tgBranch && (
-                                  <span className={`ds-badge text-[10px] font-bold shadow-none ${getTenGodTw(tgBranch, dayStem)}`} style={getTenGodChipStyle(tgBranch, dayStem)}>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setTodayHeroInline((prev) =>
+                                        prev?.kind === "tengod" && prev.tenGod === tgBranch ? null : { kind: "tengod", tenGod: tgBranch },
+                                      )
+                                    }
+                                    className={`ds-badge text-[10px] font-bold shadow-none ${getTenGodTw(tgBranch, dayStem)}`}
+                                    style={getTenGodChipStyle(tgBranch, dayStem)}
+                                  >
                                     {tgBranch}
-                                  </span>
+                                  </button>
                                 )}
+                              </div>
+                            )}
+                            {/* 십성 인라인 설명 카드 */}
+                            {todayHeroInline?.kind === "tengod" && (
+                              <div className="mt-2 ds-inline-detail overflow-visible">
+                                <div className="ds-inline-detail-header">
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex flex-wrap items-center gap-1.5">
+                                      <span
+                                        className={`ds-badge text-[12px] font-bold shadow-none ${getTenGodTw(todayHeroInline.tenGod, dayStem)}`}
+                                        style={getTenGodChipStyle(todayHeroInline.tenGod, dayStem)}
+                                      >
+                                        {todayHeroInline.tenGod}
+                                      </span>
+                                      <span className="text-[12px] font-semibold text-muted-foreground">십성 해설</span>
+                                    </div>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => setTodayHeroInline(null)}
+                                    className="shrink-0 px-2 text-sm text-muted-foreground hover:text-foreground"
+                                  >
+                                    ✕
+                                  </button>
+                                </div>
+                                <div className="ds-inline-detail-body space-y-2">
+                                  <div className="ds-inline-detail-nested">
+                                    <p className="text-[13px] text-foreground leading-relaxed">
+                                      {TEN_GOD_TOOLTIP[todayHeroInline.tenGod]?.headline ?? ""}
+                                    </p>
+                                    {TEN_GOD_TOOLTIP[todayHeroInline.tenGod]?.lines?.length ? (
+                                      <p className="mt-1 text-[13px] text-muted-foreground leading-relaxed">
+                                        {TEN_GOD_TOOLTIP[todayHeroInline.tenGod].lines.join(" · ")}
+                                      </p>
+                                    ) : null}
+                                  </div>
+                                </div>
                               </div>
                             )}
                             {fortune.guidance && (
@@ -4768,13 +4877,19 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                           <div className="flex flex-wrap items-center gap-2">
                             <div className="flex flex-wrap items-center gap-1.5">
                               {uniq.map((t) => (
-                                <span
+                                <button
                                   key={t}
+                                  type="button"
+                                  onClick={() =>
+                                    setTodayHeroInline((prev) =>
+                                      prev?.kind === "tengod" && prev.tenGod === (t as TenGod) ? null : { kind: "tengod", tenGod: t as TenGod },
+                                    )
+                                  }
                                   className={`ds-badge text-[11px] font-bold shadow-none ${getTenGodTw(t as TenGod, dayStem)}`}
                                   style={getTenGodChipStyle(t as TenGod, dayStem)}
                                 >
                                   {t}
-                                </span>
+                                </button>
                               ))}
                             </div>
                             <span className="text-[13px] text-muted-foreground">
@@ -4793,6 +4908,42 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                               오늘은 <span className="font-semibold">천간·지지</span>가 내 일간 기준으로 각각 십성으로 작동하며, 그 합이 하루 결의·반응에 영향을 줍니다.
                             </p>
                           </div>
+                          {todayHeroInline?.kind === "tengod" && (
+                            <div className="ds-inline-detail mt-2 overflow-visible">
+                              <div className="ds-inline-detail-header">
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex flex-wrap items-center gap-1.5">
+                                    <span
+                                      className={`ds-badge text-[12px] font-bold shadow-none ${getTenGodTw(todayHeroInline.tenGod, dayStem)}`}
+                                      style={getTenGodChipStyle(todayHeroInline.tenGod, dayStem)}
+                                    >
+                                      {todayHeroInline.tenGod}
+                                    </span>
+                                    <span className="text-[12px] font-semibold text-muted-foreground">십성 해설</span>
+                                  </div>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => setTodayHeroInline(null)}
+                                  className="shrink-0 px-2 text-sm text-muted-foreground hover:text-foreground"
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                              <div className="ds-inline-detail-body space-y-2">
+                                <div className="ds-inline-detail-nested">
+                                  <p className="text-[13px] text-foreground leading-relaxed">
+                                    {TEN_GOD_TOOLTIP[todayHeroInline.tenGod]?.headline ?? ""}
+                                  </p>
+                                  {TEN_GOD_TOOLTIP[todayHeroInline.tenGod]?.lines?.length ? (
+                                    <p className="mt-1 text-[13px] text-muted-foreground leading-relaxed">
+                                      {TEN_GOD_TOOLTIP[todayHeroInline.tenGod].lines.join(" · ")}
+                                    </p>
+                                  ) : null}
+                                </div>
+                              </div>
+                            </div>
+                          )}
                           {help ? (
                             <div className="ds-inline-detail-nested">
                               <p className="text-[13px] text-muted-foreground leading-relaxed">{help}</p>
@@ -4821,7 +4972,20 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                       <div className="space-y-2">
                         {todayOrderedShinsalInsights.map(({ name, oneLine }) => (
                           <div key={name} className="space-y-1.5">
-                            <ShinsalChip name={name} />
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setInfoSheet({
+                                  kind: "shinsal",
+                                  name,
+                                  source: "auto",
+                                  trigger: oneLine,
+                                })
+                              }
+                              className="inline-flex max-w-full text-left"
+                            >
+                              <ShinsalChip name={name} />
+                            </button>
                             <div className="ds-inline-detail-nested">
                               <p className="text-[13px] text-foreground leading-relaxed">{oneLine}</p>
                             </div>
