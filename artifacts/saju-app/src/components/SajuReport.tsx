@@ -37,7 +37,9 @@ import {
   type ElementTone,
   type FiveElKey,
 } from "@/lib/element-color";
+import { ShinsalInterpretationSection } from "@/components/ShinsalInterpretationSection";
 import { TodayFortuneCard } from "@/components/TodayFortuneCard";
+import { buildShinsalCombinationNotes, buildShinsalInterpretationList } from "@/lib/shinsalInterpretation";
 import { getFortuneForDate } from "@/lib/todayFortune";
 import { buildLifeFlowInsights } from "@/lib/lifeFlowInsight";
 import {
@@ -192,210 +194,6 @@ function AccSection({
   );
 }
 
-
-// ── Core Insight Chips ─────────────────────────────────────────────
-
-const DAY_STEM_KEYWORDS: Record<string, string[]> = {
-  갑: ["리더십", "성장", "도전"],
-  을: ["유연함", "섬세함", "조화"],
-  병: ["열정", "표현력", "활력"],
-  정: ["직관", "헌신", "세심함"],
-  무: ["신뢰", "안정", "중용"],
-  기: ["꼼꼼함", "인내", "실용"],
-  경: ["결단력", "원칙", "강직함"],
-  신: ["완벽주의", "예민함", "정밀함"],
-  임: ["창의", "유연성", "통찰"],
-  계: ["감성", "적응력", "지혜"],
-};
-
-const DAY_STEM_KEYWORD_BASIS: Record<string, Record<string, string>> = {
-  갑: {
-    리더십: "갑목은 천간의 첫 번째 자리로, 처음을 여는 양간입니다. 하늘을 향해 곧게 뻗는 큰 나무처럼 앞장서서 이끄는 성질이 강해 리더십이 자연스럽게 발현됩니다.",
-    성장: "갑목의 본질은 끊임없이 위로 뻗어나가는 성장 에너지입니다. 현재에 안주하지 않고 더 높은 곳을 향해 나아가려는 의지가 강하게 작용합니다.",
-    도전: "양목의 에너지는 장애물을 뚫고 나아가는 힘입니다. 어떤 어려움에도 굴하지 않고 새로운 길을 개척하려는 도전 정신이 핵심 기질로 나타납니다.",
-  },
-  을: {
-    유연함: "을목은 바람에 휘어지면서도 꺾이지 않는 덩굴식물의 기운입니다. 상황에 따라 적절히 굽히며 적응하는 유연한 지혜가 본질입니다.",
-    섬세함: "음목의 기운은 작은 것까지 세밀하게 관찰하는 능력을 줍니다. 타인의 마음과 환경의 미묘한 변화를 민감하게 감지하는 섬세한 감수성이 특성입니다.",
-    조화: "을목은 주변과 어울리며 함께 자라는 성질을 지닙니다. 갈등보다 균형과 공존을 추구하며 자연스럽게 화합의 분위기를 만들어냅니다.",
-  },
-  병: {
-    열정: "병화는 태양의 기운으로 불꽃처럼 타오르는 양간입니다. 내면에서 뿜어져 나오는 뜨거운 에너지가 열정이라는 키워드로 나타납니다.",
-    표현력: "태양처럼 빛을 발산하는 병화는 자신을 드러내는 힘이 강합니다. 감정과 생각을 솔직하고 풍부하게 표현하는 능력이 자연스럽게 발현됩니다.",
-    활력: "병화는 하루를 밝히는 태양처럼 주변에 생기를 불어넣습니다. 스스로 에너지가 넘치고 주위 사람들도 활기차게 만드는 특성을 지닙니다.",
-  },
-  정: {
-    직관: "정화는 촛불처럼 은은하게 타는 음화입니다. 강렬한 외표보다 내면에서 빛나는 예리한 통찰과 직관이 강점으로 발현됩니다.",
-    헌신: "촛불은 자신을 태워 주변을 밝힙니다. 정화 일간은 이처럼 아끼는 사람과 목표를 위해 자신을 아낌없이 내어주는 헌신의 기질이 강합니다.",
-    세심함: "정화는 작고 세밀한 빛으로 구석구석을 비춥니다. 타인의 감정과 상황을 세심하게 살피고 배려하는 능력이 뛰어난 특성입니다.",
-  },
-  무: {
-    신뢰: "무토는 거대한 산의 기운입니다. 흔들리지 않는 산처럼 일관된 태도를 유지하며 주변에서 믿고 의지할 수 있는 신뢰의 존재로 여겨집니다.",
-    안정: "산은 오랜 시간 한자리를 지킵니다. 무토 일간은 이처럼 요동치지 않는 안정감을 지니며 주변에 심리적 안전감을 제공합니다.",
-    중용: "무토는 오행의 중심에서 균형을 잡는 토 기운 중 가장 강한 형태입니다. 어느 한쪽으로 치우치지 않는 중용의 지혜가 핵심 특성입니다.",
-  },
-  기: {
-    꼼꼼함: "기토는 비옥한 논밭의 기운으로 음토입니다. 세세한 것까지 챙기고 관리하는 능력이 뛰어나 꼼꼼함이 자연스럽게 발현됩니다.",
-    인내: "기토는 씨앗이 뿌리를 내리고 싹을 틔울 수 있는 토양입니다. 결과가 나올 때까지 묵묵히 기다리는 인내력이 강한 특성입니다.",
-    실용: "논밭은 실질적인 결실을 위한 공간입니다. 기토 일간은 현실적이고 실용적인 관점으로 문제를 해결하는 능력이 뛰어납니다.",
-  },
-  경: {
-    결단력: "경금은 바위처럼 단단한 양금의 기운입니다. 흔들리지 않는 강한 의지와 과감한 결단으로 상황을 돌파하는 능력이 강합니다.",
-    원칙: "단단한 금속처럼 경금은 자신의 기준을 쉽게 구부리지 않습니다. 원칙과 규칙을 중시하며 일관된 기준으로 행동하는 특성이 나타납니다.",
-    강직함: "경금의 기운은 날카롭고 곧은 검과 같습니다. 불의에 굴하지 않고 옳다고 믿는 것을 직접적으로 말하고 행동하는 강직한 성품이 특성입니다.",
-  },
-  신: {
-    완벽주의: "신금은 가공된 보석과 귀금속의 기운으로 음금입니다. 흠집 없이 완벽한 보석을 추구하듯 높은 기준을 추구하는 완벽주의적 성향이 나타납니다.",
-    예민함: "신금은 아주 미세한 흠도 감지하는 예리함을 지닙니다. 환경과 사람의 미묘한 변화에 민감하게 반응하며 섬세하게 느끼는 예민한 감수성이 특성입니다.",
-    정밀함: "귀금속 가공에는 높은 정밀도가 필요합니다. 신금 일간은 어떤 일이든 디테일을 놓치지 않고 정교하게 처리하는 정밀함이 강점입니다.",
-  },
-  임: {
-    창의: "임수는 넓고 깊은 바다의 기운으로 양수입니다. 끝없이 넓은 바다처럼 무한한 상상력과 창의적인 아이디어가 넘치는 특성입니다.",
-    유연성: "물은 어떤 그릇에도 담깁니다. 임수 일간은 다양한 상황과 사람에 자연스럽게 적응하는 뛰어난 유연성이 강점으로 발현됩니다.",
-    통찰: "깊은 바다는 수면 아래 많은 것을 품습니다. 임수는 표면 너머의 본질을 꿰뚫어 보는 깊은 통찰력과 지혜를 타고납니다.",
-  },
-  계: {
-    감성: "계수는 이슬·빗물처럼 섬세한 음수입니다. 풍부한 감수성으로 세상의 아름다움과 타인의 감정을 깊이 느끼는 감성적 기질이 강합니다.",
-    적응력: "계수는 작은 물방울처럼 어디든 스며드는 성질을 지닙니다. 어떤 환경이든 유연하게 적응하며 자신의 자리를 만들어나가는 능력이 뛰어납니다.",
-    지혜: "계수는 조용히 스며드는 물처럼 깊이 생각하고 느끼는 능력을 지닙니다. 직접적인 경험과 내면의 성찰로 세상의 이치를 파악하는 지혜가 특성입니다.",
-  },
-};
-
-const ELEMENT_ENERGY_MEANING: Record<string, { title: string; nature: string; traits: string; inLife: string }> = {
-  목: {
-    title: "목 — 봄의 에너지",
-    nature: "목은 씨앗이 땅을 뚫고 솟아나는 봄의 기운입니다. 위로 뻗어나가고 성장하려는 강한 의지가 핵심이며, 생명력과 창조의 에너지를 상징합니다.",
-    traits: "인·사랑·리더십·시작하는 힘·뻗어나가는 의지. 강하게 뿌리를 내리면서도 위로 자라나는 이중적 에너지를 지닙니다.",
-    inLife: "목 기운이 강한 사주는 성장과 도전을 즐기며 새로운 것을 시작하는 힘이 강합니다. 리더십과 추진력이 뛰어나지만 고집이 생길 수 있으니 유연함을 기르는 것이 좋습니다.",
-  },
-  화: {
-    title: "화 — 여름의 에너지",
-    nature: "화는 태양과 불꽃처럼 밝게 타오르는 여름의 기운입니다. 열정·표현·확산의 에너지로 주변을 밝히고 따뜻하게 만드는 힘을 상징합니다.",
-    traits: "예·열정·표현력·사교성·빛과 따뜻함. 밝게 타오르며 주변에 에너지를 전파하는 기운입니다.",
-    inLife: "화 기운이 강한 사주는 밝고 사교적이며 표현력이 뛰어납니다. 열정적으로 살아가지만 과열되면 조급함이나 감정 기복이 생길 수 있어 여유를 갖는 것이 도움됩니다.",
-  },
-  토: {
-    title: "토 — 환절기의 에너지",
-    nature: "토는 모든 계절의 전환점에서 중심을 잡아주는 대지의 기운입니다. 오행의 중심에서 균형을 유지하고 조화를 이루는 신뢰와 안정의 에너지입니다.",
-    traits: "신·신뢰·안정·중용·포용력. 흔들리지 않는 토대처럼 모든 것을 받아들이고 중심을 잡습니다.",
-    inLife: "토 기운이 강한 사주는 신뢰감이 높고 안정적입니다. 흔들리지 않는 강인함이 있지만 변화를 싫어하거나 고집스러울 수 있어 유연성을 갖는 것이 중요합니다.",
-  },
-  금: {
-    title: "금 — 가을의 에너지",
-    nature: "금은 단단한 광석과 보석의 기운으로 가을의 결실을 상징합니다. 정제·결단·수확의 에너지이며 불필요한 것을 걸러내는 의의 힘입니다.",
-    traits: "의·결단력·원칙·강직함·정밀함. 날카롭고 단단하게 본질을 꿰뚫는 힘을 지닙니다.",
-    inLife: "금 기운이 강한 사주는 결단력이 강하고 원칙을 중시합니다. 강직함이 장점이지만 지나치면 냉정하거나 고집스러워 보일 수 있어 따뜻함을 더하는 것이 좋습니다.",
-  },
-  수: {
-    title: "수 — 겨울의 에너지",
-    nature: "수는 바다와 강처럼 깊고 유연한 겨울의 기운입니다. 지혜·통찰·적응·저장의 에너지이며 모든 것을 품고 흘려보내는 지의 힘을 상징합니다.",
-    traits: "지·지혜·감수성·유연성·통찰. 깊은 곳에서 흐르며 본질을 꿰뚫어 보는 힘입니다.",
-    inLife: "수 기운이 강한 사주는 지혜롭고 감수성이 풍부합니다. 적응력이 뛰어나지만 과도하면 우유부단해지거나 감정에 빠질 수 있어 결단력을 기르는 것이 도움됩니다.",
-  },
-};
-
-const ELEMENT_EXTRA_LABEL: Record<string, string> = {
-  목: "목 기운 강",
-  화: "화 기운 강",
-  토: "토 기운 강",
-  금: "금 기운 강",
-  수: "수 기운 강",
-};
-
-type KeywordInfo = { title: string; basis: string; isElement?: boolean; elementKey?: string };
-
-function CoreInsightChips({
-  dayStem,
-  fiveElement,
-}: {
-  dayStem: string;
-  fiveElement: FiveElementCount;
-}) {
-  const [activeInfo, setActiveInfo] = useState<KeywordInfo | null>(null);
-  const keywords = DAY_STEM_KEYWORDS[dayStem] ?? [];
-  const dayEl = STEM_ELEMENT[dayStem];
-  const sorted = (Object.entries(fiveElement) as [keyof FiveElementCount, number][])
-    .filter(([el]) => el !== dayEl)
-    .sort(([, a], [, b]) => b - a);
-  const strongestExtra = sorted[0];
-
-  return (
-    <>
-      <div className="flex flex-wrap gap-2 px-1 pb-1">
-        {keywords.map((kw, idx) => {
-          const basis = DAY_STEM_KEYWORD_BASIS[dayStem]?.[kw] ?? "";
-          return (
-            <button
-              key={kw}
-              onClick={() => setActiveInfo({ title: kw, basis })}
-              className={`ds-badge text-[13px] font-bold transition-colors active:scale-[0.98] shadow-none ${KEYWORD_COLORS[idx % KEYWORD_COLORS.length]}`}
-            >
-              {kw}
-            </button>
-          );
-        })}
-        {strongestExtra && strongestExtra[1] >= 2 && ELEMENT_EXTRA_LABEL[strongestExtra[0]] && (() => {
-          const elKey = strongestExtra[0] as string;
-          const elMeaning = ELEMENT_ENERGY_MEANING[elKey];
-          return (
-            <button
-              onClick={() => elMeaning && setActiveInfo({
-                title: ELEMENT_EXTRA_LABEL[elKey],
-                basis: elMeaning.nature,
-                isElement: true,
-                elementKey: elKey,
-              })}
-              className={`ds-badge text-[13px] font-bold transition-colors active:scale-[0.98] shadow-none ${
-                elementBgClass(elKey as FiveElKey, "muted")
-              } ${elementBorderClass(elKey as FiveElKey, "base")} ${elementTextClass(elKey as FiveElKey, "strong")}`}
-            >
-              {ELEMENT_EXTRA_LABEL[elKey]}
-            </button>
-          );
-        })()}
-      </div>
-
-      <Drawer open={!!activeInfo} onOpenChange={(open) => !open && setActiveInfo(null)}>
-        <DrawerContent>
-          <div className="max-w-lg mx-auto w-full px-5 pb-8 pt-1">
-            <DrawerHeader className="text-left px-0 pb-3">
-              <DrawerTitle className="text-xl font-bold">{activeInfo?.title}</DrawerTitle>
-            </DrawerHeader>
-            {activeInfo && (
-              <div className="space-y-3 text-sm">
-                {activeInfo.isElement && activeInfo.elementKey ? (() => {
-                  const em = ELEMENT_ENERGY_MEANING[activeInfo.elementKey];
-                  if (!em) return null;
-                  return (
-                    <>
-                      <div className="rounded-xl bg-muted/30 border border-border/50 px-4 py-3">
-                        <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide mb-1.5">기운의 본질</p>
-                        <p className="leading-relaxed">{em.nature}</p>
-                      </div>
-                      <div className="rounded-xl bg-amber-50 border border-amber-100 px-4 py-3">
-                        <p className="text-[11px] font-bold text-amber-700 uppercase tracking-wide mb-1.5">핵심 특성</p>
-                        <p className="leading-relaxed">{em.traits}</p>
-                      </div>
-                      <div className="rounded-xl bg-sky-50 border border-sky-100 px-4 py-3">
-                        <p className="text-[11px] font-bold text-sky-700 uppercase tracking-wide mb-1.5">삶에서의 발현</p>
-                        <p className="leading-relaxed">{em.inLife}</p>
-                      </div>
-                    </>
-                  );
-                })() : (
-                  <div className="rounded-xl bg-muted/30 border border-border/50 px-4 py-3">
-                    <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide mb-1.5">이 키워드가 뜬 이유</p>
-                    <p className="leading-relaxed">{activeInfo?.basis}</p>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </DrawerContent>
-      </Drawer>
-    </>
-  );
-}
 
 // ── PillarTable ────────────────────────────────────────────────────
 
@@ -2154,6 +1952,71 @@ function LuckFlowTabs({
   );
 }
 
+function ReportAtAGlanceCard({
+  dayStem,
+  dayBranch,
+  primaryEl,
+  gukgukName,
+  strengthLevel,
+  strengthScore,
+  bullets,
+}: {
+  dayStem: string;
+  dayBranch: string;
+  primaryEl: FiveElKey | null;
+  gukgukName: string;
+  strengthLevel: string;
+  strengthScore?: number;
+  bullets: string[];
+}) {
+  return (
+    <div className="ds-card border-primary/15 bg-gradient-to-br from-primary/[0.06] via-card to-card shadow-none">
+      <div className="ds-card-pad space-y-4">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">원국 요약</p>
+          <h2 className="ds-title mt-1">핵심 한눈에 보기</h2>
+        </div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="rounded-lg border border-border bg-background/70 px-3 py-2">
+            <p className="text-[10px] font-bold uppercase text-muted-foreground">대표 오행</p>
+            {primaryEl ? (
+              <p className={cn("text-lg font-black", elementTextClass(primaryEl, "strong"))}>{primaryEl}</p>
+            ) : (
+              <p className="text-sm text-muted-foreground">—</p>
+            )}
+          </div>
+          <div className="rounded-lg border border-border bg-background/70 px-3 py-2">
+            <p className="text-[10px] font-bold uppercase text-muted-foreground">격국</p>
+            <p className="text-sm font-bold leading-snug text-foreground">{gukgukName || "—"}</p>
+          </div>
+          <div className="rounded-lg border border-border bg-background/70 px-3 py-2 sm:col-span-2">
+            <p className="text-[10px] font-bold uppercase text-muted-foreground">일간 강약</p>
+            <p className="text-base font-bold text-foreground">
+              {strengthLevel}
+              {typeof strengthScore === "number" && Number.isFinite(strengthScore) ? (
+                <span className="ml-2 text-sm font-semibold text-muted-foreground">({strengthScore}점)</span>
+              ) : null}
+            </p>
+            <p className="mt-0.5 text-[11px] text-muted-foreground">
+              일간 {dayStem} · 일지 {dayBranch}
+            </p>
+          </div>
+        </div>
+        {bullets.length > 0 && (
+          <div className="space-y-2 border-t border-border pt-4">
+            <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">핵심 특징</p>
+            <ul className="list-disc space-y-1 pl-4 text-sm leading-relaxed text-foreground/90">
+              {bullets.slice(0, 3).map((b, i) => (
+                <li key={i}>{b}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Main Report ────────────────────────────────────────────────────
 
 const STEM_RELATION_TYPES = new Set(["천간합", "천간충"]);
@@ -2491,6 +2354,17 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
     effectivePillars.month?.hangul?.[1], effectivePillars.year?.hangul?.[1],
   ].filter((c): c is string => !!c);
 
+  const atAGlancePrimary = useMemo((): FiveElKey | null => {
+    if (!dayStemForCompute) return null;
+    return computePrimaryElement({
+      counts: effectiveFiveElements,
+      monthBranch: effectivePillars.month?.hangul?.[1],
+      dayBranch: effectivePillars.day?.hangul?.[1],
+      allStems,
+      allBranches,
+    });
+  }, [effectiveFiveElements, effectivePillars, dayStemForCompute, allStems, allBranches]);
+
   // Debug helper (opt-in): localStorage.debugStrength === "1"
   if (typeof window !== "undefined") {
     try {
@@ -2522,6 +2396,21 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
     trueSolarTimeOn: fortuneOpts?.trueSolarTimeOn ?? false,
   };
   const luckCycles = calculateLuckCycles(input, localProfile.computedPillars, daewoonSuOpts);
+
+  const shinsalLuckCtx = useMemo(() => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const seun = luckCycles.seun.find((e) => e.year === y);
+    const age = y - input.year;
+    const dw0 = luckCycles.daewoon[0]?.startAge ?? 0;
+    const adjustedDw = luckCycles.daewoon.map((entry, i) => ({
+      ...entry,
+      startAge: dw0 + i * 10,
+      endAge: dw0 + i * 10 + 9,
+    }));
+    const cur = adjustedDw.find((e) => age >= e.startAge && age <= e.endAge);
+    return { seunBranch: seun?.ganZhi.branch, daewoonBranch: cur?.ganZhi.branch };
+  }, [luckCycles, input.year]);
 
   const shinsalPillars = (dayStem && dayBranch)
     ? calculateShinsalFull(dayStem, dayBranch, input.month, [
@@ -2574,6 +2463,24 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
       finalShinsalNames.add(n);
     }
   }
+
+  const shinsalInterpretEntries = useMemo(
+    () =>
+      shinsalPillars.length > 0
+        ? buildShinsalInterpretationList(shinsalPillars, branchRelations, shinsalLuckCtx)
+        : [],
+    [shinsalPillars, branchRelations, shinsalLuckCtx],
+  );
+
+  const shinsalComboNotes = useMemo(() => {
+    const names = new Set<string>();
+    for (const ps of shinsalPillars) {
+      for (const n of [...(ps.pillarItems ?? []), ...(ps.stemItems ?? []), ...(ps.branchItems ?? [])]) {
+        names.add(n);
+      }
+    }
+    return buildShinsalCombinationNotes(names);
+  }, [shinsalPillars]);
 
   const lifeFlowData = buildLifeFlowInsights(
     { ...record, maritalStatus },
@@ -2667,12 +2574,28 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
   const hourStemTg = hasHourPillar && dayStem && hourStem ? getTenGod(dayStem, hourStem) : null;
   const hourBranchTg = hasHourPillar && dayStem && hourBranch ? getTenGod(dayStem, hourBranch) : null;
 
+  const atAGlanceBullets =
+    ruleInsights.length > 0
+      ? ruleInsights.slice(0, 3)
+      : (strengthUnified?.explanation ?? []).slice(0, 3);
+
   return (
     <div className="space-y-4">
 
-      {/* ── 상단 요약 (항상 표시) ── */}
-      {dayStem && (
-        <CoreInsightChips dayStem={dayStem} fiveElement={effectiveFiveElements} />
+      {dayStem && sajuPipelineResult && (
+        <ReportAtAGlanceCard
+          dayStem={dayStem}
+          dayBranch={dayBranch}
+          primaryEl={atAGlancePrimary}
+          gukgukName={
+            sajuPipelineResult.interpretation.gukguk?.name ??
+            sajuPipelineResult.interpretation.structureType ??
+            "—"
+          }
+          strengthLevel={sajuPipelineResult.adjusted.effectiveStrengthLevel}
+          strengthScore={sajuPipelineResult.adjusted.strengthResult?.score}
+          bullets={atAGlanceBullets}
+        />
       )}
 
       {/* ── 시주 모드 토글 (탭 바 위, 출생 시간 있을 때만) ── */}
@@ -2773,17 +2696,32 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
             shinsalBranchItems={shinsalBranchItems}
           />
 
-          {/* ── 십성 분포 (read-only) ── */}
-          {dayStem && (() => {
+          <div className="ds-card shadow-none">
+            <div className="border-b border-border bg-muted/20 px-4 py-3">
+              <h2 className="text-sm font-bold text-foreground">오행·십성 구조</h2>
+              <p className="mt-1 text-[11px] text-muted-foreground">핵심 분석 영역</p>
+            </div>
+            <div className="ds-card-pad space-y-6">
+              <div>
+                <h3 className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">오행 분포</h3>
+                <FiveElementSection
+                  counts={effectiveFiveElements}
+                  dayStem={dayStem}
+                  monthBranch={pillars.month?.hangul?.[1]}
+                  dayBranch={dayBranch}
+                  allStems={allStems}
+                  allBranches={allBranches}
+                />
+              </div>
+              <div className="border-t border-border pt-4">
+                <h3 className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">십성 분포</h3>
+          {dayStem ? (() => {
             const autoTgCounts = autoCountTenGods(dayStem, [
               ...allStems.filter((s) => s !== dayStem), ...allBranches,
             ]) as ManualTenGodCounts;
             const displayCounts: ManualTenGodCounts = autoTgCounts;
             return (
-              <AccSection
-                title="십성 분포"
-                defaultOpen
-              >
+                <div>
                 {(() => {
                     const allTgTotal = Object.values(displayCounts).reduce((s, c) => s + c, 0) || 1;
                     return (
@@ -2877,13 +2815,18 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                   </div>
                     );
                   })()}
-              </AccSection>
+                </div>
             );
-          })()}
+          })() : (
+                <p className="text-sm text-muted-foreground">일간 정보가 없어 십성 분포를 표시할 수 없습니다.</p>
+              )}
+              </div>
+            </div>
+          </div>
 
-          {/* 格局 및 구조 분석 */}
+          {/* 격국·조후 */}
           {dayStem && (
-            <AccSection title="격국 및 구조 분석">
+            <AccSection title="격국·조후" defaultOpen>
               <GukgukSection
                 dayStem={dayStem}
                 monthBranch={effectivePillars.month?.hangul?.[1]}
@@ -2892,36 +2835,69 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                 pipelineGukguk={sajuPipelineResult?.interpretation.gukguk ?? null}
                 pipelinePatterns={sajuPipelineResult?.interpretation.structurePatterns ?? []}
               />
+              {seasonalNote ? (
+                <div className="mt-4 rounded-lg border border-border bg-muted/20 px-3 py-2.5">
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">조후(계절) 보정</p>
+                  <p className="mt-1 text-sm leading-relaxed text-foreground">{seasonalNote}</p>
+                </div>
+              ) : null}
             </AccSection>
           )}
 
           {/* 신강/신약 (single source: sajuPipelineResult.adjusted.strengthResult) */}
           {sajuPipelineResult?.adjusted?.strengthResult && (
-            <AccSection title="일간 강도">
+            <AccSection title="일간 강도" defaultOpen>
               <DayMasterStrengthCard strength={sajuPipelineResult.adjusted.strengthResult} />
             </AccSection>
           )}
 
-          <AccSection
-            title="오행 분포"
-          >
-            <FiveElementSection
-              counts={effectiveFiveElements}
-              dayStem={dayStem}
-              monthBranch={pillars.month?.hangul?.[1]}
-              dayBranch={dayBranch}
-              allStems={allStems}
-              allBranches={allBranches}
-            />
-          </AccSection>
-
-          {/* 신살 */}
+          {/* 신살 요약 + 상세 */}
           {dayStem && dayBranch && (
-            <AccSection title="신살">
+            <>
+              <div className="ds-card shadow-none">
+                <div className="border-b border-border px-4 py-3">
+                  <h2 className="text-sm font-bold text-foreground">신살 요약</h2>
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    일간 <span className="font-semibold text-foreground">{dayStem}</span> · 일지{" "}
+                    <span className="font-semibold text-foreground">{dayBranch}</span> 기준 · 총{" "}
+                    <span className="font-bold text-foreground">{finalShinsalNames.size}</span>개 표시
+                  </p>
+                </div>
+                <div className="ds-card-pad flex flex-wrap gap-2">
+                  {[...finalShinsalNames].sort().slice(0, 14).map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => setInfoSheet({ kind: "shinsal", name: n, source: "auto" })}
+                      className={cn(
+                        "ds-badge text-[12px] font-bold shadow-none transition-opacity hover:opacity-90",
+                        SHINSAL_COLOR[n] ?? "bg-muted text-foreground",
+                      )}
+                    >
+                      {n}
+                    </button>
+                  ))}
+                  {finalShinsalNames.size > 14 && (
+                    <span className="ds-badge text-[11px] text-muted-foreground shadow-none">
+                      외 {finalShinsalNames.size - 14}개 · 아래 상세에서 전체 확인
+                    </span>
+                  )}
+                  {finalShinsalNames.size === 0 && (
+                    <span className="text-sm text-muted-foreground">표시할 신살이 없습니다.</span>
+                  )}
+                </div>
+              </div>
+
+              <AccSection title="신살 상세 해석" defaultOpen={false}>
+                <ShinsalInterpretationSection
+                  entries={shinsalInterpretEntries}
+                  combinations={shinsalComboNotes}
+                  onOpenDetail={setInfoSheet}
+                />
+              </AccSection>
+
+              <AccSection title="기둥별 신살 태그" defaultOpen={false}>
               <div className="space-y-3">
-                <p className="text-[13px] text-muted-foreground">
-                  일간 <span className="font-bold text-foreground">{dayStem}</span> · 일지 <span className="font-bold text-foreground">{dayBranch}</span> 기준
-                </p>
                 {[
                   { pillar: "시주", stemLabel: "시천간", branchLabel: "시지", isDay: false, isUnknown: !effectivePillars.hour || input.timeUnknown || hourMode === "제외" },
                   { pillar: "일주", stemLabel: "일천간", branchLabel: "일지", isDay: true, isUnknown: false },
@@ -2991,10 +2967,11 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                 })}
               </div>
             </AccSection>
+            </>
           )}
 
           {/* 지장간·12운성 */}
-          <AccSection title="지장간 · 12운성">
+          <AccSection title="지장간 · 12운성" defaultOpen={false}>
             <div className="space-y-4">
               <div>
                 <p className="text-[13px] font-semibold text-muted-foreground mb-2">지장간</p>
@@ -3072,7 +3049,7 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
           </AccSection>
 
           {/* 천간·지지 관계 */}
-          <AccSection title="천간 · 지지 관계">
+          <AccSection title="천간 · 지지 관계" defaultOpen={false}>
             <div className="space-y-2">
               <p className="text-[11px] text-muted-foreground">탭하면 상세 해석</p>
               {branchRelations.length === 0 && (
