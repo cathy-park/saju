@@ -779,10 +779,8 @@ function FiveElementSection({
           const fillH = count > 0 ? Math.max(fillHRaw, 4) : 0;
           const fillY = y + NODE_R - fillH;
           const isPrimary = el === primaryEl;
-          /* 대표: strong / 그 외: 같은 범주 base를 연하게(무채 테두리 대신) */
-          const stroke = isPrimary
-            ? elementColorVar(el, "strong")
-            : elementHslAlpha(el, "base", 0.52);
+          /* 테두리 컬러는 대표 오행 원만 */
+          const stroke = isPrimary ? elementColorVar(el, "strong") : "hsl(var(--border))";
           const strokeW = isPrimary ? 1.75 : 1.5;
           /* 오행 한 글자 = 십성 분포 %·칩과 동일 strong / 보조줄은 같은 범주 base */
           const elLabelFill = elementColorVar(el, "strong");
@@ -822,7 +820,7 @@ function FiveElementSection({
               {tenGodGroup && (
                 <text x={x} y={y + 5} textAnchor="middle" fontSize="10" fontWeight="700" fill={elSubFill}>({tenGodGroup})</text>
               )}
-              <text x={x} y={y + (tenGodGroup ? 18 : 11)} textAnchor="middle" fontSize="11" fill={elSubFill}>
+              <text x={x} y={y + (tenGodGroup ? 18 : 11)} textAnchor="middle" fontSize="11" fill="hsl(var(--foreground))">
                 {count}개 {Math.round(pct * 100)}%
               </text>
             </g>
