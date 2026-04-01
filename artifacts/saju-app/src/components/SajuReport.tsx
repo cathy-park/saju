@@ -13,7 +13,6 @@ import {
   buildInterpretSchema,
   computePrimaryElement,
   STRENGTH_LEVELS,
-  STRENGTH_LEVEL_INDEX,
   STRENGTH_DISPLAY_LABEL,
   STRENGTH_SHORT_DESC,
   ELEMENT_KO,
@@ -56,12 +55,20 @@ import {
   type TenGod,
 } from "@/lib/tenGods";
 import { getHiddenStems, HIDDEN_STEMS_HANJA } from "@/lib/hiddenStems";
-import { InfoBottomSheet, TG_LUCK_MEANING, TG_NATAL_MEANING } from "@/components/InfoBottomSheet";
+import {
+  InfoBottomSheet,
+  TG_LUCK_MEANING,
+  TG_NATAL_MEANING,
+  TEN_GOD_GROUP_DETAILS,
+  getTenGodGroupPctContext,
+} from "@/components/InfoBottomSheet";
 import type { InfoSheetType } from "@/components/InfoBottomSheet";
 import {
   analyzeBranchRelations,
   RELATION_COLORS,
   RELATION_DESC,
+  RELATION_DETAIL,
+  type BranchRelation,
 } from "@/lib/branchRelations";
 import {
   getTwelveStage,
@@ -267,12 +274,12 @@ function SelectedShinsalInlineCard({
   onMore: () => void;
 }) {
   return (
-    <div className="ds-card mt-3 border-primary/25 shadow-none">
+    <div className="ds-card mt-3 border-primary/25 shadow-none overflow-visible">
       <div className="flex items-start justify-between gap-2 border-b border-border px-4 py-3">
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <span
             className={cn(
-              "ds-badge inline-block max-w-full truncate text-[13px] font-bold shadow-none",
+              "ds-badge inline-block max-w-full whitespace-normal break-words text-left text-[13px] font-bold shadow-none",
               SHINSAL_COLOR[entry.name] ?? "bg-muted text-foreground",
             )}
           >
@@ -289,12 +296,12 @@ function SelectedShinsalInlineCard({
           ✕
         </button>
       </div>
-      <div className="ds-card-pad space-y-2.5 text-sm">
+      <div className="ds-card-pad space-y-2.5 overflow-visible text-sm">
         <div>
           <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">기준</p>
           <p className="text-[13px] font-semibold text-foreground">{entry.basisLabel}</p>
           {entry.triggerDetail ? (
-            <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{entry.triggerDetail}</p>
+            <p className="mt-0.5 break-words text-xs leading-relaxed text-muted-foreground">{entry.triggerDetail}</p>
           ) : null}
         </div>
         <div>
@@ -313,7 +320,7 @@ function SelectedShinsalInlineCard({
         </div>
         <div className="rounded-lg border border-border/60 bg-muted/30 px-3 py-2">
           <p className="mb-0.5 text-[10px] font-bold text-muted-foreground">한 줄 해석</p>
-          <p className="text-[13px] leading-relaxed text-foreground">{entry.oneLine}</p>
+          <p className="break-words text-[13px] leading-relaxed text-foreground">{entry.oneLine}</p>
         </div>
         <button
           type="button"
@@ -322,6 +329,186 @@ function SelectedShinsalInlineCard({
         >
           긴 해석 더보기
         </button>
+      </div>
+    </div>
+  );
+}
+
+function TenGodGroupInlineCard({
+  group,
+  pct,
+  dayStem,
+  onClose,
+  onMore,
+}: {
+  group: string;
+  pct: number;
+  dayStem: string;
+  onClose: () => void;
+  onMore: () => void;
+}) {
+  const detail = TEN_GOD_GROUP_DETAILS.find((g) => g.group === group);
+  if (!detail) return null;
+  const pctContext = getTenGodGroupPctContext(group, pct);
+  return (
+    <div className="ds-card mt-3 border-primary/20 shadow-none overflow-visible">
+      <div className="flex items-start justify-between gap-2 border-b border-border px-4 py-3">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className={cn("ds-badge text-[12px] font-bold shadow-none", detail.color)}>{group}</span>
+            <span className="text-[12px] font-semibold text-muted-foreground">{pct}%</span>
+          </div>
+          <p className="mt-1 text-[10px] text-muted-foreground">행동 스타일·기질 해석</p>
+        </div>
+        <button type="button" onClick={onClose} className="shrink-0 px-2 text-sm text-muted-foreground hover:text-foreground">
+          ✕
+        </button>
+      </div>
+      <div className="ds-card-pad space-y-2.5 overflow-visible text-sm">
+        <p className="text-[13px] font-semibold text-foreground">{detail.title}</p>
+        <p className="break-words text-[13px] leading-relaxed text-foreground/90">{detail.meaning}</p>
+        <div className="rounded-lg border border-amber-100 bg-amber-50/70 px-3 py-2">
+          <p className="text-[10px] font-bold uppercase tracking-wide text-amber-800">내 사주 비중 맥락</p>
+          <p className="mt-1 break-words text-[13px] leading-relaxed text-foreground">{pctContext}</p>
+        </div>
+        <div className="rounded-lg border border-sky-100 bg-sky-50/60 px-3 py-2">
+          <p className="text-[10px] font-bold text-sky-800">차트 해석 포인트</p>
+          <p className="mt-1 break-words text-[13px] leading-relaxed text-foreground">{detail.chartPoint}</p>
+        </div>
+        <button type="button" onClick={onMore} className="text-[12px] font-semibold text-primary underline-offset-2 hover:underline">
+          관계·직업·감정 측면 더보기
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function BranchRelationInlineCard({
+  relation,
+  onClose,
+  onMore,
+}: {
+  relation: BranchRelation;
+  onClose: () => void;
+  onMore: () => void;
+}) {
+  const detail = RELATION_DETAIL[relation.type];
+  const shortDesc = RELATION_DESC[relation.type] ?? "";
+  return (
+    <div className="ds-card mt-3 border-primary/20 shadow-none overflow-visible">
+      <div className="flex items-start justify-between gap-2 border-b border-border px-4 py-3">
+        <div className="min-w-0 flex-1">
+          <span className={cn("ds-badge text-[12px] font-bold shadow-none", RELATION_COLORS[relation.type])}>{relation.type}</span>
+          <p className="mt-1 break-words text-[13px] font-medium text-foreground">{relation.description}</p>
+        </div>
+        <button type="button" onClick={onClose} className="shrink-0 px-2 text-sm text-muted-foreground hover:text-foreground">
+          ✕
+        </button>
+      </div>
+      <div className="ds-card-pad space-y-2.5 overflow-visible text-sm">
+        <p className="break-words text-[13px] leading-relaxed text-muted-foreground">{shortDesc}</p>
+        {detail ? (
+          <>
+            <div className="rounded-lg border border-sky-100 bg-sky-50/60 px-3 py-2">
+              <p className="text-[10px] font-bold text-sky-800">기본 의미</p>
+              <p className="mt-1 break-words text-[13px] leading-relaxed">{detail.meaning}</p>
+            </div>
+            <div className="rounded-lg border border-violet-100 bg-violet-50/50 px-3 py-2">
+              <p className="text-[10px] font-bold text-violet-800">해석 관점</p>
+              <p className="mt-1 break-words text-[13px] leading-relaxed">{detail.interpretation}</p>
+            </div>
+          </>
+        ) : null}
+        <button type="button" onClick={onMore} className="text-[12px] font-semibold text-primary underline-offset-2 hover:underline">
+          도메인·주의점 더보기
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function HiddenStemInlineCard({
+  pillarLabel,
+  branch,
+  stems,
+  onClose,
+}: {
+  pillarLabel: string;
+  branch: string;
+  stems: string[];
+  onClose: () => void;
+}) {
+  return (
+    <div className="ds-card mt-3 border-primary/20 shadow-none overflow-visible">
+      <div className="flex items-start justify-between gap-2 border-b border-border px-4 py-3">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">지장간</p>
+          <p className="text-[14px] font-bold text-foreground">
+            {pillarLabel} · {branch}
+          </p>
+        </div>
+        <button type="button" onClick={onClose} className="shrink-0 px-2 text-sm text-muted-foreground hover:text-foreground">
+          ✕
+        </button>
+      </div>
+      <div className="ds-card-pad space-y-3 overflow-visible text-sm">
+        <p className="break-words text-[13px] leading-relaxed text-foreground/90">
+          지장간(地藏干)은 지지 안에 숨은 천간으로, 겉으로 드러난 지지 한 글자만으로는 보이지 않는 오행층입니다. 통근·성격 배경·내면 기운을 읽을 때 참고합니다.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {stems.map((s) => {
+            const el = STEM_ELEMENT[s] as FiveElKey | undefined;
+            return (
+              <span
+                key={s}
+                className={cn(
+                  "rounded-lg border px-2.5 py-1 text-[13px] font-bold",
+                  el ? cn(elementBgClass(el, "muted"), elementTextClass(el, "strong"), elementBorderClass(el, "muted")) : "border-border bg-muted",
+                )}
+              >
+                {s}
+                {el ? <span className="ml-1 text-[11px] font-semibold opacity-80">({el})</span> : null}
+              </span>
+            );
+          })}
+        </div>
+        <p className="text-[11px] leading-relaxed text-muted-foreground">
+          여기·중기·본기 순으로 저장된 간을 원국표 순서대로 나열했습니다.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function TwelveStageInlineCard({
+  label,
+  branch,
+  stage,
+  onClose,
+}: {
+  label: string;
+  branch: string;
+  stage: string;
+  onClose: () => void;
+}) {
+  const desc = TWELVE_STAGE_DESC[stage as keyof typeof TWELVE_STAGE_DESC] ?? "";
+  const color = TWELVE_STAGE_COLOR[stage as keyof typeof TWELVE_STAGE_COLOR] ?? "";
+  return (
+    <div className="ds-card mt-3 border-primary/20 shadow-none overflow-visible">
+      <div className="flex items-start justify-between gap-2 border-b border-border px-4 py-3">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">12운성</p>
+          <p className="text-[14px] font-bold text-foreground">
+            {label} · {branch} → <span className={cn("inline-block rounded px-1.5 py-0.5", color)}>{stage}</span>
+          </p>
+        </div>
+        <button type="button" onClick={onClose} className="shrink-0 px-2 text-sm text-muted-foreground hover:text-foreground">
+          ✕
+        </button>
+      </div>
+      <div className="ds-card-pad overflow-visible text-sm">
+        <p className="break-words text-[13px] leading-relaxed text-foreground/90">{desc}</p>
+        <p className="mt-2 text-[11px] text-muted-foreground">일간 기준 각 지지에서의 기운 성장 단계를 나타냅니다.</p>
       </div>
     </div>
   );
@@ -632,6 +819,7 @@ function FiveElementSection({
   dayBranch,
   allStems,
   allBranches,
+  variant = "structure",
 }: {
   counts: FiveElementCount;
   dayStem?: string;
@@ -639,6 +827,8 @@ function FiveElementSection({
   dayBranch?: string;
   allStems?: string[];
   allBranches?: string[];
+  /** 원국=구조 데이터, 성격 탭=행동·기질 해석 관점 */
+  variant?: "structure" | "personality";
 }) {
   // Pentagon order starting from top, clockwise: 화→토→금→수→목
   const elements: FiveElKey[] = ["화", "토", "금", "수", "목"];
@@ -679,12 +869,20 @@ function FiveElementSection({
         <p className="text-[13px] font-bold text-foreground self-start">나의 오행: {dayStem}{dayEl}</p>
       )}
       <div className="self-start space-y-0.5">
-        <p className="text-[12px] text-muted-foreground leading-relaxed">
-          오행 분포: <span className="font-semibold text-foreground">천간+지지</span> 기준
-        </p>
-        <p className="text-[12px] text-muted-foreground leading-relaxed">
-          용신 계산: <span className="font-semibold text-foreground">지장간 가중치 포함</span>
-        </p>
+        {variant === "structure" ? (
+          <>
+            <p className="text-[12px] text-muted-foreground leading-relaxed">
+              <span className="font-semibold text-foreground">구조 데이터</span>: 천간+지지 개수 기준 분포입니다.
+            </p>
+            <p className="text-[12px] text-muted-foreground leading-relaxed">
+              용신 계산에는 <span className="font-semibold text-foreground">지장간 가중치</span>가 반영됩니다.
+            </p>
+          </>
+        ) : (
+          <p className="text-[12px] text-muted-foreground leading-relaxed">
+            같은 수치를 <span className="font-semibold text-foreground">성격·행동 균형</span> 관점에서 읽습니다. 자세한 수치 해석은 원국 탭을 참고하세요.
+          </p>
+        )}
       </div>
       <div className="flex gap-4 self-start text-xs text-muted-foreground">
         <span className="flex items-center gap-1">
@@ -733,9 +931,8 @@ function FiveElementSection({
           const fillH = count > 0 ? Math.max(fillHRaw, 4) : 0;
           const fillY = y + NODE_R - fillH;
           const isPrimary = el === primaryEl;
-          /* 테두리 컬러는 대표 오행 원만 */
           const stroke = isPrimary ? elementColorVar(el, "strong") : "hsl(var(--border))";
-          const strokeW = isPrimary ? 1.75 : 1.5;
+          const strokeW = isPrimary ? 2.5 : 1.5;
           /* 오행 한 글자 = 십성 분포 %·칩과 동일 strong / 보조줄은 같은 범주 base */
           const elLabelFill = elementColorVar(el, "strong");
           const elSubFill = elementColorVar(el, "base");
@@ -750,6 +947,17 @@ function FiveElementSection({
                   height={fillH}
                   fill={ELEMENT_PENTAGON_FILL[el]}
                   clipPath={`url(#pclip-${el})`}
+                />
+              )}
+              {isPrimary && (
+                <circle
+                  cx={x}
+                  cy={y}
+                  r={NODE_R + 5}
+                  fill="none"
+                  stroke={elementColorVar(el, "strong")}
+                  strokeWidth={2}
+                  opacity={0.45}
                 />
               )}
               {/* 채움 위에 테두리가 오도록 stroke 전용 원을 맨 위(텍스트 제외)에 둠 */}
@@ -878,6 +1086,7 @@ function TenGodDistributionSection({
   allChars,
   effectiveFiveElements,
   onTap,
+  selectedGroup,
   monthBranch,
   dayBranch,
   allStems,
@@ -888,6 +1097,7 @@ function TenGodDistributionSection({
   allChars: string[];
   effectiveFiveElements: FiveElementCount;
   onTap: (group: string, pct: number) => void;
+  selectedGroup?: string | null;
   monthBranch?: string;
   dayBranch?: string;
   allStems?: string[];
@@ -916,6 +1126,7 @@ function TenGodDistributionSection({
           const p2 = detailed[s2] ?? 0;
           /* 대표 오행(오행 분포와 동일) = 이 행의 고정 범례 오행일 때만 강조 */
           const isPrimaryRow = primaryEl === rowEl;
+          const isRowSelected = selectedGroup === g;
           return (
             <div
               key={g}
@@ -924,6 +1135,7 @@ function TenGodDistributionSection({
                 isPrimaryRow
                   ? cn(elementBgClass(rowEl, "muted"), elementBorderClass(rowEl, "muted"))
                   : "border-transparent",
+                isRowSelected && "ring-2 ring-primary ring-offset-2 ring-offset-background",
               )}
             >
               <button
@@ -999,44 +1211,6 @@ function getDayMasterSummaryFromStrength(dayStem: string, strengthLevel: Strengt
   return `일간 ${dayStem}${elLabel}의 기운이 약한 편입니다. 섬세함과 관계 감수성이 강점으로 나타날 수 있습니다.`;
 }
 
-// ── Strength visual graph ─────────────────────────────────────────
-
-const STRENGTH_SEGMENT_COLOR: Record<number, string> = {
-  0: "bg-red-700 text-white",
-  1: "bg-red-500 text-white",
-  2: "bg-orange-400 text-white",
-  3: "bg-emerald-500 text-white",
-  4: "bg-blue-400 text-white",
-  5: "bg-blue-600 text-white",
-  6: "bg-indigo-700 text-white",
-};
-
-function StrengthGraph({ level }: { level: StrengthLevel }) {
-  const idx = STRENGTH_LEVEL_INDEX[level];
-  return (
-    <div className="space-y-2">
-      <div className="flex gap-0.5 rounded-lg overflow-hidden">
-        {STRENGTH_LEVELS.map((lvl, i) => (
-          <div
-            key={lvl}
-            className={`flex-1 py-2 text-center text-[10px] font-bold leading-tight transition-all ${
-              i === idx
-                ? STRENGTH_SEGMENT_COLOR[i]
-                : "bg-muted/40 text-muted-foreground/40"
-            }`}
-          >
-            {lvl}
-          </div>
-        ))}
-      </div>
-      <p className="text-[13px] text-center text-muted-foreground">
-        현재 사주 강도:{" "}
-        <span className="font-bold text-foreground">{level}</span>
-      </p>
-    </div>
-  );
-}
-
 function DayMasterStrengthCard({
   strength,
 }: {
@@ -1092,6 +1266,8 @@ function SajuStructureSummary({
   pipelineYongshinPrimary,
   pipelineYongshinSecondary,
   pipelineSeasonalNote,
+  ruleInsights,
+  onOpenSeasonalDetail,
   overrideStrengthLevel,
   overrideYongshinData,
   onStrengthLevelChange,
@@ -1108,6 +1284,9 @@ function SajuStructureSummary({
   pipelineYongshinPrimary?: FiveElKey | null;
   pipelineYongshinSecondary?: FiveElKey | null;
   pipelineSeasonalNote?: string | null;
+  /** 규칙 기반 구조 해석 (상단 요약과 중복되지 않음) */
+  ruleInsights?: string[];
+  onOpenSeasonalDetail?: () => void;
   overrideStrengthLevel?: string | null;
   overrideYongshinData?: YongshinEntry[] | null;
   onStrengthLevelChange?: (lv: string | null) => void;
@@ -1117,8 +1296,6 @@ function SajuStructureSummary({
   const [activeYongshinType, setActiveYongshinType] = useState<YongshinType>("억부용신");
   const [localYongshinData, setLocalYongshinData] = useState<YongshinEntry[]>(overrideYongshinData ?? []);
 
-  // Use buildInterpretSchema only for display metadata (대표 오행 등).
-  // Strength/Yongshin/Johu must come from pipeline to avoid mismatches across screens.
   const baseSchema = buildInterpretSchema(dayStem, counts, monthBranch, dayBranch, allStems, allBranches);
   const strengthLevelEffective: StrengthLevel =
     (overrideStrengthLevel as StrengthLevel | null) ??
@@ -1132,6 +1309,7 @@ function SajuStructureSummary({
 
   const hasYongshinOverride = overrideYongshinData && overrideYongshinData.length > 0;
   const canEdit = !!(onStrengthLevelChange || onYongshinDataChange);
+  const insights = ruleInsights ?? [];
 
   function getTypeElements(type: string): string[] {
     return localYongshinData.find((e) => e.type === type)?.elements ?? [];
@@ -1158,92 +1336,115 @@ function SajuStructureSummary({
   }
 
   return (
-    <div className="rounded-xl border border-amber-200 bg-gradient-to-br from-amber-50/90 to-white px-4 py-3.5 space-y-3">
-      <div className="flex items-center justify-between">
-        <p className="text-[13px] font-bold text-amber-700 tracking-wide">나의 사주 구조 요약</p>
-        {canEdit && editMode !== "none" && (
-          <button
-            onClick={() => setEditMode("none")}
-            className="text-[11px] text-muted-foreground px-2 py-0.5 rounded-full border border-border hover:bg-muted/40 transition-colors"
-          >
-            닫기
-          </button>
-        )}
-      </div>
-
-      <div className="grid grid-cols-3 gap-2 text-center">
-        {/* 대표 오행 */}
-        <div className="rounded-lg bg-white border border-border/60 px-2 py-2.5">
-          <p className="text-[11px] text-muted-foreground mb-1">대표 오행</p>
-          <p className={`text-base font-bold ${elementTextClass(baseSchema.dominantElement, "strong")}`}>
-            {baseSchema.dominantElement}
-          </p>
-          <p className="text-[10px] text-muted-foreground/60 mt-0.5">{ELEMENT_KO[baseSchema.dominantElement].split(" ")[1] ?? ""}</p>
+    <div className="ds-card border-amber-200 bg-gradient-to-br from-amber-50/90 to-white shadow-none">
+      <div className="border-b border-amber-200/60 px-4 py-3">
+        <div className="flex items-center justify-between gap-2">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-wide text-amber-800/80">해석 요약</p>
+            <p className="text-[13px] font-bold text-amber-900">사주 구조 해석</p>
+            <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+              상단「핵심 한눈에 보기」는 수치·격국·강약만, 여기서는 용신·규칙 해석을 봅니다.
+            </p>
+          </div>
+          {canEdit && editMode !== "none" && (
+            <button
+              type="button"
+              onClick={() => setEditMode("none")}
+              className="shrink-0 rounded-full border border-border px-2 py-0.5 text-[11px] text-muted-foreground hover:bg-muted/40 transition-colors"
+            >
+              닫기
+            </button>
+          )}
         </div>
+      </div>
+      <div className="ds-card-pad space-y-3">
+        {insights.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">구조·규칙 인사이트</p>
+            <ul className="list-disc space-y-1.5 pl-4 text-[13px] leading-relaxed text-foreground/90">
+              {insights.map((line, i) => (
+                <li key={i}>{line}</li>
+              ))}
+            </ul>
+          </div>
+        )}
 
-        {/* 사주 강도 */}
-        <button
-          onClick={() => canEdit && onStrengthLevelChange && setEditMode((m) => m === "strength" ? "none" : "strength")}
-          className={`rounded-lg bg-white border px-2 py-2.5 text-center transition-all active:scale-95 ${
-            editMode === "strength" ? "border-amber-400 ring-1 ring-amber-300" : "border-border/60"
-          } ${canEdit && onStrengthLevelChange ? "cursor-pointer hover:border-amber-300" : "cursor-default"}`}
-        >
-          <p className="text-[11px] text-muted-foreground mb-1 flex items-center justify-center gap-0.5">
-            사주 강도
-            {canEdit && onStrengthLevelChange && <span className="text-[9px] opacity-40">✎</span>}
-          </p>
-          <p className="text-base font-bold text-foreground">{strengthDisplayLabel}</p>
-          <p className="text-[10px] text-muted-foreground/60 mt-0.5">
-            {strengthDesc}
-            {typeof strengthScore === "number" && Number.isFinite(strengthScore) ? ` · ${strengthScore}점` : ""}
-          </p>
-        </button>
-
-        {/* 용신 */}
-        <button
-          onClick={() => canEdit && onYongshinDataChange && setEditMode((m) => m === "yongshin" ? "none" : "yongshin")}
-          className={`rounded-lg bg-white border px-2 py-2.5 text-center transition-all active:scale-95 ${
-            editMode === "yongshin" ? "border-amber-400 ring-1 ring-amber-300" : "border-border/60"
-          } ${canEdit && onYongshinDataChange ? "cursor-pointer hover:border-amber-300" : "cursor-default"}`}
-        >
-          <p className="text-[11px] text-muted-foreground mb-1 flex items-center justify-center gap-0.5">
-            용신
-            {!hasYongshinOverride && (
-              <span className="text-[9px] font-bold text-orange-500 bg-orange-50 rounded px-1 align-middle">자동</span>
+        <div className="rounded-lg border border-border/60 bg-white px-3 py-3">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <p className="text-[11px] font-bold text-muted-foreground">
+              용신
+              {!hasYongshinOverride && (
+                <span className="ml-1.5 rounded bg-orange-50 px-1 text-[9px] font-bold text-orange-600">자동</span>
+              )}
+            </p>
+            {canEdit && onYongshinDataChange && (
+              <button
+                type="button"
+                onClick={() => setEditMode((m) => (m === "yongshin" ? "none" : "yongshin"))}
+                className="text-[10px] font-semibold text-primary"
+              >
+                {editMode === "yongshin" ? "편집 닫기" : "편집"}
+              </button>
             )}
-            {canEdit && onYongshinDataChange && <span className="text-[9px] opacity-40">✎</span>}
-          </p>
+          </div>
           {hasYongshinOverride ? (
-            <div className="space-y-0.5">
+            <div className="space-y-1">
               {overrideYongshinData!.map((entry) => (
-                <div key={entry.type} className="text-[10px] text-left">
-                  <span className="text-muted-foreground/60">{entry.type.replace("용신", "")}:</span>{" "}
+                <div key={entry.type} className="text-[13px]">
+                  <span className="text-muted-foreground">{entry.type.replace("용신", "")}: </span>
                   {entry.elements.map((el, i) => (
                     <span key={i} className={`font-bold ${elementTextClass(el as FiveElKey, "strong")}`}>{el}</span>
-                  )).reduce<React.ReactNode[]>((acc, node, i) => i === 0 ? [node] : [...acc, " ", node], [])}
+                  ))}
                 </div>
               ))}
             </div>
           ) : (
             <>
-              <p className={`text-base font-bold ${elementTextClass(yongshinPrimary, "strong")}`}>{yongshinPrimary}</p>
+              <p className={`text-lg font-bold ${elementTextClass(yongshinPrimary, "strong")}`}>{yongshinPrimary}</p>
               {yongshinSecondary && (
-                <p className="text-[10px] text-muted-foreground/70 mt-0.5">
-                  희신: <span className={elementTextClass(yongshinSecondary, "strong")}>{yongshinSecondary}</span>
+                <p className="mt-1 text-[12px] text-muted-foreground">
+                  희신: <span className={cn("font-semibold", elementTextClass(yongshinSecondary, "strong"))}>{yongshinSecondary}</span>
                 </p>
               )}
             </>
           )}
-        </button>
-      </div>
+        </div>
 
-      {pipelineSeasonalNote && (
-        <p className="text-[12px] text-amber-700/80 leading-relaxed border-l-2 border-amber-300 pl-2">
-          {pipelineSeasonalNote}
-        </p>
-      )}
+        <div className="rounded-lg border border-border/50 bg-white/80 px-3 py-2.5">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-[11px] font-bold text-muted-foreground">사주 강도 (참고)</p>
+            {canEdit && onStrengthLevelChange && (
+              <button
+                type="button"
+                onClick={() => setEditMode((m) => (m === "strength" ? "none" : "strength"))}
+                className="text-[10px] font-semibold text-primary"
+              >
+                {editMode === "strength" ? "선택 닫기" : "수정"}
+              </button>
+            )}
+          </div>
+          <p className="text-[13px] font-bold text-foreground">{strengthDisplayLabel}</p>
+          <p className="text-[11px] text-muted-foreground">
+            {strengthDesc}
+            {typeof strengthScore === "number" && Number.isFinite(strengthScore) ? ` · ${strengthScore}점` : ""}
+          </p>
+        </div>
 
-      <StrengthGraph level={strengthLevelEffective} />
+        {pipelineSeasonalNote && (
+          <div className="rounded-lg border border-amber-100 bg-amber-50/50 px-3 py-2.5">
+            <p className="text-[10px] font-bold uppercase tracking-wide text-amber-800">조후(계절) 보정</p>
+            <p className="mt-1 text-[13px] leading-relaxed text-foreground">{pipelineSeasonalNote}</p>
+            {onOpenSeasonalDetail && (
+              <button
+                type="button"
+                onClick={onOpenSeasonalDetail}
+                className="mt-2 text-[12px] font-semibold text-primary underline-offset-2 hover:underline"
+              >
+                조후 상세 보기
+              </button>
+            )}
+          </div>
+        )}
 
       {/* 사주 강도 picker */}
       {editMode === "strength" && onStrengthLevelChange && (
@@ -1344,6 +1545,7 @@ function SajuStructureSummary({
           )}
         </div>
       )}
+      </div>
     </div>
   );
 }
@@ -1367,6 +1569,7 @@ function GukgukSection({
   allBranches,
   pipelineGukguk,
   pipelinePatterns,
+  onRequestGukgukDetail,
 }: {
   dayStem: string;
   monthBranch?: string;
@@ -1374,6 +1577,7 @@ function GukgukSection({
   allBranches: string[];
   pipelineGukguk?: ReturnType<typeof determineGukguk> | null;
   pipelinePatterns?: ReturnType<typeof detectStructurePatterns>;
+  onRequestGukgukDetail?: (payload: { title: string; paragraphs: string[] }) => void;
 }) {
   if (!dayStem || !monthBranch) return null;
   // Single source of truth: prefer pipeline-computed results to avoid divergent logic across sections.
@@ -1482,6 +1686,27 @@ function GukgukSection({
             </div>
           ))}
         </div>
+      )}
+
+      {onRequestGukgukDetail && (gukguk || patterns.length > 0) && (
+        <button
+          type="button"
+          onClick={() => {
+            const paragraphs: string[] = [];
+            if (gukguk?.description) paragraphs.push(gukguk.description);
+            if (gukguk?.explanation?.length) paragraphs.push(...gukguk.explanation);
+            for (const p of patterns) {
+              paragraphs.push(`${p.name}: ${p.description}`);
+            }
+            onRequestGukgukDetail({
+              title: gukguk?.name ?? "사주 구조",
+              paragraphs,
+            });
+          }}
+          className="w-full rounded-lg border border-border/60 bg-muted/10 py-2.5 text-[12px] font-semibold text-primary transition-colors hover:bg-muted/25"
+        >
+          격국·구조 통합 상세 (긴 해석)
+        </button>
       )}
     </div>
   );
@@ -2111,7 +2336,6 @@ function ReportAtAGlanceCard({
   gukgukName,
   strengthLevel,
   strengthScore,
-  bullets,
 }: {
   dayStem: string;
   dayBranch: string;
@@ -2119,7 +2343,6 @@ function ReportAtAGlanceCard({
   gukgukName: string;
   strengthLevel: string;
   strengthScore?: number;
-  bullets: string[];
 }) {
   return (
     <div className="ds-card border-primary/15 bg-gradient-to-br from-primary/[0.06] via-card to-card shadow-none">
@@ -2127,6 +2350,9 @@ function ReportAtAGlanceCard({
         <div>
           <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">원국 요약</p>
           <h2 className="ds-title mt-1">핵심 한눈에 보기</h2>
+          <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">
+            아래 세 가지를 순서대로 확인하면 원국을 빠르게 잡을 수 있습니다.
+          </p>
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="rounded-lg border border-border bg-background/70 px-3 py-2">
@@ -2136,10 +2362,12 @@ function ReportAtAGlanceCard({
             ) : (
               <p className="text-sm text-muted-foreground">—</p>
             )}
+            <p className="mt-1 text-[10px] leading-snug text-muted-foreground">구조 중심 에너지 확인</p>
           </div>
           <div className="rounded-lg border border-border bg-background/70 px-3 py-2">
             <p className="text-[10px] font-bold uppercase text-muted-foreground">격국</p>
             <p className="text-sm font-bold leading-snug text-foreground">{gukgukName || "—"}</p>
+            <p className="mt-1 text-[10px] leading-snug text-muted-foreground">해석 프레임 확인</p>
           </div>
           <div className="rounded-lg border border-border bg-background/70 px-3 py-2 sm:col-span-2">
             <p className="text-[10px] font-bold uppercase text-muted-foreground">일간 강약</p>
@@ -2152,18 +2380,9 @@ function ReportAtAGlanceCard({
             <p className="mt-0.5 text-[11px] text-muted-foreground">
               일간 {dayStem} · 일지 {dayBranch}
             </p>
+            <p className="mt-1 text-[10px] leading-snug text-muted-foreground">균형 상태 확인</p>
           </div>
         </div>
-        {bullets.length > 0 && (
-          <div className="space-y-2 border-t border-border pt-4">
-            <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">핵심 특징</p>
-            <ul className="list-disc space-y-1 pl-4 text-sm leading-relaxed text-foreground/90">
-              {bullets.slice(0, 3).map((b, i) => (
-                <li key={i}>{b}</li>
-              ))}
-            </ul>
-          </div>
-        )}
       </div>
     </div>
   );
@@ -2177,6 +2396,17 @@ interface SajuReportProps {
   record: PersonRecord;
   showSaveStatus?: boolean;
 }
+
+type ReportMainTab = "원국" | "성격해석" | "운세" | "오늘운세";
+
+const REPORT_MAIN_TABS: ReportMainTab[] = ["원국", "성격해석", "운세", "오늘운세"];
+
+const REPORT_TAB_LABEL: Record<ReportMainTab, string> = {
+  원국: "원국",
+  성격해석: "성격 해석",
+  운세: "운세",
+  오늘운세: "오늘운세",
+};
 
 export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) {
   const { user } = useAuth();
@@ -2205,20 +2435,32 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
     편재: 0, 정재: 0, 편관: 0, 정관: 0,
     편인: 0, 정인: 0,
   });
-  const [reportTab, setReportTab] = useState<"원국" | "성향" | "운세" | "오늘운세">(() => {
+  const [reportTab, setReportTab] = useState<ReportMainTab>(() => {
     const saved = sessionStorage.getItem("openReportTab");
     if (saved === "오늘운세") { sessionStorage.removeItem("openReportTab"); return "오늘운세"; }
     if (saved === "운세") { sessionStorage.removeItem("openReportTab"); return "운세"; }
+    if (saved === "성향" || saved === "성격해석") { sessionStorage.removeItem("openReportTab"); return "성격해석"; }
     return "원국";
   });
   const [hourMode, setHourMode] = useState<"포함" | "제외" | "비교">("포함");
   const [selectedTgInfo, setSelectedTgInfo] = useState<TenGod | null>(null);
   const [selectedShinsalId, setSelectedShinsalId] = useState<string | null>(null);
+  const [selectedTgGroupInline, setSelectedTgGroupInline] = useState<{ group: string; pct: number } | null>(null);
+  const [selectedBranchRelation, setSelectedBranchRelation] = useState<BranchRelation | null>(null);
+  const [selectedHiddenStem, setSelectedHiddenStem] = useState<{ label: string; branch: string } | null>(null);
+  const [selectedTwelveStageRow, setSelectedTwelveStageRow] = useState<{ label: string; branch: string; stage: string } | null>(null);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   useEffect(() => {
     setSelectedShinsalId(null);
   }, [record.id]);
+
+  useEffect(() => {
+    setSelectedTgGroupInline(null);
+    setSelectedBranchRelation(null);
+    setSelectedHiddenStem(null);
+    setSelectedTwelveStageRow(null);
+  }, [reportTab]);
 
   // ── LOCAL REACTIVE STATE for fortune options + profile ─────────────
   // Root cause of unresponsive toggles: `record` is a prop. `updatePersonRecord`
@@ -2764,11 +3006,6 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
   const hourStemTg = hasHourPillar && dayStem && hourStem ? getTenGod(dayStem, hourStem) : null;
   const hourBranchTg = hasHourPillar && dayStem && hourBranch ? getTenGod(dayStem, hourBranch) : null;
 
-  const atAGlanceBullets =
-    ruleInsights.length > 0
-      ? ruleInsights.slice(0, 3)
-      : (strengthUnified?.explanation ?? []).slice(0, 3);
-
   return (
     <div className="space-y-4">
 
@@ -2784,7 +3021,6 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
           }
           strengthLevel={sajuPipelineResult.adjusted.effectiveStrengthLevel}
           strengthScore={sajuPipelineResult.adjusted.strengthResult?.score}
-          bullets={atAGlanceBullets}
         />
       )}
 
@@ -2808,7 +3044,7 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
       )}
 
       <div className="ds-segment-list min-h-11 rounded-xl border border-border shadow-none">
-        {(["원국", "성향", "운세", "오늘운세"] as const).map((tab) => (
+        {REPORT_MAIN_TABS.map((tab) => (
           <button
             key={tab}
             type="button"
@@ -2818,7 +3054,7 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
               reportTab === tab ? "ds-segment-item-active" : "ds-segment-item-inactive",
             )}
           >
-            {tab}
+            {REPORT_TAB_LABEL[tab]}
           </button>
         ))}
       </div>
@@ -2914,15 +3150,16 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
             />
           ) : null}
 
-          <div className="ds-card shadow-none">
+          <div className="ds-card shadow-none overflow-visible">
             <div className="border-b border-border bg-muted/20 px-4 py-3">
               <h2 className="text-sm font-bold text-foreground">오행·십성 구조</h2>
-              <p className="mt-1 text-[11px] text-muted-foreground">핵심 분석 영역</p>
+              <p className="mt-1 text-[11px] text-muted-foreground">원국 표와 함께 읽는 구조 데이터(개수·비율 중심)</p>
             </div>
-            <div className="ds-card-pad space-y-6">
+            <div className="ds-card-pad space-y-6 overflow-visible">
               <div>
-                <h3 className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">오행 분포</h3>
+                <h3 className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">오행 분포 (구조)</h3>
                 <FiveElementSection
+                  variant="structure"
                   counts={effectiveFiveElements}
                   dayStem={dayStem}
                   monthBranch={pillars.month?.hangul?.[1]}
@@ -2932,7 +3169,10 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                 />
               </div>
               <div className="border-t border-border pt-4">
-                <h3 className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">십성 분포</h3>
+                <h3 className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">십성 분포 (구조)</h3>
+                <p className="mb-2 text-[12px] leading-relaxed text-muted-foreground">
+                  각 십성을 누르면 아래에 <span className="font-semibold text-foreground">인라인 설명 카드</span>가 열립니다. 긴 해석은「더보기」로 확인하세요.
+                </p>
           {dayStem ? (() => {
             const autoTgCounts = autoCountTenGods(dayStem, [
               ...allStems.filter((s) => s !== dayStem), ...allBranches,
@@ -2992,7 +3232,7 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                       ? `${selectedTgInfo}이(가) 사주에 강하게(${pct}%) 자리합니다. 성격과 삶의 흐름에 뚜렷한 영향을 미치는 핵심 기운 중 하나입니다.`
                       : `${selectedTgInfo}이(가) 사주에서 매우 강하게(${pct}%) 작용합니다. 삶 전반에 걸쳐 가장 핵심적인 영향을 미치는 지배적 기운입니다.`;
                     return (
-                    <div className={`rounded-xl px-3 py-3 space-y-2 ${getTenGodTw(selectedTgInfo, dayStem)}`} style={getTenGodChipStyle(selectedTgInfo, dayStem)}>
+                    <div className={`ds-card mt-2 overflow-visible px-3 py-3 space-y-2 shadow-none ${getTenGodTw(selectedTgInfo, dayStem)}`} style={getTenGodChipStyle(selectedTgInfo, dayStem)}>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <span className="text-[14px] font-bold">{selectedTgInfo}</span>
@@ -3027,6 +3267,13 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                           )}
                         </>
                       )}
+                      <button
+                        type="button"
+                        onClick={() => setInfoSheet({ kind: "tengodNatal", tenGod: selectedTgInfo, dayStem })}
+                        className="w-full pt-1 text-left text-[12px] font-semibold text-primary underline-offset-2 hover:underline"
+                      >
+                        십성 통합 해설 더보기
+                      </button>
                     </div>
                     );
                   })()}
@@ -3052,11 +3299,19 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                 allBranches={allBranches}
                 pipelineGukguk={sajuPipelineResult?.interpretation.gukguk ?? null}
                 pipelinePatterns={sajuPipelineResult?.interpretation.structurePatterns ?? []}
+                onRequestGukgukDetail={(payload) => setInfoSheet({ kind: "gukgukDetail", ...payload })}
               />
               {seasonalNote ? (
                 <div className="mt-4 rounded-lg border border-border bg-muted/20 px-3 py-2.5">
                   <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">조후(계절) 보정</p>
                   <p className="mt-1 text-sm leading-relaxed text-foreground">{seasonalNote}</p>
+                  <button
+                    type="button"
+                    onClick={() => setInfoSheet({ kind: "seasonalDetail", title: "조후(계절) 보정", text: seasonalNote })}
+                    className="mt-2 text-[12px] font-semibold text-primary underline-offset-2 hover:underline"
+                  >
+                    조후 상세 보기
+                  </button>
                 </div>
               ) : null}
             </AccSection>
@@ -3074,6 +3329,7 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
             <div className="space-y-4">
               <div>
                 <p className="text-[13px] font-semibold text-muted-foreground mb-2">지장간</p>
+                <p className="mb-2 text-[11px] leading-relaxed text-muted-foreground">칸을 누르면 아래에 지장간 설명 카드가 열립니다.</p>
                 <div className="grid grid-cols-4 gap-0 rounded-xl overflow-hidden border border-border">
                   {[
                     { label: "시지", branch: pillars.hour?.hangul?.[1], isDay: false },
@@ -3082,10 +3338,23 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                     { label: "년지", branch: pillars.year?.hangul?.[1], isDay: false },
                   ].map(({ label, branch, isDay }, i) => {
                     const hidden = branch ? getHiddenStems(branch) : [];
+                    const isSel = selectedHiddenStem?.label === label && selectedHiddenStem?.branch === (branch ?? "");
                     return (
                       <div key={i} className={`border-r last:border-r-0 border-border ${isDay ? "bg-amber-50" : "bg-card"}`}>
                         <div className="text-center text-[13px] font-medium text-muted-foreground py-1.5 border-b border-border bg-muted/40">{label}</div>
-                        <div className="flex flex-col items-center gap-1 py-2.5 px-1">
+                        <button
+                          type="button"
+                          disabled={!branch}
+                          onClick={() => {
+                            if (!branch) return;
+                            setSelectedHiddenStem((prev) => (prev?.label === label && prev.branch === branch ? null : { label, branch }));
+                          }}
+                          className={cn(
+                            "flex w-full flex-col items-center gap-1 py-2.5 px-1 transition-colors disabled:cursor-not-allowed disabled:opacity-50",
+                            branch && "hover:bg-muted/30 active:bg-muted/50",
+                            isSel && "ring-2 ring-inset ring-primary",
+                          )}
+                        >
                           {branch ? (
                             <>
                               <span className="text-base font-bold text-foreground">{branch}</span>
@@ -3106,10 +3375,14 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                                     );
                                   })}
                                 </div>
-                              ) : <span className="text-[13px] text-muted-foreground">-</span>}
+                              ) : (
+                                <span className="text-[13px] text-muted-foreground">-</span>
+                              )}
                             </>
-                          ) : <span className="text-muted-foreground text-sm">?</span>}
-                        </div>
+                          ) : (
+                            <span className="text-muted-foreground text-sm">?</span>
+                          )}
+                        </button>
                       </div>
                     );
                   })}
@@ -3118,6 +3391,7 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
               {dayStem && (
                 <div>
                   <p className="text-[13px] font-semibold text-muted-foreground mb-2">12운성 · 일간 <span className="font-bold text-foreground">{dayStem}</span> 기준</p>
+                  <p className="mb-2 text-[11px] leading-relaxed text-muted-foreground">행을 누르면 해당 운성 설명이 아래 카드로 펼쳐집니다.</p>
                   <div className="grid grid-cols-2 gap-2">
                     {[
                       { label: "시지", branch: pillars.hour?.hangul?.[1] },
@@ -3127,18 +3401,33 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                     ].map(({ label, branch }) => {
                       if (!branch) return null;
                       const stage = getTwelveStage(dayStem, branch);
+                      if (!stage) return null;
+                      const isSel =
+                        selectedTwelveStageRow?.label === label &&
+                        selectedTwelveStageRow?.branch === branch &&
+                        selectedTwelveStageRow?.stage === stage;
                       return (
-                        <div key={label} className="flex items-center gap-2 rounded-lg border border-border bg-muted/20 px-3 py-2">
+                        <button
+                          key={label}
+                          type="button"
+                          onClick={() =>
+                            setSelectedTwelveStageRow((prev) =>
+                              prev?.label === label && prev.branch === branch && prev.stage === stage ? null : { label, branch, stage },
+                            )
+                          }
+                          className={cn(
+                            "flex w-full items-center gap-2 rounded-lg border border-border bg-muted/20 px-3 py-2 text-left transition-colors hover:bg-muted/35",
+                            isSel && "ring-2 ring-primary ring-offset-2 ring-offset-background",
+                          )}
+                        >
                           <span className="text-[13px] text-muted-foreground w-8 shrink-0">{label}</span>
                           <span className="text-base font-bold">{branch}</span>
                           <span className="text-muted-foreground">→</span>
-                          {stage ? (
-                            <div className="flex flex-col">
-                              <span className={`text-[13px] font-bold px-1.5 py-0.5 rounded ${TWELVE_STAGE_COLOR[stage]}`}>{stage}</span>
-                              <span className="text-[13px] text-muted-foreground mt-0.5">{TWELVE_STAGE_DESC[stage]}</span>
-                            </div>
-                          ) : <span className="text-[13px] text-muted-foreground">-</span>}
-                        </div>
+                          <div className="flex min-w-0 flex-1 flex-col">
+                            <span className={`text-[13px] font-bold px-1.5 py-0.5 rounded ${TWELVE_STAGE_COLOR[stage]}`}>{stage}</span>
+                            <span className="line-clamp-2 text-[11px] text-muted-foreground mt-0.5">{TWELVE_STAGE_DESC[stage]}</span>
+                          </div>
+                        </button>
                       );
                     }).filter(Boolean)}
                   </div>
@@ -3150,26 +3439,66 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
           {/* 천간·지지 관계 */}
           <AccSection title="천간 · 지지 관계" defaultOpen={false}>
             <div className="space-y-2">
-              <p className="text-[11px] text-muted-foreground">탭하면 상세 해석</p>
+              <p className="text-[11px] text-muted-foreground">항목을 누르면 아래에 관계 설명 카드가 열립니다. 긴 해석은「더보기」를 이용하세요.</p>
               {branchRelations.length === 0 && (
                 <p className="text-sm text-muted-foreground py-1">특별한 지지 관계가 없습니다.</p>
               )}
               {branchRelations.map((rel, i) => {
                 const relBranches = rel.description.match(/[자축인묘진사오미신유술해]/g) ?? [];
+                const isSel =
+                  selectedBranchRelation?.type === rel.type && selectedBranchRelation?.description === rel.description;
                 return (
                   <button
                     key={i}
-                    className="w-full flex items-center gap-2 rounded-lg border border-border/60 bg-muted/10 px-3 py-2 text-left active:bg-muted/30 transition-colors"
-                    onClick={() => setInfoSheet({ kind: "branchRelation", relationType: rel.type, branches: relBranches })}
+                    className={cn(
+                      "w-full flex items-center gap-2 rounded-lg border border-border/60 bg-muted/10 px-3 py-2 text-left transition-colors active:bg-muted/30",
+                      isSel && "ring-2 ring-primary ring-offset-2 ring-offset-background",
+                    )}
+                    onClick={() =>
+                      setSelectedBranchRelation((prev) =>
+                        prev?.type === rel.type && prev.description === rel.description ? null : rel,
+                      )
+                    }
                   >
                     <span className={`text-[13px] font-bold px-2 py-0.5 rounded-full shrink-0 ${RELATION_COLORS[rel.type]}`}>{rel.type}</span>
                     <span className="text-sm font-medium flex-1">{rel.description}</span>
-                    <span className="text-[11px] text-muted-foreground ml-auto shrink-0">›</span>
+                    <span className="text-[11px] text-muted-foreground ml-auto shrink-0">▼</span>
                   </button>
                 );
               })}
             </div>
           </AccSection>
+
+          {selectedBranchRelation && (
+            <BranchRelationInlineCard
+              relation={selectedBranchRelation}
+              onClose={() => setSelectedBranchRelation(null)}
+              onMore={() => {
+                const relBranches = selectedBranchRelation.description.match(/[자축인묘진사오미신유술해]/g) ?? [];
+                setInfoSheet({
+                  kind: "branchRelation",
+                  relationType: selectedBranchRelation.type,
+                  branches: relBranches,
+                });
+              }}
+            />
+          )}
+          {selectedHiddenStem && (
+            <HiddenStemInlineCard
+              pillarLabel={selectedHiddenStem.label}
+              branch={selectedHiddenStem.branch}
+              stems={getHiddenStems(selectedHiddenStem.branch)}
+              onClose={() => setSelectedHiddenStem(null)}
+            />
+          )}
+          {selectedTwelveStageRow && (
+            <TwelveStageInlineCard
+              label={selectedTwelveStageRow.label}
+              branch={selectedTwelveStageRow.branch}
+              stage={selectedTwelveStageRow.stage}
+              onClose={() => setSelectedTwelveStageRow(null)}
+            />
+          )}
 
           {/* 계산 설정(전문가) UI는 결과 편집 방지를 위해 숨김 처리 */}
 
@@ -3256,8 +3585,8 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
         </div>
       )}
 
-      {/* ── 탭 2: 성향 ── */}
-      {reportTab === "성향" && (
+      {/* ── 탭 2: 성격 해석 ── */}
+      {reportTab === "성격해석" && (
         <div className="space-y-3">
           {/* 사주 구조 요약 (항상 표시) */}
           {dayStem && (
@@ -3272,6 +3601,17 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
               pipelineYongshinPrimary={sajuPipelineResult?.adjusted?.effectiveYongshin ?? null}
               pipelineYongshinSecondary={sajuPipelineResult?.adjusted?.effectiveYongshinSecondary ?? null}
               pipelineSeasonalNote={sajuPipelineResult?.interpretation?.seasonalNote ?? null}
+              ruleInsights={ruleInsights}
+              onOpenSeasonalDetail={
+                sajuPipelineResult?.interpretation?.seasonalNote
+                  ? () =>
+                      setInfoSheet({
+                        kind: "seasonalDetail",
+                        title: "조후(계절) 보정",
+                        text: sajuPipelineResult!.interpretation!.seasonalNote!,
+                      })
+                  : undefined
+              }
             />
           )}
 
@@ -3286,11 +3626,15 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
           )}
 
           {/* 오행 균형 */}
-          <AccSection title="오행 균형">
+          <AccSection title="오행 균형 (성격·행동)" defaultOpen>
+            <p className="mb-2 text-[12px] leading-relaxed text-muted-foreground">
+              오행이 기질·행동 스타일에 주는 균형을 해석합니다. 수치 그래프는 원국 탭과 동일하며, 관점만 다릅니다.
+            </p>
             <div className="rounded-lg border border-sky-100 bg-sky-50/40 px-3 py-2.5">
               <p className="text-sm">{getElementBalanceSummary(effectiveFiveElements)}</p>
             </div>
             <FiveElementSection
+              variant="personality"
               counts={effectiveFiveElements}
               dayStem={dayStem}
               monthBranch={pillars.month?.hangul?.[1]}
@@ -3301,11 +3645,13 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
           </AccSection>
 
           {/* 십성 분포 */}
-          <AccSection title="십성 분포" defaultOpen>
+          <AccSection title="십성 분포 (행동 스타일)" defaultOpen>
             {dayStem ? (
               <div className="space-y-4">
                 <div>
-                  <p className="text-[13px] text-muted-foreground mb-2.5">각 항목을 탭하면 자세한 설명을 볼 수 있습니다</p>
+                  <p className="text-[13px] text-muted-foreground mb-2.5">
+                    그룹을 누르면 아래에 <span className="font-semibold text-foreground">행동·기질 해석 카드</span>가 열립니다. 관계·직업·감정 측면은「더보기」로 확인하세요.
+                  </p>
                   <TenGodDistributionSection
                     dayStem={dayStem}
                     dayEl={STEM_ELEMENT[dayStem] as FiveElKey | undefined}
@@ -3315,7 +3661,10 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                     dayBranch={dayBranch}
                     allStems={allStems}
                     allBranches={allBranches}
-                    onTap={(group, pct) => setInfoSheet({ kind: "tengod-group", group, dayStem, pct })}
+                    selectedGroup={selectedTgGroupInline?.group ?? null}
+                    onTap={(group, pct) =>
+                      setSelectedTgGroupInline((prev) => (prev?.group === group ? null : { group, pct }))
+                    }
                   />
                 </div>
                 <div>
@@ -3371,6 +3720,23 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
               <p className="text-sm text-muted-foreground">일간 정보가 없습니다</p>
             )}
           </AccSection>
+
+          {selectedTgGroupInline && dayStem ? (
+            <TenGodGroupInlineCard
+              group={selectedTgGroupInline.group}
+              pct={selectedTgGroupInline.pct}
+              dayStem={dayStem}
+              onClose={() => setSelectedTgGroupInline(null)}
+              onMore={() =>
+                setInfoSheet({
+                  kind: "tengod-group",
+                  group: selectedTgGroupInline.group,
+                  dayStem,
+                  pct: selectedTgGroupInline.pct,
+                })
+              }
+            />
+          ) : null}
 
           {/* 배우자궁 */}
           {spousePalace && (

@@ -298,7 +298,7 @@ export interface TenGodGroupDetail {
   color: string;
 }
 
-export const TEN_GOD_GROUPS: TenGodGroupDetail[] = [
+export const TEN_GOD_GROUP_DETAILS: TenGodGroupDetail[] = [
   {
     group: "비겁",
     title: "비겁 — 자아와 경쟁",
@@ -503,7 +503,10 @@ export type InfoSheetType =
   | { kind: "shinsal"; name: string; source?: "auto" | "manual"; trigger?: string }
   | { kind: "luck"; luckType: "대운" | "세운" | "월운" | "일운"; ganZhiStr: string; ganZhiHanja: string; tenGod?: string | null; branchTenGod?: string | null; period?: string; dayStem?: string }
   | { kind: "tengod-group"; group: string; dayStem?: string; pct?: number }
-  | { kind: "branchRelation"; relationType: RelationType; branches: string[] };
+  | { kind: "branchRelation"; relationType: RelationType; branches: string[] }
+  | { kind: "gukgukDetail"; title: string; paragraphs: string[] }
+  | { kind: "seasonalDetail"; title: string; text: string }
+  | { kind: "tengodNatal"; tenGod: TenGod; dayStem: string };
 
 // ── Main InfoBottomSheet Component ────────────────────────────────
 
@@ -523,6 +526,9 @@ export function InfoBottomSheet({ info, onClose }: InfoBottomSheetProps) {
               {info.kind === "luck" && <LuckSheet info={info} />}
               {info.kind === "tengod-group" && <TenGodGroupSheet group={info.group} dayStem={info.dayStem} pct={info.pct} />}
               {info.kind === "branchRelation" && <BranchRelationSheet relationType={info.relationType} branches={info.branches} />}
+              {info.kind === "gukgukDetail" && <GukgukDetailSheet title={info.title} paragraphs={info.paragraphs} />}
+              {info.kind === "seasonalDetail" && <SeasonalDetailSheet title={info.title} text={info.text} />}
+              {info.kind === "tengodNatal" && <TenGodNatalSheet tenGod={info.tenGod} dayStem={info.dayStem} />}
             </div>
           </div>
         )}
@@ -683,7 +689,7 @@ const TG_GROUP_PCT_CONTEXT: Record<string, { none: string; weak: string; medium:
   },
 };
 
-function getTGGroupPctContext(group: string, pct: number): string {
+export function getTenGodGroupPctContext(group: string, pct: number): string {
   const ctx = TG_GROUP_PCT_CONTEXT[group];
   if (!ctx) return "";
   if (pct === 0) return ctx.none;
@@ -694,10 +700,10 @@ function getTGGroupPctContext(group: string, pct: number): string {
 }
 
 function TenGodGroupSheet({ group, dayStem, pct }: { group: string; dayStem?: string; pct?: number }) {
-  const detail = TEN_GOD_GROUPS.find((g) => g.group === group);
+  const detail = TEN_GOD_GROUP_DETAILS.find((g) => g.group === group);
   if (!detail) return null;
 
-  const pctContext = pct !== undefined ? getTGGroupPctContext(group, pct) : null;
+  const pctContext = pct !== undefined ? getTenGodGroupPctContext(group, pct) : null;
 
   return (
     <>
@@ -775,6 +781,67 @@ function Section({
 }
 
 // ── Branch Relation Sheet ─────────────────────────────────────────
+
+function GukgukDetailSheet({ title, paragraphs }: { title: string; paragraphs: string[] }) {
+  return (
+    <>
+      <DrawerHeader className="text-left pb-2">
+        <DrawerTitle className="text-xl">{title}</DrawerTitle>
+        <DrawerDescription>격국·구조 통합 상세 해석</DrawerDescription>
+      </DrawerHeader>
+      <div className="space-y-3 px-4">
+        {paragraphs.filter(Boolean).map((p, i) => (
+          <p key={i} className="text-sm leading-relaxed text-foreground">
+            {p}
+          </p>
+        ))}
+      </div>
+    </>
+  );
+}
+
+function TenGodNatalSheet({ tenGod, dayStem }: { tenGod: TenGod; dayStem: string }) {
+  const nm = TG_NATAL_MEANING[tenGod];
+  return (
+    <>
+      <DrawerHeader className="text-left pb-2">
+        <div className="mb-1 flex flex-wrap items-center gap-2">
+          <span className={`text-sm font-bold px-3 py-1 rounded-full ${getTenGodTw(tenGod, dayStem)}`} style={getTenGodChipStyle(tenGod, dayStem)}>
+            {tenGod}
+          </span>
+        </div>
+        <DrawerTitle className="text-xl">원국 십성 상세 해설</DrawerTitle>
+        <DrawerDescription>일간 기준 사주에 깔린 기질·성향</DrawerDescription>
+      </DrawerHeader>
+      <div className="space-y-3 px-4">
+        {nm ? (
+          <>
+            <Section label="요약" content={nm.summary} color="sky" />
+            {nm.traits ? <Section label="성향·특성" content={nm.traits} color="amber" /> : null}
+            {nm.strengths ? <Section label="강점" content={nm.strengths} color="green" /> : null}
+            {nm.caution ? <Section label="주의점" content={nm.caution} color="orange" /> : null}
+          </>
+        ) : (
+          <p className="text-sm text-muted-foreground">상세 해석 준비 중입니다.</p>
+        )}
+      </div>
+    </>
+  );
+}
+
+function SeasonalDetailSheet({ title, text }: { title: string; text: string }) {
+  return (
+    <>
+      <DrawerHeader className="text-left pb-2">
+        <DrawerTitle className="text-xl">{title}</DrawerTitle>
+        <DrawerDescription>조후(계절) 보정 상세</DrawerDescription>
+      </DrawerHeader>
+      <div className="px-4">
+        <p className="text-sm leading-relaxed text-foreground">{text}</p>
+      </div>
+    </>
+  );
+}
 
 function BranchRelationSheet({ relationType, branches }: { relationType: RelationType; branches: string[] }) {
   const detail = RELATION_DETAIL[relationType];
