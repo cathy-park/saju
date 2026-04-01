@@ -205,26 +205,28 @@ export function getTenGodElement(tenGod: TenGod | string, dayStem: string): Five
 }
 
 /**
- * 십성 칩 레이아웃용 클래스(테두리만). 배경·글자색은 `getTenGodChipStyle` + CSS 변수로 적용합니다.
+ * 원국 표 십성 뱃지: 테두리 없음(연한 배경 + 진한 동계열 글자).
  */
 export function getTenGodTw(_tenGod: TenGod | string, _dayStem: string): string {
-  return "border border-solid";
+  return "rounded";
 }
 
-/** 오행 토큰(CSS 변수) 기반 — 빌드/스캔과 무관하게 색이 항상 적용됩니다. */
+/** 팔자표 뱃지 — 파스텔 배경 + strong 글자, 보더 없음 */
 export function getTenGodChipStyle(tenGod: TenGod | string, dayStem: string): CSSProperties {
   const el = getTenGodElement(tenGod, dayStem);
   if (!el) {
     return {
       backgroundColor: "hsl(var(--muted))",
       color: "hsl(var(--muted-foreground))",
-      borderColor: "hsl(var(--border))",
+      borderColor: "transparent",
+      borderWidth: 0,
     };
   }
   return {
     backgroundColor: elementColorVar(el, "muted"),
-    color: elementColorVar(el, "base"),
-    borderColor: elementColorVar(el, "base"),
+    color: elementColorVar(el, "strong"),
+    borderColor: "transparent",
+    borderWidth: 0,
   };
 }
 

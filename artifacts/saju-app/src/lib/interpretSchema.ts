@@ -476,23 +476,58 @@ export function computeYongshinLabel(
   return computeYongshin(dayStem, level, counts);
 }
 
-// ── Dominant element ─────────────────────────────────────────────
+// ── 대표 오행 (오행도·십성 분포·구조 요약 공통) ─────────────────────
+// 최다 count → 동률 시 득령(월지) > 득지(일지) > 지지 다수 > 천간 다수
 
+export function computePrimaryElement(args: {
+  counts: FiveElementCount;
+  monthBranch?: string;
+  dayBranch?: string;
+  allStems?: string[];
+  allBranches?: string[];
+}): FiveElKey {
+  const elements: FiveElKey[] = ["목", "화", "토", "금", "수"];
+  const max = Math.max(...elements.map((e) => args.counts[e] ?? 0));
+  const tied = elements.filter((e) => (args.counts[e] ?? 0) === max);
+  if (tied.length <= 1) return tied[0] ?? "토";
+
+  const monthEl = args.monthBranch ? (STEM_ELEMENT[args.monthBranch] as FiveElKey | undefined) : undefined;
+  const dayEl = args.dayBranch ? (STEM_ELEMENT[args.dayBranch] as FiveElKey | undefined) : undefined;
+  const stemCounts: Partial<Record<FiveElKey, number>> = {};
+  const branchCounts: Partial<Record<FiveElKey, number>> = {};
+  for (const s of args.allStems ?? []) {
+    const el = STEM_ELEMENT[s] as FiveElKey | undefined;
+    if (el) stemCounts[el] = (stemCounts[el] ?? 0) + 1;
+  }
+  for (const b of args.allBranches ?? []) {
+    const el = STEM_ELEMENT[b] as FiveElKey | undefined;
+    if (el) branchCounts[el] = (branchCounts[el] ?? 0) + 1;
+  }
+
+  return tied.sort((a, b) => {
+    const ar = monthEl && a === monthEl ? 1 : 0;
+    const br = monthEl && b === monthEl ? 1 : 0;
+    if (ar !== br) return br - ar;
+    const ad = dayEl && a === dayEl ? 1 : 0;
+    const bd = dayEl && b === dayEl ? 1 : 0;
+    if (ad !== bd) return bd - ad;
+    const aj = branchCounts[a] ?? 0;
+    const bj = branchCounts[b] ?? 0;
+    if (aj !== bj) return bj - aj;
+    const as = stemCounts[a] ?? 0;
+    const bs = stemCounts[b] ?? 0;
+    if (as !== bs) return bs - as;
+    return 0;
+  })[0];
+}
+
+/** @deprecated computePrimaryElement 사용 */
 export function computeDominantElement(
   monthBranch: string | undefined,
   dayBranch: string | undefined,
-  counts: FiveElementCount
+  counts: FiveElementCount,
 ): FiveElKey {
-  const allEls: FiveElKey[] = ["목", "화", "토", "금", "수"];
-  const weighted: Record<FiveElKey, number> = { ...counts } as Record<FiveElKey, number>;
-
-  const mEl = monthBranch ? (STEM_ELEMENT[monthBranch] as FiveElKey | undefined) : undefined;
-  if (mEl) weighted[mEl] = (weighted[mEl] ?? 0) + 2;
-
-  const dEl = dayBranch ? (STEM_ELEMENT[dayBranch] as FiveElKey | undefined) : undefined;
-  if (dEl) weighted[dEl] = (weighted[dEl] ?? 0) + 1;
-
-  return allEls.reduce((a, b) => (weighted[a] ?? 0) >= (weighted[b] ?? 0) ? a : b);
+  return computePrimaryElement({ counts, monthBranch, dayBranch });
 }
 
 // ── Full interpretation schema ────────────────────────────────────
@@ -529,7 +564,7 @@ export function buildInterpretSchema(
     yongshinSecondary: yr.secondary,
     yongshinConfidence: yr.confidence,
     yongshinTenGodGroup: yr.tenGodGroup,
-    dominantElement: computeDominantElement(monthBranch, dayBranch, counts),
+    dominantElement: computePrimaryElement({ counts, monthBranch, dayBranch, allStems, allBranches }),
     supportRatio: computeSupportRatio(dayStem, counts),
   };
 }

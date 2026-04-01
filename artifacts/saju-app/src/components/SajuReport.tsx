@@ -11,6 +11,7 @@ import {
 import type { FiveElDiffEntry, ShinsalDiff } from "@/lib/hourPillarDiff";
 import {
   buildInterpretSchema,
+  computePrimaryElement,
   STRENGTH_LEVELS,
   STRENGTH_LEVEL_INDEX,
   STRENGTH_DISPLAY_LABEL,
@@ -666,52 +667,6 @@ function PillarTable({
 
 type ElementTier = "primary" | "secondary" | "minor";
 
-function computePrimaryElement(args: {
-  counts: FiveElementCount;
-  monthBranch?: string;
-  dayBranch?: string;
-  allStems?: string[];
-  allBranches?: string[];
-}): FiveElKey {
-  const elements: FiveElKey[] = ["목", "화", "토", "금", "수"];
-  const max = Math.max(...elements.map((e) => args.counts[e] ?? 0));
-  const tied = elements.filter((e) => (args.counts[e] ?? 0) === max);
-  if (tied.length <= 1) return tied[0] ?? "토";
-
-  const monthEl = args.monthBranch ? (STEM_ELEMENT[args.monthBranch] as FiveElKey | undefined) : undefined;
-  const dayEl = args.dayBranch ? (STEM_ELEMENT[args.dayBranch] as FiveElKey | undefined) : undefined;
-  const stemCounts: Partial<Record<FiveElKey, number>> = {};
-  const branchCounts: Partial<Record<FiveElKey, number>> = {};
-  for (const s of (args.allStems ?? [])) {
-    const el = STEM_ELEMENT[s] as FiveElKey | undefined;
-    if (el) stemCounts[el] = (stemCounts[el] ?? 0) + 1;
-  }
-  for (const b of (args.allBranches ?? [])) {
-    const el = STEM_ELEMENT[b] as FiveElKey | undefined;
-    if (el) branchCounts[el] = (branchCounts[el] ?? 0) + 1;
-  }
-
-  // Tie-breaker priority: 득령 > 득지 > 득세
-  // - 득령: monthBranch element match
-  // - 득지: branch abundance
-  // - 득세: stem abundance
-  return tied.sort((a, b) => {
-    const ar = (monthEl && a === monthEl) ? 1 : 0;
-    const br = (monthEl && b === monthEl) ? 1 : 0;
-    if (ar !== br) return br - ar;
-    const ad = (dayEl && a === dayEl) ? 1 : 0;
-    const bd = (dayEl && b === dayEl) ? 1 : 0;
-    if (ad !== bd) return bd - ad;
-    const aj = branchCounts[a] ?? 0;
-    const bj = branchCounts[b] ?? 0;
-    if (aj !== bj) return bj - aj;
-    const as = stemCounts[a] ?? 0;
-    const bs = stemCounts[b] ?? 0;
-    if (as !== bs) return bs - as;
-    return 0;
-  })[0];
-}
-
 function computeElementTiers(counts: FiveElementCount, primary: FiveElKey): Record<FiveElKey, ElementTier> {
   const els: FiveElKey[] = ["목", "화", "토", "금", "수"];
   const max = Math.max(...els.map((e) => counts[e] ?? 0), 0);
@@ -832,12 +787,15 @@ function FiveElementSection({
 
         {/* Element nodes */}
         {nodes.map(({ el, x, y, pct, count, tenGodGroup }) => {
-          const fillY = y + NODE_R * (1 - 2 * pct);
-          const fillH = 2 * NODE_R * pct;
+          const fillHRaw = 2 * NODE_R * pct;
+          const fillH = count > 0 ? Math.max(fillHRaw, 4) : 0;
+          const fillY = y + NODE_R - fillH;
           const isPrimary = el === primaryEl;
           const tier = tiers[el];
           const tone: ElementTone = tier === "primary" ? "strong" : tier === "secondary" ? "base" : "muted";
           const stroke = isPrimary ? elementColorVar(el, "strong") : "hsl(var(--border))";
+          const fillOpacity =
+            count <= 0 ? 0 : tier === "minor" ? 0.42 : tier === "secondary" ? 0.38 : 0.36;
           return (
             <g key={el}>
               <circle
@@ -848,8 +806,10 @@ function FiveElementSection({
                 stroke={stroke}
                 strokeWidth={isPrimary ? 2 : 1.5}
               />
-              <rect x={x - NODE_R} y={fillY} width={NODE_R * 2} height={Math.max(0, fillH)}
-                fill={elementColorVar(el, tone)} opacity={tier === "minor" ? 0.22 : 0.32} clipPath={`url(#pclip-${el})`} />
+              {fillH > 0 && (
+              <rect x={x - NODE_R} y={fillY} width={NODE_R * 2} height={fillH}
+                fill={elementColorVar(el, tone)} opacity={fillOpacity} clipPath={`url(#pclip-${el})`} />
+              )}
               <text
                 x={x}
                 y={y - (tenGodGroup ? 9 : 4)}
@@ -1044,28 +1004,34 @@ function TenGodDistributionSection({
                   className="text-[13px] font-bold whitespace-nowrap text-right px-2 py-0.5 rounded-full border border-solid"
                   style={elementChipColors(elForGroup, {
                     bg: "muted",
-                    text: isPrimaryRow ? "strong" : "base",
+                    text: "strong",
                     border: "base",
                   })}
                 >
                   {pct}%
                 </span>
               </button>
-              {/* Subcategory pills */}
+              {/* Subcategory pills — 참고 UI: 윤곽선 + 동계열 글자(내부 단색 채움 없음) */}
               <div className="flex gap-1.5 mt-1 ml-11">
                 <span
-                  className="flex items-center gap-1 px-2 py-0.5 rounded-full border border-solid text-[11px]"
-                  style={elementChipColors(elForGroup, { bg: "muted", text: "base", border: "base" })}
+                  className="flex items-center gap-1 px-2 py-0.5 rounded-full border border-solid text-[11px] bg-transparent"
+                  style={{
+                    borderColor: elementColorVar(elForGroup, "base"),
+                    color: elementColorVar(elForGroup, "base"),
+                  }}
                 >
                   <span className="font-semibold">{s1}</span>
-                  <span className="opacity-70">{p1}%</span>
+                  <span className="opacity-80">{p1}%</span>
                 </span>
                 <span
-                  className="flex items-center gap-1 px-2 py-0.5 rounded-full border border-solid text-[11px]"
-                  style={elementChipColors(elForGroup, { bg: "muted", text: "base", border: "base" })}
+                  className="flex items-center gap-1 px-2 py-0.5 rounded-full border border-solid text-[11px] bg-transparent"
+                  style={{
+                    borderColor: elementColorVar(elForGroup, "base"),
+                    color: elementColorVar(elForGroup, "base"),
+                  }}
                 >
                   <span className="font-semibold">{s2}</span>
-                  <span className="opacity-70">{p2}%</span>
+                  <span className="opacity-80">{p2}%</span>
                 </span>
               </div>
             </div>
