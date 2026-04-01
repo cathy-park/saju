@@ -147,66 +147,68 @@ function Dashboard({ record }: { record: PersonRecord }) {
 
   return (
     <div className="ds-app-shell bg-background">
-      {/*
-        홈 정보 계층: ① 오늘의 흐름(Hero) → ② 오늘 해석 → ③ 운 흐름 스냅샷 → ④ 주요 기능 이동
-      */}
-      <div className="flex flex-col items-center bg-[url('/bg.png')] bg-cover bg-[position:center_bottom] px-4 pb-4 pt-6">
-        {/* ① 오늘의 흐름 — Hero 카드 (제목 · 메시지 · 캐릭터 · 하단 보조: 일진) */}
-        <section
-          aria-labelledby="home-hero-heading"
-          className="w-full max-w-[340px] overflow-hidden rounded-2xl border border-border/70 bg-card/95 shadow-sm backdrop-blur-sm"
-        >
-          <div className="px-4 pb-1 pt-4 text-center">
-            <h2 id="home-hero-heading" className="m-0 text-[13px] font-extrabold tracking-wide text-[hsl(var(--app-label-accent))]">
-              ✨ 오늘의 흐름
-            </h2>
-            <p className="mt-1 text-[11px] text-muted-foreground">{dateStr}</p>
-            <div className="mt-2 flex items-center justify-center gap-1">
-              <button
-                type="button"
-                onClick={() => setShowEditSheet(true)}
-                className="inline-flex cursor-pointer items-center gap-1 border-0 bg-transparent p-0"
-              >
-                <span className="border-b border-dashed border-primary/50 pb-0.5 text-sm font-semibold text-primary">{nickname}</span>
-                <Pencil className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden />
-              </button>
-              <span className="text-sm font-medium text-muted-foreground">님</span>
+      <div className="flex flex-col items-center bg-[url('/bg.png')] bg-cover bg-[position:center_bottom] px-4 pb-0 pt-6">
+        <p className="ds-caption mb-2 text-center font-semibold tracking-wide text-[hsl(var(--app-label-accent))]">
+          ✨ 오늘의 운세 — {dateStr}
+        </p>
+
+        <div className="mb-4 flex items-center justify-center gap-1">
+          <h2 className="ds-title-lg m-0 text-center">
+            <button
+              type="button"
+              onClick={() => setShowEditSheet(true)}
+              className="inline-flex cursor-pointer items-center gap-1 border-0 bg-transparent p-0"
+            >
+              <span className="border-b border-dashed border-primary/50 pb-0.5 text-primary">{nickname}</span>
+              <Pencil className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden />
+            </button>
+            <span className="text-foreground">님의 오늘 흐름</span>
+          </h2>
+        </div>
+
+        <div className="relative w-full max-w-[310px] rounded-2xl border border-border/60 bg-card/95 px-5 py-3.5 text-center shadow-none backdrop-blur-sm">
+          <p className="ds-body text-center font-semibold">{guidance}</p>
+          <div
+            className="absolute bottom-[-9px] left-1/2 h-0 w-0 -translate-x-1/2 border-x-[9px] border-t-[9px] border-x-transparent border-t-card/95"
+            aria-hidden
+          />
+        </div>
+
+        <div className="relative z-[2] -mb-7 mt-2">
+          <div className="absolute left-1/2 top-1/2 h-[220px] w-[220px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-transparent" aria-hidden />
+          <img src={zodiac.src} alt={zodiac.label} className="relative block h-[200px] w-[200px] object-contain" />
+        </div>
+
+        <div className="relative z-[1] mt-2 flex w-full max-w-[340px] items-center rounded-xl border border-border/50 bg-card/90 px-4 py-3 backdrop-blur-sm">
+          <div className="flex shrink-0 items-center gap-1.5">
+            <p className="m-0 text-[11px] font-bold tracking-wide text-muted-foreground">오늘의 일진</p>
+            <span className="text-[17px] font-extrabold tracking-wide">
+              {fortune.dayGanZhiStr.split("").map((ch, i) => {
+                const el = charToElement(ch);
+                return (
+                  <span key={i} className={el ? elementTextClass(el as FiveElKey, "strong") : "text-foreground"}>{ch}</span>
+                );
+              })}
+            </span>
+          </div>
+
+          {keywords.length > 0 && (
+            <div className="ml-auto flex flex-wrap justify-end gap-1">
+              {keywords.map((kw, i) => {
+                const styles = [
+                  "border-indigo-200/60 bg-indigo-500/10 text-indigo-700",
+                  "border-teal-200/60 bg-teal-500/10 text-teal-700",
+                  "border-primary/30 bg-primary/10 text-primary",
+                ];
+                return (
+                  <span key={kw} className={cn("ds-badge text-[10px] font-bold shadow-none", styles[i % styles.length])}>
+                    {kw}
+                  </span>
+                );
+              })}
             </div>
-            <p className="ds-body mt-3 text-center font-semibold leading-snug text-foreground">{guidance}</p>
-          </div>
-          <div className="flex justify-center px-4 pb-2 pt-1">
-            <img src={zodiac.src} alt={zodiac.label} className="h-[180px] w-[180px] object-contain" />
-          </div>
-          <div className="flex items-center gap-2 border-t border-border/50 bg-muted/15 px-4 py-3">
-            <div className="flex min-w-0 shrink-0 items-center gap-1.5">
-              <p className="m-0 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">오늘의 일진</p>
-              <span className="text-[16px] font-extrabold tracking-wide">
-                {fortune.dayGanZhiStr.split("").map((ch, i) => {
-                  const el = charToElement(ch);
-                  return (
-                    <span key={i} className={el ? elementTextClass(el as FiveElKey, "strong") : "text-foreground"}>{ch}</span>
-                  );
-                })}
-              </span>
-            </div>
-            {keywords.length > 0 && (
-              <div className="ml-auto flex min-w-0 flex-wrap justify-end gap-1">
-                {keywords.map((kw, i) => {
-                  const styles = [
-                    "border-border/80 bg-muted/40 text-foreground/90",
-                    "border-border/80 bg-muted/40 text-foreground/90",
-                    "border-border/80 bg-muted/40 text-foreground/90",
-                  ];
-                  return (
-                    <span key={kw} className={cn("ds-badge text-[10px] font-bold shadow-none", styles[i % styles.length])}>
-                      {kw}
-                    </span>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </section>
+          )}
+        </div>
       </div>
 
       {/* ② 오늘 해석 */}
