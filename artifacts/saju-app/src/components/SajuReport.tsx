@@ -4504,51 +4504,53 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                           </p>
                         </div>
                         <div className="relative ds-card-pad space-y-2.5">
-                          {/* 2열: 왼쪽 일진 / 오른쪽 메시지·십성·한줄설명 */}
-                          <div className="grid grid-cols-[auto,1fr] items-start gap-3">
-                            <div className="rounded-xl border border-border/50 bg-card/90 px-3 py-2 text-center">
-                              <p className="m-0 text-[11px] font-bold tracking-wide text-muted-foreground">오늘 일진</p>
-                              <p className="text-xl font-extrabold tracking-wide">
-                                <span className={dayStemChar ? elementTextClass((charToElement(dayStemChar) ?? "토") as FiveElKey, "strong") : "text-foreground"}>{dayStemChar}</span>
-                                <span className={dayBranchChar ? elementTextClass((charToElement(dayBranchChar) ?? "토") as FiveElKey, "strong") : "text-foreground"}>{dayBranchChar}</span>
-                              </p>
-                            </div>
+                          {/* 상단 1줄: 오늘의 일진 + 키워드 칩 (스크린샷 레이아웃) */}
+                          <div className="rounded-2xl border border-border/50 bg-white/60 backdrop-blur-sm px-4 py-3">
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className="text-[13px] font-semibold text-muted-foreground shrink-0">오늘의 일진</span>
+                                <span className="text-[18px] font-extrabold tracking-wide shrink-0">
+                                  <span className={dayStemChar ? elementTextClass((charToElement(dayStemChar) ?? "토") as FiveElKey, "strong") : "text-foreground"}>{dayStemChar}</span>
+                                  <span className={dayBranchChar ? elementTextClass((charToElement(dayBranchChar) ?? "토") as FiveElKey, "strong") : "text-foreground"}>{dayBranchChar}</span>
+                                </span>
+                              </div>
 
-                            <div className="min-w-0 pt-0.5">
-                              <p className="ds-body font-semibold text-foreground">{fortune.summary}</p>
-                              {(tgStem || tgBranch) && (
-                                <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                                  <span className="text-[12px] font-semibold text-muted-foreground">오늘 십성:</span>
-                                  {tgStem && (
-                                    <span className={`ds-badge text-[10px] font-bold shadow-none ${getTenGodTw(tgStem, dayStem)}`} style={getTenGodChipStyle(tgStem, dayStem)}>
-                                      {tgStem}
+                              {fortune.keywords.length > 0 && (
+                                <div className="flex flex-wrap justify-end gap-1">
+                                  {fortune.keywords.slice(0, 3).map((kw, i) => (
+                                    <span key={kw} className={cn("ds-badge text-[10px] font-bold shadow-none", KEYWORD_STYLES[i % KEYWORD_STYLES.length])}>
+                                      {kw}
                                     </span>
-                                  )}
-                                  {tgBranch && (
-                                    <span className={`ds-badge text-[10px] font-bold shadow-none ${getTenGodTw(tgBranch, dayStem)}`} style={getTenGodChipStyle(tgBranch, dayStem)}>
-                                      {tgBranch}
-                                    </span>
-                                  )}
+                                  ))}
                                 </div>
-                              )}
-                              {fortune.guidance && (
-                                <p className="mt-1 text-[13px] text-muted-foreground leading-relaxed">
-                                  오늘은 <span className="font-semibold text-foreground">“{fortune.guidance}”</span> 흐름이 유리합니다.
-                                </p>
                               )}
                             </div>
                           </div>
 
-                          {/* 키워드 태그 (홈 ds-badge 규칙) */}
-                          {fortune.keywords.length > 0 && (
-                            <div className="flex flex-wrap gap-1">
-                              {fortune.keywords.slice(0, 5).map((kw, i) => (
-                                <span key={kw} className={cn("ds-badge text-[10px] font-bold shadow-none", KEYWORD_STYLES[i % KEYWORD_STYLES.length])}>
-                                  {kw}
-                                </span>
-                              ))}
-                            </div>
-                          )}
+                          {/* 핵심 메시지 / 오늘 십성 / 한 줄 설명 */}
+                          <div className="bg-white/40 px-1">
+                            <p className="ds-body font-semibold text-foreground">{fortune.summary}</p>
+                            {(tgStem || tgBranch) && (
+                              <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                                <span className="text-[12px] font-semibold text-muted-foreground">오늘 십성</span>
+                                {tgStem && (
+                                  <span className={`ds-badge text-[10px] font-bold shadow-none ${getTenGodTw(tgStem, dayStem)}`} style={getTenGodChipStyle(tgStem, dayStem)}>
+                                    {tgStem}
+                                  </span>
+                                )}
+                                {tgBranch && (
+                                  <span className={`ds-badge text-[10px] font-bold shadow-none ${getTenGodTw(tgBranch, dayStem)}`} style={getTenGodChipStyle(tgBranch, dayStem)}>
+                                    {tgBranch}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                            {fortune.guidance && (
+                              <p className="mt-1 text-[13px] text-muted-foreground leading-relaxed">
+                                오늘은 <span className="font-semibold text-foreground">“{fortune.guidance}”</span> 흐름이 유리합니다.
+                              </p>
+                            )}
+                          </div>
                         </div>
                       </div>
 
