@@ -20,10 +20,19 @@ export function elementToken(el: FiveElKey): ElementToken {
   }
 }
 
-export function elementColorVar(el: FiveElKey, tone: ElementTone = "base"): string {
+function elementCssVarName(el: FiveElKey, tone: ElementTone): string {
   const t = elementToken(el);
   const suffix = tone === "base" ? "" : `-${tone}`;
-  return `hsl(var(--element-${t}${suffix}))`;
+  return `--element-${t}${suffix}`;
+}
+
+export function elementColorVar(el: FiveElKey, tone: ElementTone = "base"): string {
+  return `hsl(var(${elementCssVarName(el, tone)}))`;
+}
+
+/** `hsl(var(--element-*) / α)` — 범주색을 그대로 쓰는 반투명 칩·테두리(예: 배경 10%). */
+export function elementHslAlpha(el: FiveElKey, tone: ElementTone, alpha: number): string {
+  return `hsl(var(${elementCssVarName(el, tone)}) / ${alpha})`;
 }
 
 export function elementBgClass(el: FiveElKey, tone: ElementTone = "base"): string {

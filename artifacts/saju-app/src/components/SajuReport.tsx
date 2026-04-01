@@ -32,6 +32,7 @@ import {
   elementBorderClass,
   elementChipColors,
   elementColorVar,
+  elementHslAlpha,
   elementTextClass,
   getTenGodGroup,
   type ElementTone,
@@ -788,10 +789,10 @@ function FiveElementSection({
           const fillY = y + NODE_R - fillH;
           const isPrimary = el === primaryEl;
           const tier = tiers[el];
-          const tone: ElementTone = tier === "primary" ? "strong" : tier === "secondary" ? "base" : "muted";
           const stroke = isPrimary ? elementColorVar(el, "strong") : "hsl(var(--border))";
+          /* 범주색(base) 유지 + 높은 불투명도 — muted+저알파는 화·토가 거의 안 보이던 문제 방지 */
           const fillOpacity =
-            count <= 0 ? 0 : tier === "minor" ? 0.42 : tier === "secondary" ? 0.38 : 0.36;
+            count <= 0 ? 0 : tier === "minor" ? 0.82 : tier === "secondary" ? 0.88 : 0.92;
           return (
             <g key={el}>
               <circle
@@ -804,7 +805,7 @@ function FiveElementSection({
               />
               {fillH > 0 && (
               <rect x={x - NODE_R} y={fillY} width={NODE_R * 2} height={fillH}
-                fill={elementColorVar(el, tone)} opacity={fillOpacity} clipPath={`url(#pclip-${el})`} />
+                fill={elementColorVar(el, "base")} opacity={fillOpacity} clipPath={`url(#pclip-${el})`} />
               )}
               <text
                 x={x}
@@ -948,7 +949,6 @@ function TenGodDistributionSection({
     allStems,
     allBranches,
   });
-  const tiers = computeElementTiers(effectiveFiveElements, primaryEl);
 
   return (
     <div className="space-y-3">
@@ -957,8 +957,6 @@ function TenGodDistributionSection({
         {groups.map((g) => {
           const pct = topLevel[g];
           const rowEl = TEN_GOD_GROUP_ROW_ELEMENT[g as TenGodGroupKey];
-          const tier = tiers[rowEl];
-          const tone: ElementTone = tier === "primary" ? "strong" : tier === "secondary" ? "base" : "muted";
           const [s1, s2] = TG_SUB_PAIRS[g];
           const p1 = detailed[s1] ?? 0;
           const p2 = detailed[s2] ?? 0;
@@ -967,7 +965,8 @@ function TenGodDistributionSection({
           const rowSurface =
             isPrimaryRow
               ? {
-                  ...elementChipColors(rowEl, { bg: "muted", text: "strong", border: "strong" }),
+                  backgroundColor: elementHslAlpha(rowEl, "base", 0.1),
+                  borderColor: elementHslAlpha(rowEl, "base", 0.22),
                   borderWidth: 1,
                   borderStyle: "solid" as const,
                 }
@@ -994,38 +993,40 @@ function TenGodDistributionSection({
                     className="h-full rounded-full"
                     style={{
                       width: `${pct}%`,
-                      backgroundColor: elementColorVar(rowEl, tone),
+                      backgroundColor: elementColorVar(rowEl, "base"),
                     }}
                   />
                 </div>
                 <span
                   className="text-[13px] font-bold whitespace-nowrap text-right px-2 py-0.5 rounded-full border border-solid"
-                  style={elementChipColors(rowEl, {
-                    bg: "muted",
-                    text: "strong",
-                    border: "base",
-                  })}
+                  style={{
+                    backgroundColor: elementHslAlpha(rowEl, "base", 0.1),
+                    color: elementColorVar(rowEl, "strong"),
+                    borderColor: elementHslAlpha(rowEl, "base", 0.28),
+                  }}
                 >
                   {pct}%
                 </span>
               </button>
-              {/* Subcategory pills — 참고 UI: 윤곽선 + 동계열 글자(내부 단색 채움 없음) */}
+              {/* Subcategory pills — 범주색 ~10% 배경 + 연한 테두리 */}
               <div className="flex gap-1.5 mt-1 ml-11">
                 <span
-                  className="flex items-center gap-1 px-2 py-0.5 rounded-full border border-solid text-[11px] bg-transparent"
+                  className="flex items-center gap-1 px-2 py-0.5 rounded-full border border-solid text-[11px]"
                   style={{
-                    borderColor: elementColorVar(rowEl, "base"),
-                    color: elementColorVar(rowEl, "base"),
+                    backgroundColor: elementHslAlpha(rowEl, "base", 0.1),
+                    borderColor: elementHslAlpha(rowEl, "base", 0.28),
+                    color: elementColorVar(rowEl, "strong"),
                   }}
                 >
                   <span className="font-semibold">{s1}</span>
                   <span className="opacity-80">{p1}%</span>
                 </span>
                 <span
-                  className="flex items-center gap-1 px-2 py-0.5 rounded-full border border-solid text-[11px] bg-transparent"
+                  className="flex items-center gap-1 px-2 py-0.5 rounded-full border border-solid text-[11px]"
                   style={{
-                    borderColor: elementColorVar(rowEl, "base"),
-                    color: elementColorVar(rowEl, "base"),
+                    backgroundColor: elementHslAlpha(rowEl, "base", 0.1),
+                    borderColor: elementHslAlpha(rowEl, "base", 0.28),
+                    color: elementColorVar(rowEl, "strong"),
                   }}
                 >
                   <span className="font-semibold">{s2}</span>
