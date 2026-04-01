@@ -4376,49 +4376,116 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
             return (
               <div className="space-y-3">
                 {/* 1) 오늘의 한눈에 보기 */}
-                <Card className="border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50/40">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-semibold text-amber-700 flex items-center gap-1.5">
-                      <Sparkles className="h-3.5 w-3.5" />
-                      오늘의 한눈에 보기
-                      <span className="text-[11px] font-normal text-amber-500">— {fortune.dateLabel}</span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="flex items-center gap-3">
-                      <div className="rounded-xl border border-amber-200 bg-white/70 px-3 py-2 text-center shrink-0">
-                        <p className="text-[13px] text-amber-600 font-medium mb-0.5">오늘 일진</p>
-                        <p className="text-xl font-bold text-foreground">
-                          <span className={dayStemChar ? elementTextClass((charToElement(dayStemChar) ?? "토") as FiveElKey, "strong") : ""}>{dayStemChar}</span>
-                          <span className={dayBranchChar ? elementTextClass((charToElement(dayBranchChar) ?? "토") as FiveElKey, "strong") : ""}>{dayBranchChar}</span>
+                {(() => {
+                  const KEYWORD_STYLES = [
+                    "border-indigo-200/60 bg-indigo-500/10 text-indigo-700",
+                    "border-teal-200/60 bg-teal-500/10 text-teal-700",
+                    "border-primary/30 bg-primary/10 text-primary",
+                  ];
+                  const domainByName = new Map(fortune.domainFortunes.map((d) => [d.domain, d] as const));
+                  const love = domainByName.get("관계");
+                  const work = domainByName.get("일");
+                  const health = domainByName.get("건강");
+
+                  const studyLevel: "good" | "neutral" | "caution" = tg
+                    ? (["정인", "편인"].includes(tg) ? "good" : ["상관", "겁재"].includes(tg) ? "caution" : "neutral")
+                    : "neutral";
+
+                  const domainToLabel = (lvl: "good" | "neutral" | "caution", rawLabel?: string) => {
+                    if (lvl === "good") return rawLabel && ["상승", "활발"].includes(rawLabel) ? "매우 좋음" : "좋음";
+                    if (lvl === "caution") return "주의";
+                    return "보통";
+                  };
+                  const domainToEmoji = (lvl: "good" | "neutral" | "caution", rawLabel?: string) => {
+                    if (lvl === "good") return rawLabel && ["상승", "활발"].includes(rawLabel) ? "☀️" : "🌤";
+                    if (lvl === "caution") return "🌧";
+                    return "⛅";
+                  };
+                  const domainToChip = (lvl: "good" | "neutral" | "caution") => {
+                    if (lvl === "good") return "border-emerald-200/60 bg-emerald-500/10 text-emerald-700";
+                    if (lvl === "caution") return "border-orange-200/60 bg-orange-500/10 text-orange-700";
+                    return "border-border bg-muted/50 text-muted-foreground";
+                  };
+
+                  const scoreRows = [
+                    { key: "사랑", src: love, fallback: { level: "neutral" as const, label: "보통" } },
+                    { key: "일", src: work, fallback: { level: "neutral" as const, label: "보통" } },
+                    { key: "건강", src: health, fallback: { level: "neutral" as const, label: "보통" } },
+                    { key: "대인관계", src: love, fallback: { level: "neutral" as const, label: "보통" } },
+                    { key: "학업", src: null, fallback: { level: studyLevel, label: domainToLabel(studyLevel) } },
+                  ].map((r) => {
+                    const lvl = (r.src?.level ?? r.fallback.level) as "good" | "neutral" | "caution";
+                    const raw = r.src?.label;
+                    return {
+                      label: r.key,
+                      lvl,
+                      state: r.src ? domainToLabel(lvl, raw) : r.fallback.label,
+                      emoji: r.src ? domainToEmoji(lvl, raw) : domainToEmoji(lvl),
+                    };
+                  });
+
+                  return (
+                    <div className="ds-card relative overflow-hidden border-border/60 bg-card/95 shadow-none backdrop-blur-sm">
+                      <div className="border-b border-border/50 bg-muted/10 px-4 py-3">
+                        <p className="ds-caption font-semibold tracking-wide text-[hsl(var(--app-label-accent))]">
+                          ✨ 오늘 한눈에 보기 — {fortune.dateLabel}
                         </p>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-foreground mb-1">{fortune.summary}</p>
-                        {fortune.relationshipSignal && (
-                          <span className="text-[13px] bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full border border-rose-200 font-medium">
-                            💕 {fortune.relationshipSignal}
-                          </span>
+                      <div className="ds-card-pad space-y-3">
+                        <div className="flex items-center gap-3">
+                          <div className="rounded-xl border border-border/50 bg-card/90 px-3 py-2 text-center shrink-0">
+                            <p className="m-0 text-[11px] font-bold tracking-wide text-muted-foreground">오늘 일진</p>
+                            <p className="text-xl font-extrabold tracking-wide">
+                              <span className={dayStemChar ? elementTextClass((charToElement(dayStemChar) ?? "토") as FiveElKey, "strong") : "text-foreground"}>{dayStemChar}</span>
+                              <span className={dayBranchChar ? elementTextClass((charToElement(dayBranchChar) ?? "토") as FiveElKey, "strong") : "text-foreground"}>{dayBranchChar}</span>
+                            </p>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="ds-body font-semibold text-foreground">{fortune.summary}</p>
+                            {fortune.guidance && (
+                              <p className="mt-1 text-[13px] text-muted-foreground leading-relaxed">
+                                오늘은 <span className="font-semibold text-foreground">“{fortune.guidance}”</span> 흐름이 유리합니다.
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* 카테고리 태그 (복원) */}
+                        <div className="flex flex-wrap gap-1">
+                          {scoreRows.map((r) => (
+                            <span key={r.label} className={cn("ds-badge text-[10px] font-bold shadow-none", domainToChip(r.lvl))}>
+                              {r.label}
+                            </span>
+                          ))}
+                        </div>
+
+                        {/* 키워드 태그 (홈 ds-badge 규칙) */}
+                        {fortune.keywords.length > 0 && (
+                          <div className="flex flex-wrap gap-1">
+                            {fortune.keywords.slice(0, 5).map((kw, i) => (
+                              <span key={kw} className={cn("ds-badge text-[10px] font-bold shadow-none", KEYWORD_STYLES[i % KEYWORD_STYLES.length])}>
+                                {kw}
+                              </span>
+                            ))}
+                          </div>
                         )}
+
+                        {/* 카테고리별 흐름 요약 스코어 (추가) */}
+                        <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 pt-1">
+                          {scoreRows.map((r) => (
+                            <div key={r.label} className={cn("rounded-lg border px-2.5 py-2", domainToChip(r.lvl))}>
+                              <div className="flex items-center justify-between">
+                                <span className="text-[12px] font-extrabold text-foreground/90">{r.label}</span>
+                                <span className="text-base leading-none" aria-hidden>{r.emoji}</span>
+                              </div>
+                              <p className="mt-0.5 text-[11px] font-bold">{r.state}</p>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     </div>
-                    <div className="flex flex-wrap gap-1.5">
-                      {fortune.keywords.map((kw, i) => (
-                        <span
-                          key={`${kw}-${i}`}
-                          className="text-[13px] font-bold px-2.5 py-1 rounded-full border bg-white/60 text-foreground border-border/60"
-                        >
-                          {kw}
-                        </span>
-                      ))}
-                    </div>
-                    {fortune.guidance && (
-                      <div className="rounded-lg bg-white/60 border border-amber-100 px-3 py-2">
-                        <p className="text-[13px] text-amber-800">{fortune.guidance}</p>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
+                  );
+                })()}
 
                 {/* 2) 오늘 전체 흐름 */}
                 <Card className="border-indigo-100 bg-gradient-to-br from-indigo-50/60 to-transparent">
