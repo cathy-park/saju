@@ -4530,7 +4530,7 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                           {/* 핵심 메시지 / 오늘 십성 / 한 줄 설명 */}
                           <div className="rounded-2xl border border-border/50 bg-white/60 backdrop-blur-sm px-4 py-3">
                             <p className="ds-body font-bold text-foreground">{fortune.summary}</p>
-                            <div className="mt-4 mb-3.5 h-px w-full bg-border/60" />
+                            <div className="mt-2 mb-3 h-px w-full bg-border/60" />
                             {(tgStem || tgBranch) && (
                               <div className="mt-1 flex flex-wrap items-center gap-1.5">
                                 <span className="text-[11px] font-semibold text-muted-foreground/80">오늘 십성</span>

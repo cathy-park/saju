@@ -82,11 +82,21 @@ function AppHeader() {
 function SyncedApp() {
   const { dbSynced } = useAuth();
   const [refreshKey, setRefreshKey] = useState(0);
+  const [location] = useLocation();
 
   // Increment key when sync completes to trigger child re-reads
   useEffect(() => {
     if (dbSynced) setRefreshKey((k) => k + 1);
   }, [dbSynced]);
+
+  // Always scroll to top on route change.
+  useEffect(() => {
+    try {
+      window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    } catch {
+      window.scrollTo(0, 0);
+    }
+  }, [location]);
 
   return (
     <>
