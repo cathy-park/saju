@@ -50,26 +50,6 @@ function scoreToMascot(score: number): MascotExpression {
   return "warning";
 }
 
-function SectionTint({
-  tone = "neutral",
-  children,
-}: {
-  tone?: "neutral" | "primary" | "amber" | "sky" | "violet";
-  children: React.ReactNode;
-}) {
-  const cls =
-    tone === "primary"
-      ? "bg-primary/[0.05]"
-      : tone === "amber"
-        ? "bg-amber-50/60"
-        : tone === "sky"
-          ? "bg-sky-50/60"
-          : tone === "violet"
-            ? "bg-violet-50/55"
-            : "bg-muted/25";
-  return <div className={cn("rounded-2xl p-3", cls)}>{children}</div>;
-}
-
 function normalizeRelationType(label: string): RelationType | null {
   const s = (label ?? "").trim();
   if (!s) return null;
@@ -135,10 +115,11 @@ function RelationInlineDetail({
         </div>
         <button
           type="button"
-          className="ds-badge border-border bg-muted/40 text-muted-foreground hover:bg-muted/60"
           onClick={onClose}
+          className="shrink-0 rounded-md px-2 py-0.5 text-[12px] text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+          aria-label="닫기"
         >
-          닫기
+          ✕
         </button>
       </div>
       <div className="ds-inline-detail-body">
@@ -670,11 +651,11 @@ export default function Compatibility() {
       {/* ── 모드 탭 (내 사주 segmented control 동일 컴포넌트) ── */}
       {canUsePairMode && (
         <Tabs value={mode} onValueChange={(v) => setMode(v as "me_other" | "pair")}>
-          <TabsList className="min-h-10 rounded-xl border border-border shadow-none">
-            <TabsTrigger className="text-[12px]" value="me_other">
+          <TabsList className="min-h-10 w-full rounded-xl border border-border shadow-none">
+            <TabsTrigger className="flex-1 text-[12px]" value="me_other">
               나 ↔ 상대
             </TabsTrigger>
-            <TabsTrigger className="text-[12px]" value="pair">
+            <TabsTrigger className="flex-1 text-[12px]" value="pair">
               상대끼리
             </TabsTrigger>
           </TabsList>
@@ -780,9 +761,8 @@ export default function Compatibility() {
             return (
             <div className="ds-section-gap">
 
-              {/* ── 1. 궁합 한눈에보기 (섹션만 pastel → 카드/네스티드는 white) ── */}
-              <SectionTint tone="primary">
-                <div className="ds-card border-primary/15 bg-white shadow-none">
+              {/* ── 1. 궁합 한눈에보기 (내 사주 Hero 카드 톤) ── */}
+              <div className="ds-card border-primary/15 bg-gradient-to-br from-primary/[0.06] via-card to-card shadow-none">
                   <div className="ds-card-pad space-y-4">
                   <div>
                     <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">궁합 요약</p>
@@ -818,10 +798,8 @@ export default function Compatibility() {
                   </div>
                   </div>
                 </div>
-              </SectionTint>
 
               {/* ── 2. 관계 구조 분석: 섹션 pastel → 카드/네스티드 white ── */}
-              <SectionTint>
                 <div className="ds-card overflow-hidden shadow-none">
                   <div className="border-b border-border bg-muted/20 px-4 py-3">
                     <h2 className="text-sm font-bold text-foreground">관계 구조 분석</h2>
@@ -999,12 +977,10 @@ export default function Compatibility() {
                   </div>
                 </div>
                 </div>
-              </SectionTint>
 
               {/* ── 시주 제외 비교 (중립 카드 + 흰 nested) ── */}
               {hasHourExcluded && resultBase && result && (
-                <SectionTint tone="violet">
-                  <div className="ds-card overflow-hidden shadow-none">
+                  <div className="ds-card overflow-hidden shadow-none border-violet-200/70 bg-violet-50/35 dark:border-violet-900/40 dark:bg-violet-950/20">
                     <div className="border-b border-border bg-muted/20 px-4 py-3">
                       <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">시주 포함·제외</p>
                       <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">
@@ -1051,11 +1027,9 @@ export default function Compatibility() {
                       )}
                     </div>
                   </div>
-                </SectionTint>
               )}
 
               {/* ── 3. 관계 해석 ── */}
-              <SectionTint>
                 <div className="ds-card overflow-hidden shadow-none">
                   <div className="border-b border-border bg-muted/20 px-4 py-3">
                     <h2 className="text-sm font-bold text-foreground">관계 해석</h2>
@@ -1088,10 +1062,8 @@ export default function Compatibility() {
                     </div>
                   </div>
                 </div>
-              </SectionTint>
 
               {/* ── 4. 연애/결혼 관점 해석 (별도 카드) ── */}
-              <SectionTint tone="sky">
                 <div className="ds-card overflow-hidden shadow-none">
                   <div className="border-b border-border bg-muted/20 px-4 py-3">
                     <h2 className="text-sm font-bold text-foreground">연애 관점 해석</h2>
@@ -1119,9 +1091,7 @@ export default function Compatibility() {
                     </div>
                   </div>
                 </div>
-              </SectionTint>
 
-              <SectionTint tone="violet">
                 <div className="ds-card overflow-hidden shadow-none">
                   <div className="border-b border-border bg-muted/20 px-4 py-3">
                     <h2 className="text-sm font-bold text-foreground">결혼 관점 해석</h2>
@@ -1141,7 +1111,6 @@ export default function Compatibility() {
                     </div>
                   </div>
                 </div>
-              </SectionTint>
 
               {/* ── DEV: 점수 디버그 ── */}
               {import.meta.env.DEV && (() => {
@@ -1159,9 +1128,8 @@ export default function Compatibility() {
                 );
               })()}
 
-              {/* ── 5. 상세/흐름/레이어: 섹션 pastel → 카드/네스티드 white ── */}
-              <SectionTint>
-                <div className="ds-card ds-card-pad">
+              {/* ── 5. 상세/흐름/레이어 ── */}
+              <div className="ds-card ds-card-pad">
                   <AccSection title="상세 분석">
                 {/* 양쪽 사주 요약 */}
                 <div>
@@ -1430,12 +1398,10 @@ export default function Compatibility() {
                   * 궁합은 운명이 아닙니다. 두 원국 구조가 어떻게 상호작용하는 경향이 있는지를 보여주는 참고 정보입니다.
                 </p>
               </AccSection>
-                </div>
-              </SectionTint>
+              </div>
 
               {/* ── 행동 가이드 ── */}
-              <SectionTint tone="amber">
-                <div className="ds-card overflow-hidden shadow-none">
+              <div className="ds-card overflow-hidden shadow-none">
                   <div className="border-b border-border bg-muted/20 px-4 py-3">
                     <h2 className="text-sm font-bold text-foreground">행동 가이드</h2>
                     <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">
@@ -1481,7 +1447,6 @@ export default function Compatibility() {
                     )}
                   </div>
                 </div>
-              </SectionTint>
 
               {/* ── 궁합 분석 전체 복사 (맨 하단) ── */}
               <CopyButton
