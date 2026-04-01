@@ -47,11 +47,11 @@ function scoreToMascot(score: number): MascotExpression {
 // Keyed by result.finalType only. No other logic is used for colors.
 
 const GRADE_PALETTE: Record<CompatibilityTone, { cardBg: string; pastel: string; strong: string; border: string; badgeText: string }> = {
-  "이상적 궁합": { cardBg: "#FAF7FF", pastel: "#F1E8FF", strong: "#8B5CF6", border: "#C4B5FD", badgeText: "#6D28D9" },
-  "좋은 궁합":   { cardBg: "#F3FBF6", pastel: "#E6F7EC", strong: "#22C55E", border: "#86EFAC", badgeText: "#15803D" },
-  "노력형 궁합": { cardBg: "#F3F8FF", pastel: "#E8F1FF", strong: "#3B82F6", border: "#93C5FD", badgeText: "#1D4ED8" },
-  "긴장형 궁합": { cardBg: "#FFFCF8", pastel: "#FFF1E6", strong: "#F59E0B", border: "#FCD34D", badgeText: "#B45309" },
-  "주의 궁합":   { cardBg: "#FFF7F7", pastel: "#FFE8E8", strong: "#EF4444", border: "#FCA5A5", badgeText: "#B91C1C" },
+  "이상적 궁합": { cardBg: "var(--compat-grade-ideal-cardBg)", pastel: "var(--compat-grade-ideal-pastel)", strong: "var(--compat-grade-ideal-strong)", border: "var(--compat-grade-ideal-border)", badgeText: "var(--compat-grade-ideal-badgeText)" },
+  "좋은 궁합":   { cardBg: "var(--compat-grade-good-cardBg)", pastel: "var(--compat-grade-good-pastel)", strong: "var(--compat-grade-good-strong)", border: "var(--compat-grade-good-border)", badgeText: "var(--compat-grade-good-badgeText)" },
+  "노력형 궁합": { cardBg: "var(--compat-grade-effort-cardBg)", pastel: "var(--compat-grade-effort-pastel)", strong: "var(--compat-grade-effort-strong)", border: "var(--compat-grade-effort-border)", badgeText: "var(--compat-grade-effort-badgeText)" },
+  "긴장형 궁합": { cardBg: "var(--compat-grade-tense-cardBg)", pastel: "var(--compat-grade-tense-pastel)", strong: "var(--compat-grade-tense-strong)", border: "var(--compat-grade-tense-border)", badgeText: "var(--compat-grade-tense-badgeText)" },
+  "주의 궁합":   { cardBg: "var(--compat-grade-caution-cardBg)", pastel: "var(--compat-grade-caution-pastel)", strong: "var(--compat-grade-caution-strong)", border: "var(--compat-grade-caution-border)", badgeText: "var(--compat-grade-caution-badgeText)" },
 };
 
 // ── Score Arc ─────────────────────────────────────────────────────
@@ -172,10 +172,6 @@ function getElCardStyle(el: string | null): React.CSSProperties {
 
 // ── Element Mirror — Mirrored Bar Chart ──────────────────────────
 
-const OHAENG_COLOR: Record<string, string> = {
-  목: "#4CAF50", 화: "#E53935", 토: "#E0A800", 금: "#9E9E9E", 수: "#1E88E5",
-};
-
 // Generating (a → b): a generates b
 const GEN_PAIRS: [string, string][] = [["목","화"],["화","토"],["토","금"],["금","수"],["수","목"]];
 // Controlling (a → b): a controls b
@@ -225,7 +221,7 @@ function ElementMirror({ name1, el1, dayStem1, name2, el2 }: {
         const diff = Math.abs(el1[el] - el2[el]);
         const isEmphasis = diff > 0 && diff === maxDiff;
         const label = masterEl ? getCategoryLabel(el, masterEl) : el;
-        const elColor = OHAENG_COLOR[el];
+        const elColor = elementColorVar(el, "base");
 
         return (
           <div
@@ -244,7 +240,7 @@ function ElementMirror({ name1, el1, dayStem1, name2, el2 }: {
             <div className="w-[68px] shrink-0 flex flex-col items-center gap-0.5">
               <span
                 className="text-[12px] font-bold leading-none"
-                style={{ color: isEmphasis ? elColor : "#999" }}
+                style={{ color: isEmphasis ? elColor : "hsl(var(--muted-foreground))" }}
               >
                 {label}
               </span>
@@ -549,7 +545,7 @@ export default function Compatibility() {
               onClick={() => setMode(key)}
               className={`flex-1 text-[13px] font-semibold py-1.5 rounded-lg transition-colors ${
                 mode === key
-                  ? "bg-background shadow-sm text-foreground"
+                  ? "bg-background border border-border text-foreground shadow-none"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
@@ -1213,7 +1209,7 @@ export default function Compatibility() {
           onClick={() => setShowInfoSheet(false)}
         >
           <div
-            className="w-full bg-background rounded-t-3xl shadow-2xl max-h-[88vh] overflow-y-auto"
+            className="w-full bg-background rounded-t-3xl border-t border-border shadow-none max-h-[88vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-border">

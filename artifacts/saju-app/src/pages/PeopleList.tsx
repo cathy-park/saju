@@ -353,7 +353,7 @@ export default function PeopleList() {
         <div className="fixed bottom-20 left-0 right-0 flex justify-center px-4 z-30">
           <div className="w-full max-w-lg">
             <Button
-              className="w-full h-12 gap-2 text-[15px] font-bold shadow-lg"
+              className="h-12 w-full gap-2 text-sm font-bold shadow-none"
               disabled={selectedIds.length !== 2}
               onClick={handleGoCompatibility}
             >

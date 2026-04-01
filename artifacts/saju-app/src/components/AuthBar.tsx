@@ -10,7 +10,7 @@ export function AuthBar() {
     return (
       <button
         onClick={signInWithGoogle}
-        className="flex items-center gap-1.5 text-[13px] font-semibold text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5 rounded-xl border border-border hover:bg-muted/40"
+        className="flex h-10 items-center gap-2 rounded-lg border border-border px-3 text-sm font-semibold text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
       >
         <LogIn className="h-3.5 w-3.5" />
         로그인
@@ -35,14 +35,14 @@ export function AuthBar() {
         </div>
       )}
       {/* Name */}
-      <span className="text-[13px] font-semibold text-foreground max-w-[72px] truncate hidden sm:block">
+      <span className="hidden max-w-[72px] truncate text-sm font-semibold text-foreground sm:block">
         {displayName}
       </span>
       {/* Logout */}
       <button
         onClick={signOut}
         title="로그아웃"
-        className="p-1.5 rounded-lg text-muted-foreground hover:text-red-500 hover:bg-red-50 transition-colors"
+        className="flex h-10 w-10 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-red-50 hover:text-red-600"
       >
         <LogOut className="h-3.5 w-3.5" />
       </button>
@@ -53,14 +53,15 @@ export function AuthBar() {
 export function GoogleLoginCard() {
   const { signInWithGoogle } = useAuth();
   return (
-    <div className="rounded-2xl border border-border bg-white px-4 py-5 flex flex-col items-center gap-3 text-center">
-      <p className="text-[15px] font-bold text-foreground">저장 기능을 사용하려면 로그인하세요</p>
-      <p className="text-[13px] text-muted-foreground leading-relaxed">
+    <div className="ds-card ds-card-pad flex flex-col items-center gap-3 text-center">
+      <p className="text-base font-bold text-foreground">저장 기능을 사용하려면 로그인하세요</p>
+      <p className="ds-body text-center text-muted-foreground">
         로그인하면 기기가 바뀌어도<br />사주 데이터가 유지됩니다
       </p>
       <button
+        type="button"
         onClick={signInWithGoogle}
-        className="flex items-center gap-2.5 px-5 py-2.5 rounded-2xl border border-border bg-white hover:bg-muted/30 transition-colors text-[14px] font-semibold text-foreground w-full max-w-xs justify-center"
+        className="flex h-11 w-full max-w-xs items-center justify-center gap-2 rounded-lg border border-border bg-card px-5 text-sm font-semibold text-foreground transition-colors hover:bg-muted/40"
       >
         <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0">
           <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>

@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Link, useLocation } from "wouter";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { getMyProfile } from "@/lib/storage";
 import { getTodayFortuneCard, getTenGodFortune } from "@/lib/todayFortune";
 import { buildLifeFlowInsights } from "@/lib/lifeFlowInsight";
@@ -26,83 +28,46 @@ export default function Home() {
 // ════════════════════════════════════════════════════════════════════
 function Onboarding() {
   return (
-    <div style={{ maxWidth: 480, margin: "0 auto", paddingBottom: 80, background: "#FAFAF8" }}>
-
-      {/* ── Hero (대시보드와 동일한 배경 구조) ── */}
-      <div style={{
-        backgroundImage: "url('/bg.png')",
-        backgroundSize: "cover",
-        backgroundPosition: "center bottom",
-        padding: "22px 20px 0",
-        display: "flex", flexDirection: "column", alignItems: "center",
-      }}>
-
-        {/* 날짜 레이블 */}
-        <p style={{ fontSize: 12, fontWeight: 600, color: "#C17D50", margin: "0 0 6px", textAlign: "center", letterSpacing: "0.02em" }}>
+    <div className="ds-app-shell bg-background">
+      <div className="flex flex-col items-center bg-[url('/bg.png')] bg-cover bg-[position:center_bottom] px-4 pb-0 pt-6">
+        <p className="ds-caption mb-2 text-center font-semibold tracking-wide text-[hsl(var(--app-label-accent))]">
           ✨ 나의 흐름
         </p>
-
-        {/* 메인 타이틀 */}
-        <h2 style={{ fontSize: 22, fontWeight: 800, margin: "0 0 16px", textAlign: "center" }}>
-          <span style={{ color: "hsl(12,72%,50%)" }}>사주</span>
-          <span style={{ color: "#111" }}>로 읽는 오늘의 에너지</span>
+        <h2 className="ds-title-lg mb-4 text-center">
+          <span className="text-primary">사주</span>
+          <span className="text-foreground">로 읽는 오늘의 에너지</span>
         </h2>
-
-        {/* 말풍선 */}
-        <div style={{
-          background: "rgba(255,255,255,0.92)",
-          borderRadius: 18,
-          padding: "14px 20px",
-          boxShadow: "0 2px 12px rgba(0,0,0,0.07)",
-          maxWidth: 310, width: "100%",
-          position: "relative",
-          textAlign: "center",
-        }}>
-          <p style={{ fontSize: 14, fontWeight: 600, color: "#333", lineHeight: 1.65, margin: 0 }}>
+        <div className="relative w-full max-w-[310px] rounded-2xl border border-border/60 bg-card/95 px-5 py-3.5 text-center shadow-none backdrop-blur-sm">
+          <p className="ds-body text-center font-semibold">
             안녕하세요! 저는 결이예요 🐰<br />
             생년월일만 입력하면 오늘의 흐름과<br />
             나만의 사주 리포트를 바로 확인할 수 있어요.
           </p>
-          {/* 아래 꼬리 */}
-          <div style={{
-            position: "absolute", bottom: -9, left: "50%", transform: "translateX(-50%)",
-            width: 0, height: 0,
-            borderLeft: "9px solid transparent",
-            borderRight: "9px solid transparent",
-            borderTop: "9px solid rgba(255,255,255,0.92)",
-          }} />
-        </div>
-
-        {/* 결이 기본 캐릭터 */}
-        <div style={{ position: "relative", marginTop: 10, marginBottom: -28, zIndex: 2 }}>
-          <img
-            src={gyeolDefault}
-            alt="결이"
-            style={{ width: 200, height: 200, objectFit: "contain", position: "relative", display: "block" }}
+          <div
+            className="absolute bottom-[-9px] left-1/2 h-0 w-0 -translate-x-1/2 border-x-[9px] border-t-[9px] border-x-transparent border-t-card/95"
+            aria-hidden
           />
         </div>
-
-        {/* 빈 영역 (대시보드의 일진 row 자리) — 높이만 맞춤 */}
-        <div style={{ width: "100%", height: 52, zIndex: 1, position: "relative" }} />
+        <div className="relative z-[2] -mb-7 mt-2">
+          <img src={gyeolDefault} alt="결이" className="relative block h-[200px] w-[200px] object-contain" />
+        </div>
+        <div className="relative z-[1] h-[52px] w-full" />
       </div>
-
-      {/* ── CTA 버튼 (대시보드와 동일 위치) ── */}
-      <div style={{ padding: "16px 16px 0", display: "flex", gap: 10 }}>
-        <Link href="/saju" style={{ flex: 1 }}>
-          <div style={{ background: "rgba(99,102,241,0.12)", borderRadius: 50, padding: "14px 18px", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, cursor: "pointer" }}>
-            <span style={{ fontSize: 16 }}>🔍</span>
-            <span style={{ fontSize: 14, fontWeight: 700, color: "#6366F1" }}>사주 리포트</span>
+      <div className="flex gap-2 px-4 pt-4">
+        <Link href="/saju" className="flex-1">
+          <div className="flex h-12 cursor-pointer items-center justify-center gap-2 rounded-full border border-indigo-200/60 bg-indigo-500/10 px-4">
+            <span className="text-base" aria-hidden>🔍</span>
+            <span className="text-sm font-bold text-indigo-600">사주 리포트</span>
           </div>
         </Link>
-        <Link href="/compatibility" style={{ flex: 1 }}>
-          <div style={{ background: "rgba(239,116,66,0.12)", borderRadius: 50, padding: "14px 18px", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, cursor: "pointer" }}>
-            <span style={{ fontSize: 16 }}>💞</span>
-            <span style={{ fontSize: 14, fontWeight: 700, color: "hsl(12,72%,50%)" }}>궁합 보기</span>
+        <Link href="/compatibility" className="flex-1">
+          <div className="flex h-12 cursor-pointer items-center justify-center gap-2 rounded-full border border-primary/25 bg-primary/10 px-4">
+            <span className="text-base" aria-hidden>💞</span>
+            <span className="text-sm font-bold text-primary">궁합 보기</span>
           </div>
         </Link>
       </div>
-
-      <p style={{ textAlign: "center", fontSize: 12, color: "#AAAAAA", marginTop: 12 }}>생년월일만 있으면 바로 시작 · 무료</p>
+      <p className="ds-caption mt-3 text-center">생년월일만 있으면 바로 시작 · 무료</p>
     </div>
   );
 }
@@ -118,28 +83,32 @@ function NicknameSheet({ value, onSave, onClose }: {
   useEffect(() => { setTimeout(() => inputRef.current?.focus(), 80); }, []);
   return (
     <div
-      style={{ position: "fixed", inset: 0, zIndex: 100, display: "flex", flexDirection: "column", justifyContent: "flex-end" }}
+      className="ds-sheet-scrim z-[100]"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.3)" }} onClick={onClose} />
-      <div style={{ position: "relative", background: "#FFF", borderRadius: "24px 24px 0 0", padding: "16px 20px 40px", zIndex: 10, animation: "slideUp .22s cubic-bezier(.32,.72,0,1)" }}>
-        <div style={{ width: 40, height: 4, borderRadius: 99, background: "#DDD", margin: "0 auto 20px" }} />
-        <p style={{ fontSize: 16, fontWeight: 700, color: "#111", marginBottom: 14 }}>닉네임 변경</p>
-        <input
+      <div className="absolute inset-0 bg-black/30" onClick={onClose} />
+      <div className="ds-sheet-panel rounded-t-3xl px-5 pb-10 pt-4">
+        <div className="ds-sheet-handle" />
+        <p className="ds-title mb-3">닉네임 변경</p>
+        <Input
           ref={inputRef}
-          type="text" value={draft}
+          type="text"
+          value={draft}
           onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter") { const t = draft.trim(); if (t) onSave(t); else onClose(); } if (e.key === "Escape") onClose(); }}
-          style={{ width: "100%", height: 48, padding: "0 16px", border: "1px solid #E0E0E0", borderRadius: 12, fontSize: 15, outline: "none", boxSizing: "border-box" }}
-          placeholder="닉네임을 입력하세요" maxLength={10}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") { const t = draft.trim(); if (t) onSave(t); else onClose(); }
+            if (e.key === "Escape") onClose();
+          }}
+          className="h-12 rounded-lg text-sm"
+          placeholder="닉네임을 입력하세요"
+          maxLength={10}
         />
-        <p style={{ fontSize: 12, color: "#AAA", textAlign: "right", marginTop: 6 }}>{draft.length}/10</p>
-        <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
-          <button onClick={onClose} style={{ flex: 1, height: 44, border: "1px solid #E0E0E0", borderRadius: 12, fontSize: 14, fontWeight: 600, color: "#888", background: "#FFF", cursor: "pointer" }}>취소</button>
-          <button onClick={() => { const t = draft.trim(); if (t) onSave(t); else onClose(); }} style={{ flex: 1, height: 44, border: "none", borderRadius: 12, fontSize: 14, fontWeight: 700, color: "#FFF", background: "hsl(12,72%,50%)", cursor: "pointer" }}>저장</button>
+        <p className="ds-caption mt-2 text-right">{draft.length}/10</p>
+        <div className="mt-3 flex gap-2">
+          <Button type="button" variant="outline" className="flex-1" onClick={onClose}>취소</Button>
+          <Button type="button" className="flex-1" onClick={() => { const t = draft.trim(); if (t) onSave(t); else onClose(); }}>저장</Button>
         </div>
       </div>
-      <style>{`@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}`}</style>
     </div>
   );
 }
@@ -154,7 +123,6 @@ function Dashboard({ record }: { record: PersonRecord }) {
   const [, navigate] = useLocation();
   const [showEditSheet, setShowEditSheet] = useState(false);
   const [showLuckSheet, setShowLuckSheet] = useState(false);
-  const [domainSheet, setDomainSheet] = useState<typeof fortune.domainFortunes[number] | null>(null);
 
   function goToTodayFortune() {
     sessionStorage.setItem("openReportTab", "오늘운세");
@@ -184,90 +152,43 @@ function Dashboard({ record }: { record: PersonRecord }) {
   }
 
   return (
-    <div style={{ maxWidth: 480, margin: "0 auto", paddingBottom: 80, background: "#FAFAF8" }}>
-
-      {/* ══════════════════════════════════════════
-          HERO SECTION
-      ══════════════════════════════════════════ */}
-      <div style={{
-        backgroundImage: "url('/bg.png')",
-        backgroundSize: "cover",
-        backgroundPosition: "center bottom",
-        padding: "22px 20px 0",
-        display: "flex", flexDirection: "column", alignItems: "center",
-      }}>
-
-        {/* A. 날짜 레이블 */}
-        <p style={{ fontSize: 12, fontWeight: 600, color: "#C17D50", margin: "0 0 6px", textAlign: "center", letterSpacing: "0.02em" }}>
+    <div className="ds-app-shell bg-background">
+      <div className="flex flex-col items-center bg-[url('/bg.png')] bg-cover bg-[position:center_bottom] px-4 pb-0 pt-6">
+        <p className="ds-caption mb-2 text-center font-semibold tracking-wide text-[hsl(var(--app-label-accent))]">
           ✨ 오늘의 운세 — {dateStr}
         </p>
 
-        {/* B. 메인 타이틀 */}
-        <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 16 }}>
-          <h2 style={{ fontSize: 22, fontWeight: 800, margin: 0, textAlign: "center" }}>
+        <div className="mb-4 flex items-center justify-center gap-1">
+          <h2 className="ds-title-lg m-0 text-center">
             <button
+              type="button"
               onClick={() => setShowEditSheet(true)}
-              style={{
-                background: "none", border: "none", padding: 0,
-                cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 4,
-              }}
+              className="inline-flex cursor-pointer items-center gap-1 border-0 bg-transparent p-0"
             >
-              <span style={{
-                color: "hsl(12,72%,50%)",
-                borderBottom: "1.5px dashed hsl(12,72%,70%)",
-                paddingBottom: 1,
-              }}>{nickname}</span>
-              <Pencil style={{ width: 11, height: 11, color: "#BBBBBB", flexShrink: 0 }} />
+              <span className="border-b border-dashed border-primary/50 pb-0.5 text-primary">{nickname}</span>
+              <Pencil className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden />
             </button>
-            <span style={{ color: "#111" }}>님의 오늘 흐름</span>
+            <span className="text-foreground">님의 오늘 흐름</span>
           </h2>
         </div>
 
-        {/* C. 말풍선 */}
-        <div style={{
-          background: "rgba(255,255,255,0.92)",
-          borderRadius: 18,
-          padding: "14px 20px",
-          boxShadow: "0 2px 12px rgba(0,0,0,0.07)",
-          maxWidth: 310, width: "100%",
-          position: "relative",
-          textAlign: "center",
-        }}>
-          <p style={{ fontSize: 14, fontWeight: 600, color: "#333", lineHeight: 1.65, margin: 0 }}>
-            {guidance}
-          </p>
-          {/* 아래 꼬리 */}
-          <div style={{
-            position: "absolute", bottom: -9, left: "50%", transform: "translateX(-50%)",
-            width: 0, height: 0,
-            borderLeft: "9px solid transparent",
-            borderRight: "9px solid transparent",
-            borderTop: "9px solid rgba(255,255,255,0.92)",
-          }} />
+        <div className="relative w-full max-w-[310px] rounded-2xl border border-border/60 bg-card/95 px-5 py-3.5 text-center shadow-none backdrop-blur-sm">
+          <p className="ds-body text-center font-semibold">{guidance}</p>
+          <div
+            className="absolute bottom-[-9px] left-1/2 h-0 w-0 -translate-x-1/2 border-x-[9px] border-t-[9px] border-x-transparent border-t-card/95"
+            aria-hidden
+          />
         </div>
 
-        {/* D. 캐릭터 (마스코트) */}
-        <div style={{ position: "relative", marginTop: 10, marginBottom: -28, zIndex: 2 }}>
-          <div style={{
-            position: "absolute", width: 220, height: 220, borderRadius: "50%",
-            background: "transparent",
-            top: "50%", left: "50%", transform: "translate(-50%,-50%)",
-          }} />
-          <img src={zodiac.src} alt={zodiac.label} style={{ width: 200, height: 200, objectFit: "contain", position: "relative", display: "block" }} />
+        <div className="relative z-[2] -mb-7 mt-2">
+          <div className="absolute left-1/2 top-1/2 h-[220px] w-[220px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-transparent" aria-hidden />
+          <img src={zodiac.src} alt={zodiac.label} className="relative block h-[200px] w-[200px] object-contain" />
         </div>
 
-        {/* E. 일진 row */}
-        <div style={{
-          display: "flex", alignItems: "center",
-          background: "rgba(255,255,255,0.88)",
-          borderRadius: 14, padding: "12px 16px",
-          border: "1px solid rgba(0,0,0,0.05)",
-          width: "100%", boxSizing: "border-box",
-          zIndex: 1, position: "relative",
-        }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
-            <p style={{ fontSize: 11, color: "#AAAAAA", fontWeight: 700, margin: 0, letterSpacing: "0.03em" }}>오늘의 일진</p>
-            <span style={{ fontSize: 17, fontWeight: 800, letterSpacing: "0.05em" }}>
+        <div className="relative z-[1] mt-2 flex w-full items-center rounded-xl border border-border/50 bg-card/90 px-4 py-3 backdrop-blur-sm">
+          <div className="flex shrink-0 items-center gap-1.5">
+            <p className="m-0 text-[11px] font-bold tracking-wide text-muted-foreground">오늘의 일진</p>
+            <span className="text-[17px] font-extrabold tracking-wide">
               {fortune.dayGanZhiStr.split("").map((ch, i) => {
                 const el = charToElement(ch);
                 return <span key={i} style={{ color: el ? elementColorVar(el, "strong") : "hsl(var(--foreground))" }}>{ch}</span>;
@@ -444,17 +365,17 @@ function Dashboard({ record }: { record: PersonRecord }) {
       {/* ══════════════════════════════════════════
           CTA BUTTONS
       ══════════════════════════════════════════ */}
-      <div style={{ padding: "16px 16px 0", display: "flex", gap: 10 }}>
-        <Link href="/saju" style={{ flex: 1 }}>
-          <div style={{ background: "rgba(99,102,241,0.12)", borderRadius: 50, padding: "14px 18px", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, cursor: "pointer" }}>
-            <span style={{ fontSize: 16 }}>🔍</span>
-            <span style={{ fontSize: 14, fontWeight: 700, color: "#6366F1" }}>사주 리포트</span>
+      <div className="flex gap-2 px-4 pt-4">
+        <Link href="/saju" className="flex-1">
+          <div className="flex h-12 cursor-pointer items-center justify-center gap-2 rounded-full border border-indigo-200/60 bg-indigo-500/10 px-4">
+            <span className="text-base" aria-hidden>🔍</span>
+            <span className="text-sm font-bold text-indigo-600">사주 리포트</span>
           </div>
         </Link>
-        <Link href="/compatibility" style={{ flex: 1 }}>
-          <div style={{ background: "rgba(239,116,66,0.12)", borderRadius: 50, padding: "14px 18px", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, cursor: "pointer" }}>
-            <span style={{ fontSize: 16 }}>💞</span>
-            <span style={{ fontSize: 14, fontWeight: 700, color: "hsl(12,72%,50%)" }}>궁합 보기</span>
+        <Link href="/compatibility" className="flex-1">
+          <div className="flex h-12 cursor-pointer items-center justify-center gap-2 rounded-full border border-primary/25 bg-primary/10 px-4">
+            <span className="text-base" aria-hidden>💞</span>
+            <span className="text-sm font-bold text-primary">궁합 보기</span>
           </div>
         </Link>
       </div>
@@ -483,27 +404,19 @@ function LuckInterpretSheet({ fortune, onClose }: { fortune: ReturnType<typeof g
 
   return (
     <div
-      style={{ position: "fixed", inset: 0, zIndex: 200, display: "flex", flexDirection: "column", justifyContent: "flex-end" }}
+      className="ds-sheet-scrim z-[200]"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.35)" }} onClick={onClose} />
-      <div style={{
-        position: "relative", background: "#FFF",
-        borderRadius: "24px 24px 0 0", padding: "16px 0 0",
-        zIndex: 10, animation: "slideUp .25s cubic-bezier(.32,.72,0,1)",
-        maxHeight: "88vh", overflowY: "auto",
-      }}>
-        {/* Handle */}
-        <div style={{ width: 40, height: 4, borderRadius: 99, background: "#DDD", margin: "0 auto 16px" }} />
+      <div className="absolute inset-0 bg-black/35" onClick={onClose} />
+      <div className="ds-sheet-panel rounded-t-3xl bg-card pt-0 max-h-[88vh] overflow-y-auto">
+        <div className="ds-sheet-handle mt-4" />
 
-        {/* Title */}
-        <div style={{ padding: "0 20px 14px", borderBottom: "1px solid #F2F2F2" }}>
-          <p style={{ fontSize: 17, fontWeight: 800, color: "#111", margin: 0 }}>오늘의 흐름 종합 해석</p>
-          <p style={{ fontSize: 12, color: "#AAA", marginTop: 4 }}>대운 · 세운 · 월운 · 일운을 종합해 오늘을 읽습니다</p>
+        <div className="border-b border-border px-5 pb-3">
+          <p className="text-lg font-extrabold text-foreground">오늘의 흐름 종합 해석</p>
+          <p className="ds-caption mt-1">대운 · 세운 · 월운 · 일운을 종합해 오늘을 읽습니다</p>
         </div>
 
-        {/* Layers */}
-        <div style={{ padding: "14px 20px 0" }}>
+        <div className="px-5 pb-10 pt-3">
           {fortune.luckLayers.map((layer) => {
             const lc = LAYER_COLORS[layer.label] ?? { bg: "rgba(120,120,120,0.10)", color: "#555" };
             const stemF   = getTenGodFortune(layer.tenGod);
@@ -570,44 +483,6 @@ function LuckInterpretSheet({ fortune, onClose }: { fortune: ReturnType<typeof g
           </div>
         </div>
       </div>
-
-      {/* ── 도메인 상세 바텀시트 ── */}
-      {domainSheet && (
-        <div
-          onClick={() => setDomainSheet(null)}
-          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 9000, display: "flex", alignItems: "flex-end" }}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{ width: "100%", maxWidth: 480, margin: "0 auto", background: "#FFF", borderRadius: "20px 20px 0 0", padding: "24px 20px 40px" }}
-          >
-            <div style={{ width: 36, height: 4, borderRadius: 2, background: "#DDD", margin: "0 auto 18px" }} />
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
-              <span style={{ fontSize: 26 }}>{domainSheet.icon}</span>
-              <div>
-                <p style={{ fontSize: 16, fontWeight: 800, color: "#111", margin: 0 }}>{domainSheet.domain}운</p>
-                <span style={{
-                  fontSize: 11, fontWeight: 700, borderRadius: 20, padding: "2px 10px",
-                  background: domainSheet.level === "good" ? "rgba(46,125,50,0.10)" : domainSheet.level === "caution" ? "rgba(230,81,0,0.10)" : "rgba(120,120,120,0.10)",
-                  color: domainSheet.level === "good" ? "#2E7D32" : domainSheet.level === "caution" ? "#E65100" : "#666",
-                }}>
-                  {domainSheet.level === "good" ? "✨" : domainSheet.level === "caution" ? "⚠️" : "●"} {domainSheet.label}
-                </span>
-              </div>
-            </div>
-            <div style={{ background: "#F7F6FE", borderRadius: 12, padding: "12px 14px", marginBottom: 14 }}>
-              <p style={{ fontSize: 12, fontWeight: 700, color: "#8B8FCC", margin: "0 0 5px" }}>오늘의 {domainSheet.domain} 흐름</p>
-              <p style={{ fontSize: 14, color: "#333", margin: 0, lineHeight: 1.6, fontWeight: 500 }}>{domainSheet.hint}</p>
-            </div>
-            <button
-              onClick={() => { setDomainSheet(null); goToTodayFortune(); }}
-              style={{ width: "100%", padding: "14px 0", borderRadius: 14, background: "linear-gradient(135deg,#6366F1,#8B5CF6)", color: "#FFF", fontSize: 14, fontWeight: 800, border: "none", cursor: "pointer", letterSpacing: "0.02em" }}
-            >
-              오늘 운세 상세보기 →
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

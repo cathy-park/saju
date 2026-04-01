@@ -328,7 +328,7 @@ function CoreInsightChips({
             <button
               key={kw}
               onClick={() => setActiveInfo({ title: kw, basis })}
-              className={`text-[13px] font-bold px-3 py-1 rounded-full border transition-all active:scale-95 hover:shadow-sm ${KEYWORD_COLORS[idx % KEYWORD_COLORS.length]}`}
+              className={`ds-badge text-[13px] font-bold transition-colors active:scale-[0.98] shadow-none ${KEYWORD_COLORS[idx % KEYWORD_COLORS.length]}`}
             >
               {kw}
             </button>
@@ -345,7 +345,7 @@ function CoreInsightChips({
                 isElement: true,
                 elementKey: elKey,
               })}
-              className={`text-[13px] font-bold px-3 py-1 rounded-full border transition-all active:scale-95 hover:shadow-sm ${
+              className={`ds-badge text-[13px] font-bold transition-colors active:scale-[0.98] shadow-none ${
                 elementBgClass(elKey as FiveElKey, "muted")
               } ${elementBorderClass(elKey as FiveElKey, "base")} ${elementTextClass(elKey as FiveElKey, "strong")}`}
             >
@@ -1310,7 +1310,7 @@ function SajuStructureSummary({
                   key={lv}
                   onClick={() => { onStrengthLevelChange(lv === baseSchema.strengthLevel ? null : lv); setEditMode("none"); }}
                   className={`text-[13px] font-bold px-3 py-1.5 rounded-full border transition-all active:scale-95 ${
-                    isActive ? "bg-amber-500 text-white border-amber-500 shadow-sm" : "bg-muted/30 text-muted-foreground border-border hover:border-amber-300 hover:text-amber-700"
+                    isActive ? "border-amber-500 bg-amber-500 text-white shadow-none" : "border-border bg-muted/30 text-muted-foreground shadow-none hover:border-amber-300 hover:text-amber-700"
                   }`}
                 >
                   {lv}
@@ -1896,7 +1896,7 @@ function LuckFlowTabs({
             onClick={() => setTab(key)}
             className={`flex-1 py-1.5 text-[13px] font-semibold rounded-lg transition-all active:scale-95 ${
               tab === key
-                ? "bg-background text-foreground shadow-sm border border-border/50"
+                ? "border border-border/50 bg-background text-foreground shadow-none"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
@@ -2683,7 +2683,7 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
               onClick={() => setHourMode(m)}
               className={`flex-1 py-1.5 text-[12px] font-semibold rounded-lg transition-all active:scale-95 ${
                 hourMode === m
-                  ? "bg-background text-foreground shadow-sm border border-border/50"
+                  ? "border border-border/50 bg-background text-foreground shadow-none"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
@@ -2701,7 +2701,7 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
             onClick={() => setReportTab(tab)}
             className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all active:scale-95 ${
               reportTab === tab
-                ? "bg-background text-foreground shadow-sm border border-border/50"
+                ? "border border-border/50 bg-background text-foreground shadow-none"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
@@ -3323,7 +3323,7 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
       {/* ── 탭 3: 운세 ── */}
       {reportTab === "운세" && (
         <div className="space-y-3">
-          <Card className="border-[#EBEBEB] shadow-none">
+          <Card className="border-border shadow-none">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
                 <Layers className="h-3.5 w-3.5" />

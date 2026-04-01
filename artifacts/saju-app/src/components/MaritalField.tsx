@@ -23,8 +23,8 @@ export function MaritalField({
   onChange: (v: MaritalStatus | undefined) => void;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-muted/20 px-4 py-3.5 mb-1">
-      <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide mb-2.5">나의 현재 상태</p>
+    <div className="ds-card ds-card-pad mb-1 bg-muted/20">
+      <p className="ds-caption mb-2 font-bold uppercase tracking-wide">나의 현재 상태</p>
       <div className="flex flex-wrap gap-2">
         {MARITAL_OPTIONS.map(({ value: v, icon }) => {
           const active = value === v;
@@ -33,10 +33,8 @@ export function MaritalField({
               key={v}
               type="button"
               onClick={() => onChange(active ? undefined : v)}
-              className={`text-[13px] font-bold px-3 py-1.5 rounded-full border transition-all active:scale-95 ${
-                active
-                  ? "bg-foreground text-background border-foreground"
-                  : "bg-muted/30 text-muted-foreground border-border hover:border-foreground/40"
+              className={`ds-badge transition-colors active:scale-[0.98] ${
+                active ? "ds-badge-active" : "hover:border-foreground/30"
               }`}
             >
               {icon} {v}
@@ -52,7 +50,7 @@ export function MaritalBadge({ status }: { status: MaritalBadgeStatus | undefine
   if (!status) return null;
   const opt = BADGE_DISPLAY_OPTIONS.find(o => o.value === status);
   return (
-    <span className="inline-block text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-muted/40 text-muted-foreground border border-border">
+    <span className="ds-badge bg-muted/50 text-muted-foreground">
       {opt?.icon} {status}
     </span>
   );

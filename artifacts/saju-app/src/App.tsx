@@ -28,9 +28,9 @@ function BottomNav() {
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background/97 backdrop-blur border-t border-border/50 supports-[backdrop-filter]:bg-background/90">
-      <div className="max-w-lg mx-auto">
-        <div className="flex items-center h-[60px] px-2">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/90">
+      <div className="mx-auto max-w-lg">
+        <div className="flex h-14 items-center gap-1 px-2">
           {tabs.map(({ href, label, icon: Icon, exact }) => {
             const isActive = exact
               ? location === "/"
@@ -38,22 +38,15 @@ function BottomNav() {
             return (
               <Link key={href} href={href} className="flex-1">
                 <button
-                  className={`w-full h-12 flex flex-col items-center justify-center gap-0.5 rounded-xl transition-all ${
+                  type="button"
+                  className={`flex h-full w-full flex-col items-center justify-center gap-1 rounded-lg py-1 transition-colors ${
                     isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
-                  <div className={`p-1.5 rounded-xl transition-all duration-200 ${isActive ? "bg-primary/10" : ""}`}>
-                    <Icon
-                      className={`h-[20px] w-[20px] transition-all ${
-                        isActive ? "stroke-[2.4px]" : "stroke-[1.8px]"
-                      }`}
-                    />
+                  <div className={`rounded-lg p-2 transition-colors ${isActive ? "bg-primary/10" : ""}`}>
+                    <Icon className={`h-5 w-5 ${isActive ? "stroke-[2.25px]" : "stroke-[1.75px]"}`} />
                   </div>
-                  <span
-                    className={`text-[10.5px] leading-none ${
-                      isActive ? "font-bold" : "font-medium"
-                    }`}
-                  >
+                  <span className={`text-xs leading-none ${isActive ? "font-bold" : "font-semibold"}`}>
                     {label}
                   </span>
                 </button>
@@ -68,15 +61,15 @@ function BottomNav() {
 
 function AppHeader() {
   return (
-    <div className="fixed top-0 left-0 right-0 z-40 bg-background/97 backdrop-blur border-b border-[#F0EDE8] supports-[backdrop-filter]:bg-background/90">
-      <div className="max-w-lg mx-auto px-5 h-14 flex items-center justify-between">
+    <div className="fixed left-0 right-0 top-0 z-40 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/90">
+      <div className="mx-auto flex h-14 max-w-lg items-center justify-between px-4">
         {/* Brand wordmark — 클릭 시 홈으로 이동 */}
         <Link href="/" className="flex items-center gap-2">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <path d="M3 12C3 12 5.5 7 8.5 7C11.5 7 12.5 17 15.5 17C18.5 17 21 12 21 12"
               stroke="hsl(12,72%,50%)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
-          <span className="text-[18px] font-bold text-foreground tracking-tight" style={{ fontFamily: "'Pretendard Variable', 'Pretendard', sans-serif" }}>
+          <span className="font-sans text-lg font-bold tracking-tight text-foreground">
             나의 흐름
           </span>
         </Link>
@@ -98,7 +91,7 @@ function SyncedApp() {
   return (
     <>
       <AppHeader />
-      <main className="pt-14 pb-[60px]" key={refreshKey}>
+      <main className="pb-14 pt-14" key={refreshKey}>
         <Switch>
           <Route path="/auth/callback"           component={AuthCallback} />
           <Route path="/"                        component={Home} />

@@ -196,6 +196,36 @@
   --chip-sky-bg: #E3F2FC;
   --chip-sky-fg: #1565A8;
 
+  /* 궁합 등급 팔레트 (Compatibility.tsx 단일 참조) */
+  --compat-grade-ideal-cardBg: #FAF7FF;
+  --compat-grade-ideal-pastel: #F1E8FF;
+  --compat-grade-ideal-strong: #8B5CF6;
+  --compat-grade-ideal-border: #C4B5FD;
+  --compat-grade-ideal-badgeText: #6D28D9;
+  --compat-grade-good-cardBg: #F3FBF6;
+  --compat-grade-good-pastel: #E6F7EC;
+  --compat-grade-good-strong: #22C55E;
+  --compat-grade-good-border: #86EFAC;
+  --compat-grade-good-badgeText: #15803D;
+  --compat-grade-effort-cardBg: #F3F8FF;
+  --compat-grade-effort-pastel: #E8F1FF;
+  --compat-grade-effort-strong: #3B82F6;
+  --compat-grade-effort-border: #93C5FD;
+  --compat-grade-effort-badgeText: #1D4ED8;
+  --compat-grade-tense-cardBg: #FFFCF8;
+  --compat-grade-tense-pastel: #FFF1E6;
+  --compat-grade-tense-strong: #F59E0B;
+  --compat-grade-tense-border: #FCD34D;
+  --compat-grade-tense-badgeText: #B45309;
+  --compat-grade-caution-cardBg: #FFF7F7;
+  --compat-grade-caution-pastel: #FFE8E8;
+  --compat-grade-caution-strong: #EF4444;
+  --compat-grade-caution-border: #FCA5A5;
+  --compat-grade-caution-badgeText: #B91C1C;
+
+  /* 홈 보조 악센트 (라벨 등) */
+  --app-label-accent: 25 42% 48%;
+
   /* ── Five-element (오행) tokens (HSL) — 참고 UI: 선명한 카테고리색 + 연한 칩 배경 ── */
   /* Base (막대·라벨·십성 칩 글자/테두리 — emerald / red / gold / slate / sky) */
   --element-wood: 145 63% 42%;
@@ -306,6 +336,34 @@
   --chip-lavender-fg: #A993E0;
   --chip-sky-bg: #0D2235;
   --chip-sky-fg: #60B0F0;
+
+  --compat-grade-ideal-cardBg: #1E1530;
+  --compat-grade-ideal-pastel: #2A1F42;
+  --compat-grade-ideal-strong: #C4B5FD;
+  --compat-grade-ideal-border: #6D28D9;
+  --compat-grade-ideal-badgeText: #DDD6FE;
+  --compat-grade-good-cardBg: #0F1E14;
+  --compat-grade-good-pastel: #142818;
+  --compat-grade-good-strong: #4ADE80;
+  --compat-grade-good-border: #166534;
+  --compat-grade-good-badgeText: #BBF7D0;
+  --compat-grade-effort-cardBg: #0F1729;
+  --compat-grade-effort-pastel: #152238;
+  --compat-grade-effort-strong: #60A5FA;
+  --compat-grade-effort-border: #1D4ED8;
+  --compat-grade-effort-badgeText: #BFDBFE;
+  --compat-grade-tense-cardBg: #1F1A12;
+  --compat-grade-tense-pastel: #2A2318;
+  --compat-grade-tense-strong: #FBBF24;
+  --compat-grade-tense-border: #B45309;
+  --compat-grade-tense-badgeText: #FDE68A;
+  --compat-grade-caution-cardBg: #241515;
+  --compat-grade-caution-pastel: #301A1A;
+  --compat-grade-caution-strong: #F87171;
+  --compat-grade-caution-border: #B91C1C;
+  --compat-grade-caution-badgeText: #FECACA;
+
+  --app-label-accent: 28 45% 62%;
 
   /* ── Five-element (오행) tokens (HSL) ───────────────────────────── */
   --element-wood: 142 45% 55%;
@@ -418,6 +476,78 @@
   .chip-sage     { background: var(--chip-sage-bg);     color: var(--chip-sage-fg); }
   .chip-lavender { background: var(--chip-lavender-bg); color: var(--chip-lavender-fg); }
   .chip-sky      { background: var(--chip-sky-bg);      color: var(--chip-sky-fg); }
+}
+
+/* ── Design system: layout / type / surfaces (8px grid via Tailwind scale) ── */
+@layer components {
+  .ds-app-shell {
+    @apply mx-auto max-w-lg bg-background pb-20;
+  }
+  .ds-page-pad {
+    @apply px-4;
+  }
+  .ds-section-gap {
+    @apply space-y-4;
+  }
+  .ds-stack-2 {
+    @apply flex flex-col gap-2;
+  }
+  .ds-stack-3 {
+    @apply flex flex-col gap-3;
+  }
+  /* Text hierarchy */
+  .ds-title {
+    @apply text-xl font-bold tracking-tight text-foreground;
+  }
+  .ds-title-lg {
+    @apply text-2xl font-extrabold tracking-tight text-foreground;
+  }
+  .ds-subtitle {
+    @apply text-sm font-semibold text-muted-foreground;
+  }
+  .ds-body {
+    @apply text-sm leading-relaxed text-foreground;
+  }
+  .ds-caption {
+    @apply text-xs text-muted-foreground;
+  }
+  /* Cards — no elevation shadow */
+  .ds-card {
+    @apply rounded-xl border border-border bg-card text-card-foreground shadow-none;
+  }
+  .ds-card-pad {
+    @apply p-4;
+  }
+  /* Pills / badges (솔로·연애·십성·신살 등 공통) */
+  .ds-badge {
+    @apply inline-flex items-center justify-center rounded-full border border-border bg-muted/40 px-2 py-1 text-xs font-semibold whitespace-nowrap transition-colors;
+  }
+  .ds-badge-active {
+    @apply border-foreground bg-foreground text-background;
+  }
+  /* Segmented control (탭과 동일 규칙: muted 트랙 + 카드색 활성) */
+  .ds-segment-list {
+    @apply inline-flex h-10 w-full items-center justify-center gap-1 rounded-lg bg-muted p-1 text-muted-foreground;
+  }
+  .ds-segment-item {
+    @apply inline-flex flex-1 items-center justify-center rounded-md px-3 py-2 text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background;
+  }
+  .ds-segment-item-active {
+    @apply bg-background text-foreground border border-border/60;
+  }
+  .ds-segment-item-inactive {
+    @apply text-muted-foreground border border-transparent;
+  }
+  /* Bottom sheet shell */
+  .ds-sheet-panel {
+    @apply relative z-10 max-h-[88vh] overflow-y-auto rounded-t-3xl bg-card pb-10 pt-0;
+  }
+  .ds-sheet-handle {
+    @apply mx-auto mb-4 h-1 w-10 shrink-0 rounded-full bg-muted-foreground/25;
+  }
+  .ds-sheet-scrim {
+    @apply fixed inset-0 z-[100] flex flex-col justify-end bg-black/35;
+  }
 }
 
 @media (max-width: 369px) {
