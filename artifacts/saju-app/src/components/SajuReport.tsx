@@ -4498,21 +4498,23 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                           );
                         })()}
 
-                        <div className="relative border-b border-border/50 bg-white/40 px-4 py-3">
+                        <div className="relative border-b border-border/50 bg-white/40 px-4 py-2.5">
                           <p className="ds-caption font-semibold tracking-wide text-[hsl(var(--app-label-accent))]">
                             ✨ 오늘 한눈에 보기 — {fortune.dateLabel}
                           </p>
                         </div>
-                        <div className="relative ds-card-pad space-y-3">
-                          <div className="flex items-center gap-3">
-                            <div className="rounded-xl border border-border/50 bg-card/90 px-3 py-2 text-center shrink-0">
+                        <div className="relative ds-card-pad space-y-2.5">
+                          {/* 2열: 왼쪽 일진 / 오른쪽 메시지·십성·한줄설명 */}
+                          <div className="grid grid-cols-[auto,1fr] items-start gap-3">
+                            <div className="rounded-xl border border-border/50 bg-card/90 px-3 py-2 text-center">
                               <p className="m-0 text-[11px] font-bold tracking-wide text-muted-foreground">오늘 일진</p>
                               <p className="text-xl font-extrabold tracking-wide">
                                 <span className={dayStemChar ? elementTextClass((charToElement(dayStemChar) ?? "토") as FiveElKey, "strong") : "text-foreground"}>{dayStemChar}</span>
                                 <span className={dayBranchChar ? elementTextClass((charToElement(dayBranchChar) ?? "토") as FiveElKey, "strong") : "text-foreground"}>{dayBranchChar}</span>
                               </p>
                             </div>
-                            <div className="flex-1 min-w-0 rounded-xl border border-border/40 bg-white/55 backdrop-blur-sm px-3 py-2">
+
+                            <div className="min-w-0 pt-0.5">
                               <p className="ds-body font-semibold text-foreground">{fortune.summary}</p>
                               {(tgStem || tgBranch) && (
                                 <div className="mt-1 flex flex-wrap items-center gap-1.5">
