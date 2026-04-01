@@ -186,6 +186,8 @@ export function buildPersonClipboardText(record: PersonRecord): string {
   lines.push(`=== 사주 분석 데이터: ${input.name} ===`);
   lines.push("이 데이터에는 화면에서 사용되는 대표 요약 / 균형 해석 / 격국 판단 / 용신 판단 기준이 포함되어 있습니다.");
   lines.push("일반적인 사주 해석이 아니라 구조 중심 해석을 요청합니다.");
+  lines.push("본 데이터는 구조 중심 해석 기준(anchor)이 포함된 분석 payload입니다.");
+  lines.push("일반적인 사주 설명 대신 구조 기준 유지 해석을 요청합니다.");
   lines.push(`생년월일: ${input.year}년 ${input.month}월 ${input.day}일 (${input.calendarType === "solar" ? "양력" : "음력"})`);
   if (!input.timeUnknown && input.hour != null) {
     lines.push(`출생시: ${String(input.hour).padStart(2, "0")}:${String(input.minute ?? 0).padStart(2, "0")}`);
@@ -222,10 +224,12 @@ export function buildPersonClipboardText(record: PersonRecord): string {
   lines.push(`  대표 오행: ${domEl}`);
   if (domGroup) lines.push(`  대표 십성(그룹): ${domGroup}`);
   lines.push(`  십성 기준(anchor): ${dayStem} 일간 기준`);
+  lines.push(`  오행 기준(anchor): ${dayStem} 일간 기준`);
   lines.push(`  오행 균형 해석: ${getElementBalanceSummary(counts)}`);
   lines.push(`  성격 기질 분석 요약: ${schema.strengthDesc} · 대표 오행(${domEl}) 성향이 비교적 또렷하게 드러납니다.`);
   lines.push(`  격국 해석 설명: 월지 기준(${monthBranch}) 십성(${monthTG ?? "불명"}) 흐름으로 ${geokguk} 성향을 참고합니다.`);
   lines.push(`  격국 기준(anchor): 월지 기준 ${geokguk}`);
+  lines.push(`  격국 판단 방식(anchor): 월지 중심 정격 판단`);
   lines.push(`  용신 해석 설명: 일간 강약(${strengthLevel}) 흐름에 맞춰 ${yongshinEl}${heeshinEl ? `(+${heeshinEl})` : ""} 쪽을 우선으로 봅니다. (신뢰도: ${schema.yongshinConfidence})`);
   lines.push(`  용신 판단 기준(anchor): 일간 강약 기반 자동 계산`);
   lines.push("");
