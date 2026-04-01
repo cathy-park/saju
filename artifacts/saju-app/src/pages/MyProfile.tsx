@@ -21,6 +21,7 @@ import { Pencil, Trash2 } from "lucide-react";
 import { MaritalField, MaritalBadge } from "@/components/MaritalField";
 import { charToElement, elementBgClass, type FiveElKey } from "@/lib/element-color";
 import { cn } from "@/lib/utils";
+import { GenderSymbol } from "@/components/GenderSymbol";
 
 export default function MyProfile() {
   const [editing, setEditing] = useState(false);
@@ -203,14 +204,7 @@ export default function MyProfile() {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <h1 className="text-xl font-bold text-foreground">{input.name}</h1>
-              <span
-                className={cn(
-                  "text-sm font-bold",
-                  input.gender === "여" ? "text-chart-3" : "text-chart-5",
-                )}
-              >
-                {input.gender === "여" ? "♀" : "♂"}
-              </span>
+              <GenderSymbol gender={input.gender} />
             </div>
 
             {dayStem && (
