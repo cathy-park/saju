@@ -968,17 +968,17 @@ export default function Compatibility() {
                             <span className="ds-caption">눈에 띄는 천간 합·충 패턴은 없어요. 아래 지지·오행을 이어서 보면 됩니다.</span>
                           )}
                       </div>
-                      {activeRelation?.scope === "stem" && (
-                        <div className="pt-2">
-                          <RelationInlineDetail
-                            type={activeRelation.type}
-                            title={activeRelation.title}
-                            onClose={() => setActiveRelation(null)}
-                          />
-                        </div>
-                      )}
                     </div>
                   </div>
+                  {activeRelation?.scope === "stem" && (
+                    <div className="-mt-1">
+                      <RelationInlineDetail
+                        type={activeRelation.type}
+                        title={activeRelation.title}
+                        onClose={() => setActiveRelation(null)}
+                      />
+                    </div>
+                  )}
                   <div>
                     <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">지지 관계</p>
                     <div className="ds-inline-detail-nested space-y-2">
@@ -1240,33 +1240,40 @@ export default function Compatibility() {
                   </div>
                 </div>
 
-                <div className="ds-card overflow-hidden shadow-none">
-                  <div className="border-b border-border bg-muted/20 px-4 py-3">
-                    <h2 className="text-sm font-bold text-foreground">결혼 관점 해석</h2>
-                    <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">
-                      관계를 ‘함께 살기’ 관점으로 보면 어떤 방향이 유리한지 정리합니다.
-                    </p>
-                  </div>
-                  <div className="space-y-3 p-4">
-                    {/* 관계 유형 카드 (스샷 5.23.05 하단 블루 카드 느낌) */}
-                    <div className="rounded-xl border border-primary/25 bg-primary/[0.05] p-4">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-[13px] text-muted-foreground">관계 유형</span>
-                        <span
-                          className="ds-badge border px-3 py-1.5 text-[13px] font-bold shadow-none"
-                          style={{
-                            background: palette.pastel,
-                            borderColor: palette.border,
-                            color: palette.badgeText,
-                          }}
-                        >
-                          {fullReport.marriageView.type}
-                        </span>
+                {mode === "me_other" && (() => {
+                  const rel = (p2 as (PersonRecord & { relationshipType?: RelationshipType }) | null)?.relationshipType;
+                  const show = rel === "lover" || rel === "spouse" || rel === "other";
+                  if (!show) return null;
+                  return (
+                    <div className="ds-card overflow-hidden shadow-none">
+                      <div className="border-b border-border bg-muted/20 px-4 py-3">
+                        <h2 className="text-sm font-bold text-foreground">결혼 관점 해석</h2>
+                        <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">
+                          관계를 ‘함께 살기’ 관점으로 보면 어떤 방향이 유리한지 정리합니다.
+                        </p>
                       </div>
-                      <p className="mt-2 text-[13px] leading-relaxed text-foreground">{fullReport.marriageView.desc}</p>
+                      <div className="space-y-3 p-4">
+                        {/* 궁합 점수(현재 result)와 동일 팔레트로 태그 통일 */}
+                        <div className="rounded-xl border border-primary/25 bg-primary/[0.05] p-4">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-[13px] text-muted-foreground">관계 유형</span>
+                            <span
+                              className="ds-badge border px-3 py-1.5 text-[13px] font-bold shadow-none"
+                              style={{
+                                background: palette.pastel,
+                                borderColor: palette.border,
+                                color: palette.badgeText,
+                              }}
+                            >
+                              {fullReport.marriageView.type}
+                            </span>
+                          </div>
+                          <p className="mt-2 text-[13px] leading-relaxed text-foreground">{fullReport.marriageView.desc}</p>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
+                  );
+                })()}
 
               {/* ── DEV: 점수 디버그 ── */}
               {import.meta.env.DEV && (() => {
