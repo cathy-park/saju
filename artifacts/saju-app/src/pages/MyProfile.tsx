@@ -19,8 +19,6 @@ import { useAuth } from "@/lib/authContext";
 import { upsertMyProfile, deleteMyProfileFromDb } from "@/lib/db";
 import { Pencil, Trash2 } from "lucide-react";
 import { MaritalField, MaritalBadge } from "@/components/MaritalField";
-import { CopyButton } from "@/components/CopyButton";
-import { buildPersonClipboardText } from "@/lib/clipboardExport";
 import { charToElement, elementBgClass, type FiveElKey } from "@/lib/element-color";
 import { cn } from "@/lib/utils";
 
@@ -258,8 +256,6 @@ export default function MyProfile() {
           )}
         </div>
       </div>
-
-      <CopyButton buildText={() => buildPersonClipboardText(record)} label="내 사주 분석 전체 복사" />
 
       <SajuReport record={record} />
     </div>

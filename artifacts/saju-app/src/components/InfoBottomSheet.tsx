@@ -504,7 +504,6 @@ export type InfoSheetType =
   | { kind: "luck"; luckType: "대운" | "세운" | "월운" | "일운"; ganZhiStr: string; ganZhiHanja: string; tenGod?: string | null; branchTenGod?: string | null; period?: string; dayStem?: string }
   | { kind: "tengod-group"; group: string; dayStem?: string; pct?: number }
   | { kind: "branchRelation"; relationType: RelationType; branches: string[] }
-  | { kind: "gukgukDetail"; title: string; paragraphs: string[] }
   | { kind: "seasonalDetail"; title: string; text: string }
   | { kind: "tengodNatal"; tenGod: TenGod; dayStem: string };
 
@@ -526,7 +525,6 @@ export function InfoBottomSheet({ info, onClose }: InfoBottomSheetProps) {
               {info.kind === "luck" && <LuckSheet info={info} />}
               {info.kind === "tengod-group" && <TenGodGroupSheet group={info.group} dayStem={info.dayStem} pct={info.pct} />}
               {info.kind === "branchRelation" && <BranchRelationSheet relationType={info.relationType} branches={info.branches} />}
-              {info.kind === "gukgukDetail" && <GukgukDetailSheet title={info.title} paragraphs={info.paragraphs} />}
               {info.kind === "seasonalDetail" && <SeasonalDetailSheet title={info.title} text={info.text} />}
               {info.kind === "tengodNatal" && <TenGodNatalSheet tenGod={info.tenGod} dayStem={info.dayStem} />}
             </div>
@@ -777,26 +775,6 @@ function Section({
       <p className={`text-[13px] font-bold uppercase tracking-wide mb-1 ${labelColor}`}>{label}</p>
       <p className="text-sm leading-relaxed">{content}</p>
     </div>
-  );
-}
-
-// ── Branch Relation Sheet ─────────────────────────────────────────
-
-function GukgukDetailSheet({ title, paragraphs }: { title: string; paragraphs: string[] }) {
-  return (
-    <>
-      <DrawerHeader className="text-left pb-2">
-        <DrawerTitle className="text-xl">{title}</DrawerTitle>
-        <DrawerDescription>격국·구조 통합 상세 해석</DrawerDescription>
-      </DrawerHeader>
-      <div className="space-y-3 px-4">
-        {paragraphs.filter(Boolean).map((p, i) => (
-          <p key={i} className="text-sm leading-relaxed text-foreground">
-            {p}
-          </p>
-        ))}
-      </div>
-    </>
   );
 }
 

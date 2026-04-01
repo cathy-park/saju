@@ -4,8 +4,6 @@ import { SajuReport } from "@/components/SajuReport";
 import { getPeople, getFinalPillars, type PersonRecord } from "@/lib/storage";
 import { getZodiacFromDayPillar } from "@/lib/zodiacAnimal";
 import { ArrowLeft, Heart } from "lucide-react";
-import { CopyButton } from "@/components/CopyButton";
-import { buildPersonClipboardText } from "@/lib/clipboardExport";
 import { charToElement, elementBgClass, type FiveElKey } from "@/lib/element-color";
 import { MaritalBadge, type MaritalBadgeStatus } from "@/components/MaritalField";
 import { cn } from "@/lib/utils";
@@ -120,8 +118,6 @@ export default function PersonDetail() {
           )}
         </div>
       </div>
-
-      <CopyButton buildText={() => buildPersonClipboardText(person)} label="상대 사주 분석 전체 복사" />
 
       <SajuReport record={person} />
 
