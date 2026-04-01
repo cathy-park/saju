@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { PillarCard } from "@/components/PillarCard";
 import type { CompatibilityResult, CompatibilityTone } from "@/lib/compatibilityScore";
 import { buildFullCompatibilityReport, COMPAT_TONE_COLOR } from "@/lib/compatibilityReport";
+import { Switch } from "@/components/ui/switch";
 import {
   getMyProfile,
   getPeople,
@@ -88,7 +89,22 @@ function MiniPersonCard({
         </div>
       </div>
 
-      <div className="mt-3 w-full">
+      {/* Mobile: label + plain switch (avoid segment overflow) */}
+      <div className="mt-2 w-full sm:hidden">
+        <div className="border-t border-border/60 pt-2.5" />
+        <p className="text-[10px] font-bold tracking-widest text-muted-foreground">시주 포함</p>
+        <div className="mt-2 flex items-center justify-center gap-2">
+          <Switch
+            checked={hourMode === "포함"}
+            onCheckedChange={(v) => onHourModeChange(v ? "포함" : "제외")}
+            aria-label="시주 포함/제외"
+          />
+          <span className="text-[12px] font-semibold text-muted-foreground">{hourMode}</span>
+        </div>
+      </div>
+
+      {/* Desktop/Tablet: segmented control */}
+      <div className="mt-3 hidden w-full sm:block">
         <div className="ds-segment-list min-h-9 rounded-xl border border-border shadow-none w-full">
           {(["포함", "제외"] as const).map((m) => (
             <button
