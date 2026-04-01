@@ -950,15 +950,6 @@ const ELEMENT_PENTAGON_FILL: Record<FiveElKey, string> = {
   금: "#B6C5DC",
 };
 
-/** 대표 오행 노드 테두리·(십성)괄호 글자색 — 십성 그룹 범주색과 동일 */
-const PENT_TG_GROUP_EL: Record<string, FiveElKey> = {
-  비겁: "목",
-  식상: "화",
-  재성: "토",
-  관성: "금",
-  인성: "수",
-};
-
 function FiveElementSection({
   counts,
   dayStem,
@@ -1078,18 +1069,11 @@ function FiveElementSection({
           const fillH = count > 0 ? Math.max(fillHRaw, 4) : 0;
           const fillY = y + NODE_R - fillH;
           const isPrimary = el === primaryEl;
-          const strongFill = elementColorVar(el, "strong");
-          const tgGroupKey = tenGodGroup ?? "";
-          const tgCategoryEl = tgGroupKey && PENT_TG_GROUP_EL[tgGroupKey] ? PENT_TG_GROUP_EL[tgGroupKey] : el;
-          /* 대표 노드 외곽선 = 십성 그룹 범주색(행동 분포 행과 동일), 오행 한 글자는 오행색 유지 */
-          const stroke = isPrimary ? elementColorVar(tgCategoryEl, "strong") : "hsl(var(--border))";
+          /* 계층: 오행 한 글자 = strong(가장 진함), 괄호 십성 그룹 = 같은 꼭짓점 오행의 base(중간) — 다른 오행색과 섞지 않음 */
+          const elLabelFill = elementColorVar(el, "strong");
+          const parenFill = elementColorVar(el, "base");
+          const stroke = isPrimary ? elementColorVar(el, "strong") : "hsl(var(--border))";
           const strokeW = isPrimary ? 2 : 1.5;
-          const elLabelFill = strongFill;
-          const elSubFill = elementColorVar(el, "base");
-          const parenFill =
-            tenGodGroup && PENT_TG_GROUP_EL[tgGroupKey]
-              ? elementColorVar(PENT_TG_GROUP_EL[tgGroupKey], "strong")
-              : elSubFill;
           return (
             <g key={el}>
               <circle cx={x} cy={y} r={NODE_R} fill="hsl(var(--card))" />
@@ -1123,7 +1107,7 @@ function FiveElementSection({
                 {el}
               </text>
               {tenGodGroup && (
-                <text x={x} y={y + 5} textAnchor="middle" fontSize="10" fontWeight="700" fill={parenFill}>({tenGodGroup})</text>
+                <text x={x} y={y + 5} textAnchor="middle" fontSize="10" fontWeight="600" fill={parenFill}>({tenGodGroup})</text>
               )}
               <text x={x} y={y + (tenGodGroup ? 18 : 11)} textAnchor="middle" fontSize="11" fill="hsl(var(--foreground))">
                 {count}개 {Math.round(pct * 100)}%
@@ -1317,7 +1301,8 @@ function TenGodDistributionSection({
 
           const rowClass = cn("rounded-xl px-2 py-2 transition-colors", rowBorder);
 
-          const labelStrong = isRowSelected || (rowHighlightMode === "single" && isDominantRow);
+          const showDominantHint =
+            rowHighlightMode === "personality" && isDominantRow && personalityUserHasTapped;
 
           return (
             <div key={g} className="space-y-2">
@@ -1325,64 +1310,76 @@ function TenGodDistributionSection({
                 <button
                   type="button"
                   onClick={() => onTap(g, pct)}
-                  className="flex w-full items-center gap-3 rounded px-1 py-0.5 text-left transition-opacity hover:opacity-90"
+                  className="flex w-full min-w-0 flex-col gap-2 rounded px-1 py-0.5 text-left transition-opacity hover:opacity-90"
                 >
-                  <span className="flex min-w-0 flex-1 items-center gap-1.5">
-                    {showRepChip ? (
-                      <span className="shrink-0 rounded-full border border-border/70 bg-muted/40 px-1.5 py-px text-[9px] font-bold uppercase tracking-wide text-muted-foreground">
-                        대표
+                  <div className="flex w-full min-w-0 items-center gap-2">
+                    <span className="flex shrink-0 items-center gap-1.5">
+                      {showRepChip ? (
+                        <span
+                          className="inline-flex shrink-0 items-center gap-0.5 rounded-full border-2 px-2 py-0.5 text-[10px] font-black leading-none shadow-sm"
+                          style={{
+                            backgroundColor: elementHslAlpha(rowEl, "strong", 0.18),
+                            borderColor: elementColorVar(rowEl, "strong"),
+                            color: elementColorVar(rowEl, "strong"),
+                          }}
+                        >
+                          <span aria-hidden>★</span>
+                          대표
+                        </span>
+                      ) : showDominantHint ? (
+                        <span
+                          className="shrink-0 rounded-full border border-dashed px-1.5 py-px text-[9px] font-bold text-muted-foreground"
+                          style={{ borderColor: elementHslAlpha(rowEl, "strong", 0.35) }}
+                        >
+                          대표
+                        </span>
+                      ) : null}
+                      <span className={cn("whitespace-nowrap text-[13px] font-bold", elementTextClass(rowEl, "strong"))}>
+                        {g}
                       </span>
-                    ) : null}
+                    </span>
+                    <div className="h-2.5 min-w-0 flex-1 overflow-hidden rounded-full bg-muted/60">
+                      <div
+                        className={cn("h-full rounded-full", elementBgClass(rowEl, "base"))}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
                     <span
                       className={cn(
-                        "shrink-0 text-[13px] font-semibold",
-                        labelStrong ? elementTextClass(rowEl, "strong") : "text-foreground",
+                        "shrink-0 ds-badge text-[13px] font-bold shadow-none",
+                        elementBgClass(rowEl, "muted"),
+                        elementTextClass(rowEl, "strong"),
+                        elementBorderClass(rowEl, "muted"),
                       )}
                     >
-                      {g}
+                      {pct}%
                     </span>
-                  </span>
-                  <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-muted/60">
-                    <div
-                      className={cn("h-full rounded-full", elementBgClass(rowEl, "base"))}
-                      style={{ width: `${pct}%` }}
-                    />
                   </div>
-                  <span
-                    className={cn(
-                      "ds-badge text-[13px] font-bold shadow-none",
-                      elementBgClass(rowEl, "muted"),
-                      elementTextClass(rowEl, "strong"),
-                      elementBorderClass(rowEl, "muted"),
-                    )}
-                  >
-                    {pct}%
-                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    <span
+                      className={cn(
+                        "ds-badge flex items-center gap-1 text-[11px] shadow-none",
+                        elementBgClass(rowEl, "muted"),
+                        elementTextClass(rowEl, "strong"),
+                        elementBorderClass(rowEl, "muted"),
+                      )}
+                    >
+                      <span className="font-semibold">{s1}</span>
+                      <span className="opacity-80">{p1}%</span>
+                    </span>
+                    <span
+                      className={cn(
+                        "ds-badge flex items-center gap-1 text-[11px] shadow-none",
+                        elementBgClass(rowEl, "muted"),
+                        elementTextClass(rowEl, "strong"),
+                        elementBorderClass(rowEl, "muted"),
+                      )}
+                    >
+                      <span className="font-semibold">{s2}</span>
+                      <span className="opacity-80">{p2}%</span>
+                    </span>
+                  </div>
                 </button>
-                <div className="ml-11 mt-2 flex gap-2">
-                  <span
-                    className={cn(
-                      "ds-badge flex items-center gap-1 text-[11px] shadow-none",
-                      elementBgClass(rowEl, "muted"),
-                      elementTextClass(rowEl, "strong"),
-                      elementBorderClass(rowEl, "muted"),
-                    )}
-                  >
-                    <span className="font-semibold">{s1}</span>
-                    <span className="opacity-80">{p1}%</span>
-                  </span>
-                  <span
-                    className={cn(
-                      "ds-badge flex items-center gap-1 text-[11px] shadow-none",
-                      elementBgClass(rowEl, "muted"),
-                      elementTextClass(rowEl, "strong"),
-                      elementBorderClass(rowEl, "muted"),
-                    )}
-                  >
-                    <span className="font-semibold">{s2}</span>
-                    <span className="opacity-80">{p2}%</span>
-                  </span>
-                </div>
               </div>
               {selectedGroup === g && selectedGroupInlineSlot}
             </div>
