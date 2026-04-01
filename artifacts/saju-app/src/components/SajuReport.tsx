@@ -939,13 +939,18 @@ const ELEMENT_PENTAGON_FILL: Record<FiveElKey, string> = {
 };
 
 /** 대표 노드 테두리·(괄호) 십성 그룹 글자 — 행동 스타일 행 범주색과 동일 */
-const PENT_TG_GROUP_EL: Record<string, FiveElKey> = {
-  비겁: "목",
-  식상: "화",
-  재성: "토",
-  관성: "금",
-  인성: "수",
-};
+function getTenGodGroupElementForDayStem(group: string, dayStem: string): FiveElKey | null {
+  if (!dayStem) return null;
+  const seed: Record<string, TenGod> = {
+    비겁: "비견",
+    식상: "식신",
+    재성: "정재",
+    관성: "정관",
+    인성: "정인",
+  };
+  const tg = seed[group];
+  return tg ? getTenGodElement(tg, dayStem) : null;
+}
 
 function FiveElementSection({
   counts,
@@ -1066,8 +1071,6 @@ function FiveElementSection({
           const fillH = count > 0 ? Math.max(fillHRaw, 4) : 0;
           const fillY = y + NODE_R - fillH;
           const isPrimary = el === primaryEl;
-          const tgCatEl =
-            tenGodGroup && PENT_TG_GROUP_EL[tenGodGroup] ? PENT_TG_GROUP_EL[tenGodGroup] : el;
           /* 오행 글자 = 꼭짓점 오행 strong / 대표 테두리·괄호 십성 = 십성 그룹 범주색 strong / 비대표 괄호 = 꼭짓점 base */
           const elLabelFill = elementColorVar(el, "strong");
           const parenFill =
@@ -1134,15 +1137,7 @@ function FiveElementSection({
 
 // ── Ten-God Distribution Section ──────────────────────────────────
 
-/** 십성 그룹 행 UI 색 — 일간과 무관하게 木→火→土→金→水 범례(참고 UI와 동일) */
 type TenGodGroupKey = "비겁" | "식상" | "재성" | "관성" | "인성";
-const TEN_GOD_GROUP_ROW_ELEMENT: Record<TenGodGroupKey, FiveElKey> = {
-  비겁: "목",
-  식상: "화",
-  재성: "토",
-  관성: "금",
-  인성: "수",
-};
 
 const TG_SUB_PAIRS: Record<string, [string, string]> = {
   비겁: ["비견", "겁재"],
@@ -1295,7 +1290,7 @@ function TenGodDistributionSection({
       <div className="space-y-3">
         {groups.map((g) => {
           const pct = topLevel[g];
-          const rowEl = TEN_GOD_GROUP_ROW_ELEMENT[g as TenGodGroupKey];
+          const rowEl = getTenGodGroupElementForDayStem(g, dayStem) ?? ("토" as FiveElKey);
           const [s1, s2] = TG_SUB_PAIRS[g];
           const p1 = detailed[s1] ?? 0;
           const p2 = detailed[s2] ?? 0;
@@ -3505,7 +3500,7 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
             const allTgTotal = Object.values(displayCounts).reduce((s, c) => s + c, 0) || 1;
             const dayEl = STEM_ELEMENT[dayStem] as FiveElKey | undefined;
             // Align group % with 오행 분포(구조) 기준 (same effectiveFiveElements totals)
-            const { topLevel, groupRaw, rawTotal } = computeTenGodDistribution(dayStem, dayEl, allChars, effectiveFiveElements);
+            const { topLevel, detailed, groupRaw, rawTotal } = computeTenGodDistribution(dayStem, dayEl, allChars, effectiveFiveElements);
             const { primary } = pickDominantTenGodGroups({ groupRaw, rawTotal });
             return (
               <div className="space-y-3">
@@ -3532,7 +3527,7 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                       <div className="grid grid-cols-2 gap-1">
                         {members.map((tg) => {
                           const cnt = displayCounts[tg as TenGod] ?? 0;
-                          const pct = Math.round((cnt / allTgTotal) * 100);
+                          const pct = (detailed[tg] ?? Math.round((cnt / allTgTotal) * 100));
                           const isActive = yuanGuoInlineDetail?.kind === "tengod" && yuanGuoInlineDetail.tg === tg;
                           const rowEl = getTenGodElement(tg as TenGod, dayStem);
                           const chipStyle = getTenGodChipStyle(tg as TenGod, dayStem);
