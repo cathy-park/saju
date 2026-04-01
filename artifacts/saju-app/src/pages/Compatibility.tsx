@@ -1432,10 +1432,10 @@ export default function Compatibility() {
                         </span>
                     </div>
                   </div>
-                  <div className="ds-inline-detail-nested flex items-center gap-2">
-                    <span className={cn("shrink-0 text-[13px] font-semibold", REL_TONE_COLOR[fullReport.branchComp.tone] ?? "text-foreground")}>
+                  <div className="ds-inline-detail-nested space-y-1">
+                    <p className={cn("text-[13px] font-semibold", REL_TONE_COLOR[fullReport.branchComp.tone] ?? "text-foreground")}>
                       {fullReport.branchComp.tone}
-                    </span>
+                    </p>
                     <p className="text-sm text-foreground">{fullReport.branchComp.desc}</p>
                   </div>
                   <div className="ds-inline-detail-nested mt-2 space-y-1">
