@@ -3336,6 +3336,58 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
         </div>
       )}
 
+      {/* ── 시주 비교 표: '시주 비교' 탭 바로 아래 ── */}
+      {hasHourPillar && hourMode === "비교" && (
+        <div className="rounded-xl border border-violet-200 bg-violet-50/40 px-3 py-3 space-y-2.5">
+          <div className="flex items-center gap-3">
+            {/* 시주 글자 */}
+            <div className="shrink-0 text-center">
+              <p className="text-[10px] font-bold text-violet-500 uppercase tracking-wide mb-0.5">시주</p>
+              <div className="flex gap-0.5">
+                {hourStem && STEM_ELEMENT[hourStem] && (
+                  <span className={`text-xl font-bold ${elementTextClass(STEM_ELEMENT[hourStem] as FiveElKey, "strong")}`}>{hourStem}</span>
+                )}
+                {hourBranch && STEM_ELEMENT[hourBranch] && (
+                  <span className={`text-xl font-bold ${elementTextClass(STEM_ELEMENT[hourBranch] as FiveElKey, "strong")}`}>{hourBranch}</span>
+                )}
+              </div>
+              <div className="flex gap-0.5 mt-0.5 justify-center flex-wrap">
+                {hourStemTg && <span className={`text-[10px] font-bold px-1 py-0.5 rounded ${getTenGodTw(hourStemTg, dayStem)}`} style={getTenGodChipStyle(hourStemTg, dayStem)}>{hourStemTg}</span>}
+                {hourBranchTg && <span className={`text-[10px] font-bold px-1 py-0.5 rounded ${getTenGodTw(hourBranchTg, dayStem)}`} style={getTenGodChipStyle(hourBranchTg, dayStem)}>{hourBranchTg}</span>}
+              </div>
+            </div>
+            <div className="ds-inline-detail-nested flex-1 min-w-0 space-y-1.5">
+              <p className="text-[11px] font-bold text-violet-600">시주 포함·제외 비교</p>
+              {/* 오행 변화 */}
+              {fiveElDiffBase.length > 0 ? (
+                <div className="flex flex-wrap gap-1">
+                  {fiveElDiffBase.map(({ el, withHour, withoutHour, delta }) => (
+                    <div key={el} className="flex items-center gap-0.5 rounded-md border border-border bg-muted/20 px-2 py-0.5">
+                      <span className={`text-[12px] font-black ${elementTextClass(el as FiveElKey, "strong")}`}>{el}</span>
+                      <span className="text-[11px] text-muted-foreground">{withoutHour}→{withHour}</span>
+                      <span className={`text-[10px] font-bold ${delta > 0 ? "text-emerald-600" : "text-rose-500"}`}>{delta > 0 ? `+${delta}` : delta}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-[11px] text-muted-foreground">오행 변화 없음</p>
+              )}
+              {/* 신살 변화 */}
+              {(shinsalDiffBase.added.length > 0 || shinsalDiffBase.removed.length > 0) && (
+                <div className="flex flex-wrap gap-1">
+                  {shinsalDiffBase.removed.map((n) => (
+                    <span key={`rem-${n}`} className={`text-[11px] font-bold px-1.5 py-0.5 rounded-full border line-through opacity-50 ${SHINSAL_COLOR[n] ?? "bg-muted text-muted-foreground border-border"}`}>{n}</span>
+                  ))}
+                  {shinsalDiffBase.added.map((n) => (
+                    <span key={`add-${n}`} className={`text-[11px] font-bold px-1.5 py-0.5 rounded-full border ${SHINSAL_COLOR[n] ?? "bg-muted text-muted-foreground border-border"}`}>+{n}</span>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="ds-segment-list min-h-11 rounded-xl border border-border shadow-none">
         {REPORT_MAIN_TABS.map((tab) => (
           <button
@@ -3412,58 +3464,6 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
             />
           ) : null}
 
-          {/* ── 시주 비교 카드 (비교 모드일 때 원국표 바로 아래 표시) ── */}
-          {hasHourPillar && hourMode === "비교" && (
-            <div className="rounded-xl border border-violet-200 bg-violet-50/40 px-3 py-3 space-y-2.5">
-              <div className="flex items-center gap-3">
-                {/* 시주 글자 */}
-                <div className="shrink-0 text-center">
-                  <p className="text-[10px] font-bold text-violet-500 uppercase tracking-wide mb-0.5">시주</p>
-                  <div className="flex gap-0.5">
-                    {hourStem && STEM_ELEMENT[hourStem] && (
-                      <span className={`text-xl font-bold ${elementTextClass(STEM_ELEMENT[hourStem] as FiveElKey, "strong")}`}>{hourStem}</span>
-                    )}
-                    {hourBranch && STEM_ELEMENT[hourBranch] && (
-                      <span className={`text-xl font-bold ${elementTextClass(STEM_ELEMENT[hourBranch] as FiveElKey, "strong")}`}>{hourBranch}</span>
-                    )}
-                  </div>
-                  <div className="flex gap-0.5 mt-0.5 justify-center flex-wrap">
-                    {hourStemTg && <span className={`text-[10px] font-bold px-1 py-0.5 rounded ${getTenGodTw(hourStemTg, dayStem)}`} style={getTenGodChipStyle(hourStemTg, dayStem)}>{hourStemTg}</span>}
-                    {hourBranchTg && <span className={`text-[10px] font-bold px-1 py-0.5 rounded ${getTenGodTw(hourBranchTg, dayStem)}`} style={getTenGodChipStyle(hourBranchTg, dayStem)}>{hourBranchTg}</span>}
-                  </div>
-                </div>
-                <div className="ds-inline-detail-nested flex-1 min-w-0 space-y-1.5">
-                  <p className="text-[11px] font-bold text-violet-600">시주 포함·제외 비교</p>
-                  {/* 오행 변화 */}
-                  {fiveElDiffBase.length > 0 ? (
-                    <div className="flex flex-wrap gap-1">
-                      {fiveElDiffBase.map(({ el, withHour, withoutHour, delta }) => (
-                        <div key={el} className="flex items-center gap-0.5 rounded-md border border-border bg-muted/20 px-2 py-0.5">
-                          <span className={`text-[12px] font-black ${elementTextClass(el as FiveElKey, "strong")}`}>{el}</span>
-                          <span className="text-[11px] text-muted-foreground">{withoutHour}→{withHour}</span>
-                          <span className={`text-[10px] font-bold ${delta > 0 ? "text-emerald-600" : "text-rose-500"}`}>{delta > 0 ? `+${delta}` : delta}</span>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-[11px] text-muted-foreground">오행 변화 없음</p>
-                  )}
-                  {/* 신살 변화 */}
-                  {(shinsalDiffBase.added.length > 0 || shinsalDiffBase.removed.length > 0) && (
-                    <div className="flex flex-wrap gap-1">
-                      {shinsalDiffBase.removed.map((n) => (
-                        <span key={`rem-${n}`} className={`text-[11px] font-bold px-1.5 py-0.5 rounded-full border line-through opacity-50 ${SHINSAL_COLOR[n] ?? "bg-muted text-muted-foreground border-border"}`}>{n}</span>
-                      ))}
-                      {shinsalDiffBase.added.map((n) => (
-                        <span key={`add-${n}`} className={`text-[11px] font-bold px-1.5 py-0.5 rounded-full border ${SHINSAL_COLOR[n] ?? "bg-muted text-muted-foreground border-border"}`}>+{n}</span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
           {dayStem && dayBranch && shinsalComboNotes.length > 0 ? (
             <div>
               <ShinsalCombinationsCard combinations={shinsalComboNotes} />
@@ -3496,11 +3496,15 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
           {dayStem && tenGodDisplayCounts ? (() => {
             const displayCounts = tenGodDisplayCounts;
             const allTgTotal = Object.values(displayCounts).reduce((s, c) => s + c, 0) || 1;
+            const dayEl = STEM_ELEMENT[dayStem] as FiveElKey | undefined;
+            // Align group % with 오행 분포(구조) 기준 (same effectiveFiveElements totals)
+            const { topLevel, groupRaw, rawTotal } = computeTenGodDistribution(dayStem, dayEl, allChars, effectiveFiveElements);
+            const { primary } = pickDominantTenGodGroups({ groupRaw, rawTotal });
             return (
               <div className="space-y-3">
                 {Object.entries(TEN_GOD_GROUPS).map(([group, members]) => {
                   const groupCount = members.reduce((s, tg) => s + (displayCounts[tg] ?? 0), 0);
-                  const groupPct = Math.round((groupCount / allTgTotal) * 100);
+                  const groupPct = topLevel[group] ?? Math.round((groupCount / allTgTotal) * 100);
                   const openTg =
                     yuanGuoInlineDetail?.kind === "tengod" && members.includes(yuanGuoInlineDetail.tg)
                       ? yuanGuoInlineDetail.tg
@@ -3508,7 +3512,14 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                   return (
                     <div key={group}>
                       <div className="mb-1 flex items-center justify-between">
-                        <span className="text-[12px] font-bold text-foreground">{group}</span>
+                        <span className="text-[12px] font-bold text-foreground inline-flex items-center gap-1.5">
+                          {group}
+                          {primary?.group === group ? (
+                            <span className="rounded-full border border-border bg-muted/30 px-1.5 py-0.5 text-[9px] font-bold text-muted-foreground">
+                              대표
+                            </span>
+                          ) : null}
+                        </span>
                         <span className="text-[12px] font-semibold text-muted-foreground">{groupPct}%</span>
                       </div>
                       <div className="grid grid-cols-2 gap-1">
