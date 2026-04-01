@@ -3220,10 +3220,10 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
 
   useEffect(() => {
     if (reportTab !== "오늘운세") return;
-    if (todayDomainUserPicked) return;
-    if (todayDomainOpen !== null) return;
-    if (todayScoreRows.best) setTodayDomainOpen(todayScoreRows.best);
-  }, [reportTab, todayDomainUserPicked, todayDomainOpen, todayScoreRows.best]);
+    // 첫 진입 기본 상태: 어떤 영역도 자동 선택하지 않음(사용자 클릭 시에만 열림)
+    setTodayDomainOpen(null);
+    setTodayDomainUserPicked(false);
+  }, [reportTab]);
 
   const shinsalLuckCtx = useMemo(() => {
     const now = new Date();
@@ -4478,13 +4478,30 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                   };
 
                   return (
-                    <div className="ds-card relative overflow-hidden border-border/60 bg-card/95 shadow-none backdrop-blur-sm">
-                      <div className="border-b border-border/50 bg-muted/10 px-4 py-3">
+                    <div className="ds-card relative overflow-hidden border-border/60 shadow-none">
+                      {(() => {
+                        const elA = (charToElement(dayStemChar) ?? "토") as FiveElKey;
+                        const elB = (charToElement(dayBranchChar) ?? elA) as FiveElKey;
+                        const c1 = elementHslAlpha(elA, "strong", 0.18);
+                        const c2 = elementHslAlpha(elB, "strong", 0.14);
+                        return (
+                          <div
+                            aria-hidden
+                            className="absolute inset-0"
+                            style={{
+                              backgroundImage: `linear-gradient(135deg, ${c1} 0%, ${c2} 55%, rgba(255,255,255,0) 100%)`,
+                              backgroundColor: "hsl(var(--card))",
+                            }}
+                          />
+                        );
+                      })()}
+
+                      <div className="relative border-b border-border/50 bg-white/40 px-4 py-3">
                         <p className="ds-caption font-semibold tracking-wide text-[hsl(var(--app-label-accent))]">
                           ✨ 오늘 한눈에 보기 — {fortune.dateLabel}
                         </p>
                       </div>
-                      <div className="ds-card-pad space-y-3">
+                      <div className="relative ds-card-pad space-y-3">
                         <div className="flex items-center gap-3">
                           <div className="rounded-xl border border-border/50 bg-card/90 px-3 py-2 text-center shrink-0">
                             <p className="m-0 text-[11px] font-bold tracking-wide text-muted-foreground">오늘 일진</p>
@@ -4493,7 +4510,7 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                               <span className={dayBranchChar ? elementTextClass((charToElement(dayBranchChar) ?? "토") as FiveElKey, "strong") : "text-foreground"}>{dayBranchChar}</span>
                             </p>
                           </div>
-                          <div className="flex-1 min-w-0">
+                          <div className="flex-1 min-w-0 rounded-xl border border-border/40 bg-white/55 backdrop-blur-sm px-3 py-2">
                             <p className="ds-body font-semibold text-foreground">{fortune.summary}</p>
                             {(tgStem || tgBranch) && (
                               <div className="mt-1 flex flex-wrap items-center gap-1.5">
@@ -4595,8 +4612,15 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                           if (row.hint) summaryLines.push(`오늘은 ${row.hint}`);
                           summaryLines.push(`오늘은 ${tenGodText}이 중심이라, ${todayDomainOpen}에서는 “정리·조절·선택”이 유리합니다.`);
 
+                          const inlineTint =
+                            row.lvl === "good"
+                              ? "border-emerald-200/70 bg-emerald-50/60"
+                              : row.lvl === "caution"
+                                ? "border-orange-200/70 bg-orange-50/60"
+                                : "border-border/70 bg-muted/20";
+
                           return (
-                            <div className="ds-inline-detail mt-2 overflow-visible">
+                            <div className={cn("ds-inline-detail mt-2 overflow-visible", inlineTint)}>
                               <div className="ds-inline-detail-header">
                                 <div className="min-w-0 flex-1">
                                   <div className="flex flex-wrap items-center gap-1.5">
