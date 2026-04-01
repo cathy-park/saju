@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useCallback } from "react";
+import { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import type { ComputedPillars, FiveElementCount } from "@/lib/sajuEngine";
 import { countFiveElements, calculateProfileFromBirth } from "@/lib/sajuEngine";
 import type { DaewoonSuOpts } from "@/lib/luckCycles";
@@ -37,9 +37,13 @@ import {
   type ElementTone,
   type FiveElKey,
 } from "@/lib/element-color";
-import { ShinsalInterpretationSection } from "@/components/ShinsalInterpretationSection";
+import { ShinsalCombinationsCard } from "@/components/ShinsalInterpretationSection";
 import { TodayFortuneCard } from "@/components/TodayFortuneCard";
-import { buildShinsalCombinationNotes, buildShinsalInterpretationList } from "@/lib/shinsalInterpretation";
+import {
+  buildShinsalCombinationNotes,
+  buildShinsalInterpretationList,
+  type ShinsalInterpretationEntry,
+} from "@/lib/shinsalInterpretation";
 import { getFortuneForDate } from "@/lib/todayFortune";
 import { buildLifeFlowInsights } from "@/lib/lifeFlowInsight";
 import {
@@ -197,6 +201,132 @@ function AccSection({
 
 // ── PillarTable ────────────────────────────────────────────────────
 
+type ShinsalTagRef = { id: string; name: string };
+
+function ShinsalTagStrip({
+  tags,
+  selectedId,
+  onSelect,
+}: {
+  tags: ShinsalTagRef[];
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  if (!tags.length) return null;
+  const maxVisible = 4;
+  const shown = open ? tags : tags.slice(0, maxVisible);
+  const more = tags.length - shown.length;
+  return (
+    <div className="mt-1 w-full min-w-0 px-0.5">
+      <div className={cn("flex flex-wrap justify-center gap-0.5", !open && "max-h-[2.5rem] overflow-hidden")}>
+        {shown.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            onClick={() => onSelect(t.id)}
+            className={cn(
+              "max-w-full truncate rounded border px-1 py-px text-[9px] font-bold leading-tight shadow-none transition-opacity active:scale-[0.98]",
+              SHINSAL_COLOR[t.name] ?? "border-border bg-muted/50 text-foreground",
+              selectedId === t.id && "ring-2 ring-primary ring-offset-1",
+            )}
+          >
+            {t.name}
+          </button>
+        ))}
+      </div>
+      {more > 0 && !open && (
+        <button
+          type="button"
+          className="mt-0.5 w-full text-center text-[9px] font-bold text-primary"
+          onClick={() => setOpen(true)}
+        >
+          +{more}
+        </button>
+      )}
+      {open && tags.length > maxVisible && (
+        <button
+          type="button"
+          className="mt-0.5 w-full text-center text-[9px] font-medium text-muted-foreground"
+          onClick={() => setOpen(false)}
+        >
+          접기
+        </button>
+      )}
+    </div>
+  );
+}
+
+function SelectedShinsalInlineCard({
+  entry,
+  onClose,
+  onMore,
+}: {
+  entry: ShinsalInterpretationEntry;
+  onClose: () => void;
+  onMore: () => void;
+}) {
+  return (
+    <div className="ds-card mt-3 border-primary/25 shadow-none">
+      <div className="flex items-start justify-between gap-2 border-b border-border px-4 py-3">
+        <div className="min-w-0">
+          <span
+            className={cn(
+              "ds-badge inline-block max-w-full truncate text-[13px] font-bold shadow-none",
+              SHINSAL_COLOR[entry.name] ?? "bg-muted text-foreground",
+            )}
+          >
+            {entry.name}
+          </span>
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            발동 위치:{" "}
+            <span className="font-semibold text-foreground">{entry.pillar}</span>
+            {" · "}
+            {entry.anchor}
+          </p>
+        </div>
+        <button type="button" onClick={onClose} className="shrink-0 px-2 text-sm text-muted-foreground hover:text-foreground">
+          ✕
+        </button>
+      </div>
+      <div className="ds-card-pad space-y-2.5 text-sm">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">기준</p>
+          <p className="text-[13px] font-semibold text-foreground">{entry.basisLabel}</p>
+          {entry.triggerDetail ? (
+            <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{entry.triggerDetail}</p>
+          ) : null}
+        </div>
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">영향 영역</p>
+          <p className="text-[13px] text-foreground">{entry.influenceDomain}</p>
+        </div>
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">활성 상태</p>
+          <div className="mt-0.5 flex flex-wrap gap-1">
+            {entry.activationStates.map((s) => (
+              <span key={s} className="rounded-full border border-border bg-muted px-2 py-0.5 text-[11px] text-foreground/90">
+                {s}
+              </span>
+            ))}
+          </div>
+        </div>
+        <div className="rounded-lg border border-border/60 bg-muted/30 px-3 py-2">
+          <p className="mb-0.5 text-[10px] font-bold text-muted-foreground">한 줄 해석</p>
+          <p className="text-[13px] leading-relaxed text-foreground">{entry.oneLine}</p>
+        </div>
+        <button
+          type="button"
+          onClick={onMore}
+          className="text-[12px] font-semibold text-primary underline-offset-2 hover:underline"
+        >
+          긴 해석 더보기
+        </button>
+      </div>
+    </div>
+  );
+}
+
 const TEN_GOD_OPTIONS = ["비견","겁재","식신","상관","편재","정재","편관","정관","편인","정인"] as const;
 const TWELVE_STAGE_OPTIONS = ["장생","목욕","관대","건록","제왕","쇠","병","사","묘","절","태","양"] as const;
 
@@ -206,6 +336,9 @@ function PillarTable({
   shinsalBranchItems,
   manualDerived,
   onSaveDerived,
+  shinsalPerColumn,
+  selectedShinsalId,
+  onShinsalSelect,
 }: {
   pillars: Array<{
     label: string;
@@ -218,6 +351,9 @@ function PillarTable({
   shinsalBranchItems?: string[][];
   manualDerived?: ManualDerived;
   onSaveDerived?: (d: ManualDerived) => void;
+  shinsalPerColumn?: Array<{ stem: ShinsalTagRef[]; branch: ShinsalTagRef[] }>;
+  selectedShinsalId?: string | null;
+  onShinsalSelect?: (id: string) => void;
 }) {
   const [activeTooltip, setActiveTooltip] = useState<{ idx: number; type: "stem" | "branch" } | null>(null);
   const [editMode, setEditMode] = useState(false);
@@ -306,11 +442,18 @@ function PillarTable({
               {computed.map((c, i) => (
                 <td key={i} className={cn("border-l border-border/40 px-0.5 py-2 text-center", c.isDayMaster && "bg-primary/10")}>
                   {c.isUnknown ? <span className="text-xl text-muted-foreground">?</span> : (
-                    <div className="flex flex-col items-center">
+                    <div className="flex w-full min-w-0 flex-col items-center">
                       <span className={`text-xl font-bold leading-tight ${c.stemEl ? elementTextClass(c.stemEl, "strong") : ""}`}>
                         {c.stemChar}
                       </span>
                       <span className="text-[10px] text-muted-foreground">{STEM_SIGN[c.stemChar] ?? ""}</span>
+                      {onShinsalSelect && shinsalPerColumn?.[i] ? (
+                        <ShinsalTagStrip
+                          tags={[...shinsalPerColumn[i].stem]}
+                          selectedId={selectedShinsalId ?? null}
+                          onSelect={onShinsalSelect}
+                        />
+                      ) : null}
                     </div>
                   )}
                 </td>
@@ -347,11 +490,18 @@ function PillarTable({
               {computed.map((c, i) => (
                 <td key={i} className={cn("border-l border-border/40 px-0.5 py-2 text-center", c.isDayMaster && "bg-primary/10")}>
                   {c.isUnknown ? <span className="text-xl text-muted-foreground">?</span> : (
-                    <div className="flex flex-col items-center">
+                    <div className="flex w-full min-w-0 flex-col items-center">
                       <span className={`text-xl font-bold leading-tight ${c.branchEl ? elementTextClass(c.branchEl, "strong") : ""}`}>
                         {c.branchChar}
                       </span>
                       <span className="text-[10px] text-muted-foreground">{BRANCH_SIGN[c.branchChar] ?? ""}</span>
+                      {onShinsalSelect && shinsalPerColumn?.[i] ? (
+                        <ShinsalTagStrip
+                          tags={[...shinsalPerColumn[i].branch]}
+                          selectedId={selectedShinsalId ?? null}
+                          onSelect={onShinsalSelect}
+                        />
+                      ) : null}
                     </div>
                   )}
                 </td>
@@ -416,7 +566,8 @@ function PillarTable({
               ))}
             </tr>
 
-            {/* 12신살 row */}
+            {/* 12신살 row — 자리별 태그가 있으면 비편집 시 숨김(중복 제거). 편집 모드에서는 수동 입력 유지 */}
+            {(!shinsalPerColumn || editMode) && (
             <tr>
               <td className="text-[10px] text-muted-foreground font-medium py-1 px-1.5 bg-muted/20 border-r border-border/40 text-center leading-tight">12신살</td>
               {computed.map((c, i) => (
@@ -430,6 +581,7 @@ function PillarTable({
                 </td>
               ))}
             </tr>
+            )}
           </tbody>
         </table>
       </div>
@@ -2061,7 +2213,12 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
   });
   const [hourMode, setHourMode] = useState<"포함" | "제외" | "비교">("포함");
   const [selectedTgInfo, setSelectedTgInfo] = useState<TenGod | null>(null);
+  const [selectedShinsalId, setSelectedShinsalId] = useState<string | null>(null);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+
+  useEffect(() => {
+    setSelectedShinsalId(null);
+  }, [record.id]);
 
   // ── LOCAL REACTIVE STATE for fortune options + profile ─────────────
   // Root cause of unresponsive toggles: `record` is a prop. `updatePersonRecord`
@@ -2482,6 +2639,39 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
     return buildShinsalCombinationNotes(names);
   }, [shinsalPillars]);
 
+  const PILLAR_TO_TABLE_COL: Record<string, 0 | 1 | 2 | 3> = {
+    시주: 0,
+    일주: 1,
+    월주: 2,
+    년주: 3,
+  };
+
+  const shinsalPerColumn = useMemo(() => {
+    const cols: Array<{ stem: ShinsalTagRef[]; branch: ShinsalTagRef[] }> = [
+      { stem: [], branch: [] },
+      { stem: [], branch: [] },
+      { stem: [], branch: [] },
+      { stem: [], branch: [] },
+    ];
+    for (const e of shinsalInterpretEntries) {
+      const idx = PILLAR_TO_TABLE_COL[e.pillar];
+      if (idx === undefined) continue;
+      const ref: ShinsalTagRef = { id: e.id, name: e.name };
+      if (e.anchor === "천간") cols[idx].stem.push(ref);
+      else if (e.anchor === "지지") cols[idx].branch.push(ref);
+      else cols[idx].stem.push(ref);
+    }
+    return cols;
+  }, [shinsalInterpretEntries]);
+
+  const selectedShinsalEntry = useMemo(
+    () =>
+      selectedShinsalId
+        ? shinsalInterpretEntries.find((e) => e.id === selectedShinsalId) ?? null
+        : null,
+    [selectedShinsalId, shinsalInterpretEntries],
+  );
+
   const lifeFlowData = buildLifeFlowInsights(
     { ...record, maritalStatus },
     { finalShinsalNames }
@@ -2689,12 +2879,40 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
             </div>
           )}
 
+          {/* 복합 신살 조합 — 원국표 바로 위 */}
+          {dayStem && dayBranch && shinsalComboNotes.length > 0 && (
+            <div className="mb-3">
+              <ShinsalCombinationsCard combinations={shinsalComboNotes} />
+            </div>
+          )}
+
           {/* 사주팔자 — 항상 표시 */}
           <PillarTable
             pillars={pillarData}
             dayStem={dayStem}
             shinsalBranchItems={shinsalBranchItems}
+            shinsalPerColumn={dayStem && dayBranch ? shinsalPerColumn : undefined}
+            selectedShinsalId={selectedShinsalId}
+            onShinsalSelect={
+              dayStem && dayBranch
+                ? (id) => setSelectedShinsalId((p) => (p === id ? null : id))
+                : undefined
+            }
           />
+          {selectedShinsalEntry ? (
+            <SelectedShinsalInlineCard
+              entry={selectedShinsalEntry}
+              onClose={() => setSelectedShinsalId(null)}
+              onMore={() =>
+                setInfoSheet({
+                  kind: "shinsal",
+                  name: selectedShinsalEntry.name,
+                  source: "auto",
+                  trigger: selectedShinsalEntry.triggerDetail || undefined,
+                })
+              }
+            />
+          ) : null}
 
           <div className="ds-card shadow-none">
             <div className="border-b border-border bg-muted/20 px-4 py-3">
@@ -2849,125 +3067,6 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
             <AccSection title="일간 강도" defaultOpen>
               <DayMasterStrengthCard strength={sajuPipelineResult.adjusted.strengthResult} />
             </AccSection>
-          )}
-
-          {/* 신살 요약 + 상세 */}
-          {dayStem && dayBranch && (
-            <>
-              <div className="ds-card shadow-none">
-                <div className="border-b border-border px-4 py-3">
-                  <h2 className="text-sm font-bold text-foreground">신살 요약</h2>
-                  <p className="mt-1 text-[11px] text-muted-foreground">
-                    일간 <span className="font-semibold text-foreground">{dayStem}</span> · 일지{" "}
-                    <span className="font-semibold text-foreground">{dayBranch}</span> 기준 · 총{" "}
-                    <span className="font-bold text-foreground">{finalShinsalNames.size}</span>개 표시
-                  </p>
-                </div>
-                <div className="ds-card-pad flex flex-wrap gap-2">
-                  {[...finalShinsalNames].sort().slice(0, 14).map((n) => (
-                    <button
-                      key={n}
-                      type="button"
-                      onClick={() => setInfoSheet({ kind: "shinsal", name: n, source: "auto" })}
-                      className={cn(
-                        "ds-badge text-[12px] font-bold shadow-none transition-opacity hover:opacity-90",
-                        SHINSAL_COLOR[n] ?? "bg-muted text-foreground",
-                      )}
-                    >
-                      {n}
-                    </button>
-                  ))}
-                  {finalShinsalNames.size > 14 && (
-                    <span className="ds-badge text-[11px] text-muted-foreground shadow-none">
-                      외 {finalShinsalNames.size - 14}개 · 아래 상세에서 전체 확인
-                    </span>
-                  )}
-                  {finalShinsalNames.size === 0 && (
-                    <span className="text-sm text-muted-foreground">표시할 신살이 없습니다.</span>
-                  )}
-                </div>
-              </div>
-
-              <AccSection title="신살 상세 해석" defaultOpen={false}>
-                <ShinsalInterpretationSection
-                  entries={shinsalInterpretEntries}
-                  combinations={shinsalComboNotes}
-                  onOpenDetail={setInfoSheet}
-                />
-              </AccSection>
-
-              <AccSection title="기둥별 신살 태그" defaultOpen={false}>
-              <div className="space-y-3">
-                {[
-                  { pillar: "시주", stemLabel: "시천간", branchLabel: "시지", isDay: false, isUnknown: !effectivePillars.hour || input.timeUnknown || hourMode === "제외" },
-                  { pillar: "일주", stemLabel: "일천간", branchLabel: "일지", isDay: true, isUnknown: false },
-                  { pillar: "월주", stemLabel: "월천간", branchLabel: "월지", isDay: false, isUnknown: false },
-                  { pillar: "년주", stemLabel: "연천간", branchLabel: "연지", isDay: false, isUnknown: false },
-                ].map(({ pillar, stemLabel, branchLabel, isDay, isUnknown }) => {
-                  const ps = shinsalPillars.find((p) => p.pillar === pillar);
-                  const positions = PILLAR_TO_POSITIONS[pillar] ?? { stem: stemLabel, branch: branchLabel };
-                  const pillarItems = ps?.pillarItems ?? [];
-                  const stemItems = ps?.stemItems ?? [];
-                  const branchItems = ps?.branchItems ?? [];
-                  // 일주 기반 특수 신살(고란살/음양차착살/일귀인)은 '일지' 행에 표시되도록 정렬
-                  // (기존: 일천간 행에 섞여 보이던 케이스로 '누락'처럼 보일 수 있어 조정)
-                  const autoStemRaw = pillar === "일주" ? [...stemItems] : [...pillarItems, ...stemItems];
-                  const autoBranchRaw = pillar === "일주" ? [...branchItems, ...pillarItems] : branchItems;
-                  const visibleAutoStem = autoStemRaw;
-                  const visibleAutoBranch = autoBranchRaw;
-                  const renderPositionRow = (label: string, _pos: string, autoItems: string[], isLast: boolean) => {
-                    const isEmpty = autoItems.length === 0;
-                    return (
-                      <div className={`flex items-start gap-2 px-3 py-2.5 ${isLast ? "" : "border-b border-border/40"}`}>
-                        <span className="text-[13px] text-muted-foreground w-14 shrink-0 pt-1 font-medium">{label}</span>
-                        {isUnknown ? (
-                          <span className="text-[13px] text-muted-foreground italic pt-0.5">미상</span>
-                        ) : (
-                          <div className="flex flex-wrap gap-1.5 flex-1">
-                            {autoItems.map((n) => (
-                              <div key={`auto-${label}-${n}`} className="flex items-center gap-0.5">
-                                <button
-                                  onClick={() =>
-                                    setInfoSheet({
-                                      kind: "shinsal",
-                                      name: n,
-                                      source: "auto",
-                                      trigger: ps?.triggerInfo?.[n],
-                                    })
-                                  }
-                                  className={`text-[13px] font-bold px-2.5 py-1 rounded-full border transition-all active:scale-95 hover:brightness-95 ${SHINSAL_COLOR[n] ?? "bg-muted text-muted-foreground border-border"}`}
-                                >
-                                  {n}
-                                </button>
-                              </div>
-                            ))}
-                            {isEmpty && <span className="text-[13px] text-muted-foreground opacity-50">없음</span>}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  };
-                  return (
-                    <div key={pillar} className={`rounded-lg border overflow-hidden ${isDay ? "border-amber-200" : "border-border/70"}`}>
-                      <div className={`flex items-center gap-2 px-3 py-2 border-b ${isDay ? "bg-amber-50/60 border-amber-200" : "bg-muted/30 border-border/50"}`}>
-                        <span className="text-[13px] font-bold text-foreground">{pillar}</span>
-                        {!isUnknown && ps && (
-                          <div className="flex gap-1 ml-1">
-                            {ps.stem && <span className="text-sm font-bold">{ps.stem}</span>}
-                            {ps.branch && <span className="text-sm font-bold">{ps.branch}</span>}
-                          </div>
-                        )}
-                        {isDay && <span className="text-[11px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-semibold ml-auto">일간</span>}
-                        {isUnknown && <span className="text-[13px] text-muted-foreground ml-auto">시간 미상</span>}
-                      </div>
-                      {renderPositionRow(stemLabel, positions.stem, visibleAutoStem, false)}
-                      {renderPositionRow(branchLabel, positions.branch, visibleAutoBranch, true)}
-                    </div>
-                  );
-                })}
-              </div>
-            </AccSection>
-            </>
           )}
 
           {/* 지장간·12운성 */}
