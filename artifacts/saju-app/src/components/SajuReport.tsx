@@ -2041,8 +2041,8 @@ function FortuneCalendar({ record, dayStem, luckCycles, birthYear, adjustedDaewo
               style={
                 se
                   ? {
-                      backgroundColor: elementHslAlpha(se, "strong", 0.06),
-                      borderColor: elementHslAlpha(se, "strong", 0.22),
+                      backgroundColor: elementHslAlpha(se, "strong", 0.12),
+                      borderColor: elementHslAlpha(se, "strong", 0.28),
                     }
                   : undefined
               }
@@ -2502,8 +2502,8 @@ function LuckFlowTabs({
                         style={
                           se
                             ? {
-                                backgroundColor: elementHslAlpha(se, "strong", 0.06),
-                                borderColor: elementHslAlpha(se, "strong", 0.22),
+                              backgroundColor: elementHslAlpha(se, "strong", 0.12),
+                              borderColor: elementHslAlpha(se, "strong", 0.28),
                               }
                             : undefined
                         }
@@ -3172,6 +3172,13 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
     for (const n of branchItems) {
       finalShinsalNames.add(n);
     }
+  }
+  // Apply manual adjustments to keep Today view consistent with YuanGuo edits
+  for (const it of excludedAutoShinsal) {
+    if (it?.name) finalShinsalNames.delete(it.name);
+  }
+  for (const it of manualShinsal) {
+    if (it?.name) finalShinsalNames.add(it.name);
   }
 
   const shinsalInterpretEntries = useMemo(
