@@ -4478,76 +4478,81 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                   };
 
                   return (
-                    <div className="ds-card relative overflow-hidden border-border/60 shadow-none">
-                      {(() => {
-                        const elA = (charToElement(dayStemChar) ?? "토") as FiveElKey;
-                        const elB = (charToElement(dayBranchChar) ?? elA) as FiveElKey;
-                        const c1 = elementHslAlpha(elA, "strong", 0.18);
-                        const c2 = elementHslAlpha(elB, "strong", 0.14);
-                        return (
-                          <div
-                            aria-hidden
-                            className="absolute inset-0"
-                            style={{
-                              backgroundImage: `linear-gradient(135deg, ${c1} 0%, ${c2} 55%, rgba(255,255,255,0) 100%)`,
-                              backgroundColor: "hsl(var(--card))",
-                            }}
-                          />
-                        );
-                      })()}
+                    <div className="space-y-2">
+                      {/* Layer 1) Hero gradient 영역 (키워드 칩까지) */}
+                      <div className="ds-card relative overflow-hidden border-border/60 shadow-none">
+                        {(() => {
+                          const elA = (charToElement(dayStemChar) ?? "토") as FiveElKey;
+                          const elB = (charToElement(dayBranchChar) ?? elA) as FiveElKey;
+                          const c1 = elementHslAlpha(elA, "strong", 0.18);
+                          const c2 = elementHslAlpha(elB, "strong", 0.14);
+                          return (
+                            <div
+                              aria-hidden
+                              className="absolute inset-0"
+                              style={{
+                                backgroundImage: `linear-gradient(135deg, ${c1} 0%, ${c2} 55%, rgba(255,255,255,0) 100%)`,
+                                backgroundColor: "hsl(var(--card))",
+                              }}
+                            />
+                          );
+                        })()}
 
-                      <div className="relative border-b border-border/50 bg-white/40 px-4 py-3">
-                        <p className="ds-caption font-semibold tracking-wide text-[hsl(var(--app-label-accent))]">
-                          ✨ 오늘 한눈에 보기 — {fortune.dateLabel}
-                        </p>
-                      </div>
-                      <div className="relative ds-card-pad space-y-3">
-                        <div className="flex items-center gap-3">
-                          <div className="rounded-xl border border-border/50 bg-card/90 px-3 py-2 text-center shrink-0">
-                            <p className="m-0 text-[11px] font-bold tracking-wide text-muted-foreground">오늘 일진</p>
-                            <p className="text-xl font-extrabold tracking-wide">
-                              <span className={dayStemChar ? elementTextClass((charToElement(dayStemChar) ?? "토") as FiveElKey, "strong") : "text-foreground"}>{dayStemChar}</span>
-                              <span className={dayBranchChar ? elementTextClass((charToElement(dayBranchChar) ?? "토") as FiveElKey, "strong") : "text-foreground"}>{dayBranchChar}</span>
-                            </p>
-                          </div>
-                          <div className="flex-1 min-w-0 rounded-xl border border-border/40 bg-white/55 backdrop-blur-sm px-3 py-2">
-                            <p className="ds-body font-semibold text-foreground">{fortune.summary}</p>
-                            {(tgStem || tgBranch) && (
-                              <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                                <span className="text-[12px] font-semibold text-muted-foreground">오늘 십성:</span>
-                                {tgStem && (
-                                  <span className={`ds-badge text-[10px] font-bold shadow-none ${getTenGodTw(tgStem, dayStem)}`} style={getTenGodChipStyle(tgStem, dayStem)}>
-                                    {tgStem}
-                                  </span>
-                                )}
-                                {tgBranch && (
-                                  <span className={`ds-badge text-[10px] font-bold shadow-none ${getTenGodTw(tgBranch, dayStem)}`} style={getTenGodChipStyle(tgBranch, dayStem)}>
-                                    {tgBranch}
-                                  </span>
-                                )}
-                              </div>
-                            )}
-                            {fortune.guidance && (
-                              <p className="mt-1 text-[13px] text-muted-foreground leading-relaxed">
-                                오늘은 <span className="font-semibold text-foreground">“{fortune.guidance}”</span> 흐름이 유리합니다.
-                              </p>
-                            )}
-                          </div>
+                        <div className="relative border-b border-border/50 bg-white/40 px-4 py-3">
+                          <p className="ds-caption font-semibold tracking-wide text-[hsl(var(--app-label-accent))]">
+                            ✨ 오늘 한눈에 보기 — {fortune.dateLabel}
+                          </p>
                         </div>
-
-                        {/* 키워드 태그 (홈 ds-badge 규칙) */}
-                        {fortune.keywords.length > 0 && (
-                          <div className="flex flex-wrap gap-1">
-                            {fortune.keywords.slice(0, 5).map((kw, i) => (
-                              <span key={kw} className={cn("ds-badge text-[10px] font-bold shadow-none", KEYWORD_STYLES[i % KEYWORD_STYLES.length])}>
-                                {kw}
-                              </span>
-                            ))}
+                        <div className="relative ds-card-pad space-y-3">
+                          <div className="flex items-center gap-3">
+                            <div className="rounded-xl border border-border/50 bg-card/90 px-3 py-2 text-center shrink-0">
+                              <p className="m-0 text-[11px] font-bold tracking-wide text-muted-foreground">오늘 일진</p>
+                              <p className="text-xl font-extrabold tracking-wide">
+                                <span className={dayStemChar ? elementTextClass((charToElement(dayStemChar) ?? "토") as FiveElKey, "strong") : "text-foreground"}>{dayStemChar}</span>
+                                <span className={dayBranchChar ? elementTextClass((charToElement(dayBranchChar) ?? "토") as FiveElKey, "strong") : "text-foreground"}>{dayBranchChar}</span>
+                              </p>
+                            </div>
+                            <div className="flex-1 min-w-0 rounded-xl border border-border/40 bg-white/55 backdrop-blur-sm px-3 py-2">
+                              <p className="ds-body font-semibold text-foreground">{fortune.summary}</p>
+                              {(tgStem || tgBranch) && (
+                                <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                                  <span className="text-[12px] font-semibold text-muted-foreground">오늘 십성:</span>
+                                  {tgStem && (
+                                    <span className={`ds-badge text-[10px] font-bold shadow-none ${getTenGodTw(tgStem, dayStem)}`} style={getTenGodChipStyle(tgStem, dayStem)}>
+                                      {tgStem}
+                                    </span>
+                                  )}
+                                  {tgBranch && (
+                                    <span className={`ds-badge text-[10px] font-bold shadow-none ${getTenGodTw(tgBranch, dayStem)}`} style={getTenGodChipStyle(tgBranch, dayStem)}>
+                                      {tgBranch}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+                              {fortune.guidance && (
+                                <p className="mt-1 text-[13px] text-muted-foreground leading-relaxed">
+                                  오늘은 <span className="font-semibold text-foreground">“{fortune.guidance}”</span> 흐름이 유리합니다.
+                                </p>
+                              )}
+                            </div>
                           </div>
-                        )}
 
-                        {/* 카테고리별 흐름 요약 스코어 (추가) */}
-                        <div className="grid grid-cols-2 sm:grid-cols-6 gap-1.5 pt-1">
+                          {/* 키워드 태그 (홈 ds-badge 규칙) */}
+                          {fortune.keywords.length > 0 && (
+                            <div className="flex flex-wrap gap-1">
+                              {fortune.keywords.slice(0, 5).map((kw, i) => (
+                                <span key={kw} className={cn("ds-badge text-[10px] font-bold shadow-none", KEYWORD_STYLES[i % KEYWORD_STYLES.length])}>
+                                  {kw}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Layer 2) 카테고리 카드 영역 (항상 white) */}
+                      <div className="rounded-xl border border-border/60 bg-white px-3.5 py-3">
+                        <div className="grid grid-cols-2 sm:grid-cols-6 gap-1.5">
                           {todayScoreRows.rows.map((r) => {
                             const active = todayDomainOpen === r.key;
                             return (
@@ -4573,9 +4578,10 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                             );
                           })}
                         </div>
+                      </div>
 
-                        {/* 선택된 영역 상세 해석 (인라인) */}
-                        {todayDomainOpen && (() => {
+                      {/* Layer 3) 선택된 영역 상세 해석 (인라인) */}
+                      {todayDomainOpen && (() => {
                           const row = todayScoreRows.rows.find((r) => r.key === todayDomainOpen);
                           if (!row) return null;
                           const sh = todayOrderedShinsalInsights.slice(0, 4).map((x) => x.name);
@@ -4620,7 +4626,7 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                                 : "border-border/60 bg-muted/10";
 
                           return (
-                            <div className={cn("ds-inline-detail mt-2 overflow-visible", inlineTint)}>
+                            <div className={cn("ds-inline-detail overflow-visible", inlineTint)}>
                               <div className="ds-inline-detail-header">
                                 <div className="min-w-0 flex-1">
                                   <div className="flex flex-wrap items-center gap-1.5">
@@ -4702,7 +4708,6 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                             </div>
                           );
                         })()}
-                      </div>
                     </div>
                   );
                 })()}
