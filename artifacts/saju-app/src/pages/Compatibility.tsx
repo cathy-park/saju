@@ -719,6 +719,26 @@ export default function Compatibility() {
   const otherName = p2?.birthInput.name ?? "";
   const myGender = p1?.birthInput.gender ?? "";
   const otherGender = p2?.birthInput.gender ?? "";
+  const relType: RelationshipType | undefined =
+    mode === "me_other"
+      ? (p2 as (PersonRecord & { relationshipType?: RelationshipType }) | null)?.relationshipType
+      : undefined;
+
+  function adaptTextForRelType(text: string): string {
+    if (!text) return text;
+    // For non-romantic relations, remove romantic framing where possible.
+    if (relType !== "family" && relType !== "friend" && relType !== "coworker") return text;
+    return text
+      .replaceAll("연인", "상대")
+      .replaceAll("사랑", "관계")
+      .replaceAll("애정", "정서")
+      .replaceAll("설렘", "활력")
+      .replaceAll("데이트", "만남")
+      .replaceAll("스킨십", "표현")
+      .replaceAll("두 사람만의 시간", "함께하는 시간")
+      .replaceAll("가정을", "관계를")
+      .replaceAll("결혼", "관계");
+  }
 
   // ── 배우자궁·관성 레이어 데이터 ──
   // 시주 포함/제외 토글에 맞춰 표시/해석도 함께 변하도록 effective record 기준 사용
@@ -940,16 +960,6 @@ export default function Compatibility() {
                   <p className="mt-2 text-[15px] font-extrabold leading-snug text-foreground">
                     {fullReport.stemRel.label}
                   </p>
-                  {fullReport.stemRel.me2other ? (
-                    <div className="mt-3">
-                      <span
-                        className={cn("ds-badge text-[12px] font-bold shadow-none", getTenGodTw(fullReport.stemRel.me2other, myDayStem2))}
-                        style={getTenGodChipStyle(fullReport.stemRel.me2other, myDayStem2)}
-                      >
-                        {fullReport.stemRel.me2other}
-                      </span>
-                    </div>
-                  ) : null}
                 </div>
                 <div className="ds-inline-detail-nested p-4 text-center">
                   <p className="text-[12px] font-semibold text-muted-foreground">배우자궁</p>
@@ -958,7 +968,6 @@ export default function Compatibility() {
                     ↔{" "}
                     <span style={getBranchColor(fullReport.branchComp.otherBranch)}>{fullReport.branchComp.otherBranch}</span>
                   </p>
-                  <p className="mt-2 text-[13px] font-semibold text-muted-foreground">{fullReport.branchComp.tone}</p>
                 </div>
               </div>
 
@@ -1216,7 +1225,7 @@ export default function Compatibility() {
                             className="flex items-start gap-2 rounded-xl border border-emerald-100 bg-emerald-50/70 px-3 py-2 text-[13px] leading-relaxed text-foreground"
                           >
                             <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
-                            <span>{t}</span>
+                            <span>{adaptTextForRelType(t)}</span>
                           </div>
                         ))}
                       </div>
@@ -1230,7 +1239,7 @@ export default function Compatibility() {
                             className="flex items-start gap-2 rounded-xl border border-amber-100 bg-amber-50/60 px-3 py-2 text-[13px] leading-relaxed text-foreground"
                           >
                             <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
-                            <span>{t}</span>
+                            <span>{adaptTextForRelType(t)}</span>
                           </div>
                         ))}
                       </div>
@@ -1403,24 +1412,6 @@ export default function Compatibility() {
                     </div>
                     <div className="text-center">
                       <span className="text-lg text-muted-foreground">↔</span>
-                      {fullReport.branchComp.relations.length > 0 ? (
-                        <div className="mt-1 flex flex-wrap items-center justify-center gap-1">
-                          {fullReport.branchComp.relations
-                            .map((raw) => ({ raw, type: normalizeRelationType(raw) }))
-                            .filter((x): x is { raw: string; type: RelationType } => !!x.type)
-                            .map(({ raw, type }, i) => (
-                              <RelationChip
-                                key={`${raw}-${i}`}
-                                type={type}
-                                label={raw}
-                                selected={activeRelation?.scope === "dayBranch" && activeRelation.title === raw}
-                                onClick={() => setActiveRelation({ scope: "dayBranch", type, title: raw })}
-                              />
-                            ))}
-                        </div>
-                      ) : (
-                        <p className="mt-1 text-[13px] text-muted-foreground">무관계</p>
-                      )}
                     </div>
                     <div className="flex-1 rounded-xl border px-3 py-3 text-center" style={getElCardStyleLite(charToElement(fullReport.branchComp.otherBranch))}>
                         <p className="inline-flex w-full items-center justify-center gap-0.5 text-[13px] text-muted-foreground">
@@ -1449,7 +1440,10 @@ export default function Compatibility() {
                   <div className="space-y-2">
                     <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">세부 분석</p>
                     <div className="ds-inline-detail-nested p-3 space-y-2">
-                      {result.details.map((d, i) => (
+                      {result.details
+                        // avoid repeating already-expanded sections (구조 분석/비교 카드에서 다룬 항목)
+                        .filter((d) => !["일간 분석", "배우자궁", "지지 교차", "오행 보완", "십성 관계"].includes(d.title))
+                        .map((d, i) => (
                         d.isPositive ? (
                           <div
                             key={i}
@@ -1458,7 +1452,7 @@ export default function Compatibility() {
                             <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
                             <div className="min-w-0">
                               <p className="text-sm font-semibold text-foreground">{d.title}</p>
-                              <p className="mt-0.5 text-[13px] text-foreground/80">{d.description}</p>
+                              <p className="mt-0.5 text-[13px] text-foreground/80">{adaptTextForRelType(d.description)}</p>
                             </div>
                           </div>
                         ) : (
@@ -1469,7 +1463,7 @@ export default function Compatibility() {
                             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
                             <div className="min-w-0">
                               <p className="text-sm font-semibold text-foreground">{d.title}</p>
-                              <p className="mt-0.5 text-[13px] text-foreground/80">{d.description}</p>
+                              <p className="mt-0.5 text-[13px] text-foreground/80">{adaptTextForRelType(d.description)}</p>
                             </div>
                           </div>
                         )
@@ -1638,7 +1632,7 @@ export default function Compatibility() {
                             className="flex items-start gap-2 rounded-xl border border-emerald-100 bg-emerald-50/70 px-3 py-2 text-[13px] leading-relaxed text-foreground"
                           >
                             <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
-                            <span>{t}</span>
+                            <span>{adaptTextForRelType(t)}</span>
                           </div>
                         ))}
                       </div>
@@ -1654,7 +1648,7 @@ export default function Compatibility() {
                             className="flex items-start gap-2 rounded-xl border border-amber-100 bg-amber-50/60 px-3 py-2 text-[13px] leading-relaxed text-foreground"
                           >
                             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
-                            <span>{item}</span>
+                            <span>{adaptTextForRelType(item)}</span>
                           </div>
                         ))}
                       </div>
@@ -1671,7 +1665,7 @@ export default function Compatibility() {
                             {fullReport.tips.slice(0, 5).map((tip, i) => (
                               <li key={i} className="flex items-start gap-2 text-[13px] leading-relaxed text-muted-foreground">
                                 <span className="mt-0.5 shrink-0">•</span>
-                                <span>{tip}</span>
+                                <span>{adaptTextForRelType(tip)}</span>
                               </li>
                             ))}
                           </ul>
