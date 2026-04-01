@@ -321,6 +321,16 @@ function getElCardStyle(el: string | null): React.CSSProperties {
   };
 }
 
+function getElCardStyleLite(el: string | null): React.CSSProperties {
+  if (!el) return {};
+  const bg = elementColorVar(el as FiveElKey, "muted");
+  return {
+    // spouse-palace compare: lighten an extra +10% (total +20% white)
+    background: `color-mix(in oklab, ${bg} 80%, white 20%)`,
+    borderColor: elementColorVar(el as FiveElKey, "base"),
+  };
+}
+
 function getDayPillarCardStyle(dayHangul: string): React.CSSProperties {
   const stem = dayHangul?.[0] ?? "";
   const el = charToElement(stem);
@@ -1366,16 +1376,14 @@ export default function Compatibility() {
                 <div>
                   <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-2">배우자궁 비교</p>
                   <div className="mb-2 flex items-center gap-3">
-                    <div className="flex-1 rounded-xl border px-3 py-3 text-center" style={getElCardStyle(charToElement(fullReport.branchComp.myBranch))}>
+                    <div className="flex-1 rounded-xl border px-3 py-3 text-center" style={getElCardStyleLite(charToElement(fullReport.branchComp.myBranch))}>
                         <p className="inline-flex w-full items-center justify-center gap-0.5 text-[13px] text-muted-foreground">
                           <GenderSymbol gender={myGender} />
                           {myName} 일지
                         </p>
-                        <span className="text-2xl font-bold" style={getBranchColor(fullReport.branchComp.myBranch)}>{fullReport.branchComp.myBranch}</span>
-                        <div className="ds-inline-detail-nested mt-2 space-y-1 p-2.5 text-left">
-                          <p className="text-[13px] font-semibold text-muted-foreground">관계 키워드</p>
-                          <p className="text-sm text-foreground">{fullReport.branchComp.myPalaceTitle.split("—")[0]}</p>
-                        </div>
+                        <span className="text-2xl font-bold" style={getBranchColor(fullReport.branchComp.myBranch)}>
+                          {fullReport.branchComp.myBranch}{charToElement(fullReport.branchComp.myBranch) ?? ""}
+                        </span>
                     </div>
                     <div className="text-center">
                       <span className="text-lg text-muted-foreground">↔</span>
@@ -1398,16 +1406,14 @@ export default function Compatibility() {
                         <p className="mt-1 text-[13px] text-muted-foreground">무관계</p>
                       )}
                     </div>
-                    <div className="flex-1 rounded-xl border px-3 py-3 text-center" style={getElCardStyle(charToElement(fullReport.branchComp.otherBranch))}>
+                    <div className="flex-1 rounded-xl border px-3 py-3 text-center" style={getElCardStyleLite(charToElement(fullReport.branchComp.otherBranch))}>
                         <p className="inline-flex w-full items-center justify-center gap-0.5 text-[13px] text-muted-foreground">
                           <GenderSymbol gender={otherGender} />
                           {otherName} 일지
                         </p>
-                        <span className="text-2xl font-bold" style={getBranchColor(fullReport.branchComp.otherBranch)}>{fullReport.branchComp.otherBranch}</span>
-                        <div className="ds-inline-detail-nested mt-2 space-y-1 p-2.5 text-left">
-                          <p className="text-[13px] font-semibold text-muted-foreground">관계 키워드</p>
-                          <p className="text-sm text-foreground">{fullReport.branchComp.otherPalaceTitle.split("—")[0]}</p>
-                        </div>
+                        <span className="text-2xl font-bold" style={getBranchColor(fullReport.branchComp.otherBranch)}>
+                          {fullReport.branchComp.otherBranch}{charToElement(fullReport.branchComp.otherBranch) ?? ""}
+                        </span>
                     </div>
                   </div>
                   <div className="ds-inline-detail-nested flex items-center gap-2">
