@@ -70,7 +70,7 @@ function MiniPersonCard({
   const dayText = dayHangul && dayHangul.length >= 2 ? `${dayHangul[0]}${dayHangul[1]}일주` : "일주 정보 없음";
   return (
     <div className="ds-inline-detail-nested flex-1 min-w-0 p-3">
-      <div className="flex items-center gap-3">
+      <div className="flex flex-col items-center gap-2 text-center sm:flex-row sm:items-center sm:gap-3 sm:text-left">
         <div className="h-12 w-12 shrink-0 overflow-hidden rounded-full border border-border bg-background flex items-center justify-center">
           {zodiac ? (
             <img src={zodiac.src} alt={zodiac.label} className="h-full w-full object-cover" />
@@ -80,7 +80,7 @@ function MiniPersonCard({
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{title}</p>
-          <div className="mt-1 flex items-center gap-1.5 min-w-0">
+          <div className="mt-1 flex items-center justify-center gap-1.5 min-w-0 sm:justify-start">
             <p className="truncate text-[15px] font-extrabold text-foreground">{name}</p>
             <GenderSymbol gender={gender} />
           </div>
@@ -88,8 +88,8 @@ function MiniPersonCard({
         </div>
       </div>
 
-      <div className="mt-3">
-        <div className="ds-segment-list min-h-9 rounded-xl border border-border shadow-none">
+      <div className="mt-3 w-full">
+        <div className="ds-segment-list min-h-9 rounded-xl border border-border shadow-none w-full">
           {(["포함", "제외"] as const).map((m) => (
             <button
               key={m}
@@ -100,7 +100,7 @@ function MiniPersonCard({
                 hourMode === m ? "ds-segment-item-active" : "ds-segment-item-inactive",
               )}
             >
-              사주 {m}
+              시주 {m}
             </button>
           ))}
         </div>
@@ -695,35 +695,36 @@ export default function Compatibility() {
   const otherGender = p2?.birthInput.gender ?? "";
 
   // ── 배우자궁·관성 레이어 데이터 ──
-  const myPillarsFull = p1 ? getFinalPillars(p1) : null;
+  // 시주 포함/제외 토글에 맞춰 표시/해석도 함께 변하도록 effective record 기준 사용
+  const myPillarsFull = ep1 ? getFinalPillars(ep1) : null;
   const myDayBranch2 = myPillarsFull?.day?.hangul?.[1] ?? "";
   const myDayStem2   = myPillarsFull?.day?.hangul?.[0] ?? "";
   const mySpousePalace = myDayBranch2 ? getSpousePalaceInfo(myDayBranch2) : null;
-  const myLC = p1 ? calculateLuckCycles(p1.birthInput, p1.profile.computedPillars) : null;
-  const myMarriageTiming = (p1 && myDayStem2 && myLC && myLC.daewoon.length > 0)
-    ? getMarriageTimingHint(p1.birthInput.gender as "남" | "여", myDayStem2, myLC.daewoon)
+  const myLC = ep1 ? calculateLuckCycles(ep1.birthInput, ep1.profile.computedPillars) : null;
+  const myMarriageTiming = (ep1 && myDayStem2 && myLC && myLC.daewoon.length > 0)
+    ? getMarriageTimingHint(ep1.birthInput.gender as "남" | "여", myDayStem2, myLC.daewoon)
     : null;
 
-  const otherPillarsFull = p2 ? getFinalPillars(p2) : null;
+  const otherPillarsFull = ep2 ? getFinalPillars(ep2) : null;
   const otherDayBranch2 = otherPillarsFull?.day?.hangul?.[1] ?? "";
   const otherDayStem2   = otherPillarsFull?.day?.hangul?.[0] ?? "";
   const otherSpousePalace = otherDayBranch2 ? getSpousePalaceInfo(otherDayBranch2) : null;
-  const otherLC = p2
-    ? calculateLuckCycles(p2.birthInput, p2.profile.computedPillars)
+  const otherLC = ep2
+    ? calculateLuckCycles(ep2.birthInput, ep2.profile.computedPillars)
     : null;
-  const otherMarriageTiming = (p2 && otherDayStem2 && otherLC && otherLC.daewoon.length > 0)
-    ? getMarriageTimingHint(p2.birthInput.gender as "남" | "여", otherDayStem2, otherLC.daewoon)
+  const otherMarriageTiming = (ep2 && otherDayStem2 && otherLC && otherLC.daewoon.length > 0)
+    ? getMarriageTimingHint(ep2.birthInput.gender as "남" | "여", otherDayStem2, otherLC.daewoon)
     : null;
 
   // ── 동적 궁합 — 현재 운 흐름 ──────────────────────────────────────
   const now = useMemo(() => new Date(), []);
   const flowA = useMemo(
-    () => (p1 ? computePersonCurrentFlow(p1, now) : null),
-    [p1, now],
+    () => (ep1 ? computePersonCurrentFlow(ep1, now) : null),
+    [ep1, now],
   );
   const flowB = useMemo(
-    () => (p2 ? computePersonCurrentFlow(p2, now) : null),
-    [p2, now],
+    () => (ep2 ? computePersonCurrentFlow(ep2, now) : null),
+    [ep2, now],
   );
   const combinedFlow = useMemo(
     () =>
@@ -829,7 +830,7 @@ export default function Compatibility() {
           )}
 
           {result && p1 && p2 && palette && fullReport && (() => {
-            const myPillarsForZodiac = p1 ? getFinalPillars(p1) : null;
+            const myPillarsForZodiac = ep1 ? getFinalPillars(ep1) : null;
             const myZodiac = getZodiacFromDayPillar(myPillarsForZodiac?.day?.hangul ?? "");
             const otherZodiac = getZodiacFromDayPillar(otherPillarsFull?.day?.hangul ?? "");
             return (
@@ -1336,8 +1337,8 @@ export default function Compatibility() {
                   <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-2">사주 비교</p>
                   <div className="grid grid-cols-2 gap-3">
                     {[
-                      { record: p1!, label: myName, gender: myGender },
-                      { record: p2!, label: otherName, gender: otherGender },
+                      { record: ep1!, label: myName, gender: myGender },
+                      { record: ep2!, label: otherName, gender: otherGender },
                     ].map(({ record, label, gender }) => {
                       const p = getFinalPillars(record);
                       return (
