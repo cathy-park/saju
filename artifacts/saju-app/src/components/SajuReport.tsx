@@ -662,13 +662,13 @@ function PillarTable({
 
 // ── Five-element pentagon diagram ────────────────────────────────
 
-/** 오행도 원 하단 채움 — 디자인 스펙 파스텔(과도한 채도 방지) */
+/** 오행도 원 하단 채움 — 베이스 파스텔에서 약 10% 진하게(원색→검정 10% 블렌드) */
 const ELEMENT_PENTAGON_FILL: Record<FiveElKey, string> = {
-  수: "#DFEDF5",
-  목: "#E1F4E9",
-  화: "#FAE2E0",
-  토: "#F8EDD2",
-  금: "#E8EAED",
+  수: "#C9D5DD",
+  목: "#CBDCD2",
+  화: "#E1CBCA",
+  토: "#DFD5BD",
+  금: "#D1D3D5",
 };
 
 function FiveElementSection({
@@ -779,9 +779,8 @@ function FiveElementSection({
           const fillH = count > 0 ? Math.max(fillHRaw, 4) : 0;
           const fillY = y + NODE_R - fillH;
           const isPrimary = el === primaryEl;
-          const stroke = isPrimary
-            ? elementHslAlpha(el, "base", 0.4)
-            : "hsl(var(--border))";
+          /* 대표 원 테두리 = 십성 분포 뱃지·% 글자색과 동일(--element-*-strong) */
+          const stroke = isPrimary ? elementColorVar(el, "strong") : "hsl(var(--border))";
           return (
             <g key={el}>
               <circle
