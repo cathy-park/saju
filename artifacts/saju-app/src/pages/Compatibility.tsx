@@ -227,7 +227,10 @@ function ElementMirror({ name1, el1, dayStem1, name2, el2 }: {
         return (
           <div
             key={el}
-            className={`flex items-center gap-1 py-0.5 px-1 rounded-lg transition-colors ${isEmphasis ? "bg-amber-50" : ""}`}
+            className={cn(
+              "flex items-center gap-1 py-0.5 px-1 rounded-lg transition-colors",
+              isEmphasis && "bg-muted/25 ring-1 ring-border/60",
+            )}
           >
             {/* Left person — bars extend LEFT (right-aligned) */}
             <div className="flex-1 flex items-center justify-end gap-1.5">
@@ -299,10 +302,17 @@ function AccSection({
 
 function BulletRow({ text, positive }: { text: string; positive: boolean }) {
   return (
-    <div className={`flex items-start gap-2 text-[13px] rounded-lg px-3 py-2 ${positive ? "bg-emerald-50 text-emerald-900" : "bg-orange-50 text-orange-900"}`}>
-      {positive
-        ? <CheckCircle className="h-3.5 w-3.5 text-emerald-500 shrink-0 mt-0.5" />
-        : <XCircle className="h-3.5 w-3.5 text-orange-400 shrink-0 mt-0.5" />}
+    <div
+      className={cn(
+        "ds-inline-detail-nested flex items-start gap-2 text-[13px] text-foreground",
+        positive ? "border-l-2 border-l-emerald-500" : "border-l-2 border-l-orange-400",
+      )}
+    >
+      {positive ? (
+        <CheckCircle className="h-3.5 w-3.5 text-emerald-600 shrink-0 mt-0.5" />
+      ) : (
+        <XCircle className="h-3.5 w-3.5 text-orange-500 shrink-0 mt-0.5" />
+      )}
       <span>{text}</span>
     </div>
   );
@@ -348,11 +358,12 @@ function PeopleTabSelector({
         <button
           key={p.id}
           onClick={() => onSelect(p)}
-          className={`text-[13px] px-3 py-1.5 rounded-full border font-medium transition-colors ${
+          className={cn(
+            "text-[13px] px-3 py-1.5 rounded-full border font-medium transition-colors",
             selectedPerson?.id === p.id
-              ? "bg-foreground text-background border-foreground"
-              : "bg-card text-foreground border-border hover:border-muted-foreground/40"
-          }`}
+              ? "border border-primary bg-primary/[0.06] text-foreground"
+              : "border border-border bg-card text-foreground hover:border-muted-foreground/40",
+          )}
         >
           {p.birthInput.name}
         </button>
@@ -384,11 +395,12 @@ function PairSelector({
           <button
             key={p.id}
             onClick={() => onSelect(p)}
-            className={`text-[13px] px-3 py-1.5 rounded-full border font-medium transition-colors ${
+            className={cn(
+              "text-[13px] px-3 py-1.5 rounded-full border font-medium transition-colors",
               selected?.id === p.id
-                ? "bg-foreground text-background border-foreground"
-                : "bg-card text-foreground border-border hover:border-muted-foreground/40"
-            }`}
+                ? "border border-primary bg-primary/[0.06] text-foreground"
+                : "border border-border bg-card text-foreground hover:border-muted-foreground/40",
+            )}
           >
             {p.birthInput.name}
           </button>
@@ -524,7 +536,7 @@ export default function Compatibility() {
   const canUsePairMode = people.length >= 2;
 
   return (
-    <div className="max-w-lg mx-auto px-4 py-6 space-y-4">
+    <div className="ds-app-shell px-4 py-6 space-y-4">
       <div>
         <h1 className="text-xl font-bold text-foreground">궁합</h1>
         {mode === "me_other"
@@ -655,73 +667,150 @@ export default function Compatibility() {
             return (
             <div className="space-y-4">
 
-              {/* ── A. 종합 요약 (result.finalType → palette 단일 출처) ── */}
+              {/* ── 요약: 궁합 점수 Hero ── */}
               <div
-                className="ds-card border p-5"
+                className="ds-card border p-5 shadow-none"
                 style={{ background: palette.cardBg, borderColor: palette.border }}
               >
-                <div className="flex items-center gap-4">
-                  <div className="flex flex-col items-center shrink-0">
-                    <ScoreArc score={result.score} accentColor={palette.strong} />
-                  </div>
-                  <div className="flex-1">
-                    <div className="mb-1.5 flex items-center gap-2">
-                      <span
-                        className="inline-flex items-center font-bold text-[15px] px-3 py-1 rounded-full border"
-                        style={{
-                          background: palette.pastel,
-                          borderColor: palette.border,
-                          color: palette.badgeText,
-                        }}
-                      >
-                        {result.finalType}
-                      </span>
-                      <button
-                        onClick={() => setShowInfoSheet(true)}
-                        className="w-5 h-5 rounded-full border border-muted-foreground/40 text-muted-foreground text-[11px] font-bold leading-none flex items-center justify-center hover:bg-muted/60 transition-colors shrink-0"
-                        aria-label="점수 계산 기준 보기"
-                      >
-                        i
-                      </button>
+                <p className="text-center text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-3">
+                  궁합 점수
+                </p>
+                <ScoreArc score={result.score} accentColor={palette.strong} />
+                <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+                  <span
+                    className="inline-flex items-center rounded-full border px-3 py-1 text-[14px] font-bold"
+                    style={{
+                      background: palette.pastel,
+                      borderColor: palette.border,
+                      color: palette.badgeText,
+                    }}
+                  >
+                    {result.finalType}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowInfoSheet(true)}
+                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-border text-[11px] font-bold text-muted-foreground hover:bg-muted/60"
+                    aria-label="점수 계산 기준 보기"
+                  >
+                    i
+                  </button>
+                </div>
+                <p className="mt-4 text-center text-[15px] font-semibold leading-relaxed text-foreground">
+                  {result.summary}
+                </p>
+              </div>
+
+              {/* ── 천간 → 지지 (점수 바로 아래) ── */}
+              <div className="ds-card overflow-hidden shadow-none">
+                <div className="border-b border-border bg-muted/20 px-4 py-3">
+                  <h2 className="text-sm font-bold text-foreground">천간 · 지지 관계</h2>
+                  <p className="mt-0.5 text-[11px] text-muted-foreground">두 사주의 천간 합충과 지지 교차를 요약합니다</p>
+                </div>
+                <div className="space-y-4 p-4">
+                  <div>
+                    <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">천간 관계</p>
+                    <div className="ds-inline-detail-nested space-y-2">
+                      <p className="text-[13px] leading-relaxed text-foreground">
+                        {fullReport.stemHarmony.overallDesc}
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {fullReport.stemHarmony.combines.map((c, i) => (
+                          <span
+                            key={`c-${i}`}
+                            className="ds-badge border-emerald-200/60 bg-emerald-500/10 text-[12px] font-semibold text-emerald-800 shadow-none"
+                          >
+                            합 {c}
+                          </span>
+                        ))}
+                        {fullReport.stemHarmony.clashes.map((c, i) => (
+                          <span
+                            key={`x-${i}`}
+                            className="ds-badge border-red-200/60 bg-red-500/10 text-[12px] font-semibold text-red-800 shadow-none"
+                          >
+                            충 {c}
+                          </span>
+                        ))}
+                        {fullReport.stemHarmony.combines.length === 0 &&
+                          fullReport.stemHarmony.clashes.length === 0 && (
+                            <span className="text-[12px] text-muted-foreground">특별한 천간 합충 관계가 없습니다</span>
+                          )}
+                      </div>
                     </div>
-                    <p className="text-[13px] text-muted-foreground leading-relaxed mt-1">
-                      {fullReport.toneDesc}
-                    </p>
+                  </div>
+                  <div>
+                    <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">지지 관계</p>
+                    <div className="ds-inline-detail-nested space-y-2">
+                      <p className="text-[13px] leading-relaxed text-foreground">{fullReport.crossBranch.overallDesc}</p>
+                      <div className="space-y-1.5">
+                        {fullReport.crossBranch.positive.map((item, i) => (
+                          <div
+                            key={`p-${i}`}
+                            className="ds-inline-detail-nested flex items-start gap-2 border-l-2 border-l-emerald-500 text-[13px]"
+                          >
+                            <CheckCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600" />
+                            <span>{item.desc}</span>
+                          </div>
+                        ))}
+                        {fullReport.crossBranch.negative.map((item, i) => (
+                          <div
+                            key={`n-${i}`}
+                            className="ds-inline-detail-nested flex items-start gap-2 border-l-2 border-l-orange-400 text-[13px]"
+                          >
+                            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-orange-500" />
+                            <span>{item.desc}</span>
+                          </div>
+                        ))}
+                        {fullReport.crossBranch.positive.length === 0 &&
+                          fullReport.crossBranch.negative.length === 0 && (
+                            <p className="text-[13px] text-muted-foreground">두 차트 사이에 특별한 지지 관계가 없습니다</p>
+                          )}
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
 
               {/* ── 시주 제외 비교 점수 카드 ── */}
               {hasHourExcluded && resultBase && result && (
-                <div className="rounded-xl border border-violet-200 bg-violet-50/40 px-3 py-3 space-y-2">
-                  <p className="text-[11px] font-bold text-violet-600 uppercase tracking-wide">시주 포함/제외 점수 비교</p>
-                  <div className="flex items-center gap-3">
-                    <div className="flex-1 text-center rounded-xl border border-border bg-card py-2">
-                      <p className="text-[11px] text-muted-foreground mb-0.5">시주 포함</p>
+                <div className="rounded-xl border border-violet-200/80 bg-violet-50/35 p-3 shadow-none dark:border-violet-900/50 dark:bg-violet-950/20">
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">시주 포함/제외 점수 비교</p>
+                  <div className="mt-2 flex items-center gap-2">
+                    <div className="ds-inline-detail-nested flex-1 space-y-0 py-2 text-center">
+                      <p className="text-[11px] text-muted-foreground">시주 포함</p>
                       <p className="text-xl font-bold text-foreground">{resultBase.score}점</p>
                       <p className="text-[11px] text-muted-foreground">{resultBase.finalType}</p>
                     </div>
-                    <div className="text-center shrink-0">
+                    <div className="shrink-0 text-center px-1">
                       {result.score !== resultBase.score ? (
-                        <span className={`text-lg font-bold ${result.score > resultBase.score ? "text-emerald-600" : "text-rose-500"}`}>
-                          {result.score > resultBase.score ? `+${result.score - resultBase.score}` : result.score - resultBase.score}
+                        <span
+                          className={`text-lg font-bold ${result.score > resultBase.score ? "text-emerald-600" : "text-rose-500"}`}
+                        >
+                          {result.score > resultBase.score
+                            ? `+${result.score - resultBase.score}`
+                            : result.score - resultBase.score}
                         </span>
                       ) : (
                         <span className="text-sm text-muted-foreground">변화없음</span>
                       )}
                     </div>
-                    <div className="flex-1 text-center rounded-xl border border-violet-300 bg-violet-50 py-2">
-                      <p className="text-[11px] text-muted-foreground mb-0.5">
-                        {hourModeA === "제외" && hourModeB === "제외" ? "시주 모두 제외" : hourModeA === "제외" ? `${p1?.birthInput.name || "A"} 시주 제외` : `${p2?.birthInput.name || "B"} 시주 제외`}
+                    <div className="ds-inline-detail-nested flex-1 space-y-0 py-2 text-center">
+                      <p className="text-[11px] text-muted-foreground">
+                        {hourModeA === "제외" && hourModeB === "제외"
+                          ? "시주 모두 제외"
+                          : hourModeA === "제외"
+                            ? `${p1?.birthInput.name || "A"} 시주 제외`
+                            : `${p2?.birthInput.name || "B"} 시주 제외`}
                       </p>
-                      <p className="text-xl font-bold text-violet-700">{result.score}점</p>
+                      <p className="text-xl font-bold text-foreground">{result.score}점</p>
                       <p className="text-[11px] text-muted-foreground">{result.finalType}</p>
                     </div>
                   </div>
                   {result.finalType !== resultBase.finalType && (
-                    <p className="text-[12px] text-violet-700">
-                      시주 포함 시 <span className="font-bold">{resultBase.finalType}</span>에서 <span className="font-bold">{result.finalType}</span>으로 변합니다.
-                    </p>
+                    <div className="ds-inline-detail-nested mt-2 text-[12px] text-foreground">
+                      시주 포함 시 <span className="font-bold">{resultBase.finalType}</span>에서{" "}
+                      <span className="font-bold">{result.finalType}</span>으로 변합니다.
+                    </div>
                   )}
                 </div>
               )}
@@ -730,6 +819,86 @@ export default function Compatibility() {
                 buildText={() => buildCompatibilityClipboardText(p1!, p2!, result)}
                 label="궁합 분석 전체 복사"
               />
+
+              {/* ── 관계 구조 분석: 오행 + 십성 ── */}
+              <div className="ds-card overflow-hidden shadow-none">
+                <div className="border-b border-border bg-muted/20 px-4 py-3">
+                  <h2 className="text-sm font-bold text-foreground">관계 구조 분석</h2>
+                  <p className="mt-0.5 text-[11px] text-muted-foreground">오행 분포와 십성 작용을 비교합니다</p>
+                </div>
+                <div className="space-y-4 p-4">
+                  <div>
+                    <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">오행 궁합</p>
+                    <div className="ds-inline-detail-nested space-y-3">
+                      <ElementMirror
+                        name1={myName}
+                        el1={result.elementBalance.person1}
+                        dayStem1={myDayStem2}
+                        name2={otherName}
+                        el2={result.elementBalance.person2}
+                      />
+                      <p className="text-[13px] leading-relaxed text-foreground">{fullReport.elementComp.desc}</p>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">십성 궁합</p>
+                    <div className="ds-inline-detail-nested space-y-2">
+                      <p className="text-[13px] leading-relaxed text-foreground">
+                        {result.adjustmentSteps.find((s) => s.category === "십성 궁합")?.note ?? "십성 관계 정보가 없습니다."}
+                      </p>
+                      <div className="flex flex-wrap gap-2 border-t border-border/60 pt-2">
+                        {fullReport.stemRel.me2other && (
+                          <span
+                            className={cn("ds-badge text-[12px] font-bold shadow-none", getTenGodTw(fullReport.stemRel.me2other, myDayStem2))}
+                            style={getTenGodChipStyle(fullReport.stemRel.me2other, myDayStem2)}
+                          >
+                            {myName}→{otherName}: {fullReport.stemRel.me2other}
+                          </span>
+                        )}
+                        {fullReport.stemRel.other2me && (
+                          <span
+                            className={cn("ds-badge text-[12px] font-bold shadow-none", getTenGodTw(fullReport.stemRel.other2me, otherDayStem2))}
+                            style={getTenGodChipStyle(fullReport.stemRel.other2me, otherDayStem2)}
+                          >
+                            {otherName}→{myName}: {fullReport.stemRel.other2me}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* ── 관계 해석 ── */}
+              <div className="ds-card overflow-hidden shadow-none">
+                <div className="border-b border-border bg-muted/20 px-4 py-3">
+                  <h2 className="text-sm font-bold text-foreground">관계 해석</h2>
+                </div>
+                <div className="space-y-4 p-4">
+                  <div>
+                    <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">관계 특징 요약</p>
+                    <div className="ds-inline-detail-nested">
+                      <p className="text-[13px] leading-relaxed text-foreground">{fullReport.toneDesc}</p>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">관계 장점</p>
+                    <div className="space-y-2">
+                      {result.strengths.map((t, i) => (
+                        <BulletRow key={i} text={t} positive />
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">관계 주의점</p>
+                    <div className="space-y-2">
+                      {result.cautions.map((t, i) => (
+                        <BulletRow key={i} text={t} positive={false} />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
 
               {/* ── DEV: 점수 디버그 ── */}
               {import.meta.env.DEV && (() => {
@@ -746,199 +915,6 @@ export default function Compatibility() {
                   </div>
                 );
               })()}
-
-              {/* ── B. 핵심 포인트 3가지 (항상 표시) ── */}
-              <div className="grid grid-cols-3 gap-2">
-                {/* 일간 관계 */}
-                <div className="rounded-xl border border-border bg-card p-3 text-center">
-                  <p className="text-[11px] text-muted-foreground mb-1.5">일간 관계</p>
-                  <p className="text-[13px] font-bold text-foreground leading-tight">{fullReport.stemRel.label}</p>
-                  {fullReport.stemRel.me2other && (
-                    <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded mt-1.5 inline-block ${getTenGodTw(fullReport.stemRel.me2other, myDayStem2)}`} style={getTenGodChipStyle(fullReport.stemRel.me2other, myDayStem2)}>
-                      {fullReport.stemRel.me2other}
-                    </span>
-                  )}
-                </div>
-                {/* 배우자궁 */}
-                <div className="rounded-xl border border-border bg-card p-3 text-center">
-                  <p className="text-[11px] text-muted-foreground mb-1.5">배우자궁</p>
-                  <div className="flex items-center justify-center gap-1 mb-1">
-                    <span className="text-base font-bold" style={getBranchColor(fullReport.branchComp.myBranch)}>{fullReport.branchComp.myBranch}</span>
-                    <span className="text-muted-foreground text-sm">↔</span>
-                    <span className="text-base font-bold" style={getBranchColor(fullReport.branchComp.otherBranch)}>{fullReport.branchComp.otherBranch}</span>
-                  </div>
-                  <p className={`text-[11px] font-semibold ${REL_TONE_COLOR[fullReport.branchComp.tone] ?? "text-foreground"}`}>
-                    {fullReport.branchComp.tone}
-                  </p>
-                </div>
-                {/* 연애 스타일 */}
-                <div className="rounded-xl border border-border bg-card p-3 text-center">
-                  <p className="text-[11px] text-muted-foreground mb-1.5">스타일</p>
-                  <p className="text-[11px] font-bold text-foreground leading-tight">{fullReport.styleComp.person1Style}</p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5 leading-tight">{fullReport.styleComp.person2Style}</p>
-                </div>
-              </div>
-
-              {/* ── E. 현재 관계 흐름 (동적 궁합) ── */}
-              {flowA && flowB && combinedFlow && (
-                <AccSection
-                  title="현재 관계 흐름"
-                  icon={<Waves className="h-3.5 w-3.5 text-sky-500" />}
-                  defaultOpen={true}
-                >
-                  {/* 개인 흐름 — 2열 */}
-                  <div className="grid grid-cols-2 gap-2">
-                    {([
-                      { flow: flowA, gender: myGender },
-                      { flow: flowB, gender: otherGender },
-                    ] as const).map(({ flow, gender }) => (
-                      <div key={flow.name} className="rounded-xl border border-border bg-card p-3 space-y-1">
-                        <div className="flex items-center justify-between mb-1.5">
-                          <span className="text-[12px] font-bold text-foreground inline-flex items-center gap-0.5">
-                            <GenderSymbol gender={gender} />{flow.name}
-                          </span>
-                          <span className={`text-[11px] font-semibold px-1.5 py-0.5 rounded-full ${OPEN_BADGE[flow.flowOpenness]}`}>
-                            {flow.flowLabel}
-                          </span>
-                        </div>
-                        {flow.daywoon && (
-                          <FlowRow label="대운" gz={flow.daywoon.ganZhi} tg={flow.daywoonTenGod} />
-                        )}
-                        <FlowRow label="세운" gz={flow.sewoon} tg={flow.sewoonTenGod} />
-                        <FlowRow label="월운" gz={flow.wolwoon} tg={flow.wolwoonTenGod} />
-                        <FlowRow label="일운" gz={flow.ilwoon} tg={flow.ilwoonTenGod} />
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* 개인 해석 */}
-                  <div className="grid grid-cols-2 gap-2">
-                    {([
-                      { flow: flowA, gender: myGender },
-                      { flow: flowB, gender: otherGender },
-                    ] as const).map(({ flow, gender }) => (
-                      <div key={flow.name} className="rounded-xl border border-border bg-muted/10 p-3 space-y-2">
-                        <p className="text-[12px] font-bold text-foreground inline-flex items-center gap-0.5">
-                          <GenderSymbol gender={gender} />{flow.name}의 현재 흐름
-                        </p>
-                        <div className="space-y-1.5">
-                          <div>
-                            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-0.5">감정</p>
-                            <p className="text-[12px] text-foreground leading-snug">{flow.emotionalTendency}</p>
-                          </div>
-                          <div>
-                            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-0.5">관계</p>
-                            <p className="text-[12px] text-foreground leading-snug">{flow.relationshipTendency}</p>
-                          </div>
-                          <div>
-                            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-0.5">소통</p>
-                            <p className="text-[12px] text-foreground leading-snug">{flow.communicationTendency}</p>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* 결합 흐름 */}
-                  <div className="rounded-xl border border-sky-200 bg-sky-50/40 p-3 space-y-2">
-                    <div className="flex items-center gap-2">
-                      <p className="text-[12px] font-bold text-foreground">둘의 현재 결합 흐름</p>
-                      <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${ALIGN_BADGE[combinedFlow.alignmentType]}`}>
-                        {combinedFlow.alignmentType}
-                      </span>
-                    </div>
-                    <p className="text-[13px] text-foreground leading-relaxed">{combinedFlow.alignmentDesc}</p>
-                    <p className="text-[12px] text-muted-foreground leading-relaxed">{combinedFlow.staticModifier}</p>
-                  </div>
-
-                  {/* 오늘의 관계 흐름 */}
-                  <div className={`rounded-xl border p-3 ${TODAY_CARD_COLORS[combinedFlow.todayLevel]}`}>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">오늘의 관계 흐름</p>
-                    <p className={`text-[14px] font-semibold leading-snug ${TODAY_TEXT_COLORS[combinedFlow.todayLevel]}`}>
-                      {combinedFlow.todaySummary}
-                    </p>
-                  </div>
-
-                  <p className="text-[11px] text-muted-foreground/60 leading-relaxed">
-                    ※ 운 흐름은 규칙 기반 간략 추정으로, 절대적 예언이 아닙니다.
-                  </p>
-                </AccSection>
-              )}
-
-              {/* ── B2. 배우자궁·관성 레이어 (접기/참고 지표) ── */}
-              <AccSection
-                title="배우자 성향 · 관계운 레이어"
-                icon={<Heart className="h-3.5 w-3.5 text-violet-500" />}
-                defaultOpen={false}
-              >
-                <p className="text-[12px] text-muted-foreground leading-relaxed -mt-1">
-                  궁합 점수와 <span className="font-semibold text-foreground">별개</span>로, 각자의 원국이 담고 있는 배우자 성향과 관계운 흐름을 보여줍니다.
-                </p>
-
-                {/* ① 원국 배우자 성향 */}
-                <div>
-                  <p className="text-[11px] font-bold text-violet-500 uppercase tracking-widest mb-2">① 원국 배우자 성향</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    {[
-                      { name: myName, gender: myGender, branch: myDayBranch2, palace: mySpousePalace },
-                      { name: otherName, gender: otherGender, branch: otherDayBranch2, palace: otherSpousePalace },
-                    ].map(({ name, gender, branch, palace }) => (
-                      <div key={name} className="rounded-xl border border-border bg-card p-3">
-                        <div className="flex items-center gap-1.5 mb-1.5">
-                          <span className="text-[12px] font-semibold text-muted-foreground inline-flex items-center gap-0.5">
-                            <GenderSymbol gender={gender} />{name}
-                          </span>
-                          {branch && (
-                            <span
-                              className="text-sm font-bold bg-muted px-1.5 py-0.5 rounded"
-                              style={getBranchColor(branch)}
-                            >
-                              {branch}
-                            </span>
-                          )}
-                        </div>
-                        {palace ? (
-                          <>
-                            <p className="text-[12px] font-bold text-foreground leading-snug mb-1">
-                              {palace.title.split("—")[1]?.trim() ?? palace.element}
-                            </p>
-                            <p className="text-[12px] text-muted-foreground leading-relaxed">{palace.summary}</p>
-                          </>
-                        ) : (
-                          <p className="text-[12px] text-muted-foreground">정보 없음</p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* ② 결혼 적합 시기 힌트 */}
-                {(myMarriageTiming || otherMarriageTiming) && (
-                  <div>
-                    <p className="text-[11px] font-bold text-violet-500 uppercase tracking-widest mb-2">② 결혼 적합 시기 힌트</p>
-                    <div className="space-y-2">
-                      {[
-                        { name: myName, gender: myGender, timing: myMarriageTiming },
-                        { name: otherName, gender: otherGender, timing: otherMarriageTiming },
-                      ]
-                        .filter(({ timing }) => timing)
-                        .map(({ name, gender, timing }) => (
-                          <div key={name} className="rounded-xl bg-muted/20 border border-border px-3 py-2.5">
-                            <p className="text-[12px] font-semibold text-foreground mb-1 inline-flex items-center gap-0.5">
-                              <GenderSymbol gender={gender} />{name}
-                            </p>
-                            <p className="text-[12px] text-muted-foreground leading-relaxed">{timing!.daewoonHint}</p>
-                            <p className="text-[11px] text-muted-foreground/70 mt-1 leading-relaxed">{timing!.general}</p>
-                          </div>
-                        ))}
-                    </div>
-                  </div>
-                )}
-
-                <p className="text-[11px] text-muted-foreground/60 leading-relaxed border-t border-border pt-2.5">
-                  * 궁합은 운명이 아닙니다. 두 원국 구조가 어떻게 상호작용하는 경향이 있는지를 보여주는 참고 정보입니다.
-                </p>
-              </AccSection>
 
               {/* ── F. 상세 분석 (접기) ── */}
               <AccSection
@@ -978,9 +954,9 @@ export default function Compatibility() {
                 {/* 일간 관계 상세 */}
                 <div>
                   <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-2">일간 관계 상세</p>
-                  <div className="rounded-xl bg-muted/20 border border-border px-3 py-2.5 mb-2">
-                    <p className="text-[13px] font-semibold text-muted-foreground mb-1">{fullReport.stemRel.label}</p>
-                    <p className="text-sm">{fullReport.stemRel.desc}</p>
+                  <div className="ds-inline-detail-nested mb-2 space-y-1">
+                    <p className="text-[13px] font-semibold text-muted-foreground">{fullReport.stemRel.label}</p>
+                    <p className="text-sm leading-relaxed text-foreground">{fullReport.stemRel.desc}</p>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     {[
@@ -1001,18 +977,20 @@ export default function Compatibility() {
                         bodyLabel: `${otherName}에게 ${myName}${ptcl(myName, "은", "는")}`,
                       },
                     ].map(({ from, tg, tgDayStem, desc, sectionTitle, bodyLabel }) => (
-                      <div key={from} className="rounded-xl border border-border bg-muted/10 p-2.5">
-                        <p className="text-[12px] font-bold text-foreground mb-2 leading-tight">{sectionTitle}</p>
+                      <div key={from} className="ds-inline-detail-nested space-y-1.5 p-2.5">
+                        <p className="text-[12px] font-bold leading-tight text-foreground">{sectionTitle}</p>
                         {tg ? (
                           <>
-                            <p className="text-[12px] text-muted-foreground mb-1.5">{bodyLabel}</p>
-                            <div className="flex items-center gap-1.5 mb-1.5">
-                              <span className={`text-[13px] font-bold px-2 py-0.5 rounded-full ${getTenGodTw(tg, tgDayStem ?? "")}`} style={getTenGodChipStyle(tg, tgDayStem ?? "")}>{tg}</span>
+                            <p className="text-[12px] text-muted-foreground">{bodyLabel}</p>
+                            <div className="flex items-center gap-1.5">
+                              <span className={cn("ds-badge text-[13px] font-bold shadow-none", getTenGodTw(tg, tgDayStem ?? ""))} style={getTenGodChipStyle(tg, tgDayStem ?? "")}>{tg}</span>
                               <span className="text-[12px] text-muted-foreground">관계로 느껴집니다</span>
                             </div>
-                            <p className="text-[12px] text-muted-foreground leading-relaxed">{desc}</p>
+                            <p className="text-[12px] leading-relaxed text-muted-foreground">{desc}</p>
                           </>
-                        ) : <span className="text-[13px] text-muted-foreground">해당 없음</span>}
+                        ) : (
+                          <span className="text-[13px] text-muted-foreground">해당 없음</span>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -1021,97 +999,49 @@ export default function Compatibility() {
                 {/* 배우자궁 비교 */}
                 <div>
                   <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-2">배우자궁 비교</p>
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="flex-1 text-center rounded-xl border p-2.5" style={getElCardStyle(charToElement(fullReport.branchComp.myBranch))}>
-                      <p className="text-[13px] text-muted-foreground mb-1 inline-flex items-center gap-0.5 justify-center w-full">
-                        <GenderSymbol gender={myGender} />{myName} 일지
-                      </p>
-                      <span className="text-2xl font-bold" style={getBranchColor(fullReport.branchComp.myBranch)}>{fullReport.branchComp.myBranch}</span>
-                      <p className="text-[13px] text-muted-foreground mt-1 leading-tight">{fullReport.branchComp.myPalaceTitle.split("—")[0]}</p>
+                  <div className="mb-2 flex items-center gap-3">
+                    <div className="flex-1 rounded-xl border p-2" style={getElCardStyle(charToElement(fullReport.branchComp.myBranch))}>
+                      <div className="ds-inline-detail-nested space-y-1 py-2 text-center">
+                        <p className="inline-flex w-full items-center justify-center gap-0.5 text-[13px] text-muted-foreground">
+                          <GenderSymbol gender={myGender} />
+                          {myName} 일지
+                        </p>
+                        <span className="text-2xl font-bold" style={getBranchColor(fullReport.branchComp.myBranch)}>{fullReport.branchComp.myBranch}</span>
+                        <p className="text-[13px] leading-tight text-muted-foreground">{fullReport.branchComp.myPalaceTitle.split("—")[0]}</p>
+                      </div>
                     </div>
                     <div className="text-center">
-                      <span className="text-muted-foreground text-lg">↔</span>
+                      <span className="text-lg text-muted-foreground">↔</span>
                       {fullReport.branchComp.relations.length > 0 ? (
-                        <div className="flex flex-col gap-0.5 mt-1">
+                        <div className="mt-1 flex flex-col gap-0.5">
                           {fullReport.branchComp.relations.map((r, i) => (
-                            <span key={i} className="text-[13px] font-bold bg-muted px-1.5 py-0.5 rounded">{r}</span>
+                            <span key={i} className="rounded bg-muted px-1.5 py-0.5 text-[13px] font-bold">{r}</span>
                           ))}
                         </div>
-                      ) : <p className="text-[13px] text-muted-foreground mt-1">무관계</p>}
+                      ) : (
+                        <p className="mt-1 text-[13px] text-muted-foreground">무관계</p>
+                      )}
                     </div>
-                    <div className="flex-1 text-center rounded-xl border p-2.5" style={getElCardStyle(charToElement(fullReport.branchComp.otherBranch))}>
-                      <p className="text-[13px] text-muted-foreground mb-1 inline-flex items-center gap-0.5 justify-center w-full">
-                        <GenderSymbol gender={otherGender} />{otherName} 일지
-                      </p>
-                      <span className="text-2xl font-bold" style={getBranchColor(fullReport.branchComp.otherBranch)}>{fullReport.branchComp.otherBranch}</span>
-                      <p className="text-[13px] text-muted-foreground mt-1 leading-tight">{fullReport.branchComp.otherPalaceTitle.split("—")[0]}</p>
+                    <div className="flex-1 rounded-xl border p-2" style={getElCardStyle(charToElement(fullReport.branchComp.otherBranch))}>
+                      <div className="ds-inline-detail-nested space-y-1 py-2 text-center">
+                        <p className="inline-flex w-full items-center justify-center gap-0.5 text-[13px] text-muted-foreground">
+                          <GenderSymbol gender={otherGender} />
+                          {otherName} 일지
+                        </p>
+                        <span className="text-2xl font-bold" style={getBranchColor(fullReport.branchComp.otherBranch)}>{fullReport.branchComp.otherBranch}</span>
+                        <p className="text-[13px] leading-tight text-muted-foreground">{fullReport.branchComp.otherPalaceTitle.split("—")[0]}</p>
+                      </div>
                     </div>
                   </div>
-                  <div className={`rounded-xl border px-3 py-2 flex items-center gap-2`}>
-                    <span className={`text-[13px] font-semibold shrink-0 ${REL_TONE_COLOR[fullReport.branchComp.tone] ?? "text-foreground"}`}>
+                  <div className="ds-inline-detail-nested flex items-center gap-2">
+                    <span className={cn("shrink-0 text-[13px] font-semibold", REL_TONE_COLOR[fullReport.branchComp.tone] ?? "text-foreground")}>
                       {fullReport.branchComp.tone}
                     </span>
-                    <p className="text-sm">{fullReport.branchComp.desc}</p>
+                    <p className="text-sm text-foreground">{fullReport.branchComp.desc}</p>
                   </div>
-                  <div className="rounded-xl bg-muted/20 border border-border px-3 py-2 mt-2">
-                    <p className="text-[13px] font-semibold text-muted-foreground mb-1">관계 안정도</p>
-                    <p className="text-sm">{fullReport.branchComp.stability}</p>
-                  </div>
-                </div>
-
-                {/* 천간 관계 */}
-                <div>
-                  <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-2">천간 관계</p>
-                  <p className="text-sm mb-2">{fullReport.stemHarmony.overallDesc}</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {fullReport.stemHarmony.combines.map((c, i) => (
-                      <span key={i} className="text-[13px] bg-green-50 text-green-800 border border-green-200 px-2 py-0.5 rounded-full font-medium">
-                        합 {c}
-                      </span>
-                    ))}
-                    {fullReport.stemHarmony.clashes.map((c, i) => (
-                      <span key={i} className="text-[13px] bg-red-50 text-red-700 border border-red-200 px-2 py-0.5 rounded-full font-medium">
-                        충 {c}
-                      </span>
-                    ))}
-                    {fullReport.stemHarmony.combines.length === 0 && fullReport.stemHarmony.clashes.length === 0 && (
-                      <p className="text-[13px] text-muted-foreground">특별한 천간 합충 관계가 없습니다</p>
-                    )}
-                  </div>
-                </div>
-
-                {/* 지지 관계 */}
-                <div>
-                  <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-2">지지 관계</p>
-                  <p className="text-sm mb-2">{fullReport.crossBranch.overallDesc}</p>
-                  <div className="space-y-1.5">
-                    {fullReport.crossBranch.positive.map((item, i) => (
-                      <div key={i} className="flex items-start gap-2 text-[13px] bg-green-50 rounded px-2 py-1.5">
-                        <CheckCircle className="h-3 w-3 text-green-600 shrink-0 mt-0.5" />
-                        <span>{item.desc}</span>
-                      </div>
-                    ))}
-                    {fullReport.crossBranch.negative.map((item, i) => (
-                      <div key={i} className="flex items-start gap-2 text-[13px] bg-orange-50 rounded px-2 py-1.5">
-                        <AlertTriangle className="h-3 w-3 text-orange-500 shrink-0 mt-0.5" />
-                        <span>{item.desc}</span>
-                      </div>
-                    ))}
-                    {fullReport.crossBranch.positive.length === 0 && fullReport.crossBranch.negative.length === 0 && (
-                      <p className="text-[13px] text-muted-foreground">두 차트 사이에 특별한 지지 관계가 없습니다</p>
-                    )}
-                  </div>
-                </div>
-
-                {/* 관계 에너지 구조 비교 */}
-                <div>
-                  <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-2">관계 에너지 구조 비교</p>
-                  <ElementMirror
-                    name1={myName} el1={result.elementBalance.person1} dayStem1={myDayStem2}
-                    name2={otherName} el2={result.elementBalance.person2}
-                  />
-                  <div className="rounded-xl bg-muted/20 border border-border px-3 py-2.5 mt-2">
-                    <p className="text-sm">{fullReport.elementComp.desc}</p>
+                  <div className="ds-inline-detail-nested mt-2 space-y-1">
+                    <p className="text-[13px] font-semibold text-muted-foreground">관계 안정도</p>
+                    <p className="text-sm text-foreground">{fullReport.branchComp.stability}</p>
                   </div>
                 </div>
 
@@ -1119,47 +1049,57 @@ export default function Compatibility() {
                 <div>
                   <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-2">연애 스타일</p>
                   <div className="grid grid-cols-2 gap-2 mb-2">
-                    <div className="rounded-xl border border-border bg-muted/10 px-3 py-2.5 text-center">
+                    <div className="ds-inline-detail-nested text-center">
                       <p className="text-[13px] text-muted-foreground inline-flex items-center gap-0.5 justify-center w-full">
                         <GenderSymbol gender={myGender} />{myName}
                       </p>
-                      <p className="text-sm font-bold text-foreground mt-1">{fullReport.styleComp.person1Style}</p>
+                      <p className="mt-1 text-sm font-bold text-foreground">{fullReport.styleComp.person1Style}</p>
                     </div>
-                    <div className="rounded-xl border border-border bg-muted/10 px-3 py-2.5 text-center">
+                    <div className="ds-inline-detail-nested text-center">
                       <p className="text-[13px] text-muted-foreground inline-flex items-center gap-0.5 justify-center w-full">
                         <GenderSymbol gender={otherGender} />{otherName}
                       </p>
-                      <p className="text-sm font-bold text-foreground mt-1">{fullReport.styleComp.person2Style}</p>
+                      <p className="mt-1 text-sm font-bold text-foreground">{fullReport.styleComp.person2Style}</p>
                     </div>
                   </div>
-                  <div className="rounded-xl bg-muted/20 border border-border px-3 py-2.5">
-                    <p className="text-sm">{fullReport.styleComp.dynamicsDesc}</p>
+                  <div className="ds-inline-detail-nested">
+                    <p className="text-sm leading-relaxed text-foreground">{fullReport.styleComp.dynamicsDesc}</p>
                   </div>
                 </div>
 
                 {/* 결혼 관점 */}
-                <div className="rounded-xl border border-violet-100 bg-violet-50/30 p-3">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-[13px] text-muted-foreground">관계 유형</span>
-                    <span className={`text-[13px] font-bold px-2.5 py-0.5 rounded-full bg-violet-100 ${fullReport.marriageView.typeColor}`}>
-                      {fullReport.marriageView.type}
-                    </span>
+                <div className="rounded-xl border border-violet-200/80 bg-violet-50/35 p-3 shadow-none dark:border-violet-900/40 dark:bg-violet-950/20">
+                  <div className="ds-inline-detail-nested space-y-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-[13px] text-muted-foreground">관계 유형</span>
+                      <span className={cn("ds-badge text-[13px] font-bold shadow-none", fullReport.marriageView.typeColor)}>
+                        {fullReport.marriageView.type}
+                      </span>
+                    </div>
+                    <p className="text-sm leading-relaxed text-foreground">{fullReport.marriageView.desc}</p>
                   </div>
-                  <p className="text-sm">{fullReport.marriageView.desc}</p>
                 </div>
 
                 {/* 세부 분석 */}
                 {result.details.length > 0 && (
-                  <div className="space-y-1.5">
+                  <div className="space-y-2">
                     <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">세부 분석</p>
                     {result.details.map((d, i) => (
-                      <div key={i} className={`flex items-start gap-3 rounded-lg p-2.5 ${d.isPositive ? "bg-green-50 border border-green-100" : "bg-orange-50 border border-orange-100"}`}>
-                        {d.isPositive
-                          ? <CheckCircle className="h-4 w-4 text-green-600 mt-0.5 shrink-0" />
-                          : <XCircle className="h-4 w-4 text-orange-500 mt-0.5 shrink-0" />}
+                      <div
+                        key={i}
+                        className={cn(
+                          "ds-inline-detail-nested flex items-start gap-3",
+                          d.isPositive ? "border-l-2 border-l-emerald-500" : "border-l-2 border-l-orange-400",
+                        )}
+                      >
+                        {d.isPositive ? (
+                          <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+                        ) : (
+                          <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-orange-500" />
+                        )}
                         <div>
-                          <p className="text-sm font-semibold">{d.title}</p>
-                          <p className="text-[13px] text-muted-foreground mt-0.5">{d.description}</p>
+                          <p className="text-sm font-semibold text-foreground">{d.title}</p>
+                          <p className="mt-0.5 text-[13px] text-muted-foreground">{d.description}</p>
                         </div>
                       </div>
                     ))}
@@ -1167,39 +1107,210 @@ export default function Compatibility() {
                 )}
               </AccSection>
 
-              {/* ── C. 잘 맞는 점 / 주의할 점 ── */}
-              <div className="space-y-2">
-                <div className="space-y-1.5">
-                  <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest px-0.5">잘 맞는 점</p>
-                  {fullReport.harmonyPoints.slice(0, 3).map((item, i) => (
-                    <BulletRow key={i} text={item} positive />
-                  ))}
+              {/* ── 현재 관계 흐름 (상세 이후) ── */}
+              {flowA && flowB && combinedFlow && (
+                <AccSection
+                  title="현재 관계 흐름"
+                  icon={<Waves className="h-3.5 w-3.5 text-sky-500" />}
+                  defaultOpen={true}
+                >
+                  <div className="grid grid-cols-2 gap-2">
+                    {([
+                      { flow: flowA, gender: myGender },
+                      { flow: flowB, gender: otherGender },
+                    ] as const).map(({ flow, gender }) => (
+                      <div key={flow.name} className="ds-inline-detail-nested space-y-1 p-3">
+                        <div className="mb-1.5 flex items-center justify-between">
+                          <span className="inline-flex items-center gap-0.5 text-[12px] font-bold text-foreground">
+                            <GenderSymbol gender={gender} />
+                            {flow.name}
+                          </span>
+                          <span className={cn("text-[11px] font-semibold px-1.5 py-0.5 rounded-full border border-border", OPEN_BADGE[flow.flowOpenness])}>
+                            {flow.flowLabel}
+                          </span>
+                        </div>
+                        {flow.daywoon && (
+                          <FlowRow label="대운" gz={flow.daywoon.ganZhi} tg={flow.daywoonTenGod} />
+                        )}
+                        <FlowRow label="세운" gz={flow.sewoon} tg={flow.sewoonTenGod} />
+                        <FlowRow label="월운" gz={flow.wolwoon} tg={flow.wolwoonTenGod} />
+                        <FlowRow label="일운" gz={flow.ilwoon} tg={flow.ilwoonTenGod} />
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    {([
+                      { flow: flowA, gender: myGender },
+                      { flow: flowB, gender: otherGender },
+                    ] as const).map(({ flow, gender }) => (
+                      <div key={flow.name} className="ds-inline-detail-nested space-y-2 p-3">
+                        <p className="inline-flex items-center gap-0.5 text-[12px] font-bold text-foreground">
+                          <GenderSymbol gender={gender} />
+                          {flow.name}의 현재 흐름
+                        </p>
+                        <div className="space-y-1.5">
+                          <div>
+                            <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">감정</p>
+                            <p className="text-[12px] leading-snug text-foreground">{flow.emotionalTendency}</p>
+                          </div>
+                          <div>
+                            <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">관계</p>
+                            <p className="text-[12px] leading-snug text-foreground">{flow.relationshipTendency}</p>
+                          </div>
+                          <div>
+                            <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">소통</p>
+                            <p className="text-[12px] leading-snug text-foreground">{flow.communicationTendency}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="rounded-xl border border-sky-200/80 bg-sky-50/35 p-3 shadow-none dark:border-sky-900/40 dark:bg-sky-950/20">
+                    <div className="ds-inline-detail-nested space-y-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-[12px] font-bold text-foreground">둘의 현재 결합 흐름</p>
+                        <span className={cn("text-[11px] font-semibold rounded-full border border-border px-2 py-0.5", ALIGN_BADGE[combinedFlow.alignmentType])}>
+                          {combinedFlow.alignmentType}
+                        </span>
+                      </div>
+                      <p className="text-[13px] leading-relaxed text-foreground">{combinedFlow.alignmentDesc}</p>
+                      <p className="text-[12px] leading-relaxed text-muted-foreground">{combinedFlow.staticModifier}</p>
+                    </div>
+                  </div>
+
+                  <div className={cn("rounded-xl border p-3 shadow-none", TODAY_CARD_COLORS[combinedFlow.todayLevel])}>
+                    <div className="ds-inline-detail-nested space-y-1.5">
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">오늘의 관계 흐름</p>
+                      <p className={cn("text-[14px] font-semibold leading-snug", TODAY_TEXT_COLORS[combinedFlow.todayLevel])}>
+                        {combinedFlow.todaySummary}
+                      </p>
+                    </div>
+                  </div>
+
+                  <p className="text-[11px] leading-relaxed text-muted-foreground/60">
+                    ※ 운 흐름은 규칙 기반 간략 추정으로, 절대적 예언이 아닙니다.
+                  </p>
+                </AccSection>
+              )}
+
+              <AccSection
+                title="배우자 성향 · 관계운 레이어"
+                icon={<Heart className="h-3.5 w-3.5 text-violet-500" />}
+                defaultOpen={false}
+              >
+                <p className="-mt-1 text-[12px] leading-relaxed text-muted-foreground">
+                  궁합 점수와 <span className="font-semibold text-foreground">별개</span>로, 각자의 원국이 담고 있는 배우자 성향과 관계운 흐름을 보여줍니다.
+                </p>
+
+                <div>
+                  <p className="mb-2 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">① 원국 배우자 성향</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      { name: myName, gender: myGender, branch: myDayBranch2, palace: mySpousePalace },
+                      { name: otherName, gender: otherGender, branch: otherDayBranch2, palace: otherSpousePalace },
+                    ].map(({ name, gender, branch, palace }) => (
+                      <div key={name} className="ds-inline-detail-nested space-y-1.5 p-3">
+                        <div className="mb-1.5 flex items-center gap-1.5">
+                          <span className="inline-flex items-center gap-0.5 text-[12px] font-semibold text-muted-foreground">
+                            <GenderSymbol gender={gender} />
+                            {name}
+                          </span>
+                          {branch && (
+                            <span className="rounded bg-muted px-1.5 py-0.5 text-sm font-bold" style={getBranchColor(branch)}>
+                              {branch}
+                            </span>
+                          )}
+                        </div>
+                        {palace ? (
+                          <>
+                            <p className="mb-1 text-[12px] font-bold leading-snug text-foreground">
+                              {palace.title.split("—")[1]?.trim() ?? palace.element}
+                            </p>
+                            <p className="text-[12px] leading-relaxed text-muted-foreground">{palace.summary}</p>
+                          </>
+                        ) : (
+                          <p className="text-[12px] text-muted-foreground">정보 없음</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <div className="space-y-1.5 mt-3">
-                  <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest px-0.5">주의할 점</p>
-                  {fullReport.conflictPoints.slice(0, 3).map((item, i) => (
-                    <BulletRow key={i} text={item} positive={false} />
-                  ))}
+
+                {(myMarriageTiming || otherMarriageTiming) && (
+                  <div>
+                    <p className="mb-2 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">② 결혼 적합 시기 힌트</p>
+                    <div className="space-y-2">
+                      {[
+                        { name: myName, gender: myGender, timing: myMarriageTiming },
+                        { name: otherName, gender: otherGender, timing: otherMarriageTiming },
+                      ]
+                        .filter(({ timing }) => timing)
+                        .map(({ name, gender, timing }) => (
+                          <div key={name} className="ds-inline-detail-nested space-y-1 px-3 py-2.5">
+                            <p className="mb-1 inline-flex items-center gap-0.5 text-[12px] font-semibold text-foreground">
+                              <GenderSymbol gender={gender} />
+                              {name}
+                            </p>
+                            <p className="text-[12px] leading-relaxed text-muted-foreground">{timing!.daewoonHint}</p>
+                            <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground/70">{timing!.general}</p>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
+
+                <p className="border-t border-border pt-2.5 text-[11px] leading-relaxed text-muted-foreground/60">
+                  * 궁합은 운명이 아닙니다. 두 원국 구조가 어떻게 상호작용하는 경향이 있는지를 보여주는 참고 정보입니다.
+                </p>
+              </AccSection>
+
+              {/* ── 행동 가이드 ── */}
+              <div className="ds-card overflow-hidden shadow-none">
+                <div className="border-b border-border bg-muted/20 px-4 py-3">
+                  <div className="flex items-center gap-1.5">
+                    <Lightbulb className="h-3.5 w-3.5 text-amber-500" />
+                    <h2 className="text-sm font-bold text-foreground">행동 가이드</h2>
+                  </div>
+                </div>
+                <div className="space-y-4 p-4">
+                  <div>
+                    <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">추천 행동</p>
+                    <div className="space-y-2">
+                      {result.advice.map((t, i) => (
+                        <div key={i} className="ds-inline-detail-nested flex gap-2 text-[13px] text-foreground">
+                          <span className="shrink-0 font-bold text-primary">·</span>
+                          <span>{t}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">주의 행동</p>
+                    <div className="space-y-2">
+                      {(fullReport.conflictPoints.length > 0 ? fullReport.conflictPoints.slice(0, 3) : ["반복되는 갈등 패턴을 미리 짚고, 감정이 격해질 때 잠시 거리를 두는 연습을 해보세요."]).map((item, i) => (
+                        <BulletRow key={i} text={item} positive={false} />
+                      ))}
+                    </div>
+                  </div>
+                  {fullReport.tips.length > 0 && (
+                    <div>
+                      <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">관계 유지 팁</p>
+                      <div className="ds-inline-detail-nested space-y-2">
+                        <ul className="space-y-1.5">
+                          {fullReport.tips.slice(0, 5).map((tip, i) => (
+                            <li key={i} className="flex items-start gap-2 text-[13px] text-muted-foreground">
+                              <span className="mt-0.5 shrink-0">•</span>
+                              <span>{tip}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
-
-              {/* ── D. 관계 유지 팁 ── */}
-              {fullReport.tips.length > 0 && (
-                <div className="rounded-xl border border-border bg-muted/20 px-4 py-3.5">
-                  <div className="flex items-center gap-1.5 mb-2">
-                    <Lightbulb className="h-3.5 w-3.5 text-amber-500" />
-                    <p className="text-[13px] font-semibold text-foreground">관계 유지 팁</p>
-                  </div>
-                  <ul className="space-y-1.5">
-                    {fullReport.tips.slice(0, 3).map((tip, i) => (
-                      <li key={i} className="flex items-start gap-2 text-[13px] text-muted-foreground">
-                        <span className="shrink-0 mt-0.5">•</span>
-                        <span>{tip}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
 
             </div>
           );})()}
