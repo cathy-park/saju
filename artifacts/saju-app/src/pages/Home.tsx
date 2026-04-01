@@ -58,7 +58,7 @@ function Onboarding() {
         <Link href="/saju" className="flex-1">
           <div className="flex h-12 cursor-pointer items-center justify-center gap-2 rounded-full border border-indigo-200/60 bg-indigo-500/10 px-4">
             <span className="text-base" aria-hidden>🔍</span>
-            <span className="text-sm font-bold text-indigo-600">사주 리포트</span>
+            <span className="text-sm font-bold text-indigo-600">내 사주 보기</span>
           </div>
         </Link>
         <Link href="/compatibility" className="flex-1">
@@ -138,14 +138,7 @@ function Dashboard({ record }: { record: PersonRecord }) {
 
   const zodiac: ZodiacInfo = getZodiacFromDayPillar(record.profile.computedPillars.day.hangul) ?? DEFAULT_ZODIAC;
   const guidance = fortune.guidance ?? "오늘도 나답게 흘러가는 하루예요.";
-  const dayStemEl = charToElement(record.profile.computedPillars.day.hangul?.[0] ?? "") as FiveElKey | undefined;
   const keywords = fortune.keywords?.slice(0, 3) ?? [];
-
-  const domainLevelBadge = {
-    good:    { icon: "▲", bg: "rgba(46,125,50,0.10)", color: "#2E7D32" },
-    neutral: { icon: "–", bg: "rgba(120,120,120,0.10)", color: "#555" },
-    caution: { icon: "▼", bg: "rgba(230,81,0,0.10)",  color: "#E65100" },
-  };
 
   function handleSaveNick(v: string) {
     if (!user) return;
@@ -154,85 +147,84 @@ function Dashboard({ record }: { record: PersonRecord }) {
 
   return (
     <div className="ds-app-shell bg-background">
-      <div className="flex flex-col items-center bg-[url('/bg.png')] bg-cover bg-[position:center_bottom] px-4 pb-0 pt-6">
-        <p className="ds-caption mb-2 text-center font-semibold tracking-wide text-[hsl(var(--app-label-accent))]">
-          ✨ 오늘의 운세 — {dateStr}
-        </p>
-
-        <div className="mb-4 flex items-center justify-center gap-1">
-          <h2 className="ds-title-lg m-0 text-center">
-            <button
-              type="button"
-              onClick={() => setShowEditSheet(true)}
-              className="inline-flex cursor-pointer items-center gap-1 border-0 bg-transparent p-0"
-            >
-              <span className="border-b border-dashed border-primary/50 pb-0.5 text-primary">{nickname}</span>
-              <Pencil className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden />
-            </button>
-            <span className="text-foreground">님의 오늘 흐름</span>
-          </h2>
-        </div>
-
-        <div className="relative w-full max-w-[310px] rounded-2xl border border-border/60 bg-card/95 px-5 py-3.5 text-center shadow-none backdrop-blur-sm">
-          <p className="ds-body text-center font-semibold">{guidance}</p>
-          <div
-            className="absolute bottom-[-9px] left-1/2 h-0 w-0 -translate-x-1/2 border-x-[9px] border-t-[9px] border-x-transparent border-t-card/95"
-            aria-hidden
-          />
-        </div>
-
-        <div className="relative z-[2] -mb-7 mt-2">
-          <div className="absolute left-1/2 top-1/2 h-[220px] w-[220px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-transparent" aria-hidden />
-          <img src={zodiac.src} alt={zodiac.label} className="relative block h-[200px] w-[200px] object-contain" />
-        </div>
-
-        <div className="relative z-[1] mt-2 flex w-full items-center rounded-xl border border-border/50 bg-card/90 px-4 py-3 backdrop-blur-sm">
-          <div className="flex shrink-0 items-center gap-1.5">
-            <p className="m-0 text-[11px] font-bold tracking-wide text-muted-foreground">오늘의 일진</p>
-            <span className="text-[17px] font-extrabold tracking-wide">
-              {fortune.dayGanZhiStr.split("").map((ch, i) => {
-                const el = charToElement(ch);
-                return (
-                  <span key={i} className={el ? elementTextClass(el as FiveElKey, "strong") : "text-foreground"}>{ch}</span>
-                );
-              })}
-            </span>
-          </div>
-
-          {keywords.length > 0 && (
-            <div className="ml-auto flex flex-wrap justify-end gap-1">
-              {keywords.map((kw, i) => {
-                const styles = [
-                  "border-indigo-200/60 bg-indigo-500/10 text-indigo-700",
-                  "border-teal-200/60 bg-teal-500/10 text-teal-700",
-                  "border-primary/30 bg-primary/10 text-primary",
-                ];
-                return (
-                  <span key={kw} className={cn("ds-badge text-[10px] font-bold shadow-none", styles[i % styles.length])}>
-                    {kw}
-                  </span>
-                );
-              })}
+      {/*
+        홈 정보 계층: ① 오늘의 흐름(Hero) → ② 오늘 해석 → ③ 운 흐름 스냅샷 → ④ 주요 기능 이동
+      */}
+      <div className="flex flex-col items-center bg-[url('/bg.png')] bg-cover bg-[position:center_bottom] px-4 pb-4 pt-6">
+        {/* ① 오늘의 흐름 — Hero 카드 (제목 · 메시지 · 캐릭터 · 하단 보조: 일진) */}
+        <section
+          aria-labelledby="home-hero-heading"
+          className="w-full max-w-[340px] overflow-hidden rounded-2xl border border-border/70 bg-card/95 shadow-sm backdrop-blur-sm"
+        >
+          <div className="px-4 pb-1 pt-4 text-center">
+            <h2 id="home-hero-heading" className="m-0 text-[13px] font-extrabold tracking-wide text-[hsl(var(--app-label-accent))]">
+              ✨ 오늘의 흐름
+            </h2>
+            <p className="mt-1 text-[11px] text-muted-foreground">{dateStr}</p>
+            <div className="mt-2 flex items-center justify-center gap-1">
+              <button
+                type="button"
+                onClick={() => setShowEditSheet(true)}
+                className="inline-flex cursor-pointer items-center gap-1 border-0 bg-transparent p-0"
+              >
+                <span className="border-b border-dashed border-primary/50 pb-0.5 text-sm font-semibold text-primary">{nickname}</span>
+                <Pencil className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden />
+              </button>
+              <span className="text-sm font-medium text-muted-foreground">님</span>
             </div>
-          )}
-        </div>
+            <p className="ds-body mt-3 text-center font-semibold leading-snug text-foreground">{guidance}</p>
+          </div>
+          <div className="flex justify-center px-4 pb-2 pt-1">
+            <img src={zodiac.src} alt={zodiac.label} className="h-[180px] w-[180px] object-contain" />
+          </div>
+          <div className="flex items-center gap-2 border-t border-border/50 bg-muted/15 px-4 py-3">
+            <div className="flex min-w-0 shrink-0 items-center gap-1.5">
+              <p className="m-0 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">오늘의 일진</p>
+              <span className="text-[16px] font-extrabold tracking-wide">
+                {fortune.dayGanZhiStr.split("").map((ch, i) => {
+                  const el = charToElement(ch);
+                  return (
+                    <span key={i} className={el ? elementTextClass(el as FiveElKey, "strong") : "text-foreground"}>{ch}</span>
+                  );
+                })}
+              </span>
+            </div>
+            {keywords.length > 0 && (
+              <div className="ml-auto flex min-w-0 flex-wrap justify-end gap-1">
+                {keywords.map((kw, i) => {
+                  const styles = [
+                    "border-border/80 bg-muted/40 text-foreground/90",
+                    "border-border/80 bg-muted/40 text-foreground/90",
+                    "border-border/80 bg-muted/40 text-foreground/90",
+                  ];
+                  return (
+                    <span key={kw} className={cn("ds-badge text-[10px] font-bold shadow-none", styles[i % styles.length])}>
+                      {kw}
+                    </span>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </section>
       </div>
 
-      {/* ══════════════════════════════════════════
-          오늘의 전체 흐름 카드
-      ══════════════════════════════════════════ */}
+      {/* ② 오늘 해석 */}
+      <div className="px-4 pt-1">
+        <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">오늘 해석</p>
+      </div>
+
       {lifeFlow && (
-        <div className="px-4 pt-3">
-          <div className="ds-card relative overflow-hidden border-violet-200/80 p-4 shadow-none">
-            <div className="pointer-events-none absolute -right-5 -top-5 h-20 w-20 rounded-full bg-indigo-500/[0.08]" aria-hidden />
-            <div className="mb-2 flex items-center gap-2">
-              <span className="text-[13px] font-extrabold text-indigo-600">✦ 오늘의 전체 흐름</span>
+        <div className="px-4 pt-0">
+          <div className="rounded-xl border border-border bg-muted/10 p-4 shadow-none">
+            <div className="mb-2">
+              <span className="text-[12px] font-bold text-foreground">오늘의 전체 흐름</span>
             </div>
             <p className="ds-body mb-1.5 font-medium text-foreground">
               {lifeFlow.overall.fullText}
             </p>
             {lifeFlow.overall.activityFlow && (
-              <p className="mb-2.5 text-xs font-semibold text-indigo-600">
+              <p className="mb-2.5 text-xs font-semibold text-muted-foreground">
                 {lifeFlow.overall.activityFlow}
               </p>
             )}
@@ -241,18 +233,19 @@ function Dashboard({ record }: { record: PersonRecord }) {
                 { label: "감정 흐름", text: lifeFlow.overall.emotional },
                 { label: "결정 타이밍", text: lifeFlow.overall.decisionTiming },
               ].map(({ label, text }) => (
-                <div key={label} className="rounded-lg bg-violet-50/80 px-3 py-2.5">
-                  <p className="ds-caption mb-1 font-bold tracking-wide text-violet-600/90">{label}</p>
+                <div key={label} className="rounded-lg border border-border/60 bg-background/80 px-3 py-2.5">
+                  <p className="ds-caption mb-1 font-bold tracking-wide text-muted-foreground">{label}</p>
                   <p className="text-xs leading-snug text-foreground/90">{text}</p>
                 </div>
               ))}
             </div>
             <Button
               type="button"
+              variant="outline"
               onClick={goToTodayFortune}
-              className="mt-3 w-full border-0 bg-gradient-to-r from-indigo-600 to-violet-600 text-primary-foreground shadow-none hover:from-indigo-600 hover:to-violet-600"
+              className="mt-3 w-full border-border bg-background font-semibold shadow-none"
             >
-              오늘 운세 보러가기 →
+              오늘 운세 자세히 보기 →
             </Button>
           </div>
         </div>
@@ -305,11 +298,15 @@ function Dashboard({ record }: { record: PersonRecord }) {
         );
       })()}
 
-      {/* ══════════════════════════════════════════
-          FLOW STRUCTURE CARD (대운/세운/월운/일운 2×2)
-      ══════════════════════════════════════════ */}
-      <div className="px-4 pt-3">
-        <div className="ds-card grid grid-cols-2 gap-2 p-3 shadow-none">
+      {/* ③ 운 흐름 스냅샷 — 대운·세운·월운·일운 한 그룹 */}
+      <div className="px-4 pt-4">
+        <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">운 흐름 스냅샷</p>
+        <div className="overflow-hidden rounded-xl border border-border bg-card shadow-none">
+          <div className="border-b border-border bg-muted/20 px-3.5 py-2">
+            <p className="text-[11px] font-bold text-foreground">대운 · 세운 · 월운 · 일운</p>
+            <p className="mt-0.5 text-[10px] text-muted-foreground">탭하면 리포트 운세 탭으로 이동합니다</p>
+          </div>
+          <div className="grid grid-cols-2 gap-px bg-border p-0">
           {fortune.luckLayers.map((layer) => {
             const stemEl = charToElement(layer.ganZhi[0]);
             const branchEl = charToElement(layer.ganZhi[1]);
@@ -331,7 +328,7 @@ function Dashboard({ record }: { record: PersonRecord }) {
                     navigate("/saju");
                   }
                 }}
-                className="cursor-pointer rounded-lg bg-muted/30 p-2.5 transition-colors hover:bg-muted/50"
+                className="cursor-pointer bg-background p-2.5 transition-colors hover:bg-muted/25"
               >
                 <div className="mb-1.5 flex items-baseline gap-1">
                   <span className="text-[10px] font-bold text-muted-foreground">{layer.label}</span>
@@ -360,17 +357,18 @@ function Dashboard({ record }: { record: PersonRecord }) {
               </div>
             );
           })}
+          </div>
         </div>
       </div>
 
-      {/* ══════════════════════════════════════════
-          CTA BUTTONS
-      ══════════════════════════════════════════ */}
-      <div className="flex gap-2 px-4 pt-4">
+      {/* ④ 주요 기능 이동 */}
+      <div className="px-4 pt-4">
+        <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">주요 기능</p>
+        <div className="flex gap-2">
         <Link href="/saju" className="flex-1">
           <div className="flex h-12 cursor-pointer items-center justify-center gap-2 rounded-full border border-indigo-200/60 bg-indigo-500/10 px-4">
             <span className="text-base" aria-hidden>🔍</span>
-            <span className="text-sm font-bold text-indigo-600">사주 리포트</span>
+            <span className="text-sm font-bold text-indigo-600">내 사주 보기</span>
           </div>
         </Link>
         <Link href="/compatibility" className="flex-1">
@@ -379,6 +377,7 @@ function Dashboard({ record }: { record: PersonRecord }) {
             <span className="text-sm font-bold text-primary">궁합 보기</span>
           </div>
         </Link>
+        </div>
       </div>
 
       {showEditSheet && (
