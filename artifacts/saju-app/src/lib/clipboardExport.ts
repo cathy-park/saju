@@ -279,7 +279,7 @@ export function buildPersonClipboardText(record: PersonRecord): string {
 
   // 용신 그룹 (희신/기신/구신)
   lines.push(`[희신 / 기신 / 구신]`);
-  lines.push(`  용신: ${yongshinEl}  (${schema.yongshinTenGodGroup}격, 신뢰도: ${schema.yongshinConfidence})`);
+  lines.push(`  용신: ${yongshinEl}  (용신 분류: ${schema.yongshinTenGodGroup}, 신뢰도: ${schema.yongshinConfidence})`);
   lines.push(`  희신: ${heeshinEl || "없음"}`);
   lines.push(`  기신: ${gishinEls.join("·") || "없음"}`);
   lines.push(`  구신: ${[...new Set(gushinEls)].join("·") || "없음"}`);
