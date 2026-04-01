@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, useCallback, useEffect } from "react";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 
 /**
  * 상세 표시 규칙 (동종 콘텐츠는 동일 경로 유지)
@@ -247,9 +247,9 @@ function ShinsalTagStrip({
             type="button"
             onClick={() => onSelect(t.id)}
             className={cn(
-              "max-w-full rounded border-2 border-transparent px-1 py-px text-center text-[9px] font-bold leading-tight shadow-none transition-opacity active:scale-[0.98] break-words whitespace-normal",
+              "max-w-full rounded border border-transparent px-1 py-px text-center text-[9px] font-bold leading-tight shadow-none transition-opacity active:scale-[0.98] break-words whitespace-normal",
               SHINSAL_COLOR[t.name] ?? "border-border bg-muted/50 text-foreground",
-              selectedId === t.id && "border-primary bg-primary/[0.06]",
+              selectedId === t.id && "border-2 border-primary bg-primary/[0.06]",
             )}
           >
             {t.name}
@@ -950,6 +950,15 @@ const ELEMENT_PENTAGON_FILL: Record<FiveElKey, string> = {
   금: "#B6C5DC",
 };
 
+/** 대표 오행 노드 테두리·(십성)괄호 글자색 — 십성 그룹 범주색과 동일 */
+const PENT_TG_GROUP_EL: Record<string, FiveElKey> = {
+  비겁: "목",
+  식상: "화",
+  재성: "토",
+  관성: "금",
+  인성: "수",
+};
+
 function FiveElementSection({
   counts,
   dayStem,
@@ -1069,12 +1078,18 @@ function FiveElementSection({
           const fillH = count > 0 ? Math.max(fillHRaw, 4) : 0;
           const fillY = y + NODE_R - fillH;
           const isPrimary = el === primaryEl;
-          /* 대표 오행: 텍스트(strong)와 동일 색의 단일 외곽선만 — 이중 링 없음 */
           const strongFill = elementColorVar(el, "strong");
-          const stroke = isPrimary ? strongFill : "hsl(var(--border))";
+          const tgGroupKey = tenGodGroup ?? "";
+          const tgCategoryEl = tgGroupKey && PENT_TG_GROUP_EL[tgGroupKey] ? PENT_TG_GROUP_EL[tgGroupKey] : el;
+          /* 대표 노드 외곽선 = 십성 그룹 범주색(행동 분포 행과 동일), 오행 한 글자는 오행색 유지 */
+          const stroke = isPrimary ? elementColorVar(tgCategoryEl, "strong") : "hsl(var(--border))";
           const strokeW = isPrimary ? 2 : 1.5;
           const elLabelFill = strongFill;
           const elSubFill = elementColorVar(el, "base");
+          const parenFill =
+            tenGodGroup && PENT_TG_GROUP_EL[tgGroupKey]
+              ? elementColorVar(PENT_TG_GROUP_EL[tgGroupKey], "strong")
+              : elSubFill;
           return (
             <g key={el}>
               <circle cx={x} cy={y} r={NODE_R} fill="hsl(var(--card))" />
@@ -1108,7 +1123,7 @@ function FiveElementSection({
                 {el}
               </text>
               {tenGodGroup && (
-                <text x={x} y={y + 5} textAnchor="middle" fontSize="10" fontWeight="700" fill={elSubFill}>({tenGodGroup})</text>
+                <text x={x} y={y + 5} textAnchor="middle" fontSize="10" fontWeight="700" fill={parenFill}>({tenGodGroup})</text>
               )}
               <text x={x} y={y + (tenGodGroup ? 18 : 11)} textAnchor="middle" fontSize="11" fill="hsl(var(--foreground))">
                 {count}개 {Math.round(pct * 100)}%
@@ -1216,6 +1231,8 @@ function TenGodDistributionSection({
   onTap,
   selectedGroup,
   selectedGroupInlineSlot,
+  rowHighlightMode = "single",
+  personalityUserHasTapped = false,
   monthBranch,
   dayBranch,
   allStems,
@@ -1227,8 +1244,11 @@ function TenGodDistributionSection({
   effectiveFiveElements: FiveElementCount;
   onTap: (group: string, pct: number) => void;
   selectedGroup?: string | null;
-  /** 선택된 그룹 행 바로 아래에만 렌더 (탐색 위치 고정) */
   selectedGroupInlineSlot?: ReactNode;
+  /** single: 한 가지 강조 스타일. personality: 초기=약한 강조, 탭 후=선택 강조 */
+  rowHighlightMode?: "single" | "personality";
+  /** 성격 탭 전용: 사용자가 행을 한 번이라도 눌렀는지 */
+  personalityUserHasTapped?: boolean;
   monthBranch?: string;
   dayBranch?: string;
   allStems?: string[];
@@ -1250,7 +1270,6 @@ function TenGodDistributionSection({
 
   return (
     <div className="space-y-3">
-      {/* Bar rows with sub-categories */}
       <div className="space-y-3">
         {groups.map((g) => {
           const pct = topLevel[g];
@@ -1260,39 +1279,68 @@ function TenGodDistributionSection({
           const p2 = detailed[s2] ?? 0;
           const isDominantRow = dominantGroup === g;
           const isRowSelected = selectedGroup === g;
+          const showRepChip =
+            rowHighlightMode === "personality" && isDominantRow && !personalityUserHasTapped;
+
+          let rowStyle: CSSProperties | undefined;
+          let rowBorder = "border border-transparent";
+
+          if (rowHighlightMode === "personality" && isRowSelected) {
+            if (personalityUserHasTapped) {
+              rowBorder = "border-2";
+              rowStyle = {
+                backgroundColor: elementHslAlpha(rowEl, "strong", 0.07),
+                borderColor: elementColorVar(rowEl, "strong"),
+              };
+            } else {
+              rowBorder = "border";
+              rowStyle = {
+                backgroundColor: elementHslAlpha(rowEl, "strong", 0.035),
+                borderColor: elementHslAlpha(rowEl, "strong", 0.22),
+              };
+            }
+          } else if (rowHighlightMode === "single") {
+            if (isRowSelected) {
+              rowBorder = "border-2";
+              rowStyle = {
+                backgroundColor: elementHslAlpha(rowEl, "strong", 0.07),
+                borderColor: elementColorVar(rowEl, "strong"),
+              };
+            } else if (isDominantRow) {
+              rowBorder = "border";
+              rowStyle = {
+                backgroundColor: elementHslAlpha(rowEl, "strong", 0.06),
+                borderColor: elementHslAlpha(rowEl, "strong", 0.22),
+              };
+            }
+          }
+
+          const rowClass = cn("rounded-xl px-2 py-2 transition-colors", rowBorder);
+
+          const labelStrong = isRowSelected || (rowHighlightMode === "single" && isDominantRow);
+
           return (
             <div key={g} className="space-y-2">
-              <div
-                className={cn(
-                  "rounded-xl border-2 px-2 py-2 transition-colors",
-                  !isDominantRow && !isRowSelected && "border-transparent",
-                )}
-                style={
-                  isRowSelected
-                    ? {
-                        backgroundColor: elementHslAlpha(rowEl, "strong", 0.07),
-                        borderColor: elementColorVar(rowEl, "strong"),
-                      }
-                    : isDominantRow
-                      ? {
-                          backgroundColor: elementHslAlpha(rowEl, "strong", 0.06),
-                          borderColor: elementHslAlpha(rowEl, "strong", 0.22),
-                        }
-                      : undefined
-                }
-              >
+              <div className={rowClass} style={rowStyle}>
                 <button
                   type="button"
                   onClick={() => onTap(g, pct)}
                   className="flex w-full items-center gap-3 rounded px-1 py-0.5 text-left transition-opacity hover:opacity-90"
                 >
-                  <span
-                    className={cn(
-                      "w-10 shrink-0 text-[13px] font-semibold",
-                      isDominantRow || isRowSelected ? elementTextClass(rowEl, "strong") : "text-foreground",
-                    )}
-                  >
-                    {g}
+                  <span className="flex min-w-0 flex-1 items-center gap-1.5">
+                    {showRepChip ? (
+                      <span className="shrink-0 rounded-full border border-border/70 bg-muted/40 px-1.5 py-px text-[9px] font-bold uppercase tracking-wide text-muted-foreground">
+                        대표
+                      </span>
+                    ) : null}
+                    <span
+                      className={cn(
+                        "shrink-0 text-[13px] font-semibold",
+                        labelStrong ? elementTextClass(rowEl, "strong") : "text-foreground",
+                      )}
+                    >
+                      {g}
+                    </span>
                   </span>
                   <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-muted/60">
                     <div
@@ -1369,7 +1417,7 @@ function DayMasterStrengthCard({
   if (!strength || !Number.isFinite(strength.score)) return null;
   const lines = strength.explanation ?? [];
   return (
-    <div className="rounded-2xl border px-4 py-4 bg-gradient-to-br from-sky-50/70 to-white border-sky-200 space-y-2.5">
+    <div className="rounded-xl border px-4 py-4 bg-gradient-to-br from-sky-50/70 to-white border-sky-200 space-y-2.5">
       <div className="flex items-center justify-between">
         <p className="text-[13px] font-bold text-sky-700 tracking-wide">일간 강도</p>
         <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-sky-100 text-sky-700 border border-sky-200">자동 계산</span>
@@ -1502,18 +1550,7 @@ function SajuStructureSummary({
         </div>
       </div>
       <div className="ds-card-pad space-y-3">
-        {insights.length > 0 && (
-          <div className="space-y-2">
-            <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">구조·규칙 인사이트</p>
-            <ul className="list-disc space-y-1.5 pl-4 text-[13px] leading-relaxed text-foreground/90">
-              {insights.map((line, i) => (
-                <li key={i}>{line}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        <div className="rounded-lg border border-border/60 bg-white px-3 py-3">
+        <div className="rounded-xl border border-border/60 bg-white px-3 py-3 dark:bg-card">
           <div className="mb-2 flex items-center justify-between gap-2">
             <p className="text-[11px] font-bold text-muted-foreground">
               용신
@@ -1554,7 +1591,7 @@ function SajuStructureSummary({
           )}
         </div>
 
-        <div className="rounded-lg border border-border/50 bg-white/80 px-3 py-2.5">
+        <div className="rounded-xl border border-border/50 bg-white px-3 py-2.5 dark:bg-card">
           <div className="flex items-center justify-between gap-2">
             <p className="text-[11px] font-bold text-muted-foreground">사주 강도 (참고)</p>
             {canEdit && onStrengthLevelChange && (
@@ -1575,11 +1612,22 @@ function SajuStructureSummary({
         </div>
 
         {pipelineSeasonalNote && (
-          <div className="rounded-lg border border-amber-100 bg-amber-50/50 px-3 py-2.5">
-            <p className="text-[10px] font-bold uppercase tracking-wide text-amber-800">조후(계절) 보정</p>
+          <div className="rounded-xl border border-border/60 bg-white px-3 py-2.5 shadow-none dark:bg-card">
+            <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">조후(계절) 보정</p>
             <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
               문장 전체는 <span className="font-semibold text-foreground">원국</span> 탭 「격국·조후」에만 두었습니다. 이 탭은 기질·행동 해석에 집중합니다.
             </p>
+          </div>
+        )}
+
+        {insights.length > 0 && (
+          <div className="rounded-xl border border-border bg-muted/20 px-3 py-3">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-foreground/80">구조·규칙 인사이트</p>
+            <ul className="mt-2 list-disc space-y-1.5 pl-4 text-[13px] leading-relaxed text-foreground/85">
+              {insights.map((line, i) => (
+                <li key={i}>{line}</li>
+              ))}
+            </ul>
           </div>
         )}
 
@@ -2610,15 +2658,22 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
   const [hourMode, setHourMode] = useState<"포함" | "제외" | "비교">("포함");
   const [yuanGuoInlineDetail, setYuanGuoInlineDetail] = useState<YuanGuoInlineDetail | null>(null);
   const [selectedTgGroupInline, setSelectedTgGroupInline] = useState<{ group: string; pct: number } | null>(null);
+  const [personalityTengodUserPicked, setPersonalityTengodUserPicked] = useState(false);
+  const personalityTengodSeededRef = useRef(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   useEffect(() => {
     setYuanGuoInlineDetail(null);
+    personalityTengodSeededRef.current = false;
   }, [record.id]);
 
   useEffect(() => {
     setYuanGuoInlineDetail(null);
-    setSelectedTgGroupInline(null);
+    if (reportTab !== "성격해석") {
+      personalityTengodSeededRef.current = false;
+      setSelectedTgGroupInline(null);
+      setPersonalityTengodUserPicked(false);
+    }
   }, [reportTab]);
 
   const scrollToYuanAnchor = useCallback((id: string) => {
@@ -2924,6 +2979,27 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
     effectivePillars.month?.hangul?.[0], effectivePillars.month?.hangul?.[1],
     effectivePillars.year?.hangul?.[0], effectivePillars.year?.hangul?.[1],
   ].filter((c): c is string => !!c);
+
+  useEffect(() => {
+    if (reportTab !== "성격해석" || !dayStem) return;
+    if (personalityTengodSeededRef.current) return;
+    personalityTengodSeededRef.current = true;
+    const dayElStem = STEM_ELEMENT[dayStem] as FiveElKey | undefined;
+    const { topLevel } = computeTenGodDistribution(dayStem, dayElStem, allChars, effectiveFiveElements);
+    const order = ["비겁", "식상", "재성", "관성", "인성"] as const;
+    let best: (typeof order)[number] | null = null;
+    let bp = -1;
+    for (const g of order) {
+      if (topLevel[g] > bp) {
+        bp = topLevel[g];
+        best = g;
+      }
+    }
+    if (best != null && bp > 0) {
+      setSelectedTgGroupInline({ group: best, pct: topLevel[best] });
+      setPersonalityTengodUserPicked(false);
+    }
+  }, [reportTab, dayStem, allChars, effectiveFiveElements]);
 
   const allStems = [
     effectivePillars.hour?.hangul?.[0], dayStem,
@@ -3402,15 +3478,15 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                                   prev?.kind === "tengod" && prev.tg === tg ? null : { kind: "tengod", tg: tg as TenGod },
                                 )
                               }
-                              className="flex items-center justify-between rounded-lg border-2 px-2.5 py-1.5 transition-all active:scale-95"
+                              className="flex items-center justify-between rounded-lg border px-2.5 py-1.5 transition-all active:scale-95"
                               style={
                                 isActive && rowEl
                                   ? {
                                       backgroundColor: elementHslAlpha(rowEl, "strong", 0.09),
-                                      borderColor: elementColorVar(rowEl, "strong"),
+                                      border: `2px solid ${elementColorVar(rowEl, "strong")}`,
                                       color: elementColorVar(rowEl, "strong"),
                                     }
-                                  : { ...chipStyle, border: "2px solid transparent" }
+                                  : { ...chipStyle, border: "1px solid transparent" }
                               }
                             >
                               <span className="text-[13px] font-bold">{tg}</span>
@@ -3463,7 +3539,7 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                 pipelinePatterns={sajuPipelineResult?.interpretation.structurePatterns ?? []}
               />
               {seasonalNote ? (
-                <div className="mt-4 rounded-lg border border-border bg-muted/20 px-3 py-2.5">
+                <div className="mt-4 rounded-xl border border-border bg-white px-3 py-2.5 shadow-none dark:bg-card">
                   <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">조후(계절) 보정</p>
                   <p className="mt-1 text-sm leading-relaxed text-foreground break-words">{seasonalNote}</p>
                   {seasonalNote.length > LONG_SEASONAL_CHARS ? (
@@ -3515,9 +3591,9 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                             );
                           }}
                           className={cn(
-                            "flex w-full flex-col items-center gap-1 border-2 border-transparent py-2.5 px-1 transition-colors disabled:cursor-not-allowed disabled:opacity-50",
+                            "flex w-full flex-col items-center gap-1 border border-transparent py-2.5 px-1 transition-colors disabled:cursor-not-allowed disabled:opacity-50",
                             branch && "hover:bg-muted/20 active:bg-muted/35",
-                            isSel && "border-primary bg-primary/[0.06]",
+                            isSel && "border-2 border-primary bg-primary/[0.06]",
                           )}
                         >
                           {branch ? (
@@ -3589,8 +3665,8 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                             )
                           }
                           className={cn(
-                            "flex w-full items-center gap-2 rounded-lg border-2 border-border bg-white px-3 py-2 text-left transition-colors hover:bg-muted/15 dark:bg-card",
-                            isSel && "border-primary bg-primary/[0.06]",
+                            "flex w-full items-center gap-2 rounded-xl border border-border bg-white px-3 py-2 text-left transition-colors hover:bg-muted/15 dark:bg-card",
+                            isSel && "border-2 border-primary bg-primary/[0.06]",
                           )}
                         >
                           <span className="text-[13px] text-muted-foreground w-8 shrink-0">{label}</span>
@@ -3647,8 +3723,8 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                     key={i}
                     type="button"
                     className={cn(
-                      "w-full flex items-center gap-2 rounded-lg border-2 border-border bg-white px-3 py-2 text-left transition-colors active:bg-muted/15 dark:bg-card",
-                      isSel && "border-primary bg-primary/[0.06]",
+                      "w-full flex items-center gap-2 rounded-xl border border-border bg-white px-3 py-2 text-left transition-colors active:bg-muted/15 dark:bg-card",
+                      isSel && "border-2 border-primary bg-primary/[0.06]",
                     )}
                     onClick={() =>
                       setYuanGuoInlineDetail((prev) =>
@@ -3773,7 +3849,7 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
       {/* ── 탭 2: 성격 해석 ── */}
       {reportTab === "성격해석" && (
         <div className="space-y-3">
-          <div className="rounded-lg border border-border/60 bg-muted/15 px-3 py-2.5 text-[12px] leading-relaxed text-muted-foreground">
+          <div className="rounded-xl border border-border/60 bg-muted/15 px-3 py-2.5 text-[12px] leading-relaxed text-muted-foreground">
             <span className="font-semibold text-foreground">성격 해석</span>은 문장으로 읽는{" "}
             <span className="font-semibold text-foreground">기질·행동·균형</span> 중심입니다. 표·비율·지장간 같은 구조 데이터는{" "}
             <span className="font-semibold text-foreground">원국</span> 탭을 보세요.
@@ -3819,8 +3895,8 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
               <p className="text-[12px] leading-relaxed text-muted-foreground">
                 오행이 기질·행동 스타일에 주는 균형을 해석합니다. 도형·간격·강조는 원국 탭 오행 분포와 동일한 기준입니다.
               </p>
-              <div className="rounded-lg border border-border/60 bg-muted/15 px-3 py-2.5">
-                <p className="text-sm">{getElementBalanceSummary(effectiveFiveElements)}</p>
+              <div className="rounded-xl border border-border/50 bg-primary/[0.04] px-3 py-2.5 dark:bg-primary/[0.07]">
+                <p className="text-sm text-foreground/90">{getElementBalanceSummary(effectiveFiveElements)}</p>
               </div>
               <FiveElementSection
                 variant="personality"
@@ -3851,6 +3927,8 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                     dayBranch={dayBranch}
                     allStems={allStems}
                     allBranches={allBranches}
+                    rowHighlightMode="personality"
+                    personalityUserHasTapped={personalityTengodUserPicked}
                     selectedGroup={selectedTgGroupInline?.group ?? null}
                     selectedGroupInlineSlot={
                       selectedTgGroupInline ? (
@@ -3858,7 +3936,10 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                           group={selectedTgGroupInline.group}
                           pct={selectedTgGroupInline.pct}
                           dayStem={dayStem}
-                          onClose={() => setSelectedTgGroupInline(null)}
+                          onClose={() => {
+                            setPersonalityTengodUserPicked(true);
+                            setSelectedTgGroupInline(null);
+                          }}
                           onMore={() =>
                             setInfoSheet({
                               kind: "tengod-group",
@@ -3870,9 +3951,10 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                         />
                       ) : null
                     }
-                    onTap={(group, pct) =>
-                      setSelectedTgGroupInline((prev) => (prev?.group === group ? null : { group, pct }))
-                    }
+                    onTap={(group, pct) => {
+                      setPersonalityTengodUserPicked(true);
+                      setSelectedTgGroupInline((prev) => (prev?.group === group ? null : { group, pct }));
+                    }}
                   />
                 </div>
                 <div>

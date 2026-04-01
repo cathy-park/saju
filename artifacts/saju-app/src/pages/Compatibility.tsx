@@ -657,7 +657,7 @@ export default function Compatibility() {
 
               {/* ── A. 종합 요약 (result.finalType → palette 단일 출처) ── */}
               <div
-                className="rounded-2xl border-2 p-5"
+                className="ds-card border p-5"
                 style={{ background: palette.cardBg, borderColor: palette.border }}
               >
                 <div className="flex items-center gap-4">
@@ -696,7 +696,7 @@ export default function Compatibility() {
                 <div className="rounded-xl border border-violet-200 bg-violet-50/40 px-3 py-3 space-y-2">
                   <p className="text-[11px] font-bold text-violet-600 uppercase tracking-wide">시주 포함/제외 점수 비교</p>
                   <div className="flex items-center gap-3">
-                    <div className="flex-1 text-center rounded-lg border border-border bg-card py-2">
+                    <div className="flex-1 text-center rounded-xl border border-border bg-card py-2">
                       <p className="text-[11px] text-muted-foreground mb-0.5">시주 포함</p>
                       <p className="text-xl font-bold text-foreground">{resultBase.score}점</p>
                       <p className="text-[11px] text-muted-foreground">{resultBase.finalType}</p>
@@ -710,7 +710,7 @@ export default function Compatibility() {
                         <span className="text-sm text-muted-foreground">변화없음</span>
                       )}
                     </div>
-                    <div className="flex-1 text-center rounded-lg border border-violet-300 bg-violet-50 py-2">
+                    <div className="flex-1 text-center rounded-xl border border-violet-300 bg-violet-50 py-2">
                       <p className="text-[11px] text-muted-foreground mb-0.5">
                         {hourModeA === "제외" && hourModeB === "제외" ? "시주 모두 제외" : hourModeA === "제외" ? `${p1?.birthInput.name || "A"} 시주 제외` : `${p2?.birthInput.name || "B"} 시주 제외`}
                       </p>
@@ -741,7 +741,7 @@ export default function Compatibility() {
                 if (fullReport.structural.branchClashCount >= 2) adj.push(`지지충${fullReport.structural.branchClashCount}개 +1`);
                 if (fullReport.structural.monthBranchClash)     adj.push("월지충 +1");
                 return (
-                  <div className="rounded-lg border border-yellow-300 bg-yellow-50 px-3 py-2 text-[11px] font-mono text-yellow-800">
+                  <div className="rounded-xl border border-yellow-300 bg-yellow-50 px-3 py-2 text-[11px] font-mono text-yellow-800">
                     [DEV] 기본점수 {s}점 ({baseType}) → 조정: [{adj.join(", ") || "없음"}] → 최종: {fullReport.tone}
                   </div>
                 );
@@ -883,7 +883,7 @@ export default function Compatibility() {
                       { name: myName, gender: myGender, branch: myDayBranch2, palace: mySpousePalace },
                       { name: otherName, gender: otherGender, branch: otherDayBranch2, palace: otherSpousePalace },
                     ].map(({ name, gender, branch, palace }) => (
-                      <div key={name} className="rounded-lg border border-border bg-card p-3">
+                      <div key={name} className="rounded-xl border border-border bg-card p-3">
                         <div className="flex items-center gap-1.5 mb-1.5">
                           <span className="text-[12px] font-semibold text-muted-foreground inline-flex items-center gap-0.5">
                             <GenderSymbol gender={gender} />{name}
@@ -923,7 +923,7 @@ export default function Compatibility() {
                       ]
                         .filter(({ timing }) => timing)
                         .map(({ name, gender, timing }) => (
-                          <div key={name} className="rounded-lg bg-muted/20 border border-border px-3 py-2.5">
+                          <div key={name} className="rounded-xl bg-muted/20 border border-border px-3 py-2.5">
                             <p className="text-[12px] font-semibold text-foreground mb-1 inline-flex items-center gap-0.5">
                               <GenderSymbol gender={gender} />{name}
                             </p>
@@ -978,7 +978,7 @@ export default function Compatibility() {
                 {/* 일간 관계 상세 */}
                 <div>
                   <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-2">일간 관계 상세</p>
-                  <div className="rounded-lg bg-muted/20 border border-border px-3 py-2.5 mb-2">
+                  <div className="rounded-xl bg-muted/20 border border-border px-3 py-2.5 mb-2">
                     <p className="text-[13px] font-semibold text-muted-foreground mb-1">{fullReport.stemRel.label}</p>
                     <p className="text-sm">{fullReport.stemRel.desc}</p>
                   </div>
@@ -1001,7 +1001,7 @@ export default function Compatibility() {
                         bodyLabel: `${otherName}에게 ${myName}${ptcl(myName, "은", "는")}`,
                       },
                     ].map(({ from, tg, tgDayStem, desc, sectionTitle, bodyLabel }) => (
-                      <div key={from} className="rounded-lg border border-border bg-muted/10 p-2.5">
+                      <div key={from} className="rounded-xl border border-border bg-muted/10 p-2.5">
                         <p className="text-[12px] font-bold text-foreground mb-2 leading-tight">{sectionTitle}</p>
                         {tg ? (
                           <>
@@ -1022,7 +1022,7 @@ export default function Compatibility() {
                 <div>
                   <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-2">배우자궁 비교</p>
                   <div className="flex items-center gap-3 mb-2">
-                    <div className="flex-1 text-center rounded-lg border p-2.5" style={getElCardStyle(charToElement(fullReport.branchComp.myBranch))}>
+                    <div className="flex-1 text-center rounded-xl border p-2.5" style={getElCardStyle(charToElement(fullReport.branchComp.myBranch))}>
                       <p className="text-[13px] text-muted-foreground mb-1 inline-flex items-center gap-0.5 justify-center w-full">
                         <GenderSymbol gender={myGender} />{myName} 일지
                       </p>
@@ -1039,7 +1039,7 @@ export default function Compatibility() {
                         </div>
                       ) : <p className="text-[13px] text-muted-foreground mt-1">무관계</p>}
                     </div>
-                    <div className="flex-1 text-center rounded-lg border p-2.5" style={getElCardStyle(charToElement(fullReport.branchComp.otherBranch))}>
+                    <div className="flex-1 text-center rounded-xl border p-2.5" style={getElCardStyle(charToElement(fullReport.branchComp.otherBranch))}>
                       <p className="text-[13px] text-muted-foreground mb-1 inline-flex items-center gap-0.5 justify-center w-full">
                         <GenderSymbol gender={otherGender} />{otherName} 일지
                       </p>
@@ -1047,13 +1047,13 @@ export default function Compatibility() {
                       <p className="text-[13px] text-muted-foreground mt-1 leading-tight">{fullReport.branchComp.otherPalaceTitle.split("—")[0]}</p>
                     </div>
                   </div>
-                  <div className={`rounded-lg border px-3 py-2 flex items-center gap-2`}>
+                  <div className={`rounded-xl border px-3 py-2 flex items-center gap-2`}>
                     <span className={`text-[13px] font-semibold shrink-0 ${REL_TONE_COLOR[fullReport.branchComp.tone] ?? "text-foreground"}`}>
                       {fullReport.branchComp.tone}
                     </span>
                     <p className="text-sm">{fullReport.branchComp.desc}</p>
                   </div>
-                  <div className="rounded-lg bg-muted/20 border border-border px-3 py-2 mt-2">
+                  <div className="rounded-xl bg-muted/20 border border-border px-3 py-2 mt-2">
                     <p className="text-[13px] font-semibold text-muted-foreground mb-1">관계 안정도</p>
                     <p className="text-sm">{fullReport.branchComp.stability}</p>
                   </div>
@@ -1110,7 +1110,7 @@ export default function Compatibility() {
                     name1={myName} el1={result.elementBalance.person1} dayStem1={myDayStem2}
                     name2={otherName} el2={result.elementBalance.person2}
                   />
-                  <div className="rounded-lg bg-muted/20 border border-border px-3 py-2.5 mt-2">
+                  <div className="rounded-xl bg-muted/20 border border-border px-3 py-2.5 mt-2">
                     <p className="text-sm">{fullReport.elementComp.desc}</p>
                   </div>
                 </div>
@@ -1119,26 +1119,26 @@ export default function Compatibility() {
                 <div>
                   <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-2">연애 스타일</p>
                   <div className="grid grid-cols-2 gap-2 mb-2">
-                    <div className="rounded-lg border border-border bg-muted/10 px-3 py-2.5 text-center">
+                    <div className="rounded-xl border border-border bg-muted/10 px-3 py-2.5 text-center">
                       <p className="text-[13px] text-muted-foreground inline-flex items-center gap-0.5 justify-center w-full">
                         <GenderSymbol gender={myGender} />{myName}
                       </p>
                       <p className="text-sm font-bold text-foreground mt-1">{fullReport.styleComp.person1Style}</p>
                     </div>
-                    <div className="rounded-lg border border-border bg-muted/10 px-3 py-2.5 text-center">
+                    <div className="rounded-xl border border-border bg-muted/10 px-3 py-2.5 text-center">
                       <p className="text-[13px] text-muted-foreground inline-flex items-center gap-0.5 justify-center w-full">
                         <GenderSymbol gender={otherGender} />{otherName}
                       </p>
                       <p className="text-sm font-bold text-foreground mt-1">{fullReport.styleComp.person2Style}</p>
                     </div>
                   </div>
-                  <div className="rounded-lg bg-muted/20 border border-border px-3 py-2.5">
+                  <div className="rounded-xl bg-muted/20 border border-border px-3 py-2.5">
                     <p className="text-sm">{fullReport.styleComp.dynamicsDesc}</p>
                   </div>
                 </div>
 
                 {/* 결혼 관점 */}
-                <div className="rounded-lg border border-violet-100 bg-violet-50/30 p-3">
+                <div className="rounded-xl border border-violet-100 bg-violet-50/30 p-3">
                   <div className="flex items-center gap-2 mb-2">
                     <span className="text-[13px] text-muted-foreground">관계 유형</span>
                     <span className={`text-[13px] font-bold px-2.5 py-0.5 rounded-full bg-violet-100 ${fullReport.marriageView.typeColor}`}>
