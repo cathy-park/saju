@@ -1,5 +1,15 @@
 import { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import type { ReactNode } from "react";
+
+/**
+ * 상세 표시 규칙 (동종 콘텐츠는 동일 경로 유지)
+ * - 짧은 설명: 인라인 상세 카드 (`ds-inline-detail` + `ds-inline-detail-body` = `p-4`, 헤더 `px-4 py-3`)
+ * - 중간 길이: 카드 내 `ds-inline-detail-nested` 또는 섹션 하단 패널
+ * - 긴 설명: `InfoBottomSheet` (`setInfoSheet`)
+ *
+ * 태그 컬러 단일 출처: 신살 `SHINSAL_COLOR`, 십성 `getTenGodChipStyle`+`getTenGodTw`, 오행 `element*Class`/`elementColorVar`,
+ * 관계(지지) `RELATION_COLORS` — 동일 의미 태그는 다른 페이지에서도 이 토큰만 사용.
+ */
 import type { ComputedPillars, FiveElementCount } from "@/lib/sajuEngine";
 import { countFiveElements, calculateProfileFromBirth } from "@/lib/sajuEngine";
 import type { DaewoonSuOpts } from "@/lib/luckCycles";
@@ -52,6 +62,7 @@ import { buildLifeFlowInsights } from "@/lib/lifeFlowInsight";
 import {
   getTenGod,
   getTenGodChipStyle,
+  getTenGodElement,
   getTenGodTw,
   TEN_GOD_KEYWORDS, TEN_GOD_TOOLTIP, TEN_GOD_ELEMENT,
   tenGodCountsToFiveElements, autoCountTenGods,
@@ -236,9 +247,9 @@ function ShinsalTagStrip({
             type="button"
             onClick={() => onSelect(t.id)}
             className={cn(
-              "max-w-full rounded border px-1 py-px text-center text-[9px] font-bold leading-tight shadow-none transition-opacity active:scale-[0.98] break-words whitespace-normal",
+              "max-w-full rounded border-2 border-transparent px-1 py-px text-center text-[9px] font-bold leading-tight shadow-none transition-opacity active:scale-[0.98] break-words whitespace-normal",
               SHINSAL_COLOR[t.name] ?? "border-border bg-muted/50 text-foreground",
-              selectedId === t.id && "ring-2 ring-primary ring-offset-1",
+              selectedId === t.id && "border-primary bg-primary/[0.06]",
             )}
           >
             {t.name}
@@ -284,7 +295,7 @@ function SelectedShinsalInlineCard({
           ))}
         </div>
       </div>
-      <div className="rounded-lg border border-border/60 bg-muted/30 px-3 py-2">
+      <div className="ds-inline-detail-nested">
         <p className="mb-0.5 text-[10px] font-bold text-muted-foreground">한 줄 해석</p>
         <p className="break-words text-[13px] leading-relaxed text-foreground">{entry.oneLine}</p>
       </div>
@@ -300,8 +311,8 @@ function SelectedShinsalInlineCard({
 
   if (layout === "panel") {
     return (
-      <div className="rounded-xl border border-border/80 bg-muted/15 px-3 py-3 space-y-2.5 text-sm">
-        <div className="flex items-start justify-between gap-2">
+      <div className="ds-inline-detail mt-3 px-0 py-0 space-y-0 overflow-visible">
+        <div className="ds-inline-detail-header !px-3">
           <div className="min-w-0 flex-1">
             <span
               className={cn(
@@ -324,14 +335,14 @@ function SelectedShinsalInlineCard({
             ✕
           </button>
         </div>
-        {body}
+        <div className="ds-inline-detail-body space-y-2.5">{body}</div>
       </div>
     );
   }
 
   return (
-    <div className="ds-card mt-3 border-primary/25 shadow-none overflow-visible">
-      <div className="flex items-start justify-between gap-2 border-b border-border px-4 py-3">
+    <div className="ds-inline-detail mt-3 overflow-visible">
+      <div className="ds-inline-detail-header">
         <div className="min-w-0 flex-1">
           <span
             className={cn(
@@ -352,7 +363,7 @@ function SelectedShinsalInlineCard({
           ✕
         </button>
       </div>
-      <div className="ds-card-pad space-y-2.5 overflow-visible text-sm">{body}</div>
+      <div className="ds-inline-detail-body">{body}</div>
     </div>
   );
 }
@@ -374,8 +385,8 @@ function TenGodGroupInlineCard({
   if (!detail) return null;
   const pctContext = getTenGodGroupPctContext(group, pct);
   return (
-    <div className="ds-card mt-3 border-primary/20 shadow-none overflow-visible">
-      <div className="flex items-start justify-between gap-2 border-b border-border px-4 py-3">
+    <div className="ds-inline-detail mt-0 overflow-visible">
+      <div className="ds-inline-detail-header">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-1.5">
             <span className={cn("ds-badge text-[12px] font-bold shadow-none", detail.color)}>{group}</span>
@@ -387,15 +398,15 @@ function TenGodGroupInlineCard({
           ✕
         </button>
       </div>
-      <div className="ds-card-pad space-y-2.5 overflow-visible text-sm">
+      <div className="ds-inline-detail-body">
         <p className="text-[13px] font-semibold text-foreground">{detail.title}</p>
         <p className="break-words text-[13px] leading-relaxed text-foreground/90">{detail.meaning}</p>
-        <div className="rounded-lg border border-amber-100 bg-amber-50/70 px-3 py-2">
-          <p className="text-[10px] font-bold uppercase tracking-wide text-amber-800">내 사주 비중 맥락</p>
+        <div className="ds-inline-detail-nested">
+          <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">내 사주 비중 맥락</p>
           <p className="mt-1 break-words text-[13px] leading-relaxed text-foreground">{pctContext}</p>
         </div>
-        <div className="rounded-lg border border-sky-100 bg-sky-50/60 px-3 py-2">
-          <p className="text-[10px] font-bold text-sky-800">차트 해석 포인트</p>
+        <div className="ds-inline-detail-nested">
+          <p className="text-[10px] font-bold text-muted-foreground">차트 해석 포인트</p>
           <p className="mt-1 break-words text-[13px] leading-relaxed text-foreground">{detail.chartPoint}</p>
         </div>
         <button type="button" onClick={onMore} className="text-[12px] font-semibold text-primary underline-offset-2 hover:underline">
@@ -418,8 +429,8 @@ function BranchRelationInlineCard({
   const detail = RELATION_DETAIL[relation.type];
   const shortDesc = RELATION_DESC[relation.type] ?? "";
   return (
-    <div className="ds-card mt-3 border-primary/20 shadow-none overflow-visible">
-      <div className="flex items-start justify-between gap-2 border-b border-border px-4 py-3">
+    <div className="ds-inline-detail mt-0 overflow-visible">
+      <div className="ds-inline-detail-header">
         <div className="min-w-0 flex-1">
           <span className={cn("ds-badge text-[12px] font-bold shadow-none", RELATION_COLORS[relation.type])}>{relation.type}</span>
           <p className="mt-1 break-words text-[13px] font-medium text-foreground">{relation.description}</p>
@@ -428,17 +439,17 @@ function BranchRelationInlineCard({
           ✕
         </button>
       </div>
-      <div className="ds-card-pad space-y-2.5 overflow-visible text-sm">
+      <div className="ds-inline-detail-body">
         <p className="break-words text-[13px] leading-relaxed text-muted-foreground">{shortDesc}</p>
         {detail ? (
           <>
-            <div className="rounded-lg border border-sky-100 bg-sky-50/60 px-3 py-2">
-              <p className="text-[10px] font-bold text-sky-800">기본 의미</p>
-              <p className="mt-1 break-words text-[13px] leading-relaxed">{detail.meaning}</p>
+            <div className="ds-inline-detail-nested">
+              <p className="text-[10px] font-bold text-muted-foreground">기본 의미</p>
+              <p className="mt-1 break-words text-[13px] leading-relaxed text-foreground">{detail.meaning}</p>
             </div>
-            <div className="rounded-lg border border-violet-100 bg-violet-50/50 px-3 py-2">
-              <p className="text-[10px] font-bold text-violet-800">해석 관점</p>
-              <p className="mt-1 break-words text-[13px] leading-relaxed">{detail.interpretation}</p>
+            <div className="ds-inline-detail-nested">
+              <p className="text-[10px] font-bold text-muted-foreground">해석 관점</p>
+              <p className="mt-1 break-words text-[13px] leading-relaxed text-foreground">{detail.interpretation}</p>
             </div>
           </>
         ) : null}
@@ -462,8 +473,8 @@ function HiddenStemInlineCard({
   onClose: () => void;
 }) {
   return (
-    <div className="ds-card mt-3 border-primary/20 shadow-none overflow-visible">
-      <div className="flex items-start justify-between gap-2 border-b border-border px-4 py-3">
+    <div className="ds-inline-detail mt-0 overflow-visible">
+      <div className="ds-inline-detail-header">
         <div>
           <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">지장간</p>
           <p className="text-[14px] font-bold text-foreground">
@@ -474,7 +485,7 @@ function HiddenStemInlineCard({
           ✕
         </button>
       </div>
-      <div className="ds-card-pad space-y-3 overflow-visible text-sm">
+      <div className="ds-inline-detail-body space-y-3">
         <p className="break-words text-[13px] leading-relaxed text-foreground/90">
           지장간(地藏干)은 지지 안에 숨은 천간으로, 겉으로 드러난 지지 한 글자만으로는 보이지 않는 오행층입니다. 통근·성격 배경·내면 기운을 읽을 때 참고합니다.
         </p>
@@ -517,19 +528,19 @@ function TwelveStageInlineCard({
   const desc = TWELVE_STAGE_DESC[stage as keyof typeof TWELVE_STAGE_DESC] ?? "";
   const color = TWELVE_STAGE_COLOR[stage as keyof typeof TWELVE_STAGE_COLOR] ?? "";
   return (
-    <div className="ds-card mt-3 border-primary/20 shadow-none overflow-visible">
-      <div className="flex items-start justify-between gap-2 border-b border-border px-4 py-3">
+    <div className="ds-inline-detail mt-0 overflow-visible">
+      <div className="ds-inline-detail-header">
         <div>
           <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">12운성</p>
           <p className="text-[14px] font-bold text-foreground">
-            {label} · {branch} → <span className={cn("inline-block rounded px-1.5 py-0.5", color)}>{stage}</span>
+            {label} · {branch} <span className="text-muted-foreground">·</span> <span className={cn("inline-block rounded px-1.5 py-0.5", color)}>{stage}</span>
           </p>
         </div>
         <button type="button" onClick={onClose} className="shrink-0 px-2 text-sm text-muted-foreground hover:text-foreground">
           ✕
         </button>
       </div>
-      <div className="ds-card-pad overflow-visible text-sm">
+      <div className="ds-inline-detail-body">
         <p className="break-words text-[13px] leading-relaxed text-foreground/90">{desc}</p>
         <p className="mt-2 text-[11px] text-muted-foreground">일간 기준 각 지지에서의 기운 성장 단계를 나타냅니다.</p>
       </div>
@@ -567,28 +578,43 @@ function TenGodNatalInlineBlock({
             ? `${tg}이(가) 사주에 강하게(${pct}%) 자리합니다. 성격과 삶의 흐름에 뚜렷한 영향을 미치는 핵심 기운 중 하나입니다.`
             : `${tg}이(가) 사주에서 매우 강하게(${pct}%) 작용합니다. 삶 전반에 걸쳐 가장 핵심적인 영향을 미치는 지배적 기운입니다.`;
 
+  const tgEl = getTenGodElement(tg, dayStem);
+
   return (
-    <div
-      className={`ds-card overflow-visible px-3 py-3.5 space-y-2.5 shadow-none ${getTenGodTw(tg, dayStem)}`}
-      style={getTenGodChipStyle(tg, dayStem)}
-    >
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <span className="text-[14px] font-bold">{tg}</span>
-          <span className="text-[11px] font-bold opacity-80 bg-white/45 px-1.5 py-0.5 rounded-full border border-current/20">
+    <div className="ds-inline-detail mt-0 overflow-visible">
+      <div className="ds-inline-detail-header">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+          <span
+            className={cn("ds-badge text-[13px] font-bold shadow-none border-0", getTenGodTw(tg, dayStem))}
+            style={getTenGodChipStyle(tg, dayStem)}
+          >
+            {tg}
+          </span>
+          <span className="text-[11px] font-semibold text-muted-foreground rounded-full border border-border/60 bg-muted/20 px-2 py-0.5">
             {pctLabel}
           </span>
         </div>
         <button
           type="button"
           onClick={onClose}
-          className="shrink-0 text-[11px] text-muted-foreground px-1.5 py-0.5 rounded border border-border/50 bg-white/60"
+          className="shrink-0 text-[12px] text-muted-foreground px-2 py-0.5 rounded-md hover:bg-muted/50"
         >
           닫기
         </button>
       </div>
-      <div className="rounded-lg bg-amber-50/80 border border-amber-100 px-2.5 py-2">
-        <p className="text-[10px] font-bold text-amber-700 uppercase tracking-wide mb-0.5">원국 비중 맥락</p>
+      <div className="ds-inline-detail-body">
+      <div
+        className="ds-inline-detail-nested"
+        style={
+          tgEl
+            ? {
+                borderColor: elementHslAlpha(tgEl, "strong", 0.18),
+                backgroundColor: elementHslAlpha(tgEl, "strong", 0.03),
+              }
+            : undefined
+        }
+      >
+        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide mb-0.5">원국 비중 맥락</p>
         <p className="text-[12px] leading-relaxed text-foreground break-words">{pctContext}</p>
       </div>
       {pct > 0 && (
@@ -621,6 +647,7 @@ function TenGodNatalInlineBlock({
       >
         십성 통합 해설 더보기
       </button>
+      </div>
     </div>
   );
 }
@@ -1042,10 +1069,11 @@ function FiveElementSection({
           const fillH = count > 0 ? Math.max(fillHRaw, 4) : 0;
           const fillY = y + NODE_R - fillH;
           const isPrimary = el === primaryEl;
-          const stroke = isPrimary ? elementColorVar(el, "strong") : "hsl(var(--border))";
-          const strokeW = isPrimary ? 2.25 : 1.5;
-          /* 오행 한 글자 = 십성 분포 %·칩과 동일 strong / 보조줄은 같은 범주 base */
-          const elLabelFill = elementColorVar(el, "strong");
+          /* 대표 오행: 텍스트(strong)와 동일 색의 단일 외곽선만 — 이중 링 없음 */
+          const strongFill = elementColorVar(el, "strong");
+          const stroke = isPrimary ? strongFill : "hsl(var(--border))";
+          const strokeW = isPrimary ? 2 : 1.5;
+          const elLabelFill = strongFill;
           const elSubFill = elementColorVar(el, "base");
           return (
             <g key={el}>
@@ -1187,6 +1215,7 @@ function TenGodDistributionSection({
   effectiveFiveElements,
   onTap,
   selectedGroup,
+  selectedGroupInlineSlot,
   monthBranch,
   dayBranch,
   allStems,
@@ -1198,6 +1227,8 @@ function TenGodDistributionSection({
   effectiveFiveElements: FiveElementCount;
   onTap: (group: string, pct: number) => void;
   selectedGroup?: string | null;
+  /** 선택된 그룹 행 바로 아래에만 렌더 (탐색 위치 고정) */
+  selectedGroupInlineSlot?: ReactNode;
   monthBranch?: string;
   dayBranch?: string;
   allStems?: string[];
@@ -1230,76 +1261,82 @@ function TenGodDistributionSection({
           const isDominantRow = dominantGroup === g;
           const isRowSelected = selectedGroup === g;
           return (
-            <div
-              key={g}
-              className={cn(
-                "rounded-xl border px-2 py-2 transition-colors",
-                !isDominantRow && !isRowSelected && "border-transparent",
-                isRowSelected && "border-primary/30 bg-primary/[0.05]",
-              )}
-              style={
-                isDominantRow && !isRowSelected
-                  ? {
-                      backgroundColor: elementHslAlpha(rowEl, "strong", 0.06),
-                      borderColor: elementHslAlpha(rowEl, "strong", 0.2),
-                    }
-                  : undefined
-              }
-            >
-              <button
-                type="button"
-                onClick={() => onTap(g, pct)}
-                className="flex w-full items-center gap-3 rounded px-1 py-0.5 text-left transition-opacity hover:opacity-90"
+            <div key={g} className="space-y-2">
+              <div
+                className={cn(
+                  "rounded-xl border-2 px-2 py-2 transition-colors",
+                  !isDominantRow && !isRowSelected && "border-transparent",
+                )}
+                style={
+                  isRowSelected
+                    ? {
+                        backgroundColor: elementHslAlpha(rowEl, "strong", 0.07),
+                        borderColor: elementColorVar(rowEl, "strong"),
+                      }
+                    : isDominantRow
+                      ? {
+                          backgroundColor: elementHslAlpha(rowEl, "strong", 0.06),
+                          borderColor: elementHslAlpha(rowEl, "strong", 0.22),
+                        }
+                      : undefined
+                }
               >
-                <span
-                  className={cn(
-                    "w-10 shrink-0 text-[13px] font-semibold",
-                    isDominantRow ? elementTextClass(rowEl, "strong") : "text-foreground",
-                  )}
+                <button
+                  type="button"
+                  onClick={() => onTap(g, pct)}
+                  className="flex w-full items-center gap-3 rounded px-1 py-0.5 text-left transition-opacity hover:opacity-90"
                 >
-                  {g}
-                </span>
-                <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-muted/60">
-                  <div
-                    className={cn("h-full rounded-full", elementBgClass(rowEl, "base"))}
-                    style={{ width: `${pct}%` }}
-                  />
+                  <span
+                    className={cn(
+                      "w-10 shrink-0 text-[13px] font-semibold",
+                      isDominantRow || isRowSelected ? elementTextClass(rowEl, "strong") : "text-foreground",
+                    )}
+                  >
+                    {g}
+                  </span>
+                  <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-muted/60">
+                    <div
+                      className={cn("h-full rounded-full", elementBgClass(rowEl, "base"))}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                  <span
+                    className={cn(
+                      "ds-badge text-[13px] font-bold shadow-none",
+                      elementBgClass(rowEl, "muted"),
+                      elementTextClass(rowEl, "strong"),
+                      elementBorderClass(rowEl, "muted"),
+                    )}
+                  >
+                    {pct}%
+                  </span>
+                </button>
+                <div className="ml-11 mt-2 flex gap-2">
+                  <span
+                    className={cn(
+                      "ds-badge flex items-center gap-1 text-[11px] shadow-none",
+                      elementBgClass(rowEl, "muted"),
+                      elementTextClass(rowEl, "strong"),
+                      elementBorderClass(rowEl, "muted"),
+                    )}
+                  >
+                    <span className="font-semibold">{s1}</span>
+                    <span className="opacity-80">{p1}%</span>
+                  </span>
+                  <span
+                    className={cn(
+                      "ds-badge flex items-center gap-1 text-[11px] shadow-none",
+                      elementBgClass(rowEl, "muted"),
+                      elementTextClass(rowEl, "strong"),
+                      elementBorderClass(rowEl, "muted"),
+                    )}
+                  >
+                    <span className="font-semibold">{s2}</span>
+                    <span className="opacity-80">{p2}%</span>
+                  </span>
                 </div>
-                <span
-                  className={cn(
-                    "ds-badge text-[13px] font-bold shadow-none",
-                    elementBgClass(rowEl, "muted"),
-                    elementTextClass(rowEl, "strong"),
-                    elementBorderClass(rowEl, "muted"),
-                  )}
-                >
-                  {pct}%
-                </span>
-              </button>
-              <div className="ml-11 mt-2 flex gap-2">
-                <span
-                  className={cn(
-                    "ds-badge flex items-center gap-1 text-[11px] shadow-none",
-                    elementBgClass(rowEl, "muted"),
-                    elementTextClass(rowEl, "strong"),
-                    elementBorderClass(rowEl, "muted"),
-                  )}
-                >
-                  <span className="font-semibold">{s1}</span>
-                  <span className="opacity-80">{p1}%</span>
-                </span>
-                <span
-                  className={cn(
-                    "ds-badge flex items-center gap-1 text-[11px] shadow-none",
-                    elementBgClass(rowEl, "muted"),
-                    elementTextClass(rowEl, "strong"),
-                    elementBorderClass(rowEl, "muted"),
-                  )}
-                >
-                  <span className="font-semibold">{s2}</span>
-                  <span className="opacity-80">{p2}%</span>
-                </span>
               </div>
+              {selectedGroup === g && selectedGroupInlineSlot}
             </div>
           );
         })}
@@ -3329,7 +3366,7 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
               <div className="border-t border-border pt-4">
                 <h3 className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">십성 분포 (구조)</h3>
                 <p className="mb-2 text-[12px] leading-relaxed text-muted-foreground">
-                  십성 칸을 누르면 <span className="font-semibold text-foreground">이 블록 바로 아래</span>에 상세가 열립니다. 신살은 원국표에서 선택하세요. 통합 해설은「더보기」로 확인하세요.
+                  십성 칸을 누르면 <span className="font-semibold text-foreground">해당 십성 그룹(비겁·식상 등) 블록 바로 아래</span>에 상세가 열립니다. 신살은 원국표에서 선택하세요. 통합 해설은「더보기」로 확인하세요.
                 </p>
           {dayStem && tenGodDisplayCounts ? (() => {
             const displayCounts = tenGodDisplayCounts;
@@ -3339,6 +3376,10 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                 {Object.entries(TEN_GOD_GROUPS).map(([group, members]) => {
                   const groupCount = members.reduce((s, tg) => s + (displayCounts[tg] ?? 0), 0);
                   const groupPct = Math.round((groupCount / allTgTotal) * 100);
+                  const openTg =
+                    yuanGuoInlineDetail?.kind === "tengod" && members.includes(yuanGuoInlineDetail.tg)
+                      ? yuanGuoInlineDetail.tg
+                      : null;
                   return (
                     <div key={group}>
                       <div className="mb-1 flex items-center justify-between">
@@ -3350,6 +3391,8 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                           const cnt = displayCounts[tg as TenGod] ?? 0;
                           const pct = Math.round((cnt / allTgTotal) * 100);
                           const isActive = yuanGuoInlineDetail?.kind === "tengod" && yuanGuoInlineDetail.tg === tg;
+                          const rowEl = getTenGodElement(tg as TenGod, dayStem);
+                          const chipStyle = getTenGodChipStyle(tg as TenGod, dayStem);
                           return (
                             <button
                               type="button"
@@ -3359,12 +3402,16 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                                   prev?.kind === "tengod" && prev.tg === tg ? null : { kind: "tengod", tg: tg as TenGod },
                                 )
                               }
-                              className={cn(
-                                "flex items-center justify-between rounded-lg border border-transparent px-2.5 py-1.5 transition-all active:scale-95",
-                                getTenGodTw(tg, dayStem),
-                                isActive && "border-primary/35 bg-primary/[0.07]",
-                              )}
-                              style={getTenGodChipStyle(tg, dayStem)}
+                              className="flex items-center justify-between rounded-lg border-2 px-2.5 py-1.5 transition-all active:scale-95"
+                              style={
+                                isActive && rowEl
+                                  ? {
+                                      backgroundColor: elementHslAlpha(rowEl, "strong", 0.09),
+                                      borderColor: elementColorVar(rowEl, "strong"),
+                                      color: elementColorVar(rowEl, "strong"),
+                                    }
+                                  : { ...chipStyle, border: "2px solid transparent" }
+                              }
                             >
                               <span className="text-[13px] font-bold">{tg}</span>
                               <span className="text-[13px] font-semibold">{pct}%</span>
@@ -3372,6 +3419,19 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                           );
                         })}
                       </div>
+                      {openTg && dayStem && tenGodDisplayCounts ? (
+                        <div className="mt-2">
+                          <TenGodNatalInlineBlock
+                            dayStem={dayStem}
+                            tg={openTg}
+                            displayCounts={tenGodDisplayCounts}
+                            onClose={() => setYuanGuoInlineDetail(null)}
+                            onMore={() =>
+                              setInfoSheet({ kind: "tengodNatal", tenGod: openTg, dayStem })
+                            }
+                          />
+                        </div>
+                      ) : null}
                     </div>
                   );
                 })}
@@ -3380,19 +3440,6 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
           })() : (
                 <p className="text-sm text-muted-foreground">일간 정보가 없어 십성 분포를 표시할 수 없습니다.</p>
               )}
-                {yuanGuoInlineDetail?.kind === "tengod" && dayStem && tenGodDisplayCounts ? (
-                  <div className="mt-3 [&_.ds-card]:mt-0">
-                    <TenGodNatalInlineBlock
-                      dayStem={dayStem}
-                      tg={yuanGuoInlineDetail.tg}
-                      displayCounts={tenGodDisplayCounts}
-                      onClose={() => setYuanGuoInlineDetail(null)}
-                      onMore={() =>
-                        setInfoSheet({ kind: "tengodNatal", tenGod: yuanGuoInlineDetail.tg, dayStem })
-                      }
-                    />
-                  </div>
-                ) : null}
               </div>
             </div>
           </div>
@@ -3468,9 +3515,9 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                             );
                           }}
                           className={cn(
-                            "flex w-full flex-col items-center gap-1 py-2.5 px-1 transition-colors disabled:cursor-not-allowed disabled:opacity-50",
-                            branch && "hover:bg-muted/30 active:bg-muted/50",
-                            isSel && "border border-primary/35 bg-primary/[0.06]",
+                            "flex w-full flex-col items-center gap-1 border-2 border-transparent py-2.5 px-1 transition-colors disabled:cursor-not-allowed disabled:opacity-50",
+                            branch && "hover:bg-muted/20 active:bg-muted/35",
+                            isSel && "border-primary bg-primary/[0.06]",
                           )}
                         >
                           {branch ? (
@@ -3542,13 +3589,13 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                             )
                           }
                           className={cn(
-                            "flex w-full items-center gap-2 rounded-lg border border-border bg-muted/20 px-3 py-2 text-left transition-colors hover:bg-muted/35",
-                            isSel && "border-primary/35 bg-primary/[0.06]",
+                            "flex w-full items-center gap-2 rounded-lg border-2 border-border bg-white px-3 py-2 text-left transition-colors hover:bg-muted/15 dark:bg-card",
+                            isSel && "border-primary bg-primary/[0.06]",
                           )}
                         >
                           <span className="text-[13px] text-muted-foreground w-8 shrink-0">{label}</span>
                           <span className="text-base font-bold">{branch}</span>
-                          <span className="text-muted-foreground">→</span>
+                          <span className="text-muted-foreground shrink-0">·</span>
                           <div className="flex min-w-0 flex-1 flex-col">
                             <span className={`text-[13px] font-bold px-1.5 py-0.5 rounded ${TWELVE_STAGE_COLOR[stage]}`}>{stage}</span>
                             <span className="line-clamp-2 text-[11px] text-muted-foreground mt-0.5">{TWELVE_STAGE_DESC[stage]}</span>
@@ -3560,7 +3607,7 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                 </div>
               )}
               {yuanGuoInlineDetail?.kind === "hiddenStem" ? (
-                <div className="[&_.ds-card]:mt-0">
+                <div className="mt-2">
                   <HiddenStemInlineCard
                     pillarLabel={yuanGuoInlineDetail.label}
                     branch={yuanGuoInlineDetail.branch}
@@ -3570,7 +3617,7 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                 </div>
               ) : null}
               {yuanGuoInlineDetail?.kind === "twelveStage" ? (
-                <div className="[&_.ds-card]:mt-0">
+                <div className="mt-2">
                   <TwelveStageInlineCard
                     label={yuanGuoInlineDetail.label}
                     branch={yuanGuoInlineDetail.branch}
@@ -3598,9 +3645,10 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                 return (
                   <button
                     key={i}
+                    type="button"
                     className={cn(
-                      "w-full flex items-center gap-2 rounded-lg border border-border/60 bg-muted/10 px-3 py-2 text-left transition-colors active:bg-muted/30",
-                      isSel && "border-primary/35 bg-primary/[0.06]",
+                      "w-full flex items-center gap-2 rounded-lg border-2 border-border bg-white px-3 py-2 text-left transition-colors active:bg-muted/15 dark:bg-card",
+                      isSel && "border-primary bg-primary/[0.06]",
                     )}
                     onClick={() =>
                       setYuanGuoInlineDetail((prev) =>
@@ -3613,13 +3661,12 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                     }
                   >
                     <span className={`text-[13px] font-bold px-2 py-0.5 rounded-full shrink-0 ${RELATION_COLORS[rel.type]}`}>{rel.type}</span>
-                    <span className="text-sm font-medium flex-1 break-words">{rel.description}</span>
-                    <span className="text-[11px] text-muted-foreground ml-auto shrink-0">▼</span>
+                    <span className="text-sm font-medium flex-1 min-w-0 break-words">{rel.description}</span>
                   </button>
                 );
               })}
               {yuanGuoInlineDetail?.kind === "branchRelation" ? (
-                <div className="[&_.ds-card]:mt-0">
+                <div className="mt-2">
                   <BranchRelationInlineCard
                     relation={yuanGuoInlineDetail.relation}
                     onClose={() => setYuanGuoInlineDetail(null)}
@@ -3750,11 +3797,13 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
 
           {/* 일간 성향 카드 */}
           {dayStem && (
-            <div className="rounded-xl border border-border bg-muted/20 px-4 py-3.5">
-              <p className="text-[13px] font-bold text-muted-foreground mb-1.5">일간 성향 · {dayStem}일간</p>
-              <p className="text-sm text-foreground leading-relaxed">
-                {getDayMasterSummaryFromStrength(dayStem, sajuPipelineResult?.adjusted?.effectiveStrengthLevel ?? "중화")}
-              </p>
+            <div className="ds-inline-detail overflow-visible">
+              <div className="ds-inline-detail-body space-y-0 py-3.5">
+                <p className="text-[13px] font-bold text-muted-foreground mb-1.5">일간 성향 · {dayStem}일간</p>
+                <p className="text-sm text-foreground leading-relaxed">
+                  {getDayMasterSummaryFromStrength(dayStem, sajuPipelineResult?.adjusted?.effectiveStrengthLevel ?? "중화")}
+                </p>
+              </div>
             </div>
           )}
 
@@ -3791,7 +3840,7 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
               <div className="space-y-4">
                 <div>
                   <p className="text-[13px] text-muted-foreground mb-2.5">
-                    그룹을 누르면 아래에 <span className="font-semibold text-foreground">행동·기질 해석 카드</span>가 열립니다. 관계·직업·감정 측면은「더보기」로 확인하세요.
+                    그룹을 누르면 <span className="font-semibold text-foreground">해당 줄 바로 아래</span>에 행동·기질 해석 카드가 열립니다. 관계·직업·감정 측면은「더보기」로 확인하세요.
                   </p>
                   <TenGodDistributionSection
                     dayStem={dayStem}
@@ -3803,6 +3852,24 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                     allStems={allStems}
                     allBranches={allBranches}
                     selectedGroup={selectedTgGroupInline?.group ?? null}
+                    selectedGroupInlineSlot={
+                      selectedTgGroupInline ? (
+                        <TenGodGroupInlineCard
+                          group={selectedTgGroupInline.group}
+                          pct={selectedTgGroupInline.pct}
+                          dayStem={dayStem}
+                          onClose={() => setSelectedTgGroupInline(null)}
+                          onMore={() =>
+                            setInfoSheet({
+                              kind: "tengod-group",
+                              group: selectedTgGroupInline.group,
+                              dayStem,
+                              pct: selectedTgGroupInline.pct,
+                            })
+                          }
+                        />
+                      ) : null
+                    }
                     onTap={(group, pct) =>
                       setSelectedTgGroupInline((prev) => (prev?.group === group ? null : { group, pct }))
                     }
@@ -3861,23 +3928,6 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
               <p className="text-sm text-muted-foreground">일간 정보가 없습니다</p>
             )}
           </AccSection>
-
-          {selectedTgGroupInline && dayStem ? (
-            <TenGodGroupInlineCard
-              group={selectedTgGroupInline.group}
-              pct={selectedTgGroupInline.pct}
-              dayStem={dayStem}
-              onClose={() => setSelectedTgGroupInline(null)}
-              onMore={() =>
-                setInfoSheet({
-                  kind: "tengod-group",
-                  group: selectedTgGroupInline.group,
-                  dayStem,
-                  pct: selectedTgGroupInline.pct,
-                })
-              }
-            />
-          ) : null}
 
           {/* 배우자궁 */}
           {spousePalace && (
