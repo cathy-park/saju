@@ -4528,7 +4528,7 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                           </div>
 
                           {/* 핵심 메시지 / 오늘 십성 / 한 줄 설명 */}
-                          <div className="bg-white/40 px-1">
+                          <div className="rounded-2xl border border-border/50 bg-white/60 backdrop-blur-sm px-4 py-3">
                             <p className="ds-body font-semibold text-foreground">{fortune.summary}</p>
                             {(tgStem || tgBranch) && (
                               <div className="mt-1 flex flex-wrap items-center gap-1.5">
