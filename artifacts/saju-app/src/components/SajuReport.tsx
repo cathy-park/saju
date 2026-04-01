@@ -55,6 +55,7 @@ import { TodayFortuneCard } from "@/components/TodayFortuneCard";
 import {
   buildShinsalCombinationNotes,
   buildShinsalInterpretationList,
+  formatTodayShinsalOneLine,
   type ShinsalInterpretationEntry,
 } from "@/lib/shinsalInterpretation";
 import { getFortuneForDate } from "@/lib/todayFortune";
@@ -1790,6 +1791,14 @@ function getElementBalanceSummary(counts: FiveElementCount) {
   return "오행 분포에 주의가 필요합니다.";
 }
 
+function getElementBalanceAccent(counts: FiveElementCount): FiveElKey | null {
+  const missing = (["목", "화", "토", "금", "수"] as const).filter((el) => counts[el] === 0);
+  if (missing.length > 0) return missing[0];
+  const total = Object.values(counts).reduce((a, b) => a + b, 0) || 1;
+  const dominant = (["목", "화", "토", "금", "수"] as const).filter((el) => counts[el] / total >= 0.4);
+  return dominant.length > 0 ? dominant[0] : null;
+}
+
 // ── 格局 & 구조 분석 섹션 ────────────────────────────────────────
 
 function GukgukSection({
@@ -3132,7 +3141,7 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
     return { seunBranch: seun?.ganZhi.branch, daewoonBranch: cur?.ganZhi.branch };
   }, [luckCycles, input.year]);
 
-  const shinsalPillars = (dayStem && dayBranch)
+  const yuanGuoShinsalPillars = (dayStem && dayBranch)
     ? calculateShinsalFull(dayStem, dayBranch, input.month, [
         { pillar: "시주", stem: effectivePillars.hour?.hangul?.[0] ?? "", branch: effectivePillars.hour?.hangul?.[1] ?? "" },
         { pillar: "일주", stem: effectivePillars.day?.hangul?.[0] ?? "", branch: effectivePillars.day?.hangul?.[1] ?? "" },
@@ -3142,7 +3151,7 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
     : [];
 
   const shinsalBranchItems = (["시주", "일주", "월주", "년주"] as const).map(
-    (name) => shinsalPillars.find((p) => p.pillar === name)?.branchItems ?? []
+    (name) => yuanGuoShinsalPillars.find((p) => p.pillar === name)?.branchItems ?? []
   );
 
   const PILLAR_TO_POSITIONS: Record<string, { stem: string; branch: string }> = {
@@ -3153,13 +3162,13 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
   };
 
   const autoShinsalSet = new Set<string>(
-    shinsalPillars.flatMap((ps) => [
+    yuanGuoShinsalPillars.flatMap((ps) => [
       ...(ps.pillarItems ?? []), ...(ps.stemItems ?? []), ...(ps.branchItems ?? []),
     ])
   );
 
   const autoShinsalByPosition = new Map<string, Set<string>>();
-  for (const ps of shinsalPillars) {
+  for (const ps of yuanGuoShinsalPillars) {
     const pos = PILLAR_TO_POSITIONS[ps.pillar];
     if (!pos) continue;
     const stemSet = autoShinsalByPosition.get(pos.stem) ?? new Set<string>();
@@ -3170,44 +3179,44 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
     autoShinsalByPosition.set(pos.branch, branchSet);
   }
 
-  const finalShinsalNames = new Set<string>();
-  for (const ps of shinsalPillars) {
+  const yuanGuoFinalShinsalNames = new Set<string>();
+  for (const ps of yuanGuoShinsalPillars) {
     const pos = PILLAR_TO_POSITIONS[ps.pillar];
     if (!pos) continue;
     const stemItems = [...(ps.pillarItems ?? []), ...(ps.stemItems ?? [])];
     const branchItems = ps.branchItems ?? [];
     for (const n of stemItems) {
-      finalShinsalNames.add(n);
+      yuanGuoFinalShinsalNames.add(n);
     }
     for (const n of branchItems) {
-      finalShinsalNames.add(n);
+      yuanGuoFinalShinsalNames.add(n);
     }
   }
-  // Apply manual adjustments to keep Today view consistent with YuanGuo edits
+  // 원국 탭 수동 편집 반영(원국 표시 전용)
   for (const it of excludedAutoShinsal) {
-    if (it?.name) finalShinsalNames.delete(it.name);
+    if (it?.name) yuanGuoFinalShinsalNames.delete(it.name);
   }
   for (const it of manualShinsal) {
-    if (it?.name) finalShinsalNames.add(it.name);
+    if (it?.name) yuanGuoFinalShinsalNames.add(it.name);
   }
 
-  const shinsalInterpretEntries = useMemo(
+  const yuanGuoShinsalInterpretEntries = useMemo(
     () =>
-      shinsalPillars.length > 0
-        ? buildShinsalInterpretationList(shinsalPillars, branchRelations, shinsalLuckCtx)
+      yuanGuoShinsalPillars.length > 0
+        ? buildShinsalInterpretationList(yuanGuoShinsalPillars, branchRelations, shinsalLuckCtx)
         : [],
-    [shinsalPillars, branchRelations, shinsalLuckCtx],
+    [yuanGuoShinsalPillars, branchRelations, shinsalLuckCtx],
   );
 
   const shinsalComboNotes = useMemo(() => {
     const names = new Set<string>();
-    for (const ps of shinsalPillars) {
+    for (const ps of yuanGuoShinsalPillars) {
       for (const n of [...(ps.pillarItems ?? []), ...(ps.stemItems ?? []), ...(ps.branchItems ?? [])]) {
         names.add(n);
       }
     }
     return buildShinsalCombinationNotes(names);
-  }, [shinsalPillars]);
+  }, [yuanGuoShinsalPillars]);
 
   const PILLAR_TO_TABLE_COL: Record<string, 0 | 1 | 2 | 3> = {
     시주: 0,
@@ -3223,7 +3232,7 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
       { stem: [], branch: [] },
       { stem: [], branch: [] },
     ];
-    for (const e of shinsalInterpretEntries) {
+    for (const e of yuanGuoShinsalInterpretEntries) {
       const idx = PILLAR_TO_TABLE_COL[e.pillar];
       if (idx === undefined) continue;
       const ref: ShinsalTagRef = { id: e.id, name: e.name };
@@ -3232,9 +3241,9 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
       else cols[idx].stem.push(ref);
     }
     return cols;
-  }, [shinsalInterpretEntries]);
+  }, [yuanGuoShinsalInterpretEntries]);
 
-  const orderedShinsalInsights = useMemo(() => {
+  const yuanGuoOrderedShinsalInsights = useMemo(() => {
     // Order follows the same visual order as YuanGuo PillarTable:
     // 시→일→월→년 columns, and within each column: 천간 tags → 지지 tags.
     const orderedNames: string[] = [];
@@ -3250,25 +3259,53 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
     });
 
     const byName = new Map<string, ShinsalInterpretationEntry>();
-    for (const e of shinsalInterpretEntries) {
+    for (const e of yuanGuoShinsalInterpretEntries) {
       if (!byName.has(e.name)) byName.set(e.name, e);
     }
 
-    const names = uniqueOrdered.length > 0 ? uniqueOrdered : [...finalShinsalNames];
+    const names = uniqueOrdered.length > 0 ? uniqueOrdered : [...yuanGuoFinalShinsalNames];
     return names
-      .filter((n) => finalShinsalNames.has(n))
+      .filter((n) => yuanGuoFinalShinsalNames.has(n))
       .map((name) => ({ name, oneLine: byName.get(name)?.oneLine ?? "" }))
       .filter((x) => x.oneLine);
-  }, [finalShinsalNames, shinsalInterpretEntries, shinsalPerColumn]);
+  }, [yuanGuoFinalShinsalNames, yuanGuoShinsalInterpretEntries, shinsalPerColumn]);
+
+  // ── 오늘운세 신살(일운 기준): 오늘 일진 간지 vs 내 원국(일간/일지) ──
+  const todayShinsalPillars = useMemo(() => {
+    if (!dayStem || !dayBranch) return [];
+    const gz = luckCycles?.ilun?.ganZhi;
+    if (!gz?.stem || !gz?.branch) return [];
+    return calculateShinsalFull(
+      dayStem,
+      dayBranch,
+      input.month,
+      [{ pillar: "일운", stem: gz.stem, branch: gz.branch }],
+      fortuneOpts?.shinsalMode ?? "default",
+    );
+  }, [dayStem, dayBranch, luckCycles, input.month, fortuneOpts?.shinsalMode]);
+
+  const todayFinalShinsalNames = useMemo(() => {
+    const out = new Set<string>();
+    for (const ps of todayShinsalPillars) {
+      for (const n of [...(ps.pillarItems ?? []), ...(ps.stemItems ?? []), ...(ps.branchItems ?? [])]) out.add(n);
+    }
+    return out;
+  }, [todayShinsalPillars]);
+
+  const todayOrderedShinsalInsights = useMemo(() => {
+    return [...todayFinalShinsalNames]
+      .map((name) => ({ name, oneLine: formatTodayShinsalOneLine(name) }))
+      .filter((x) => x.oneLine);
+  }, [todayFinalShinsalNames]);
 
   const selectedShinsalEntry = useMemo(() => {
     if (yuanGuoInlineDetail?.kind !== "shinsal") return null;
-    return shinsalInterpretEntries.find((e) => e.id === yuanGuoInlineDetail.id) ?? null;
-  }, [yuanGuoInlineDetail, shinsalInterpretEntries]);
+    return yuanGuoShinsalInterpretEntries.find((e) => e.id === yuanGuoInlineDetail.id) ?? null;
+  }, [yuanGuoInlineDetail, yuanGuoShinsalInterpretEntries]);
 
   const lifeFlowData = buildLifeFlowInsights(
     { ...record, maritalStatus },
-    { finalShinsalNames }
+    { finalShinsalNames: todayFinalShinsalNames }
   );
 
   const tenGodPairs = [
@@ -3309,8 +3346,8 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
     [hasHourPillar, effectiveFiveElements, fiveElNoHour],
   );
   const shinsalDiff = useMemo<ShinsalDiff>(
-    () => (hasHourPillar ? diffShinsal(Array.from(finalShinsalNames), shinsalNamesNoHour) : { added: [], removed: [] }),
-    [hasHourPillar, finalShinsalNames, shinsalNamesNoHour],
+    () => (hasHourPillar ? diffShinsal(Array.from(yuanGuoFinalShinsalNames), shinsalNamesNoHour) : { added: [], removed: [] }),
+    [hasHourPillar, yuanGuoFinalShinsalNames, shinsalNamesNoHour],
   );
   const anyDiff = hasAnyHourDiff(fiveElDiff, shinsalDiff);
 
@@ -4000,9 +4037,23 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
               <p className="text-[12px] leading-relaxed text-muted-foreground">
                 오행이 기질·행동 스타일에 주는 균형을 해석합니다. 도형·간격·강조는 원국 탭 오행 분포와 동일한 기준입니다.
               </p>
-              <div className="rounded-xl border border-border/50 bg-primary/[0.04] px-3 py-2.5 dark:bg-primary/[0.07]">
-                <p className="text-sm text-foreground/90">{getElementBalanceSummary(effectiveFiveElements)}</p>
-              </div>
+              {(() => {
+                const acc = getElementBalanceAccent(effectiveFiveElements);
+                const style: CSSProperties | undefined = acc
+                  ? { backgroundColor: elementHslAlpha(acc, "strong", 0.06), borderColor: elementHslAlpha(acc, "strong", 0.22) }
+                  : undefined;
+                return (
+                  <div className="rounded-xl border px-3 py-2.5" style={style}>
+                    <p
+                      className="mb-1 text-[13px] font-semibold"
+                      style={acc ? { color: elementColorVar(acc, "strong") } : undefined}
+                    >
+                      오행 균형
+                    </p>
+                    <p className="text-sm text-foreground/90">{getElementBalanceSummary(effectiveFiveElements)}</p>
+                  </div>
+                );
+              })()}
               <FiveElementSection
                 variant="personality"
                 counts={effectiveFiveElements}
@@ -4348,10 +4399,23 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                   {getDayMasterSummaryFromStrength(dayStem, sajuPipelineResult?.adjusted?.effectiveStrengthLevel ?? "중화")}
                 </p>
               </div>
-              <div className="rounded-lg border border-sky-100 bg-sky-50/40 p-3">
-                <p className="text-[13px] font-semibold text-sky-700 mb-1">오행 균형</p>
-                <p className="text-sm">{getElementBalanceSummary(effectiveFiveElements)}</p>
-              </div>
+              {(() => {
+                const acc = getElementBalanceAccent(effectiveFiveElements);
+                const style: CSSProperties | undefined = acc
+                  ? { backgroundColor: elementHslAlpha(acc, "strong", 0.06), borderColor: elementHslAlpha(acc, "strong", 0.22) }
+                  : { borderColor: elementHslAlpha("수", "strong", 0.12), backgroundColor: elementHslAlpha("수", "strong", 0.03) };
+                return (
+                  <div className="rounded-lg border p-3" style={style}>
+                    <p
+                      className="text-[13px] font-semibold mb-1"
+                      style={acc ? { color: elementColorVar(acc, "strong") } : { color: elementColorVar("수", "strong") }}
+                    >
+                      오행 균형
+                    </p>
+                    <p className="text-sm">{getElementBalanceSummary(effectiveFiveElements)}</p>
+                  </div>
+                );
+              })()}
               {branchRelations.length > 0 && (
                 <div className="rounded-lg border border-border bg-muted/20 p-3">
                   <p className="text-[13px] font-semibold text-muted-foreground mb-1">차트 특징</p>
@@ -4368,14 +4432,17 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
           )}
 
           {/* 신살 해석 */}
-          {orderedShinsalInsights.length > 0 && (interpretTab === "전체" || interpretTab === "사랑" || interpretTab === "배우자운") && (
+          {todayOrderedShinsalInsights.length > 0 && (interpretTab === "전체" || interpretTab === "사랑" || interpretTab === "배우자운") && (
             <div className="rounded-xl border border-amber-200 bg-amber-50/40 px-3.5 py-3 space-y-2">
               <p className="text-[13px] font-semibold text-amber-700 uppercase tracking-wide flex items-center gap-1">
                 <Star className="h-3 w-3" />
                 신살 기운 해석
               </p>
+              <p className="text-[11px] text-muted-foreground">
+                기준: <span className="font-semibold text-foreground">오늘 일진(일운) 간지</span> ↔ <span className="font-semibold text-foreground">내 원국(일간·일지)</span> 비교로 계산된 신살만 표시합니다.
+              </p>
               <div className="space-y-2">
-                {orderedShinsalInsights.map(({ name, oneLine }) => (
+                {todayOrderedShinsalInsights.map(({ name, oneLine }) => (
                   <div key={name} className="ds-inline-detail-nested p-3 space-y-2">
                     <ShinsalChip name={name} />
                     <div className="ds-inline-detail-nested">
@@ -4525,8 +4592,8 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
               <summary className="px-3 py-2 cursor-pointer font-mono font-bold hover:bg-muted/30">🛠 해석 입력 상태 (개발용)</summary>
               <div className="px-3 pb-3 pt-1 space-y-1 font-mono">
                 <p><span className="font-bold">관계상태:</span> {maritalStatus ?? "미설정"}</p>
-                <p><span className="font-bold">finalShinsal 수:</span> {finalShinsalNames.size}개</p>
-                <p><span className="font-bold">finalShinsal:</span> {finalShinsalNames.size > 0 ? [...finalShinsalNames].join(", ") : "없음"}</p>
+                <p><span className="font-bold">todayFinalShinsal 수:</span> {todayFinalShinsalNames.size}개</p>
+                <p><span className="font-bold">todayFinalShinsal:</span> {todayFinalShinsalNames.size > 0 ? [...todayFinalShinsalNames].join(", ") : "없음"}</p>
               </div>
             </details>
           )}

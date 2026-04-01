@@ -230,3 +230,12 @@ export function buildShinsalInterpretationList(
 
   return list;
 }
+
+export function formatTodayShinsalOneLine(name: string): string {
+  // 오늘운세 탭 전용: 원국 설명(SHINSAL_DESC)과 문장을 분리하고, 반드시 '오늘/현재' 시제로 통일합니다.
+  if (/귀인/.test(name)) return `오늘 ${name} 도움 흐름이 들어올 수 있습니다. 연결과 지원을 적극적으로 활용하세요.`;
+  if (name === "도화" || name === "홍염") return `오늘 ${name} 기운이 활성화될 수 있습니다. 호감·표현이 커질수록 경계도 함께 잡아주세요.`;
+  if (/(충|형|파|해|원진)/.test(name)) return `오늘 ${name} 자극이 생길 수 있어 주의가 필요합니다. 반응보다 정리·완충이 유리합니다.`;
+  if (/(살)$/.test(name)) return `오늘 ${name} 기운이 작동할 수 있습니다. 과속·과열을 피하고 안전하게 조절하세요.`;
+  return `오늘 ${name} 기운이 작동할 수 있습니다. 오늘의 흐름에 맞춰 강약을 조절해보세요.`;
+}
