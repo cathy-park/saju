@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useCallback, useEffect } from "react";
+import type { ReactNode } from "react";
 import type { ComputedPillars, FiveElementCount } from "@/lib/sajuEngine";
 import { countFiveElements, calculateProfileFromBirth } from "@/lib/sajuEngine";
 import type { DaewoonSuOpts } from "@/lib/luckCycles";
@@ -31,6 +32,7 @@ import {
   elementBorderClass,
   elementChipColors,
   elementColorVar,
+  elementHslAlpha,
   elementTextClass,
   getTenGodGroup,
   type ElementTone,
@@ -173,15 +175,18 @@ function AccSection({
   defaultOpen = false,
   titleExtra,
   children,
+  id,
 }: {
   title: string;
   defaultOpen?: boolean;
   titleExtra?: React.ReactNode;
   children: React.ReactNode;
+  /** 스크롤 앵커(핵심 한눈에 보기 등) */
+  id?: string;
 }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className="border-t border-border/40 pt-1">
+    <div id={id} className="scroll-mt-4 border-t border-border/40 pt-1">
       <div className="flex items-center">
         <button
           onClick={() => setOpen((v) => !v)}
@@ -248,11 +253,82 @@ function SelectedShinsalInlineCard({
   entry,
   onClose,
   onMore,
+  layout = "card",
 }: {
   entry: ShinsalInterpretationEntry;
   onClose: () => void;
   onMore: () => void;
+  /** panel: 원국표 아래 단일 패널(이중 카드 없음) */
+  layout?: "card" | "panel";
 }) {
+  const body = (
+    <>
+      <div>
+        <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">기준</p>
+        <p className="text-[13px] font-semibold text-foreground">{entry.basisLabel}</p>
+        {entry.triggerDetail ? (
+          <p className="mt-0.5 break-words text-xs leading-relaxed text-muted-foreground">{entry.triggerDetail}</p>
+        ) : null}
+      </div>
+      <div>
+        <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">영향 영역</p>
+        <p className="text-[13px] text-foreground">{entry.influenceDomain}</p>
+      </div>
+      <div>
+        <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">활성 상태</p>
+        <div className="mt-0.5 flex flex-wrap gap-1">
+          {entry.activationStates.map((s) => (
+            <span key={s} className="rounded-full border border-border bg-muted px-2 py-0.5 text-[11px] text-foreground/90">
+              {s}
+            </span>
+          ))}
+        </div>
+      </div>
+      <div className="rounded-lg border border-border/60 bg-muted/30 px-3 py-2">
+        <p className="mb-0.5 text-[10px] font-bold text-muted-foreground">한 줄 해석</p>
+        <p className="break-words text-[13px] leading-relaxed text-foreground">{entry.oneLine}</p>
+      </div>
+      <button
+        type="button"
+        onClick={onMore}
+        className="text-[12px] font-semibold text-primary underline-offset-2 hover:underline"
+      >
+        긴 해석 더보기
+      </button>
+    </>
+  );
+
+  if (layout === "panel") {
+    return (
+      <div className="rounded-xl border border-border/80 bg-muted/15 px-3 py-3 space-y-2.5 text-sm">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            <span
+              className={cn(
+                "inline-flex max-w-full whitespace-normal break-words rounded-full border px-2.5 py-1 text-left text-[13px] font-bold",
+                SHINSAL_COLOR[entry.name] ?? "border-border bg-muted text-foreground",
+              )}
+            >
+              {entry.name}
+            </span>
+            <p className="mt-1.5 text-[11px] text-muted-foreground">
+              발동 위치: <span className="font-semibold text-foreground">{entry.pillar}</span> · {entry.anchor}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="shrink-0 rounded-md px-2 py-0.5 text-[12px] text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+            aria-label="닫기"
+          >
+            ✕
+          </button>
+        </div>
+        {body}
+      </div>
+    );
+  }
+
   return (
     <div className="ds-card mt-3 border-primary/25 shadow-none overflow-visible">
       <div className="flex items-start justify-between gap-2 border-b border-border px-4 py-3">
@@ -276,40 +352,7 @@ function SelectedShinsalInlineCard({
           ✕
         </button>
       </div>
-      <div className="ds-card-pad space-y-2.5 overflow-visible text-sm">
-        <div>
-          <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">기준</p>
-          <p className="text-[13px] font-semibold text-foreground">{entry.basisLabel}</p>
-          {entry.triggerDetail ? (
-            <p className="mt-0.5 break-words text-xs leading-relaxed text-muted-foreground">{entry.triggerDetail}</p>
-          ) : null}
-        </div>
-        <div>
-          <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">영향 영역</p>
-          <p className="text-[13px] text-foreground">{entry.influenceDomain}</p>
-        </div>
-        <div>
-          <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">활성 상태</p>
-          <div className="mt-0.5 flex flex-wrap gap-1">
-            {entry.activationStates.map((s) => (
-              <span key={s} className="rounded-full border border-border bg-muted px-2 py-0.5 text-[11px] text-foreground/90">
-                {s}
-              </span>
-            ))}
-          </div>
-        </div>
-        <div className="rounded-lg border border-border/60 bg-muted/30 px-3 py-2">
-          <p className="mb-0.5 text-[10px] font-bold text-muted-foreground">한 줄 해석</p>
-          <p className="break-words text-[13px] leading-relaxed text-foreground">{entry.oneLine}</p>
-        </div>
-        <button
-          type="button"
-          onClick={onMore}
-          className="text-[12px] font-semibold text-primary underline-offset-2 hover:underline"
-        >
-          긴 해석 더보기
-        </button>
-      </div>
+      <div className="ds-card-pad space-y-2.5 overflow-visible text-sm">{body}</div>
     </div>
   );
 }
@@ -1000,7 +1043,7 @@ function FiveElementSection({
           const fillY = y + NODE_R - fillH;
           const isPrimary = el === primaryEl;
           const stroke = isPrimary ? elementColorVar(el, "strong") : "hsl(var(--border))";
-          const strokeW = isPrimary ? 2.5 : 1.5;
+          const strokeW = isPrimary ? 2.25 : 1.5;
           /* 오행 한 글자 = 십성 분포 %·칩과 동일 strong / 보조줄은 같은 범주 base */
           const elLabelFill = elementColorVar(el, "strong");
           const elSubFill = elementColorVar(el, "base");
@@ -1017,18 +1060,7 @@ function FiveElementSection({
                   clipPath={`url(#pclip-${el})`}
                 />
               )}
-              {isPrimary && (
-                <circle
-                  cx={x}
-                  cy={y}
-                  r={NODE_R + 5}
-                  fill="none"
-                  stroke={elementColorVar(el, "strong")}
-                  strokeWidth={2}
-                  opacity={0.45}
-                />
-              )}
-              {/* 채움 위에 테두리가 오도록 stroke 전용 원을 맨 위(텍스트 제외)에 둠 */}
+              {/* 대표 오행: 외곽선 1중(링 이중 제거), 오행 컬러 stroke만 */}
               <circle
                 cx={x}
                 cy={y}
@@ -1174,13 +1206,16 @@ function TenGodDistributionSection({
   const groups = ["비겁", "식상", "재성", "관성", "인성"] as const;
   const { topLevel, detailed } = computeTenGodDistribution(dayStem, dayEl, allChars, effectiveFiveElements);
 
-  const primaryEl = computePrimaryElement({
-    counts: effectiveFiveElements,
-    monthBranch,
-    dayBranch,
-    allStems,
-    allBranches,
-  });
+  let dominantGroup: (typeof groups)[number] | null = null;
+  let dominantPct = -1;
+  for (const g of groups) {
+    const p = topLevel[g];
+    if (p > dominantPct) {
+      dominantPct = p;
+      dominantGroup = g;
+    }
+  }
+  if (dominantPct <= 0) dominantGroup = null;
 
   return (
     <div className="space-y-3">
@@ -1192,19 +1227,24 @@ function TenGodDistributionSection({
           const [s1, s2] = TG_SUB_PAIRS[g];
           const p1 = detailed[s1] ?? 0;
           const p2 = detailed[s2] ?? 0;
-          /* 대표 오행(오행 분포와 동일) = 이 행의 고정 범례 오행일 때만 강조 */
-          const isPrimaryRow = primaryEl === rowEl;
+          const isDominantRow = dominantGroup === g;
           const isRowSelected = selectedGroup === g;
           return (
             <div
               key={g}
               className={cn(
                 "rounded-xl border px-2 py-2 transition-colors",
-                isPrimaryRow
-                  ? cn(elementBgClass(rowEl, "muted"), elementBorderClass(rowEl, "muted"))
-                  : "border-transparent",
-                isRowSelected && "ring-2 ring-primary ring-offset-2 ring-offset-background",
+                !isDominantRow && !isRowSelected && "border-transparent",
+                isRowSelected && "border-primary/30 bg-primary/[0.05]",
               )}
+              style={
+                isDominantRow && !isRowSelected
+                  ? {
+                      backgroundColor: elementHslAlpha(rowEl, "strong", 0.06),
+                      borderColor: elementHslAlpha(rowEl, "strong", 0.2),
+                    }
+                  : undefined
+              }
             >
               <button
                 type="button"
@@ -1214,7 +1254,7 @@ function TenGodDistributionSection({
                 <span
                   className={cn(
                     "w-10 shrink-0 text-[13px] font-semibold",
-                    isPrimaryRow ? elementTextClass(rowEl, "strong") : "text-foreground",
+                    isDominantRow ? elementTextClass(rowEl, "strong") : "text-foreground",
                   )}
                 >
                   {g}
@@ -2374,6 +2414,9 @@ function ReportAtAGlanceCard({
   gukgukName,
   strengthLevel,
   strengthScore,
+  onPrimaryClick,
+  onGukgukClick,
+  onStrengthClick,
 }: {
   dayStem: string;
   dayBranch: string;
@@ -2381,7 +2424,27 @@ function ReportAtAGlanceCard({
   gukgukName: string;
   strengthLevel: string;
   strengthScore?: number;
+  onPrimaryClick?: () => void;
+  onGukgukClick?: () => void;
+  onStrengthClick?: () => void;
 }) {
+  const tile = (opts: { onClick?: () => void; className?: string; children: ReactNode }) => {
+    const { onClick, className, children } = opts;
+    const cls = cn(
+      "rounded-lg border border-border bg-background/70 px-3 py-2 text-left",
+      onClick && "cursor-pointer transition-colors hover:bg-muted/50 active:bg-muted/65",
+      className,
+    );
+    if (onClick) {
+      return (
+        <button type="button" className={cls} onClick={onClick}>
+          {children}
+        </button>
+      );
+    }
+    return <div className={cls}>{children}</div>;
+  };
+
   return (
     <div className="ds-card border-primary/15 bg-gradient-to-br from-primary/[0.06] via-card to-card shadow-none">
       <div className="ds-card-pad space-y-4">
@@ -2389,37 +2452,53 @@ function ReportAtAGlanceCard({
           <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">원국 요약</p>
           <h2 className="ds-title mt-1">핵심 한눈에 보기</h2>
           <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">
-            아래 세 가지를 순서대로 확인하면 원국을 빠르게 잡을 수 있습니다.
+            아래 세 가지를 순서대로 확인하면 원국을 빠르게 잡을 수 있습니다. 카드를 누르면 해당 구역으로 이동합니다.
           </p>
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div className="rounded-lg border border-border bg-background/70 px-3 py-2">
-            <p className="text-[10px] font-bold uppercase text-muted-foreground">대표 오행</p>
-            {primaryEl ? (
-              <p className={cn("text-lg font-black", elementTextClass(primaryEl, "strong"))}>{primaryEl}</p>
-            ) : (
-              <p className="text-sm text-muted-foreground">—</p>
-            )}
-            <p className="mt-1 text-[10px] leading-snug text-muted-foreground">구조 중심 에너지 확인</p>
-          </div>
-          <div className="rounded-lg border border-border bg-background/70 px-3 py-2">
-            <p className="text-[10px] font-bold uppercase text-muted-foreground">격국</p>
-            <p className="text-sm font-bold leading-snug text-foreground">{gukgukName || "—"}</p>
-            <p className="mt-1 text-[10px] leading-snug text-muted-foreground">해석 프레임 확인</p>
-          </div>
-          <div className="rounded-lg border border-border bg-background/70 px-3 py-2 sm:col-span-2">
-            <p className="text-[10px] font-bold uppercase text-muted-foreground">일간 강약</p>
-            <p className="text-base font-bold text-foreground">
-              {strengthLevel}
-              {typeof strengthScore === "number" && Number.isFinite(strengthScore) ? (
-                <span className="ml-2 text-sm font-semibold text-muted-foreground">({strengthScore}점)</span>
-              ) : null}
-            </p>
-            <p className="mt-0.5 text-[11px] text-muted-foreground">
-              일간 {dayStem} · 일지 {dayBranch}
-            </p>
-            <p className="mt-1 text-[10px] leading-snug text-muted-foreground">균형 상태 확인</p>
-          </div>
+          {tile({
+            onClick: onPrimaryClick,
+            children: (
+              <>
+                <p className="text-[10px] font-bold uppercase text-muted-foreground">대표 오행</p>
+                {primaryEl ? (
+                  <p className={cn("text-lg font-black", elementTextClass(primaryEl, "strong"))}>{primaryEl}</p>
+                ) : (
+                  <p className="text-sm text-muted-foreground">—</p>
+                )}
+                <p className="mt-1 text-[10px] leading-snug text-muted-foreground">구조 중심 에너지 확인 · 오행 분포로 이동</p>
+              </>
+            ),
+          })}
+          {tile({
+            onClick: onGukgukClick,
+            children: (
+              <>
+                <p className="text-[10px] font-bold uppercase text-muted-foreground">격국</p>
+                <p className="text-sm font-bold leading-snug text-foreground">{gukgukName || "—"}</p>
+                <p className="mt-1 text-[10px] leading-snug text-muted-foreground">해석 프레임 확인 · 격국·조후로 이동</p>
+              </>
+            ),
+          })}
+          {tile({
+            onClick: onStrengthClick,
+            className: "sm:col-span-2",
+            children: (
+              <>
+                <p className="text-[10px] font-bold uppercase text-muted-foreground">일간 강약</p>
+                <p className="text-base font-bold text-foreground">
+                  {strengthLevel}
+                  {typeof strengthScore === "number" && Number.isFinite(strengthScore) ? (
+                    <span className="ml-2 text-sm font-semibold text-muted-foreground">({strengthScore}점)</span>
+                  ) : null}
+                </p>
+                <p className="mt-0.5 text-[11px] text-muted-foreground">
+                  일간 {dayStem} · 일지 {dayBranch}
+                </p>
+                <p className="mt-1 text-[10px] leading-snug text-muted-foreground">균형 상태 확인 · 일간 강도로 이동</p>
+              </>
+            ),
+          })}
         </div>
       </div>
     </div>
@@ -2504,6 +2583,23 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
     setYuanGuoInlineDetail(null);
     setSelectedTgGroupInline(null);
   }, [reportTab]);
+
+  const scrollToYuanAnchor = useCallback((id: string) => {
+    requestAnimationFrame(() => {
+      document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }, []);
+
+  const scrollToStrengthOrStructure = useCallback(() => {
+    requestAnimationFrame(() => {
+      const strength = document.getElementById("yuan-strength");
+      if (strength) {
+        strength.scrollIntoView({ behavior: "smooth", block: "start" });
+        return;
+      }
+      document.getElementById("yuan-oheung-card")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }, []);
 
   // ── LOCAL REACTIVE STATE for fortune options + profile ─────────────
   // Root cause of unresponsive toggles: `record` is a prop. `updatePersonRecord`
@@ -3109,6 +3205,9 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
               }
               strengthLevel={sajuPipelineResult.adjusted.effectiveStrengthLevel}
               strengthScore={sajuPipelineResult.adjusted.strengthResult?.score}
+              onPrimaryClick={() => scrollToYuanAnchor("yuan-five-el")}
+              onGukgukClick={() => scrollToYuanAnchor("yuan-gukguk")}
+              onStrengthClick={scrollToStrengthOrStructure}
             />
           )}
 
@@ -3187,80 +3286,20 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
             }
           />
 
-          {yuanGuoInlineDetail ? (
-            <div className="rounded-xl border-2 border-primary/20 bg-card/95 shadow-md backdrop-blur-sm [&_.ds-card]:mt-0">
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 px-3 py-2">
-                <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
-                  선택 항목 상세{" "}
-                  <span className="font-normal normal-case text-muted-foreground/85">(한 번에 하나만 열림)</span>
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setYuanGuoInlineDetail(null)}
-                  className="shrink-0 rounded-md border border-border/70 bg-muted/30 px-2 py-1 text-[11px] font-semibold text-muted-foreground hover:bg-muted/50"
-                >
-                  전체 닫기
-                </button>
-              </div>
-              <div className="px-3 py-3">
-                {yuanGuoInlineDetail.kind === "shinsal" && selectedShinsalEntry ? (
-                  <SelectedShinsalInlineCard
-                    entry={selectedShinsalEntry}
-                    onClose={() => setYuanGuoInlineDetail(null)}
-                    onMore={() =>
-                      setInfoSheet({
-                        kind: "shinsal",
-                        name: selectedShinsalEntry.name,
-                        source: "auto",
-                        trigger: selectedShinsalEntry.triggerDetail || undefined,
-                      })
-                    }
-                  />
-                ) : null}
-                {yuanGuoInlineDetail.kind === "tengod" && dayStem && tenGodDisplayCounts ? (
-                  <TenGodNatalInlineBlock
-                    dayStem={dayStem}
-                    tg={yuanGuoInlineDetail.tg}
-                    displayCounts={tenGodDisplayCounts}
-                    onClose={() => setYuanGuoInlineDetail(null)}
-                    onMore={() =>
-                      setInfoSheet({ kind: "tengodNatal", tenGod: yuanGuoInlineDetail.tg, dayStem })
-                    }
-                  />
-                ) : null}
-                {yuanGuoInlineDetail.kind === "hiddenStem" ? (
-                  <HiddenStemInlineCard
-                    pillarLabel={yuanGuoInlineDetail.label}
-                    branch={yuanGuoInlineDetail.branch}
-                    stems={getHiddenStems(yuanGuoInlineDetail.branch)}
-                    onClose={() => setYuanGuoInlineDetail(null)}
-                  />
-                ) : null}
-                {yuanGuoInlineDetail.kind === "twelveStage" ? (
-                  <TwelveStageInlineCard
-                    label={yuanGuoInlineDetail.label}
-                    branch={yuanGuoInlineDetail.branch}
-                    stage={yuanGuoInlineDetail.stage}
-                    onClose={() => setYuanGuoInlineDetail(null)}
-                  />
-                ) : null}
-                {yuanGuoInlineDetail.kind === "branchRelation" ? (
-                  <BranchRelationInlineCard
-                    relation={yuanGuoInlineDetail.relation}
-                    onClose={() => setYuanGuoInlineDetail(null)}
-                    onMore={() => {
-                      const rel = yuanGuoInlineDetail.relation;
-                      const relBranches = rel.description.match(/[자축인묘진사오미신유술해]/g) ?? [];
-                      setInfoSheet({
-                        kind: "branchRelation",
-                        relationType: rel.type,
-                        branches: relBranches,
-                      });
-                    }}
-                  />
-                ) : null}
-              </div>
-            </div>
+          {yuanGuoInlineDetail?.kind === "shinsal" && selectedShinsalEntry ? (
+            <SelectedShinsalInlineCard
+              layout="panel"
+              entry={selectedShinsalEntry}
+              onClose={() => setYuanGuoInlineDetail(null)}
+              onMore={() =>
+                setInfoSheet({
+                  kind: "shinsal",
+                  name: selectedShinsalEntry.name,
+                  source: "auto",
+                  trigger: selectedShinsalEntry.triggerDetail || undefined,
+                })
+              }
+            />
           ) : null}
 
           {dayStem && dayBranch && shinsalComboNotes.length > 0 ? (
@@ -3269,52 +3308,13 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
             </div>
           ) : null}
 
-          <AccSection title="천간 · 지지 관계" defaultOpen={false}>
-            <div className="space-y-2">
-              <p className="text-[11px] text-muted-foreground">
-                항목을 누르면 <span className="font-semibold text-foreground">원국표 바로 아래</span>「선택 항목 상세」에 관계 카드가 열립니다. 긴 해석은「더보기」를 이용하세요.
-              </p>
-              {branchRelations.length === 0 && (
-                <p className="text-sm text-muted-foreground py-1">특별한 지지 관계가 없습니다.</p>
-              )}
-              {branchRelations.map((rel, i) => {
-                const isSel =
-                  yuanGuoInlineDetail?.kind === "branchRelation" &&
-                  yuanGuoInlineDetail.relation.type === rel.type &&
-                  yuanGuoInlineDetail.relation.description === rel.description;
-                return (
-                  <button
-                    key={i}
-                    className={cn(
-                      "w-full flex items-center gap-2 rounded-lg border border-border/60 bg-muted/10 px-3 py-2 text-left transition-colors active:bg-muted/30",
-                      isSel && "ring-2 ring-primary ring-offset-2 ring-offset-background",
-                    )}
-                    onClick={() =>
-                      setYuanGuoInlineDetail((prev) =>
-                        prev?.kind === "branchRelation" &&
-                        prev.relation.type === rel.type &&
-                        prev.relation.description === rel.description
-                          ? null
-                          : { kind: "branchRelation", relation: rel },
-                      )
-                    }
-                  >
-                    <span className={`text-[13px] font-bold px-2 py-0.5 rounded-full shrink-0 ${RELATION_COLORS[rel.type]}`}>{rel.type}</span>
-                    <span className="text-sm font-medium flex-1 break-words">{rel.description}</span>
-                    <span className="text-[11px] text-muted-foreground ml-auto shrink-0">▼</span>
-                  </button>
-                );
-              })}
-            </div>
-          </AccSection>
-
-          <div className="ds-card shadow-none overflow-visible">
+          <div id="yuan-oheung-card" className="ds-card shadow-none overflow-visible scroll-mt-4">
             <div className="border-b border-border bg-muted/20 px-4 py-3">
               <h2 className="text-sm font-bold text-foreground">오행·십성 구조</h2>
               <p className="mt-1 text-[11px] text-muted-foreground">원국 표와 함께 읽는 구조 데이터(개수·비율 중심)</p>
             </div>
             <div className="ds-card-pad space-y-6 overflow-visible">
-              <div>
+              <div id="yuan-five-el" className="scroll-mt-4">
                 <h3 className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">오행 분포 (구조)</h3>
                 <FiveElementSection
                   variant="structure"
@@ -3329,7 +3329,7 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
               <div className="border-t border-border pt-4">
                 <h3 className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">십성 분포 (구조)</h3>
                 <p className="mb-2 text-[12px] leading-relaxed text-muted-foreground">
-                  십성·신살·지장간·관계 등에서 항목을 누르면 <span className="font-semibold text-foreground">원국표 바로 아래</span>「선택 항목 상세」에만 카드가 열립니다(동시에 여러 장이 쌓이지 않습니다). 통합 해설은「더보기」로 확인하세요.
+                  십성 칸을 누르면 <span className="font-semibold text-foreground">이 블록 바로 아래</span>에 상세가 열립니다. 신살은 원국표에서 선택하세요. 통합 해설은「더보기」로 확인하세요.
                 </p>
           {dayStem && tenGodDisplayCounts ? (() => {
             const displayCounts = tenGodDisplayCounts;
@@ -3359,7 +3359,11 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                                   prev?.kind === "tengod" && prev.tg === tg ? null : { kind: "tengod", tg: tg as TenGod },
                                 )
                               }
-                              className={`flex items-center justify-between rounded-lg px-2.5 py-1.5 transition-all active:scale-95 ${getTenGodTw(tg, dayStem)} ${isActive ? "ring-2 ring-foreground/30" : ""}`}
+                              className={cn(
+                                "flex items-center justify-between rounded-lg border border-transparent px-2.5 py-1.5 transition-all active:scale-95",
+                                getTenGodTw(tg, dayStem),
+                                isActive && "border-primary/35 bg-primary/[0.07]",
+                              )}
                               style={getTenGodChipStyle(tg, dayStem)}
                             >
                               <span className="text-[13px] font-bold">{tg}</span>
@@ -3376,13 +3380,33 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
           })() : (
                 <p className="text-sm text-muted-foreground">일간 정보가 없어 십성 분포를 표시할 수 없습니다.</p>
               )}
+                {yuanGuoInlineDetail?.kind === "tengod" && dayStem && tenGodDisplayCounts ? (
+                  <div className="mt-3 [&_.ds-card]:mt-0">
+                    <TenGodNatalInlineBlock
+                      dayStem={dayStem}
+                      tg={yuanGuoInlineDetail.tg}
+                      displayCounts={tenGodDisplayCounts}
+                      onClose={() => setYuanGuoInlineDetail(null)}
+                      onMore={() =>
+                        setInfoSheet({ kind: "tengodNatal", tenGod: yuanGuoInlineDetail.tg, dayStem })
+                      }
+                    />
+                  </div>
+                ) : null}
               </div>
             </div>
           </div>
 
+          {/* 신강/신약 (single source: sajuPipelineResult.adjusted.strengthResult) */}
+          {sajuPipelineResult?.adjusted?.strengthResult && (
+            <AccSection id="yuan-strength" title="일간 강도" defaultOpen>
+              <DayMasterStrengthCard strength={sajuPipelineResult.adjusted.strengthResult} />
+            </AccSection>
+          )}
+
           {/* 격국·조후 */}
           {dayStem && (
-            <AccSection title="격국·조후" defaultOpen>
+            <AccSection id="yuan-gukguk" title="격국·조후" defaultOpen>
               <GukgukSection
                 dayStem={dayStem}
                 monthBranch={effectivePillars.month?.hangul?.[1]}
@@ -3409,20 +3433,13 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
             </AccSection>
           )}
 
-          {/* 신강/신약 (single source: sajuPipelineResult.adjusted.strengthResult) */}
-          {sajuPipelineResult?.adjusted?.strengthResult && (
-            <AccSection title="일간 강도" defaultOpen>
-              <DayMasterStrengthCard strength={sajuPipelineResult.adjusted.strengthResult} />
-            </AccSection>
-          )}
-
           {/* 지장간·12운성 */}
           <AccSection title="지장간 · 12운성" defaultOpen={false}>
             <div className="space-y-4">
               <div>
                 <p className="text-[13px] font-semibold text-muted-foreground mb-2">지장간</p>
                 <p className="mb-2 text-[11px] leading-relaxed text-muted-foreground">
-                  칸을 누르면 <span className="font-semibold text-foreground">원국표 아래</span>「선택 항목 상세」에 지장간 카드가 열립니다.
+                  칸을 누르면 <span className="font-semibold text-foreground">이 섹션 아래</span>에 지장간 상세가 열립니다.
                 </p>
                 <div className="grid grid-cols-4 gap-0 rounded-xl overflow-hidden border border-border">
                   {[
@@ -3453,7 +3470,7 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                           className={cn(
                             "flex w-full flex-col items-center gap-1 py-2.5 px-1 transition-colors disabled:cursor-not-allowed disabled:opacity-50",
                             branch && "hover:bg-muted/30 active:bg-muted/50",
-                            isSel && "ring-2 ring-inset ring-primary",
+                            isSel && "border border-primary/35 bg-primary/[0.06]",
                           )}
                         >
                           {branch ? (
@@ -3493,7 +3510,7 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                 <div>
                   <p className="text-[13px] font-semibold text-muted-foreground mb-2">12운성 · 일간 <span className="font-bold text-foreground">{dayStem}</span> 기준</p>
                   <p className="mb-2 text-[11px] leading-relaxed text-muted-foreground">
-                    행을 누르면 <span className="font-semibold text-foreground">원국표 아래</span>「선택 항목 상세」에 12운성 카드가 열립니다.
+                    행을 누르면 <span className="font-semibold text-foreground">이 섹션 아래</span>에 12운성 상세가 열립니다.
                   </p>
                   <div className="grid grid-cols-2 gap-2">
                     {[
@@ -3526,7 +3543,7 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                           }
                           className={cn(
                             "flex w-full items-center gap-2 rounded-lg border border-border bg-muted/20 px-3 py-2 text-left transition-colors hover:bg-muted/35",
-                            isSel && "ring-2 ring-primary ring-offset-2 ring-offset-background",
+                            isSel && "border-primary/35 bg-primary/[0.06]",
                           )}
                         >
                           <span className="text-[13px] text-muted-foreground w-8 shrink-0">{label}</span>
@@ -3542,6 +3559,82 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                   </div>
                 </div>
               )}
+              {yuanGuoInlineDetail?.kind === "hiddenStem" ? (
+                <div className="[&_.ds-card]:mt-0">
+                  <HiddenStemInlineCard
+                    pillarLabel={yuanGuoInlineDetail.label}
+                    branch={yuanGuoInlineDetail.branch}
+                    stems={getHiddenStems(yuanGuoInlineDetail.branch)}
+                    onClose={() => setYuanGuoInlineDetail(null)}
+                  />
+                </div>
+              ) : null}
+              {yuanGuoInlineDetail?.kind === "twelveStage" ? (
+                <div className="[&_.ds-card]:mt-0">
+                  <TwelveStageInlineCard
+                    label={yuanGuoInlineDetail.label}
+                    branch={yuanGuoInlineDetail.branch}
+                    stage={yuanGuoInlineDetail.stage}
+                    onClose={() => setYuanGuoInlineDetail(null)}
+                  />
+                </div>
+              ) : null}
+            </div>
+          </AccSection>
+
+          <AccSection id="yuan-branch-relations" title="천간 · 지지 관계" defaultOpen={false}>
+            <div className="space-y-2">
+              <p className="text-[11px] text-muted-foreground">
+                항목을 누르면 <span className="font-semibold text-foreground">이 섹션 아래</span>에 관계 상세가 열립니다. 긴 해석은「더보기」를 이용하세요.
+              </p>
+              {branchRelations.length === 0 && (
+                <p className="text-sm text-muted-foreground py-1">특별한 지지 관계가 없습니다.</p>
+              )}
+              {branchRelations.map((rel, i) => {
+                const isSel =
+                  yuanGuoInlineDetail?.kind === "branchRelation" &&
+                  yuanGuoInlineDetail.relation.type === rel.type &&
+                  yuanGuoInlineDetail.relation.description === rel.description;
+                return (
+                  <button
+                    key={i}
+                    className={cn(
+                      "w-full flex items-center gap-2 rounded-lg border border-border/60 bg-muted/10 px-3 py-2 text-left transition-colors active:bg-muted/30",
+                      isSel && "border-primary/35 bg-primary/[0.06]",
+                    )}
+                    onClick={() =>
+                      setYuanGuoInlineDetail((prev) =>
+                        prev?.kind === "branchRelation" &&
+                        prev.relation.type === rel.type &&
+                        prev.relation.description === rel.description
+                          ? null
+                          : { kind: "branchRelation", relation: rel },
+                      )
+                    }
+                  >
+                    <span className={`text-[13px] font-bold px-2 py-0.5 rounded-full shrink-0 ${RELATION_COLORS[rel.type]}`}>{rel.type}</span>
+                    <span className="text-sm font-medium flex-1 break-words">{rel.description}</span>
+                    <span className="text-[11px] text-muted-foreground ml-auto shrink-0">▼</span>
+                  </button>
+                );
+              })}
+              {yuanGuoInlineDetail?.kind === "branchRelation" ? (
+                <div className="[&_.ds-card]:mt-0">
+                  <BranchRelationInlineCard
+                    relation={yuanGuoInlineDetail.relation}
+                    onClose={() => setYuanGuoInlineDetail(null)}
+                    onMore={() => {
+                      const rel = yuanGuoInlineDetail.relation;
+                      const relBranches = rel.description.match(/[자축인묘진사오미신유술해]/g) ?? [];
+                      setInfoSheet({
+                        kind: "branchRelation",
+                        relationType: rel.type,
+                        branches: relBranches,
+                      });
+                    }}
+                  />
+                </div>
+              ) : null}
             </div>
           </AccSection>
 
@@ -3665,24 +3758,32 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
             </div>
           )}
 
-          {/* 오행 균형 */}
-          <AccSection title="오행 균형 (성격·행동)" defaultOpen>
-            <p className="mb-2 text-[12px] leading-relaxed text-muted-foreground">
-              오행이 기질·행동 스타일에 주는 균형을 해석합니다. 수치 그래프는 원국 탭과 동일하며, 관점만 다릅니다.
-            </p>
-            <div className="rounded-lg border border-sky-100 bg-sky-50/40 px-3 py-2.5">
-              <p className="text-sm">{getElementBalanceSummary(effectiveFiveElements)}</p>
+          {/* 오행 균형 — 원국 탭 오행·십성 카드와 동일 ds-card 패턴 */}
+          <div className="ds-card shadow-none overflow-visible">
+            <div className="border-b border-border bg-muted/20 px-4 py-3">
+              <h2 className="text-sm font-bold text-foreground">오행 균형 (성격·행동)</h2>
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                원국과 동일한 분포 수치를 기질·행동 균형 관점에서 읽습니다
+              </p>
             </div>
-            <FiveElementSection
-              variant="personality"
-              counts={effectiveFiveElements}
-              dayStem={dayStem}
-              monthBranch={pillars.month?.hangul?.[1]}
-              dayBranch={dayBranch}
-              allStems={allStems}
-              allBranches={allBranches}
-            />
-          </AccSection>
+            <div className="ds-card-pad space-y-4">
+              <p className="text-[12px] leading-relaxed text-muted-foreground">
+                오행이 기질·행동 스타일에 주는 균형을 해석합니다. 도형·간격·강조는 원국 탭 오행 분포와 동일한 기준입니다.
+              </p>
+              <div className="rounded-lg border border-border/60 bg-muted/15 px-3 py-2.5">
+                <p className="text-sm">{getElementBalanceSummary(effectiveFiveElements)}</p>
+              </div>
+              <FiveElementSection
+                variant="personality"
+                counts={effectiveFiveElements}
+                dayStem={dayStem}
+                monthBranch={pillars.month?.hangul?.[1]}
+                dayBranch={dayBranch}
+                allStems={allStems}
+                allBranches={allBranches}
+              />
+            </div>
+          </div>
 
           {/* 십성 분포 */}
           <AccSection title="십성 분포 (행동 스타일)" defaultOpen>

@@ -1,4 +1,6 @@
 import type { ShinsalCombinationNote } from "@/lib/shinsalInterpretation";
+import { cn } from "@/lib/utils";
+import { SHINSAL_COLOR } from "@/lib/luckCycles";
 
 /** 복합 신살 조합만 표시 (원국표 위 고정) */
 export function ShinsalCombinationsCard({ combinations }: { combinations: ShinsalCombinationNote[] }) {
@@ -14,7 +16,13 @@ export function ShinsalCombinationsCard({ combinations }: { combinations: Shinsa
           <div key={c.title} className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2.5">
             <div className="mb-1 flex flex-wrap gap-1">
               {c.members.map((m) => (
-                <span key={m} className="ds-badge text-[11px] font-bold shadow-none">
+                <span
+                  key={m}
+                  className={cn(
+                    "inline-flex max-w-full items-center rounded-full border px-2 py-0.5 text-[11px] font-bold shadow-none break-words",
+                    SHINSAL_COLOR[m] ?? "border-border bg-muted/50 text-foreground",
+                  )}
+                >
                   {m}
                 </span>
               ))}

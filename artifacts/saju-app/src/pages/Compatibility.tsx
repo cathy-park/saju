@@ -35,6 +35,7 @@ import {
   computePersonCurrentFlow,
   computeCombinedTimingFlow,
 } from "@/lib/dynamicCompatibility";
+import { cn } from "@/lib/utils";
 
 function scoreToMascot(score: number): MascotExpression {
   if (score >= 75) return "happy";
@@ -535,19 +536,19 @@ export default function Compatibility() {
       </div>
       {/* ── 모드 탭 ── */}
       {canUsePairMode && (
-        <div className="flex gap-1 bg-muted/40 rounded-xl p-1">
+        <div className="ds-segment-list min-h-10 rounded-xl border border-border shadow-none">
           {([
-            { key: "me_other", label: "나 ↔ 상대" },
-            { key: "pair",     label: "상대끼리" },
-          ] as { key: "me_other" | "pair"; label: string }[]).map(({ key, label }) => (
+            { key: "me_other" as const, label: "나 ↔ 상대" },
+            { key: "pair" as const, label: "상대끼리" },
+          ]).map(({ key, label }) => (
             <button
               key={key}
+              type="button"
               onClick={() => setMode(key)}
-              className={`flex-1 text-[13px] font-semibold py-1.5 rounded-lg transition-colors ${
-                mode === key
-                  ? "bg-background border border-border text-foreground shadow-none"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
+              className={cn(
+                "ds-segment-item text-[12px] shadow-none",
+                mode === key ? "ds-segment-item-active" : "ds-segment-item-inactive",
+              )}
             >
               {label}
             </button>
@@ -619,22 +620,24 @@ export default function Compatibility() {
                   { label: p2.birthInput.name || "B", mode: hourModeB, setMode: setHourModeB },
                 ] as Array<{ label: string; mode: "포함" | "제외"; setMode: (m: "포함" | "제외") => void }>
               ).map(({ label, mode: hm, setMode: setHm }) => (
-                <div key={label} className="flex items-center gap-2">
+                <div key={label} className="flex items-center gap-2 min-w-0">
                   <span className="text-[12px] text-muted-foreground shrink-0 w-16 truncate font-medium">{label}</span>
                   <span className="text-[12px] text-muted-foreground shrink-0">시주</span>
-                  {(["포함", "제외"] as const).map((m) => (
-                    <button
-                      key={m}
-                      onClick={() => setHm(m)}
-                      className={`text-[12px] font-semibold px-2.5 py-0.5 rounded-full border transition-colors ${
-                        hm === m
-                          ? "bg-foreground text-background border-foreground"
-                          : "bg-muted/30 text-muted-foreground border-border"
-                      }`}
-                    >
-                      {m}
-                    </button>
-                  ))}
+                  <div className="ds-segment-list flex-1 rounded-xl border border-border shadow-none">
+                    {(["포함", "제외"] as const).map((m) => (
+                      <button
+                        key={m}
+                        type="button"
+                        onClick={() => setHm(m)}
+                        className={cn(
+                          "ds-segment-item text-[12px] shadow-none",
+                          hm === m ? "ds-segment-item-active" : "ds-segment-item-inactive",
+                        )}
+                      >
+                        {m}
+                      </button>
+                    ))}
+                  </div>
                   {hm === "제외" && (
                     <span className="text-[11px] text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
                       제외 중
