@@ -266,11 +266,11 @@ const TODAY_LEVEL_CLASS: Record<string, { ring: string; title: string }> = {
   caution: { ring: "ring-1 ring-amber-500/20", title: "text-amber-800 dark:text-amber-300" },
 };
 const ALIGN_BADGE: Record<string, string> = {
-  "둘 다 열림": "border-border bg-muted/35 text-foreground",
-  "한쪽 열림": "border-border bg-muted/35 text-foreground",
-  "교차 흐름": "border-border bg-muted/35 text-foreground",
-  "둘 다 안정": "border-border bg-muted/35 text-foreground",
-  "긴장 구간": "border-border bg-muted/35 text-foreground",
+  "둘 다 열림": "bg-emerald-100 text-emerald-800",
+  "한쪽 열림": "bg-blue-100 text-blue-800",
+  "교차 흐름": "bg-amber-100 text-amber-800",
+  "둘 다 안정": "bg-gray-100 text-gray-700",
+  "긴장 구간": "bg-red-100 text-red-700",
 };
 const OPEN_BADGE: Record<string, string> = {
   open: "border-border bg-muted/35 text-foreground",
@@ -719,10 +719,16 @@ export default function Compatibility() {
       {canUsePairMode && (
         <Tabs value={mode} onValueChange={(v) => setMode(v as "me_other" | "pair")}>
           <TabsList className="min-h-10 w-full rounded-xl border border-border shadow-none">
-            <TabsTrigger className="flex-1 text-[12px]" value="me_other">
+            <TabsTrigger
+              className="flex-1 text-[12px] data-[state=active]:font-extrabold data-[state=active]:border-primary/40"
+              value="me_other"
+            >
               나 ↔ 상대
             </TabsTrigger>
-            <TabsTrigger className="flex-1 text-[12px]" value="pair">
+            <TabsTrigger
+              className="flex-1 text-[12px] data-[state=active]:font-extrabold data-[state=active]:border-primary/40"
+              value="pair"
+            >
               상대끼리
             </TabsTrigger>
           </TabsList>
@@ -801,9 +807,8 @@ export default function Compatibility() {
                       점수와 관계 유형을 먼저 확인한 뒤, 아래에서 구조·해석·가이드를 순서대로 살펴보시면 됩니다.
                     </p>
                   </div>
-                  {/* 상단: 두 사람 카드 (스샷 구조) */}
-                  <div className="ds-inline-detail-nested bg-background/70">
-                    <div className="flex items-center gap-2">
+                  {/* 상단: 두 사람 카드 (스샷 구조) — 별도 배경 박스 제거 */}
+                  <div className="flex items-center gap-2">
                       <MiniPersonCard
                         title="나"
                         name={myName}
@@ -815,7 +820,7 @@ export default function Compatibility() {
                         onHourModeChange={setHourModeA}
                       />
                       <div className="shrink-0 px-1 text-center">
-                        <span className="text-2xl leading-none text-muted-foreground">♡</span>
+                        <span className="text-2xl leading-none" style={{ color: "#EE4444" }}>♡</span>
                       </div>
                       <MiniPersonCard
                         title="상대"
@@ -834,33 +839,69 @@ export default function Compatibility() {
                         hourMode={hourModeB}
                         onHourModeChange={setHourModeB}
                       />
+                  </div>
+
+                  {/* 요약 타일 (일간 관계 / 배우자궁) — 스샷 5.20.35 */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="ds-inline-detail-nested p-4 text-center">
+                      <p className="text-[12px] font-semibold text-muted-foreground">일간 관계</p>
+                      <p className="mt-2 text-[15px] font-extrabold leading-snug text-foreground">
+                        {fullReport.stemRel.label}
+                      </p>
+                      {fullReport.stemRel.me2other ? (
+                        <div className="mt-3">
+                          <span
+                            className={cn("ds-badge text-[12px] font-bold shadow-none", getTenGodTw(fullReport.stemRel.me2other, myDayStem2))}
+                            style={getTenGodChipStyle(fullReport.stemRel.me2other, myDayStem2)}
+                          >
+                            {fullReport.stemRel.me2other}
+                          </span>
+                        </div>
+                      ) : null}
+                    </div>
+                    <div className="ds-inline-detail-nested p-4 text-center">
+                      <p className="text-[12px] font-semibold text-muted-foreground">배우자궁</p>
+                      <p className="mt-2 text-[15px] font-extrabold leading-snug text-foreground">
+                        <span style={getBranchColor(fullReport.branchComp.myBranch)}>{fullReport.branchComp.myBranch}</span>{" "}
+                        ↔{" "}
+                        <span style={getBranchColor(fullReport.branchComp.otherBranch)}>{fullReport.branchComp.otherBranch}</span>
+                      </p>
+                      <p className="mt-2 text-[13px] font-semibold text-muted-foreground">{fullReport.branchComp.tone}</p>
                     </div>
                   </div>
 
-                  <div className="flex flex-col items-center">
+                  <div>
                     <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">궁합 점수</p>
-                    <ScoreArc score={result.score} accentColor={palette.strong} />
-                    <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
-                      <span
-                        className="ds-badge border px-3 py-1.5 text-[14px] font-bold shadow-none"
-                        style={{
-                          background: palette.pastel,
-                          borderColor: palette.border,
-                          color: palette.badgeText,
-                        }}
-                      >
-                        {result.finalType}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => setShowInfoSheet(true)}
-                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border text-[11px] font-bold text-muted-foreground transition-colors hover:bg-muted/60"
-                        aria-label="점수 계산 기준 보기"
-                      >
-                        i
-                      </button>
+                    <div className="flex items-center gap-4">
+                      <div className="shrink-0">
+                        <ScoreArc score={result.score} accentColor={palette.strong} />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span
+                            className="ds-badge border px-3 py-1.5 text-[14px] font-bold shadow-none"
+                            style={{
+                              background: palette.pastel,
+                              borderColor: palette.border,
+                              color: palette.badgeText,
+                            }}
+                          >
+                            {result.finalType}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setShowInfoSheet(true)}
+                            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border text-[11px] font-bold text-muted-foreground transition-colors hover:bg-muted/60"
+                            aria-label="점수 계산 기준 보기"
+                          >
+                            i
+                          </button>
+                        </div>
+                        <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">
+                          {result.summary}
+                        </p>
+                      </div>
                     </div>
-                    <p className="ds-body mt-4 max-w-prose text-center font-medium">{result.summary}</p>
                   </div>
                   </div>
                 </div>
@@ -949,18 +990,18 @@ export default function Compatibility() {
                         {fullReport.crossBranch.positive.map((item, i) => (
                           <div
                             key={`p-${i}`}
-                            className="ds-inline-detail-nested flex items-start gap-2 border-l-2 border-l-primary/30 text-[13px] leading-relaxed"
+                            className="flex items-start gap-2 rounded-xl border border-emerald-100 bg-emerald-50/70 px-3 py-2 text-[13px] leading-relaxed text-foreground"
                           >
-                            <CheckCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary/75" />
+                            <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
                             <span>{item.desc}</span>
                           </div>
                         ))}
                         {fullReport.crossBranch.negative.map((item, i) => (
                           <div
                             key={`n-${i}`}
-                            className="ds-inline-detail-nested flex items-start gap-2 border-l-2 border-l-muted-foreground/30 text-[13px] leading-relaxed"
+                            className="flex items-start gap-2 rounded-xl border border-amber-100 bg-amber-50/60 px-3 py-2 text-[13px] leading-relaxed text-foreground"
                           >
-                            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
                             <span>{item.desc}</span>
                           </div>
                         ))}
@@ -1114,7 +1155,13 @@ export default function Compatibility() {
                       <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">관계 장점</p>
                       <div className="space-y-2">
                         {result.strengths.map((t, i) => (
-                          <BulletRow key={i} text={t} positive />
+                          <div
+                            key={i}
+                            className="flex items-start gap-2 rounded-xl border border-emerald-100 bg-emerald-50/70 px-3 py-2 text-[13px] leading-relaxed text-foreground"
+                          >
+                            <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+                            <span>{t}</span>
+                          </div>
                         ))}
                       </div>
                     </div>
@@ -1122,7 +1169,13 @@ export default function Compatibility() {
                       <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">관계 주의점</p>
                       <div className="space-y-2">
                         {result.cautions.map((t, i) => (
-                          <BulletRow key={i} text={t} positive={false} />
+                          <div
+                            key={i}
+                            className="flex items-start gap-2 rounded-xl border border-amber-100 bg-amber-50/60 px-3 py-2 text-[13px] leading-relaxed text-foreground"
+                          >
+                            <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
+                            <span>{t}</span>
+                          </div>
                         ))}
                       </div>
                     </div>
@@ -1130,7 +1183,7 @@ export default function Compatibility() {
                 </div>
 
               {/* ── 4. 연애/결혼 관점 해석 (별도 카드) ── */}
-                <div className="ds-card overflow-hidden shadow-none">
+                <div className="ds-card overflow-hidden shadow-none border-rose-200/70 bg-rose-50/40">
                   <div className="border-b border-border bg-muted/20 px-4 py-3">
                     <h2 className="text-sm font-bold text-foreground">연애 관점 해석</h2>
                     <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">
@@ -1166,14 +1219,15 @@ export default function Compatibility() {
                     </p>
                   </div>
                   <div className="space-y-3 p-4">
-                    <div className="ds-inline-detail-nested space-y-2 p-3">
+                    {/* 관계 유형 카드 (스샷 5.23.05 하단 블루 카드 느낌) */}
+                    <div className="rounded-xl border border-primary/25 bg-primary/[0.05] p-4">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="text-[13px] text-muted-foreground">관계 유형</span>
                         <span className={cn("ds-badge text-[13px] font-bold shadow-none", fullReport.marriageView.typeColor)}>
                           {fullReport.marriageView.type}
                         </span>
                       </div>
-                      <p className="ds-body">{fullReport.marriageView.desc}</p>
+                      <p className="mt-2 text-[13px] leading-relaxed text-foreground">{fullReport.marriageView.desc}</p>
                     </div>
                   </div>
                 </div>
@@ -1368,28 +1422,25 @@ export default function Compatibility() {
                     ))}
                   </div>
 
-                  {/* 강조 카드: 내 사주 오늘 운세 카드 톤앤매너 */}
-                  <div className="ds-card border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50/40 shadow-none">
-                    <div className="ds-card-pad space-y-3">
-                      <p className="text-[10px] font-bold uppercase tracking-widest text-amber-700">
-                        현재 흐름 요약
-                      </p>
-                      <div className="rounded-xl border border-amber-200 bg-white/70 px-3 py-2">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className={cn("ds-badge text-[11px] font-semibold shadow-none border", ALIGN_BADGE[combinedFlow.alignmentType])}>
-                            {combinedFlow.alignmentType}
-                          </span>
-                        </div>
-                        <p className="mt-1 text-sm font-semibold text-foreground">{combinedFlow.alignmentDesc}</p>
-                        <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">{combinedFlow.staticModifier}</p>
+                  {/* 이전 스타일 (스샷 5.21.05): 결합 흐름(블루) + 오늘(화이트) */}
+                  <div className="rounded-xl border border-sky-200/80 bg-sky-50/35 p-3 shadow-none dark:border-sky-900/40 dark:bg-sky-950/20">
+                    <div className="ds-inline-detail-nested space-y-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-[12px] font-bold text-foreground">둘의 현재 결합 흐름</p>
+                        <span className={cn("text-[11px] font-semibold rounded-full border border-border px-2 py-0.5", ALIGN_BADGE[combinedFlow.alignmentType])}>
+                          {combinedFlow.alignmentType}
+                        </span>
                       </div>
-                      <div className="rounded-xl border border-amber-100 bg-white/60 px-3 py-2">
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">오늘의 관계 흐름</p>
-                        <p className={cn("mt-1 text-[14px] font-semibold leading-snug", (TODAY_LEVEL_CLASS[combinedFlow.todayLevel] ?? TODAY_LEVEL_CLASS.neutral).title)}>
-                          {combinedFlow.todaySummary}
-                        </p>
-                      </div>
+                      <p className="text-[13px] leading-relaxed text-foreground">{combinedFlow.alignmentDesc}</p>
+                      <p className="text-[12px] leading-relaxed text-muted-foreground">{combinedFlow.staticModifier}</p>
                     </div>
+                  </div>
+
+                  <div className="ds-inline-detail-nested space-y-1.5 p-3">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">오늘의 관계 흐름</p>
+                    <p className={cn("text-[14px] font-semibold leading-snug", (TODAY_LEVEL_CLASS[combinedFlow.todayLevel] ?? TODAY_LEVEL_CLASS.neutral).title)}>
+                      {combinedFlow.todaySummary}
+                    </p>
                   </div>
 
                   <p className="text-[11px] leading-relaxed text-muted-foreground/60">
