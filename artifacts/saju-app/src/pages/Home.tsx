@@ -211,8 +211,8 @@ function Dashboard({ record }: { record: PersonRecord }) {
         </div>
       </div>
 
-      {/* '오늘 해석' 라벨 제거 — 동일 구역 여백 유지 */}
-      <div className="px-4 pt-1 mb-2 min-h-[26px]" aria-hidden />
+      {/* '오늘 해석' 라벨 제거 — 동일 구역 여백 유지 (간격 절반으로 축소) */}
+      <div className="px-4 pt-0.5 mb-1 min-h-[13px]" aria-hidden />
 
       {lifeFlow && (
         <div className="px-4 pt-0">
