@@ -2745,6 +2745,8 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
   const [selectedTgGroupInline, setSelectedTgGroupInline] = useState<{ group: string; pct: number } | null>(null);
   const [personalityTengodUserPicked, setPersonalityTengodUserPicked] = useState(false);
   const personalityTengodSeededRef = useRef(false);
+  const [todayDomainOpen, setTodayDomainOpen] = useState<"사랑" | "일" | "건강" | "대인관계" | "학업" | null>(null);
+  const [todayDomainUserPicked, setTodayDomainUserPicked] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   useEffect(() => {
@@ -2752,6 +2754,8 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
     personalityTengodSeededRef.current = false;
     setSelectedTgGroupInline(null);
     setPersonalityTengodUserPicked(false);
+    setTodayDomainOpen(null);
+    setTodayDomainUserPicked(false);
   }, [record.id]);
 
   useEffect(() => {
@@ -2760,6 +2764,10 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
       personalityTengodSeededRef.current = false;
       setSelectedTgGroupInline(null);
       setPersonalityTengodUserPicked(false);
+    }
+    if (reportTab !== "오늘운세") {
+      setTodayDomainOpen(null);
+      setTodayDomainUserPicked(false);
     }
   }, [reportTab]);
 
@@ -3142,6 +3150,69 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
     trueSolarTimeOn: fortuneOpts?.trueSolarTimeOn ?? false,
   };
   const luckCycles = calculateLuckCycles(input, localProfile.computedPillars, daewoonSuOpts);
+
+  // ── 오늘운세: 오늘 날짜 기준 요약 데이터 ────────────────────────
+  const todayFortune = useMemo(() => {
+    const now = new Date();
+    return getFortuneForDate(record, now.getFullYear(), now.getMonth() + 1, now.getDate());
+  }, [record]);
+
+  const todayScoreRows = useMemo(() => {
+    const tg = todayFortune.dayTenGod ?? null;
+    const domainByName = new Map(todayFortune.domainFortunes.map((d) => [d.domain, d] as const));
+    const love = domainByName.get("관계");
+    const work = domainByName.get("일");
+    const health = domainByName.get("건강");
+
+    const studyLevel: "good" | "neutral" | "caution" = tg
+      ? (["정인", "편인"].includes(tg) ? "good" : ["상관", "겁재"].includes(tg) ? "caution" : "neutral")
+      : "neutral";
+
+    const domainToLabel = (lvl: "good" | "neutral" | "caution", rawLabel?: string) => {
+      if (lvl === "good") return rawLabel && ["상승", "활발"].includes(rawLabel) ? "매우 좋음" : "좋음";
+      if (lvl === "caution") return "주의";
+      return "보통";
+    };
+    const domainToEmoji = (lvl: "good" | "neutral" | "caution", rawLabel?: string) => {
+      if (lvl === "good") return rawLabel && ["상승", "활발"].includes(rawLabel) ? "☀️" : "🌤";
+      if (lvl === "caution") return "🌧";
+      return "⛅";
+    };
+    const score = (lvl: "good" | "neutral" | "caution", rawLabel?: string) => {
+      if (lvl === "good") return rawLabel && ["상승", "활발"].includes(rawLabel) ? 3 : 2;
+      if (lvl === "neutral") return 1;
+      return 0;
+    };
+
+    const rows = [
+      { key: "사랑" as const, src: love, fallback: { level: "neutral" as const, label: "보통" } },
+      { key: "일" as const, src: work, fallback: { level: "neutral" as const, label: "보통" } },
+      { key: "건강" as const, src: health, fallback: { level: "neutral" as const, label: "보통" } },
+      { key: "대인관계" as const, src: love, fallback: { level: "neutral" as const, label: "보통" } },
+      { key: "학업" as const, src: null, fallback: { level: studyLevel, label: domainToLabel(studyLevel) } },
+    ].map((r) => {
+      const lvl = (r.src?.level ?? r.fallback.level) as "good" | "neutral" | "caution";
+      const raw = r.src?.label;
+      return {
+        key: r.key,
+        lvl,
+        state: r.src ? domainToLabel(lvl, raw) : r.fallback.label,
+        emoji: r.src ? domainToEmoji(lvl, raw) : domainToEmoji(lvl),
+        hint: r.src?.hint ?? "",
+        score: score(lvl, raw),
+      };
+    });
+
+    const best = [...rows].sort((a, b) => (b.score - a.score) || (["사랑", "일", "건강", "대인관계", "학업"].indexOf(a.key) - ["사랑", "일", "건강", "대인관계", "학업"].indexOf(b.key)))[0]?.key ?? null;
+    return { rows, best };
+  }, [todayFortune]);
+
+  useEffect(() => {
+    if (reportTab !== "오늘운세") return;
+    if (todayDomainUserPicked) return;
+    if (todayDomainOpen !== null) return;
+    if (todayScoreRows.best) setTodayDomainOpen(todayScoreRows.best);
+  }, [reportTab, todayDomainUserPicked, todayDomainOpen, todayScoreRows.best]);
 
   const shinsalLuckCtx = useMemo(() => {
     const now = new Date();
@@ -4365,7 +4436,7 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
         <div className="space-y-3">
           {(() => {
             const now = new Date();
-            const fortune = getFortuneForDate(record, now.getFullYear(), now.getMonth() + 1, now.getDate());
+            const fortune = todayFortune;
             const dayGanZhi = fortune.dayGanZhiStr ?? "";
             const dayStemChar = dayGanZhi[0] ?? "";
             const dayBranchChar = dayGanZhi[1] ?? "";
@@ -4382,25 +4453,6 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                     "border-teal-200/60 bg-teal-500/10 text-teal-700",
                     "border-primary/30 bg-primary/10 text-primary",
                   ];
-                  const domainByName = new Map(fortune.domainFortunes.map((d) => [d.domain, d] as const));
-                  const love = domainByName.get("관계");
-                  const work = domainByName.get("일");
-                  const health = domainByName.get("건강");
-
-                  const studyLevel: "good" | "neutral" | "caution" = tg
-                    ? (["정인", "편인"].includes(tg) ? "good" : ["상관", "겁재"].includes(tg) ? "caution" : "neutral")
-                    : "neutral";
-
-                  const domainToLabel = (lvl: "good" | "neutral" | "caution", rawLabel?: string) => {
-                    if (lvl === "good") return rawLabel && ["상승", "활발"].includes(rawLabel) ? "매우 좋음" : "좋음";
-                    if (lvl === "caution") return "주의";
-                    return "보통";
-                  };
-                  const domainToEmoji = (lvl: "good" | "neutral" | "caution", rawLabel?: string) => {
-                    if (lvl === "good") return rawLabel && ["상승", "활발"].includes(rawLabel) ? "☀️" : "🌤";
-                    if (lvl === "caution") return "🌧";
-                    return "⛅";
-                  };
                   const domainToChip = (lvl: "good" | "neutral" | "caution") => {
                     if (lvl === "good") return "border-emerald-200/60 bg-emerald-500/10 text-emerald-700";
                     if (lvl === "caution") return "border-orange-200/60 bg-orange-500/10 text-orange-700";
@@ -4411,23 +4463,6 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                     if (lvl === "caution") return "border-orange-200/70 bg-orange-50/60";
                     return "border-border/70 bg-muted/20";
                   };
-
-                  const scoreRows = [
-                    { key: "사랑", src: love, fallback: { level: "neutral" as const, label: "보통" } },
-                    { key: "일", src: work, fallback: { level: "neutral" as const, label: "보통" } },
-                    { key: "건강", src: health, fallback: { level: "neutral" as const, label: "보통" } },
-                    { key: "대인관계", src: love, fallback: { level: "neutral" as const, label: "보통" } },
-                    { key: "학업", src: null, fallback: { level: studyLevel, label: domainToLabel(studyLevel) } },
-                  ].map((r) => {
-                    const lvl = (r.src?.level ?? r.fallback.level) as "good" | "neutral" | "caution";
-                    const raw = r.src?.label;
-                    return {
-                      label: r.key,
-                      lvl,
-                      state: r.src ? domainToLabel(lvl, raw) : r.fallback.label,
-                      emoji: r.src ? domainToEmoji(lvl, raw) : domainToEmoji(lvl),
-                    };
-                  });
 
                   return (
                     <div className="ds-card relative overflow-hidden border-border/60 bg-card/95 shadow-none backdrop-blur-sm">
@@ -4468,16 +4503,95 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
 
                         {/* 카테고리별 흐름 요약 스코어 (추가) */}
                         <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 pt-1">
-                          {scoreRows.map((r) => (
-                            <div key={r.label} className={cn("rounded-lg border px-2.5 py-2", domainToMiniCard(r.lvl))}>
-                              <div className="flex items-center gap-1.5">
-                                <span className="text-[12px] font-extrabold text-foreground/90">{r.label}</span>
-                                <span className="text-base leading-none" aria-hidden>{r.emoji}</span>
-                              </div>
-                              <p className="mt-0.5 text-[11px] font-bold text-muted-foreground">{r.state}</p>
-                            </div>
-                          ))}
+                          {todayScoreRows.rows.map((r) => {
+                            const active = todayDomainOpen === r.key;
+                            return (
+                              <button
+                                key={r.key}
+                                type="button"
+                                onClick={() => {
+                                  setTodayDomainUserPicked(true);
+                                  setTodayDomainOpen((prev) => (prev === r.key ? null : r.key));
+                                }}
+                                className={cn(
+                                  "rounded-lg border px-2.5 py-2 text-left transition-all active:scale-[0.98]",
+                                  domainToMiniCard(r.lvl),
+                                  active ? "ring-1 ring-primary/30 border-primary/30" : "hover:border-border",
+                                )}
+                              >
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-[12px] font-extrabold text-foreground/90">{r.key}</span>
+                                  <span className="text-base leading-none" aria-hidden>{r.emoji}</span>
+                                </div>
+                                <p className="mt-0.5 text-[11px] font-bold text-muted-foreground">{r.state}</p>
+                              </button>
+                            );
+                          })}
                         </div>
+
+                        {/* 선택된 영역 상세 해석 (인라인) */}
+                        {todayDomainOpen && (() => {
+                          const row = todayScoreRows.rows.find((r) => r.key === todayDomainOpen);
+                          if (!row) return null;
+                          const sh = todayOrderedShinsalInsights.slice(0, 4).map((x) => x.name);
+                          const basis = todayFortune.basisKeywords?.slice(0, 4) ?? [];
+                          const layerText = todayFortune.luckLayers?.map((l) => `${l.label} ${l.ganZhi}`) ?? [];
+                          return (
+                            <div className="ds-inline-detail mt-2 overflow-visible">
+                              <div className="ds-inline-detail-header">
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex flex-wrap items-center gap-1.5">
+                                    <span className={cn("ds-badge text-[12px] font-bold shadow-none", domainToChip(row.lvl))}>
+                                      {todayDomainOpen} {row.emoji} {row.state}
+                                    </span>
+                                    <span className="text-[12px] font-semibold text-muted-foreground">오늘 기준 상세 해석</span>
+                                  </div>
+                                  <p className="mt-1 text-[10px] text-muted-foreground">
+                                    오늘 일진·십성·신살·운흐름 보조를 합쳐 요약합니다
+                                  </p>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setTodayDomainUserPicked(true);
+                                    setTodayDomainOpen(null);
+                                  }}
+                                  className="shrink-0 px-2 text-sm text-muted-foreground hover:text-foreground"
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                              <div className="ds-inline-detail-body space-y-2">
+                                {row.hint && (
+                                  <div className="ds-inline-detail-nested">
+                                    <p className="text-[12px] font-bold uppercase tracking-wide text-muted-foreground">오늘 영향</p>
+                                    <p className="mt-1 text-[13px] text-foreground leading-relaxed">{row.hint}</p>
+                                  </div>
+                                )}
+                                <div className="ds-inline-detail-nested">
+                                  <p className="text-[12px] font-bold uppercase tracking-wide text-muted-foreground">오늘 십성 작동</p>
+                                  <p className="mt-1 text-[13px] text-foreground leading-relaxed">
+                                    {todayFortune.dayTenGod ? `오늘은 ${todayFortune.dayTenGod} 작용이 중심입니다.` : "오늘 십성 정보를 계산할 수 없습니다."}
+                                  </p>
+                                </div>
+                                {sh.length > 0 && (
+                                  <div className="ds-inline-detail-nested">
+                                    <p className="text-[12px] font-bold uppercase tracking-wide text-muted-foreground">오늘 신살</p>
+                                    <p className="mt-1 text-[13px] text-foreground leading-relaxed">{sh.join(" · ")}</p>
+                                  </div>
+                                )}
+                                {(basis.length > 0 || layerText.length > 0) && (
+                                  <div className="ds-inline-detail-nested">
+                                    <p className="text-[12px] font-bold uppercase tracking-wide text-muted-foreground">보조 근거</p>
+                                    <p className="mt-1 text-[13px] text-foreground leading-relaxed">
+                                      {basis.length > 0 ? basis.join(" · ") : layerText.slice(0, 4).join(" · ")}
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })()}
                       </div>
                     </div>
                   );
