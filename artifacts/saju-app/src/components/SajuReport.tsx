@@ -2036,7 +2036,17 @@ function FortuneCalendar({ record, dayStem, luckCycles, birthYear, adjustedDaewo
         return (
           <div className="mt-4 space-y-3">
             {/* 일운 형식 카드 */}
-            <div className="w-full rounded-xl border border-border bg-muted/20 px-3 py-3">
+            <div
+              className="w-full rounded-xl border border-border bg-muted/20 px-3 py-3"
+              style={
+                se
+                  ? {
+                      backgroundColor: elementHslAlpha(se, "strong", 0.06),
+                      borderColor: elementHslAlpha(se, "strong", 0.22),
+                    }
+                  : undefined
+              }
+            >
               <p className="text-[13px] text-muted-foreground mb-1.5">일운 · {viewMonth}월 {selectedDay}일</p>
               <div className="flex gap-0.5 items-baseline">
                 <span className={`text-xl font-bold ${se ? elementTextClass(se, "strong") : ""}`}>{dayGZ.stem}</span>
@@ -2487,7 +2497,17 @@ function LuckFlowTabs({
                   const btg = dayStem ? getTenGod(dayStem, gz.branch) : null;
                   return (
                     <div className="space-y-2">
-                      <div className="w-full rounded-xl border border-border bg-muted/20 px-3 py-3">
+                      <div
+                        className="w-full rounded-xl border border-border bg-muted/20 px-3 py-3"
+                        style={
+                          se
+                            ? {
+                                backgroundColor: elementHslAlpha(se, "strong", 0.06),
+                                borderColor: elementHslAlpha(se, "strong", 0.22),
+                              }
+                            : undefined
+                        }
+                      >
                         <p className="text-[13px] text-muted-foreground mb-1.5">월운 · {selectedWolunYear}년 {selectedWolunMonth}월</p>
                         <div className="flex gap-0.5 items-baseline">
                           <span className={`text-xl font-bold ${se ? elementTextClass(se, "strong") : ""}`}>{gz.stem}</span>
