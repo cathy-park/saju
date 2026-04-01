@@ -1067,7 +1067,8 @@ function FiveElementSection({
       {/* graph wrapper padding (common rule): py-5 = 20px top/bottom */}
       {/* NOTE: 그래프 원 크기는 바꾸지 않고, wrapper 세로 패딩만 통일합니다. */}
       <div className="w-full py-5">
-        <svg viewBox="0 0 296 296" width="100%" className="mx-auto block w-full max-w-[444px]">
+        {/* Tighten viewBox Y-range to reduce empty vertical margin around the circle group */}
+        <svg viewBox="0 26 296 244" preserveAspectRatio="xMidYMid meet" width="100%" className="mx-auto block w-full max-w-[444px]">
         <defs>
           <marker id="arr-gen" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto">
             <path d="M0 0 L7 3.5 L0 7 Z" fill="hsl(var(--chart-5))" opacity="0.8" />
@@ -2749,7 +2750,7 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
   const [selectedTgGroupInline, setSelectedTgGroupInline] = useState<{ group: string; pct: number } | null>(null);
   const [personalityTengodUserPicked, setPersonalityTengodUserPicked] = useState(false);
   const personalityTengodSeededRef = useRef(false);
-  const [todayDomainOpen, setTodayDomainOpen] = useState<"사랑" | "일" | "건강" | "대인관계" | "학업" | null>(null);
+  const [todayDomainOpen, setTodayDomainOpen] = useState<"사랑" | "일" | "돈" | "건강" | "대인관계" | "학업" | null>(null);
   const [todayDomainUserPicked, setTodayDomainUserPicked] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
 
@@ -3162,10 +3163,14 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
   }, [record]);
 
   const todayScoreRows = useMemo(() => {
-    const tg = todayFortune.dayTenGod ?? null;
+    const dayLayer = todayFortune.luckLayers.find((l) => l.label === "일운") ?? todayFortune.luckLayers[todayFortune.luckLayers.length - 1];
+    const tgStem = (dayLayer?.tenGod ?? todayFortune.dayTenGod ?? null) as string | null;
+    const tgBranch = (dayLayer?.branchTenGod ?? null) as string | null;
+    const tg = tgStem ?? tgBranch ?? null;
     const domainByName = new Map(todayFortune.domainFortunes.map((d) => [d.domain, d] as const));
     const love = domainByName.get("관계");
     const work = domainByName.get("일");
+    const money = domainByName.get("재물");
     const health = domainByName.get("건강");
 
     const studyLevel: "good" | "neutral" | "caution" = tg
@@ -3191,6 +3196,7 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
     const rows = [
       { key: "사랑" as const, src: love, fallback: { level: "neutral" as const, label: "보통" } },
       { key: "일" as const, src: work, fallback: { level: "neutral" as const, label: "보통" } },
+      { key: "돈" as const, src: money, fallback: { level: "neutral" as const, label: "보통" } },
       { key: "건강" as const, src: health, fallback: { level: "neutral" as const, label: "보통" } },
       { key: "대인관계" as const, src: love, fallback: { level: "neutral" as const, label: "보통" } },
       { key: "학업" as const, src: null, fallback: { level: studyLevel, label: domainToLabel(studyLevel) } },
@@ -3207,7 +3213,8 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
       };
     });
 
-    const best = [...rows].sort((a, b) => (b.score - a.score) || (["사랑", "일", "건강", "대인관계", "학업"].indexOf(a.key) - ["사랑", "일", "건강", "대인관계", "학업"].indexOf(b.key)))[0]?.key ?? null;
+    const order = ["사랑", "일", "돈", "건강", "대인관계", "학업"] as const;
+    const best = [...rows].sort((a, b) => (b.score - a.score) || (order.indexOf(a.key as any) - order.indexOf(b.key as any)))[0]?.key ?? null;
     return { rows, best };
   }, [todayFortune]);
 
@@ -4444,8 +4451,10 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
             const dayGanZhi = fortune.dayGanZhiStr ?? "";
             const dayStemChar = dayGanZhi[0] ?? "";
             const dayBranchChar = dayGanZhi[1] ?? "";
-            const tg = fortune.dayTenGod;
-            const hint = tg ? (TG_LUCK_MEANING[tg as TenGod]?.summary ?? "") : "";
+            const dayLayer = fortune.luckLayers.find((l) => l.label === "일운") ?? fortune.luckLayers[fortune.luckLayers.length - 1];
+            const tgStem = dayLayer?.tenGod as TenGod | undefined;
+            const tgBranch = dayLayer?.branchTenGod as TenGod | undefined;
+            const hint = tgStem ? (TG_LUCK_MEANING[tgStem]?.summary ?? "") : "";
             const layerCount = fortune.luckLayers?.length ?? 0;
 
             return (
@@ -4486,6 +4495,21 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="ds-body font-semibold text-foreground">{fortune.summary}</p>
+                            {(tgStem || tgBranch) && (
+                              <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                                <span className="text-[12px] font-semibold text-muted-foreground">오늘 십성:</span>
+                                {tgStem && (
+                                  <span className={`ds-badge text-[10px] font-bold shadow-none ${getTenGodTw(tgStem, dayStem)}`} style={getTenGodChipStyle(tgStem, dayStem)}>
+                                    {tgStem}
+                                  </span>
+                                )}
+                                {tgBranch && (
+                                  <span className={`ds-badge text-[10px] font-bold shadow-none ${getTenGodTw(tgBranch, dayStem)}`} style={getTenGodChipStyle(tgBranch, dayStem)}>
+                                    {tgBranch}
+                                  </span>
+                                )}
+                              </div>
+                            )}
                             {fortune.guidance && (
                               <p className="mt-1 text-[13px] text-muted-foreground leading-relaxed">
                                 오늘은 <span className="font-semibold text-foreground">“{fortune.guidance}”</span> 흐름이 유리합니다.
@@ -4506,7 +4530,7 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                         )}
 
                         {/* 카테고리별 흐름 요약 스코어 (추가) */}
-                        <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 pt-1">
+                        <div className="grid grid-cols-2 sm:grid-cols-6 gap-1.5 pt-1">
                           {todayScoreRows.rows.map((r) => {
                             const active = todayDomainOpen === r.key;
                             return (
@@ -4540,11 +4564,19 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                           const sh = todayOrderedShinsalInsights.slice(0, 4).map((x) => x.name);
                           const basis = todayFortune.basisKeywords?.slice(0, 4) ?? [];
                           const layerText = todayFortune.luckLayers?.map((l) => `${l.label} ${l.ganZhi}`) ?? [];
-                          const tenGodText = todayFortune.dayTenGod ? `${todayFortune.dayTenGod} 작용` : "십성 정보 없음";
+                          const dayLayer =
+                            todayFortune.luckLayers.find((l) => l.label === "일운") ??
+                            todayFortune.luckLayers[todayFortune.luckLayers.length - 1];
+                          const tgStem = (dayLayer?.tenGod ?? null) as TenGod | null;
+                          const tgBranch = (dayLayer?.branchTenGod ?? null) as TenGod | null;
+                          const both = [tgStem, tgBranch].filter(Boolean) as TenGod[];
+                          const uniq = Array.from(new Set(both));
+                          const tenGodText = uniq.length > 0 ? `${uniq.join(" · ")} 작동` : "십성 정보 없음";
 
                           const RECOMMEND_BY_DOMAIN: Record<typeof todayDomainOpen, string[]> = {
                             사랑: ["대화는 짧고 명확하게", "배려 표현 1번은 먼저", "거리/빈도 조절"],
                             일: ["우선순위 1~2개만 고정", "계획 세우기", "마감·정리부터"],
+                            돈: ["지출/수입 정리", "필요·욕구 분리", "계약/결제는 한 번 더 확인"],
                             건강: ["수면/휴식 확보", "가벼운 유산소", "과로·과식 줄이기"],
                             대인관계: ["약속은 간단히", "경계선 지키기", "오해는 바로 정리"],
                             학업: ["공부/독서 30~60분", "글쓰기/정리", "복습 위주로"],
@@ -4552,6 +4584,7 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                           const CAUTION_BY_DOMAIN: Record<typeof todayDomainOpen, string[]> = {
                             사랑: ["감정적 말싸움", "확답 압박", "상대 마음 추측 확대"],
                             일: ["즉흥적 일정 확장", "한 번에 큰 결정", "불필요한 회의/잡일"],
+                            돈: ["충동구매", "무리한 투자/대출", "말로만 약속하는 거래"],
                             건강: ["무리한 운동", "야식/카페인 과다", "스트레스 방치"],
                             대인관계: ["감정적 반응", "험담/단정", "과한 기대/실망 반복"],
                             학업: ["멀티태스킹", "완벽주의로 시작 지연", "밤샘 몰아치기"],
@@ -4624,7 +4657,7 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                                 <div className="ds-inline-detail-nested">
                                   <p className="text-[12px] font-bold uppercase tracking-wide text-muted-foreground">오늘 십성 작동</p>
                                   <p className="mt-1 text-[13px] text-foreground leading-relaxed">
-                                    {todayFortune.dayTenGod ? `오늘은 ${todayFortune.dayTenGod} 작용이 중심입니다.` : "오늘 십성 정보를 계산할 수 없습니다."}
+                                    {uniq.length > 0 ? `오늘은 ${uniq.join(" · ")} 작동이 함께 나타납니다.` : "오늘 십성 정보를 계산할 수 없습니다."}
                                   </p>
                                 </div>
                                 {sh.length > 0 && (
@@ -4684,33 +4717,56 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-2">
-                    {tg ? (
-                      <>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span
-                            className={`text-[13px] font-bold px-2.5 py-1 rounded-full ${getTenGodTw(tg as TenGod, dayStem)}`}
-                            style={getTenGodChipStyle(tg as TenGod, dayStem)}
-                          >
-                            {tg}
-                          </span>
-                          <span className="text-[13px] text-muted-foreground">
-                            오늘 일진 천간 <span className="font-semibold text-foreground">{dayStemChar}</span> 기준
-                          </span>
-                        </div>
-                        <div className="ds-inline-detail-nested">
-                          <p className="text-[13px] text-foreground leading-relaxed">
-                            오늘은 일진 천간이 내 일간 기준으로 <span className="font-semibold">{tg}</span>으로 작동하며, 이 기운이 하루 결의·반응에 영향을 줍니다.
-                          </p>
-                        </div>
-                        {hint ? (
-                          <div className="ds-inline-detail-nested">
-                            <p className="text-[13px] text-muted-foreground leading-relaxed">{hint}</p>
+                    {(() => {
+                      const dayLayer =
+                        fortune.luckLayers.find((l) => l.label === "일운") ??
+                        fortune.luckLayers[fortune.luckLayers.length - 1];
+                      const tgStem = (dayLayer?.tenGod ?? null) as TenGod | null;
+                      const tgBranch = (dayLayer?.branchTenGod ?? null) as TenGod | null;
+                      const both = [tgStem, tgBranch].filter(Boolean) as TenGod[];
+                      const uniq = Array.from(new Set(both));
+                      const help = tgStem ? (TG_LUCK_MEANING[tgStem]?.summary ?? "") : "";
+
+                      if (uniq.length === 0) return <p className="text-sm text-muted-foreground">오늘 십성 정보를 계산할 수 없습니다.</p>;
+
+                      return (
+                        <>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              {uniq.map((t) => (
+                                <span
+                                  key={t}
+                                  className={`ds-badge text-[11px] font-bold shadow-none ${getTenGodTw(t as TenGod, dayStem)}`}
+                                  style={getTenGodChipStyle(t as TenGod, dayStem)}
+                                >
+                                  {t}
+                                </span>
+                              ))}
+                            </div>
+                            <span className="text-[13px] text-muted-foreground">
+                              오늘 일진 <span className="font-semibold text-foreground">{dayStemChar}</span>
+                              {dayBranchChar ? (
+                                <>
+                                  <span className="mx-1 text-muted-foreground/60">·</span>
+                                  <span className="font-semibold text-foreground">{dayBranchChar}</span>
+                                </>
+                              ) : null}{" "}
+                              기준(천간·지지)
+                            </span>
                           </div>
-                        ) : null}
-                      </>
-                    ) : (
-                      <p className="text-sm text-muted-foreground">오늘 십성 정보를 계산할 수 없습니다.</p>
-                    )}
+                          <div className="ds-inline-detail-nested">
+                            <p className="text-[13px] text-foreground leading-relaxed">
+                              오늘은 <span className="font-semibold">천간·지지</span>가 내 일간 기준으로 각각 십성으로 작동하며, 그 합이 하루 결의·반응에 영향을 줍니다.
+                            </p>
+                          </div>
+                          {help ? (
+                            <div className="ds-inline-detail-nested">
+                              <p className="text-[13px] text-muted-foreground leading-relaxed">{help}</p>
+                            </div>
+                          ) : null}
+                        </>
+                      );
+                    })()}
                   </CardContent>
                 </Card>
 
