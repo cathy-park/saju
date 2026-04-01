@@ -3575,20 +3575,22 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
         </div>
       )}
 
-      <div className="ds-segment-list min-h-11 rounded-xl border border-border shadow-none">
-        {REPORT_MAIN_TABS.map((tab) => (
-          <button
-            key={tab}
-            type="button"
-            onClick={() => setReportTab(tab)}
-            className={cn(
-              "ds-segment-item text-sm shadow-none",
-              reportTab === tab ? "ds-segment-item-active" : "ds-segment-item-inactive",
-            )}
-          >
-            {REPORT_TAB_LABEL[tab]}
-          </button>
-        ))}
+      <div className="sticky top-14 z-30 -mx-4 px-4 py-2 bg-background/95 backdrop-blur-sm supports-[backdrop-filter]:bg-background/85 border-b border-border/50">
+        <div className="ds-segment-list min-h-11 rounded-xl border border-border shadow-none">
+          {REPORT_MAIN_TABS.map((tab) => (
+            <button
+              key={tab}
+              type="button"
+              onClick={() => setReportTab(tab)}
+              className={cn(
+                "ds-segment-item text-sm shadow-none",
+                reportTab === tab ? "ds-segment-item-active" : "ds-segment-item-inactive",
+              )}
+            >
+              {REPORT_TAB_LABEL[tab]}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* ── 탭 1: 원국 ── */}
