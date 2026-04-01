@@ -1,6 +1,7 @@
 export function GenderSymbol({ gender }: { gender: string }) {
-  if (gender === "여") return <span className="text-pink-500 font-bold">♀</span>;
-  if (gender === "남") return <span className="text-blue-500 font-bold">♂</span>;
+  // Global rule: female=red, male=blue (consistent across app)
+  if (gender === "여") return <span className="text-rose-600 font-bold">♀</span>;
+  if (gender === "남") return <span className="text-blue-600 font-bold">♂</span>;
   return null;
 }
 

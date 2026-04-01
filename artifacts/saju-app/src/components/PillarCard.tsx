@@ -1,5 +1,6 @@
 import type { Pillar } from "@/lib/sajuEngine";
 import { ELEMENT_COLORS } from "@/lib/sajuEngine";
+import { charToElement, elementColorVar, type FiveElKey } from "@/lib/element-color";
 
 const STEM_ELEMENT: Record<string, string> = {
   갑: "목", 을: "목", 병: "화", 정: "화",
@@ -19,12 +20,20 @@ export function PillarCard({ label, pillar, unknown, highlight }: PillarCardProp
   const branchChar = pillar?.hangul?.[1];
   const stemEl = stemChar ? STEM_ELEMENT[stemChar] : null;
   const branchEl = branchChar ? STEM_ELEMENT[branchChar] : null;
+  const highlightEl = highlight && stemChar ? charToElement(stemChar) : null;
+  const highlightStyle: React.CSSProperties | undefined = highlightEl
+    ? {
+        borderColor: elementColorVar(highlightEl as FiveElKey, "base"),
+        background: elementColorVar(highlightEl as FiveElKey, "muted"),
+      }
+    : undefined;
 
   return (
     <div
       className={`flex flex-col rounded-lg border text-center overflow-hidden ${
-        highlight ? "border-amber-300 bg-amber-50/60" : "border-border bg-card"
+        highlight ? "" : "border-border bg-card"
       }`}
+      style={highlightStyle}
     >
       <div className="text-[13px] font-medium text-muted-foreground py-1 bg-muted/40 border-b border-border">
         {label}

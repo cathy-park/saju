@@ -984,7 +984,7 @@ export default function Compatibility() {
                     <div className="ds-inline-detail-nested space-y-2">
                       <p className="ds-body">{fullReport.crossBranch.overallDesc}</p>
                       {fullReport.branchComp.relations.length > 0 && (
-                        <div className="border-t border-border/60 pt-2">
+                      <div className="space-y-2">
                           <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">일지 관계 태그</p>
                           <div className="flex flex-wrap gap-1.5">
                             {fullReport.branchComp.relations
@@ -1057,7 +1057,7 @@ export default function Compatibility() {
                         {result.adjustmentSteps.find((s) => s.category === "십성 궁합")?.note ??
                           "십성 관계에 대한 추가 설명을 불러오지 못했습니다."}
                       </p>
-                      <div className="border-t border-border/60 pt-2 space-y-2">
+                      <div className="space-y-2">
                         <div className="ds-inline-detail-nested space-y-1.5">
                           <p className="text-[12px] font-semibold text-foreground">
                             {myName} → {otherName}
@@ -1208,7 +1208,7 @@ export default function Compatibility() {
                 </div>
 
               {/* ── 4. 연애/결혼 관점 해석 (별도 카드) ── */}
-                <div className="ds-card overflow-hidden shadow-none border-rose-200/70 bg-rose-50/40">
+                <div className="ds-card overflow-hidden shadow-none">
                   <div className="border-b border-border bg-muted/20 px-4 py-3">
                     <h2 className="text-sm font-bold text-foreground">연애 관점 해석</h2>
                     <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">
@@ -1217,17 +1217,21 @@ export default function Compatibility() {
                   </div>
                   <div className="space-y-3 p-4">
                     <div className="grid grid-cols-2 gap-2">
-                      <div className="ds-inline-detail-nested text-center">
+                      <div className={cn("rounded-xl border p-3 text-center", myGender === "여" ? "border-rose-200 bg-rose-50/60" : "border-sky-200 bg-sky-50/60")}>
                         <p className="text-[13px] text-muted-foreground inline-flex items-center gap-0.5 justify-center w-full">
                           <GenderSymbol gender={myGender} />{myName}
                         </p>
-                        <p className="mt-1 text-sm font-bold text-foreground">{fullReport.styleComp.person1Style}</p>
+                        <div className="ds-inline-detail-nested mt-2 py-2">
+                          <p className="text-sm font-bold text-foreground">{fullReport.styleComp.person1Style}</p>
+                        </div>
                       </div>
-                      <div className="ds-inline-detail-nested text-center">
+                      <div className={cn("rounded-xl border p-3 text-center", otherGender === "여" ? "border-rose-200 bg-rose-50/60" : "border-sky-200 bg-sky-50/60")}>
                         <p className="text-[13px] text-muted-foreground inline-flex items-center gap-0.5 justify-center w-full">
                           <GenderSymbol gender={otherGender} />{otherName}
                         </p>
-                        <p className="mt-1 text-sm font-bold text-foreground">{fullReport.styleComp.person2Style}</p>
+                        <div className="ds-inline-detail-nested mt-2 py-2">
+                          <p className="text-sm font-bold text-foreground">{fullReport.styleComp.person2Style}</p>
+                        </div>
                       </div>
                     </div>
                     <div className="ds-inline-detail-nested">
@@ -1248,7 +1252,14 @@ export default function Compatibility() {
                     <div className="rounded-xl border border-primary/25 bg-primary/[0.05] p-4">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="text-[13px] text-muted-foreground">관계 유형</span>
-                        <span className={cn("ds-badge text-[13px] font-bold shadow-none", fullReport.marriageView.typeColor)}>
+                        <span
+                          className="ds-badge border px-3 py-1.5 text-[13px] font-bold shadow-none"
+                          style={{
+                            background: palette.pastel,
+                            borderColor: palette.border,
+                            color: palette.badgeText,
+                          }}
+                        >
                           {fullReport.marriageView.type}
                         </span>
                       </div>
@@ -1285,14 +1296,8 @@ export default function Compatibility() {
                       { record: p2!, label: otherName, gender: otherGender },
                     ].map(({ record, label, gender }) => {
                       const p = getFinalPillars(record);
-                      const dayHangul = p.day?.hangul ?? "";
                       return (
-                        <div
-                          key={label}
-                          className="rounded-xl border p-2"
-                          style={getDayPillarCardStyle(dayHangul)}
-                        >
-                          <div className="ds-inline-detail-nested p-2.5">
+                        <div key={label} className="ds-inline-detail-nested p-2.5">
                           <p className="text-[13px] text-muted-foreground mb-2 inline-flex items-center gap-0.5">
                             <GenderSymbol gender={gender} />{label}
                           </p>
@@ -1306,7 +1311,6 @@ export default function Compatibility() {
                               <PillarCard key={lbl} label={lbl} pillar={pillar} unknown={!pillar} highlight={lbl === "일"} />
                             ))}
                           </div>
-                          </div>
                         </div>
                       );
                     })}
@@ -1317,15 +1321,13 @@ export default function Compatibility() {
                 <div>
                   <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-2">배우자궁 비교</p>
                   <div className="mb-2 flex items-center gap-3">
-                    <div className="flex-1 rounded-xl border p-2" style={getElCardStyle(charToElement(fullReport.branchComp.myBranch))}>
-                      <div className="ds-inline-detail-nested space-y-1 py-2 text-center">
+                    <div className="flex-1 rounded-xl border px-3 py-3 text-center" style={getElCardStyle(charToElement(fullReport.branchComp.myBranch))}>
                         <p className="inline-flex w-full items-center justify-center gap-0.5 text-[13px] text-muted-foreground">
                           <GenderSymbol gender={myGender} />
                           {myName} 일지
                         </p>
                         <span className="text-2xl font-bold" style={getBranchColor(fullReport.branchComp.myBranch)}>{fullReport.branchComp.myBranch}</span>
                         <p className="text-[13px] leading-tight text-muted-foreground">{fullReport.branchComp.myPalaceTitle.split("—")[0]}</p>
-                      </div>
                     </div>
                     <div className="text-center">
                       <span className="text-lg text-muted-foreground">↔</span>
@@ -1348,15 +1350,13 @@ export default function Compatibility() {
                         <p className="mt-1 text-[13px] text-muted-foreground">무관계</p>
                       )}
                     </div>
-                    <div className="flex-1 rounded-xl border p-2" style={getElCardStyle(charToElement(fullReport.branchComp.otherBranch))}>
-                      <div className="ds-inline-detail-nested space-y-1 py-2 text-center">
+                    <div className="flex-1 rounded-xl border px-3 py-3 text-center" style={getElCardStyle(charToElement(fullReport.branchComp.otherBranch))}>
                         <p className="inline-flex w-full items-center justify-center gap-0.5 text-[13px] text-muted-foreground">
                           <GenderSymbol gender={otherGender} />
                           {otherName} 일지
                         </p>
                         <span className="text-2xl font-bold" style={getBranchColor(fullReport.branchComp.otherBranch)}>{fullReport.branchComp.otherBranch}</span>
                         <p className="text-[13px] leading-tight text-muted-foreground">{fullReport.branchComp.otherPalaceTitle.split("—")[0]}</p>
-                      </div>
                     </div>
                   </div>
                   <div className="ds-inline-detail-nested flex items-center gap-2">
@@ -1462,16 +1462,14 @@ export default function Compatibility() {
 
                   {/* 이전 스타일 (스샷 5.21.05): 결합 흐름(블루) + 오늘(화이트) */}
                   <div className="rounded-xl border border-sky-200/80 bg-sky-50/35 p-3 shadow-none dark:border-sky-900/40 dark:bg-sky-950/20">
-                    <div className="ds-inline-detail-nested space-y-2">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className="text-[12px] font-bold text-foreground">둘의 현재 결합 흐름</p>
-                        <span className={cn("text-[11px] font-semibold rounded-full border border-border px-2 py-0.5", ALIGN_BADGE[combinedFlow.alignmentType])}>
-                          {combinedFlow.alignmentType}
-                        </span>
-                      </div>
-                      <p className="text-[13px] leading-relaxed text-foreground">{combinedFlow.alignmentDesc}</p>
-                      <p className="text-[12px] leading-relaxed text-muted-foreground">{combinedFlow.staticModifier}</p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-[12px] font-bold text-foreground">둘의 현재 결합 흐름</p>
+                      <span className={cn("text-[11px] font-semibold rounded-full border border-border px-2 py-0.5", ALIGN_BADGE[combinedFlow.alignmentType])}>
+                        {combinedFlow.alignmentType}
+                      </span>
                     </div>
+                    <p className="mt-1 text-[13px] leading-relaxed text-foreground">{combinedFlow.alignmentDesc}</p>
+                    <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">{combinedFlow.staticModifier}</p>
                   </div>
 
                   <div className="ds-inline-detail-nested space-y-1.5 p-3">
@@ -1600,7 +1598,7 @@ export default function Compatibility() {
                         <div className="rounded-xl border border-border bg-muted/15 p-4">
                           <div className="flex items-center gap-2 mb-2">
                             <span className="text-[14px]">💡</span>
-                            <p className="text-sm font-bold text-foreground">관계 유지 팁</p>
+                            <p className="text-sm font-bold text-foreground">오늘부터 써먹기</p>
                           </div>
                           <ul className="space-y-2">
                             {fullReport.tips.slice(0, 5).map((tip, i) => (

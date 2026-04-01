@@ -1071,10 +1071,11 @@ function FiveElementSection({
           /* 오행 글자 = 꼭짓점 오행 strong / 대표 테두리·괄호 십성 = 십성 그룹 범주색 strong / 비대표 괄호 = 꼭짓점 base */
           const elLabelFill = elementColorVar(el, "strong");
           const parenFill =
-            isPrimary && tenGodGroup
-              ? elementColorVar(tgCatEl, "strong")
+            isPrimary
+              ? elementColorVar(el, "strong")
               : elementColorVar(el, "base");
-          const stroke = isPrimary ? elementColorVar(tgCatEl, "strong") : "hsl(var(--border))";
+          // Selected(primary) node must follow the element's own base/strong color (not ten-god category color)
+          const stroke = isPrimary ? elementColorVar(el, "strong") : "hsl(var(--border))";
           const strokeW = 1;
           return (
             <g key={el}>
