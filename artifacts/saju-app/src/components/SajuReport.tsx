@@ -2069,8 +2069,8 @@ function FortuneCalendar({ record, dayStem, luckCycles, birthYear, adjustedDaewo
               style={
                 se
                   ? {
-                      backgroundColor: elementHslAlpha(se, "strong", 0.12),
-                      borderColor: elementHslAlpha(se, "strong", 0.28),
+                      backgroundColor: elementHslAlpha(se, "strong", 0.102),
+                      borderColor: elementHslAlpha(se, "strong", 0.238),
                     }
                   : undefined
               }
@@ -2530,8 +2530,8 @@ function LuckFlowTabs({
                         style={
                           se
                             ? {
-                              backgroundColor: elementHslAlpha(se, "strong", 0.12),
-                              borderColor: elementHslAlpha(se, "strong", 0.28),
+                              backgroundColor: elementHslAlpha(se, "strong", 0.102),
+                              borderColor: elementHslAlpha(se, "strong", 0.238),
                               }
                             : undefined
                         }
@@ -4363,99 +4363,236 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
       {/* ── 탭 4: 오늘운세 (오늘 하루 기준) ── */}
       {reportTab === "오늘운세" && dayStem && lifeFlowData && (
         <div className="space-y-3">
-          {/* 오늘 전체 흐름 */}
-          <TodayFortuneCard record={record} />
-          <Card className="border-indigo-100 bg-gradient-to-br from-indigo-50/60 to-transparent">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-semibold text-indigo-700 flex items-center gap-1.5">
-                <Sparkles className="h-3.5 w-3.5" />
-                오늘 전체 흐름
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2.5">
-              <p className="text-sm text-foreground leading-relaxed">{lifeFlowData.overall.fullText}</p>
-              <p className="text-[13px] text-indigo-700 leading-relaxed">{lifeFlowData.overall.activityFlow}</p>
-              <div className="grid grid-cols-2 gap-2 pt-1">
-                {[
-                  { label: "감정 흐름", text: lifeFlowData.overall.emotional },
-                  { label: "결정 타이밍", text: lifeFlowData.overall.decisionTiming },
-                ].map(({ label, text }) => (
-                  <div key={label} className="ds-inline-detail-nested space-y-0">
-                    <p className="text-[13px] font-semibold text-muted-foreground mb-0.5">{label}</p>
-                    <p className="text-[13px] text-foreground">{text}</p>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* 오늘 십성 작동 */}
           {(() => {
             const now = new Date();
             const fortune = getFortuneForDate(record, now.getFullYear(), now.getMonth() + 1, now.getDate());
+            const dayGanZhi = fortune.dayGanZhiStr ?? "";
+            const dayStemChar = dayGanZhi[0] ?? "";
+            const dayBranchChar = dayGanZhi[1] ?? "";
             const tg = fortune.dayTenGod;
             const hint = tg ? (TG_LUCK_MEANING[tg as TenGod]?.summary ?? "") : "";
-            return (
-              <Card className="border-violet-100 bg-gradient-to-br from-violet-50/60 to-transparent">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-semibold text-violet-700 flex items-center gap-1.5">
-                    <Zap className="h-3.5 w-3.5" />
-                    오늘 십성 작동
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  {tg ? (
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className={`text-[13px] font-bold px-2.5 py-1 rounded-full ${getTenGodTw(tg as TenGod, dayStem)}`} style={getTenGodChipStyle(tg as TenGod, dayStem)}>
-                        {tg}
-                      </span>
-                      <span className="text-[13px] text-muted-foreground">오늘 일진 천간 기준</span>
-                    </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">오늘 십성 정보를 계산할 수 없습니다.</p>
-                  )}
-                  {hint ? <p className="text-sm text-foreground leading-relaxed">{hint}</p> : null}
-                </CardContent>
-              </Card>
-            );
-          })()}
+            const layerCount = fortune.luckLayers?.length ?? 0;
 
-          {/* 오늘 신살 작동 */}
-          {todayOrderedShinsalInsights.length > 0 && (
-            <div className="rounded-xl border border-amber-200 bg-amber-50/40 px-3.5 py-3 space-y-2">
-              <p className="text-[13px] font-semibold text-amber-700 uppercase tracking-wide flex items-center gap-1">
-                <Star className="h-3 w-3" />
-                오늘 신살 작동
-              </p>
-              <p className="text-[11px] text-muted-foreground">
-                기준: <span className="font-semibold text-foreground">오늘 일진(일운) 간지</span> ↔ <span className="font-semibold text-foreground">내 원국(일간·일지)</span> 비교
-              </p>
-              <div className="space-y-2">
-                {todayOrderedShinsalInsights.map(({ name, oneLine }) => (
-                  <div key={name} className="ds-inline-detail-nested p-3 space-y-2">
-                    <ShinsalChip name={name} />
-                    <div className="ds-inline-detail-nested">
-                      <p className="text-[13px] text-foreground leading-relaxed">{oneLine}</p>
+            return (
+              <div className="space-y-3">
+                {/* 1) 오늘의 한눈에 보기 */}
+                <Card className="border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50/40">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-semibold text-amber-700 flex items-center gap-1.5">
+                      <Sparkles className="h-3.5 w-3.5" />
+                      오늘의 한눈에 보기
+                      <span className="text-[11px] font-normal text-amber-500">— {fortune.dateLabel}</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="flex items-center gap-3">
+                      <div className="rounded-xl border border-amber-200 bg-white/70 px-3 py-2 text-center shrink-0">
+                        <p className="text-[13px] text-amber-600 font-medium mb-0.5">오늘 일진</p>
+                        <p className="text-xl font-bold text-foreground">
+                          <span className={dayStemChar ? elementTextClass((charToElement(dayStemChar) ?? "토") as FiveElKey, "strong") : ""}>{dayStemChar}</span>
+                          <span className={dayBranchChar ? elementTextClass((charToElement(dayBranchChar) ?? "토") as FiveElKey, "strong") : ""}>{dayBranchChar}</span>
+                        </p>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-foreground mb-1">{fortune.summary}</p>
+                        {fortune.relationshipSignal && (
+                          <span className="text-[13px] bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full border border-rose-200 font-medium">
+                            💕 {fortune.relationshipSignal}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {fortune.keywords.map((kw, i) => (
+                        <span
+                          key={`${kw}-${i}`}
+                          className="text-[13px] font-bold px-2.5 py-1 rounded-full border bg-white/60 text-foreground border-border/60"
+                        >
+                          {kw}
+                        </span>
+                      ))}
+                    </div>
+                    {fortune.guidance && (
+                      <div className="rounded-lg bg-white/60 border border-amber-100 px-3 py-2">
+                        <p className="text-[13px] text-amber-800">{fortune.guidance}</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* 2) 오늘 전체 흐름 */}
+                <Card className="border-indigo-100 bg-gradient-to-br from-indigo-50/60 to-transparent">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-semibold text-indigo-700 flex items-center gap-1.5">
+                      <Layers className="h-3.5 w-3.5" />
+                      오늘 전체 흐름
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2.5">
+                    <p className="text-sm text-foreground leading-relaxed">{lifeFlowData.overall.fullText}</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
+                      {[
+                        { label: "감정 흐름", text: lifeFlowData.overall.emotional },
+                        { label: "결정 타이밍", text: lifeFlowData.overall.decisionTiming },
+                        { label: "핵심 포인트", text: lifeFlowData.overall.activityFlow },
+                      ].map(({ label, text }) => (
+                        <div key={label} className="ds-inline-detail-nested space-y-0">
+                          <p className="text-[13px] font-semibold text-muted-foreground mb-0.5">{label}</p>
+                          <p className="text-[13px] text-foreground">{text}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* 3) 오늘 십성 작동 */}
+                <Card className="border-violet-100 bg-gradient-to-br from-violet-50/60 to-transparent">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-semibold text-violet-700 flex items-center gap-1.5">
+                      <Zap className="h-3.5 w-3.5" />
+                      오늘 십성 작동
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    {tg ? (
+                      <>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span
+                            className={`text-[13px] font-bold px-2.5 py-1 rounded-full ${getTenGodTw(tg as TenGod, dayStem)}`}
+                            style={getTenGodChipStyle(tg as TenGod, dayStem)}
+                          >
+                            {tg}
+                          </span>
+                          <span className="text-[13px] text-muted-foreground">
+                            오늘 일진 천간 <span className="font-semibold text-foreground">{dayStemChar}</span> 기준
+                          </span>
+                        </div>
+                        <div className="ds-inline-detail-nested">
+                          <p className="text-[13px] text-foreground leading-relaxed">
+                            오늘은 일진 천간이 내 일간 기준으로 <span className="font-semibold">{tg}</span>으로 작동하며, 이 기운이 하루 결의·반응에 영향을 줍니다.
+                          </p>
+                        </div>
+                        {hint ? (
+                          <div className="ds-inline-detail-nested">
+                            <p className="text-[13px] text-muted-foreground leading-relaxed">{hint}</p>
+                          </div>
+                        ) : null}
+                      </>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">오늘 십성 정보를 계산할 수 없습니다.</p>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* 4) 오늘 신살 작동 */}
+                {todayOrderedShinsalInsights.length > 0 && (
+                  <div className="rounded-xl border border-amber-200 bg-amber-50/40 px-3.5 py-3 space-y-2">
+                    <p className="text-[13px] font-semibold text-amber-700 uppercase tracking-wide flex items-center gap-1">
+                      <Star className="h-3 w-3" />
+                      오늘 신살 작동
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">
+                      기준: <span className="font-semibold text-foreground">오늘 일진(일운) 간지</span> ↔{" "}
+                      <span className="font-semibold text-foreground">내 원국(일간·일지)</span> 비교
+                    </p>
+                    <div className="space-y-2">
+                      {todayOrderedShinsalInsights.map(({ name, oneLine }) => (
+                        <div key={name} className="ds-inline-detail-nested p-3 space-y-2">
+                          <ShinsalChip name={name} />
+                          <div className="ds-inline-detail-nested">
+                            <p className="text-[13px] text-foreground leading-relaxed">{oneLine}</p>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
-                ))}
-              </div>
-            </div>
-          )}
+                )}
 
-          {/* 오늘 행동 가이드 */}
-          <Card className="border-emerald-100 bg-gradient-to-br from-emerald-50/50 to-transparent">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-semibold text-emerald-700 flex items-center gap-1.5">
-                <CheckCircle2 className="h-3.5 w-3.5" />
-                오늘 행동 가이드
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <p className="text-sm text-foreground leading-relaxed">{lifeFlowData.overall.decisionTiming}</p>
-              <p className="text-[13px] text-muted-foreground leading-relaxed">{lifeFlowData.overall.emotional}</p>
-            </CardContent>
-          </Card>
+                {/* 5) 오늘 행동 가이드 */}
+                <Card className="border-emerald-100 bg-gradient-to-br from-emerald-50/50 to-transparent">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-semibold text-emerald-700 flex items-center gap-1.5">
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      오늘 행동 가이드
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2.5">
+                    <div className="ds-inline-detail-nested">
+                      <p className="text-[12px] font-semibold text-emerald-700 mb-1">추천 행동</p>
+                      <p className="text-[13px] text-foreground leading-relaxed">
+                        {fortune.guidance || "오늘은 무리한 확정보다, 우선순위를 정리해 한 가지를 끝내는 쪽이 유리합니다."}
+                      </p>
+                    </div>
+                    <div className="ds-inline-detail-nested">
+                      <p className="text-[12px] font-semibold text-amber-700 mb-1">피할 행동</p>
+                      <p className="text-[13px] text-foreground leading-relaxed">
+                        오늘은 감정이 앞선 즉흥 결정·과도한 약속·한 번에 많은 일을 확정하는 흐름은 피하는 편이 안전합니다.
+                      </p>
+                    </div>
+                    <div className="ds-inline-detail-nested">
+                      <p className="text-[12px] font-semibold text-indigo-700 mb-1">오늘 잘 맞는 방식</p>
+                      <p className="text-[13px] text-foreground leading-relaxed">{lifeFlowData.overall.activityFlow}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* 6) 운 흐름 보조 카드 (참고) */}
+                <Card className="border-border/60 bg-muted/15">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+                      <TrendingUp className="h-3.5 w-3.5" />
+                      운 흐름 보조 카드
+                      <span className="text-[11px] font-normal normal-case text-muted-foreground/80">(오늘 기준 해석을 보조)</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2.5">
+                    <p className="text-[12px] text-muted-foreground">
+                      오늘은 <span className="font-semibold text-foreground">일운</span>이 중심이며, 대운·세운·월운은 오늘의 톤을 보조합니다.
+                    </p>
+                    {layerCount > 0 && (
+                      <div className="grid grid-cols-2 gap-1.5">
+                        {fortune.luckLayers.map((layer) => (
+                          <div key={layer.label} className="rounded-lg border border-border/60 bg-white/50 px-2.5 py-2 space-y-1.5">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[12px] text-muted-foreground font-medium w-7 shrink-0">{layer.label}</span>
+                              <span className="font-bold text-sm">
+                                {layer.ganZhi.split("").map((ch, i) => {
+                                  const el = charToElement(ch);
+                                  return (
+                                    <span key={i} className={el ? elementTextClass(el as FiveElKey, "strong") : ""}>
+                                      {ch}
+                                    </span>
+                                  );
+                                })}
+                              </span>
+                            </div>
+                            <div className="flex flex-wrap gap-1">
+                              {layer.tenGod && (
+                                <span
+                                  className={`text-[11px] font-bold px-1.5 py-0.5 rounded-full ${getTenGodTw(layer.tenGod as TenGod, dayStem)}`}
+                                  style={getTenGodChipStyle(layer.tenGod as TenGod, dayStem)}
+                                >
+                                  천:{layer.tenGod}
+                                </span>
+                              )}
+                              {layer.branchTenGod && (
+                                <span
+                                  className={`text-[11px] font-bold px-1.5 py-0.5 rounded-full ${getTenGodTw(layer.branchTenGod as TenGod, dayStem)}`}
+                                  style={getTenGodChipStyle(layer.branchTenGod as TenGod, dayStem)}
+                                >
+                                  지:{layer.branchTenGod}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            );
+          })()}
 
           {/* 개발 디버그 */}
           {import.meta.env.DEV && (
