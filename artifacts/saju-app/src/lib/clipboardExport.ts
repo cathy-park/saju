@@ -7,6 +7,7 @@ import { buildInterpretSchema, STRENGTH_DISPLAY_LABEL, type StrengthLevel } from
 import { computeBranchRelations } from "./branchRelations";
 import { calculateLuckCycles, calculateShinsalFull } from "./luckCycles";
 import { getTenGod } from "./tenGods";
+import { getTenGodGroup, type FiveElKey } from "./element-color";
 import type { CompatibilityResult } from "./compatibilityScore";
 
 // ── 오행 관계 맵 (클립보드 전용) ────────────────────────────────────
@@ -25,6 +26,16 @@ const CONTROLLER_EL: Record<string, string> = {
 
 const WINTER_BR = ["해", "자", "축"];
 const SUMMER_BR = ["사", "오", "미"];
+
+function getElementBalanceSummary(counts: Record<string, number>): string {
+  const total = Object.values(counts).reduce((a, b) => a + b, 0) || 1;
+  const missing = (["목", "화", "토", "금", "수"] as const).filter((el) => (counts[el] ?? 0) === 0);
+  const dominant = (["목", "화", "토", "금", "수"] as const).filter((el) => ((counts[el] ?? 0) / total) >= 0.4);
+  if (missing.length === 0 && dominant.length === 0) return "오행이 고르게 분포되어 있어요. 상황에 맞춰 유연하게 조절하는 힘이 있습니다.";
+  if (missing.length > 0) return `${missing.join("·")} 기운이 상대적으로 부족해요. 해당 기운을 ‘조금씩’ 보완하면 균형 잡는 데 도움이 됩니다.`;
+  if (dominant.length > 0) return `${dominant.join("·")} 기운이 강하게 치우쳐 있어요. 장점이 또렷해지는 만큼, 과해지지 않게 페이스 조절이 중요합니다.`;
+  return "오행 분포가 한쪽으로 쏠리는 경향이 있어요. 오늘의 컨디션에 맞춰 균형을 의식해보면 좋습니다.";
+}
 
 // ── 천간·지지 → 오행 ────────────────────────────────────────────────────
 const STEM_EL: Record<string, string> = {
@@ -201,6 +212,19 @@ export function buildPersonClipboardText(record: PersonRecord): string {
   lines.push(`  조후: ${johu}`);
   lines.push("");
 
+  // 대표 요약 (화면 해석 핵심)
+  lines.push(`[대표 요약]`);
+  const domEl = schema.dominantElement as FiveElKey;
+  const dmElKey = (STEM_EL[dayStem] ?? "") as FiveElKey;
+  const domGroup = (dmElKey && domEl) ? getTenGodGroup(dmElKey, domEl) : "";
+  lines.push(`  대표 오행: ${domEl}`);
+  if (domGroup) lines.push(`  대표 십성(그룹): ${domGroup}`);
+  lines.push(`  오행 균형 해석: ${getElementBalanceSummary(counts)}`);
+  lines.push(`  성격 기질 분석 요약: ${schema.strengthDesc} · 대표 오행(${domEl}) 성향이 비교적 또렷하게 드러납니다.`);
+  lines.push(`  격국 해석 설명: 월지 기준(${monthBranch}) 십성(${monthTG ?? "불명"}) 흐름으로 ${geokguk} 성향을 참고합니다.`);
+  lines.push(`  용신 해석 설명: 일간 강약(${strengthLevel}) 흐름에 맞춰 ${yongshinEl}${heeshinEl ? `(+${heeshinEl})` : ""} 쪽을 우선으로 봅니다. (신뢰도: ${schema.yongshinConfidence})`);
+  lines.push("");
+
   // 오행 분포
   lines.push(`[오행 분포]`);
   const elOrder = ["목", "화", "토", "금", "수"] as const;
@@ -311,8 +335,8 @@ export function buildPersonClipboardText(record: PersonRecord): string {
   lines.push("");
 
   lines.push("---");
-  lines.push("이 데이터 기준으로 구조 중심 해석을 해주세요.");
-  lines.push("일반적인 사주 설명은 제외해주세요.");
+  lines.push("이 데이터에는 화면에서 보이는 대표 요약/균형/용신/격국 힌트까지 포함되어 있습니다.");
+  lines.push("상단 요약(가이드 톤)과 하단 근거(분석 톤)를 분리해 해석해 주세요.");
 
   return lines.join("\n");
 }
