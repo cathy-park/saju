@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { Card, CardContent } from "@/components/ui/card";
 import { BirthForm } from "@/components/BirthForm";
 import { MaritalField } from "@/components/MaritalField";
 import { calculateProfileFromBirth, type BirthInput } from "@/lib/sajuEngine";
@@ -14,6 +13,7 @@ import {
 } from "@/lib/storage";
 import { useAuth } from "@/lib/authContext";
 import { upsertPartnerProfile } from "@/lib/db";
+import { cn } from "@/lib/utils";
 
 const REL_TYPES: RelationshipType[] = ["lover", "spouse", "friend", "coworker", "family", "other"];
 
@@ -44,26 +44,26 @@ export default function AddPerson() {
   }
 
   return (
-    <div className="max-w-lg mx-auto px-4 py-8">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-foreground">사람 추가</h1>
-        <p className="text-muted-foreground text-sm mt-1">
+    <div className="ds-app-shell ds-page-pad py-8">
+      <div className="mb-8">
+        <h1 className="ds-title-lg">사람 추가</h1>
+        <p className="ds-subtitle mt-2 block font-normal">
           사주를 계산할 사람의 정보를 입력하세요
         </p>
       </div>
 
-      <div className="mb-4">
-        <p className="text-sm font-medium text-foreground mb-2">관계</p>
-        <div className="flex gap-2 flex-wrap">
+      <div className="mb-6">
+        <p className="ds-subtitle mb-2 block text-foreground">관계</p>
+        <div className="flex flex-wrap gap-2">
           {REL_TYPES.map((t) => (
             <button
               key={t}
+              type="button"
               onClick={() => setRelType(t)}
-              className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
-                relType === t
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-card text-foreground border-border hover:border-primary/50"
-              }`}
+              className={cn(
+                "ds-badge px-3 py-2 text-sm shadow-none transition-colors",
+                relType === t ? "ds-badge-active border-primary bg-primary text-primary-foreground" : "bg-card text-foreground",
+              )}
             >
               {RELATIONSHIP_TYPE_EMOJI[t]} {RELATIONSHIP_TYPE_LABEL[t]}
             </button>
@@ -71,8 +71,8 @@ export default function AddPerson() {
         </div>
       </div>
 
-      <Card>
-        <CardContent className="pt-6">
+      <div className="ds-card shadow-none">
+        <div className="ds-card-pad pt-6">
           <BirthForm
             onSubmit={handleSubmit}
             submitLabel="사주 계산 & 저장"
@@ -83,8 +83,8 @@ export default function AddPerson() {
               />
             }
           />
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }

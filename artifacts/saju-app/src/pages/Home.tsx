@@ -10,8 +10,9 @@ import { Pencil } from "lucide-react";
 import { useAuth } from "@/lib/authContext";
 import { getZodiacFromDayPillar, DEFAULT_ZODIAC } from "@/lib/zodiacAnimal";
 import type { ZodiacInfo } from "@/lib/zodiacAnimal";
-import { charToElement, elementColorVar } from "@/lib/element-color";
+import { charToElement, elementBgClass, elementTextClass } from "@/lib/element-color";
 import type { FiveElKey } from "@/lib/element-color";
+import { cn } from "@/lib/utils";
 import gyeolDefault from "@assets/image_24_1774912053926.png";
 
 const NICK_KEY = "naheuleum_nickname";
@@ -191,24 +192,23 @@ function Dashboard({ record }: { record: PersonRecord }) {
             <span className="text-[17px] font-extrabold tracking-wide">
               {fortune.dayGanZhiStr.split("").map((ch, i) => {
                 const el = charToElement(ch);
-                return <span key={i} style={{ color: el ? elementColorVar(el, "strong") : "hsl(var(--foreground))" }}>{ch}</span>;
+                return (
+                  <span key={i} className={el ? elementTextClass(el as FiveElKey, "strong") : "text-foreground"}>{ch}</span>
+                );
               })}
             </span>
-            {/* hanja 표기는 숨김 */}
           </div>
 
-          {/* 키워드 chips (오른쪽) */}
           {keywords.length > 0 && (
-            <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginLeft: "auto", justifyContent: "flex-end" }}>
+            <div className="ml-auto flex flex-wrap justify-end gap-1">
               {keywords.map((kw, i) => {
-                const P = [
-                  { bg: "rgba(99,102,241,0.10)", color: "#6366F1" },
-                  { bg: "rgba(20,184,166,0.10)",  color: "#0F9B8E" },
-                  { bg: "rgba(239,116,66,0.10)",  color: "hsl(12,72%,50%)" },
+                const styles = [
+                  "border-indigo-200/60 bg-indigo-500/10 text-indigo-700",
+                  "border-teal-200/60 bg-teal-500/10 text-teal-700",
+                  "border-primary/30 bg-primary/10 text-primary",
                 ];
-                const p = P[i % P.length];
                 return (
-                  <span key={kw} style={{ fontSize: 10, fontWeight: 700, color: p.color, background: p.bg, borderRadius: 20, padding: "3px 8px", border: `1px solid ${p.color}33`, whiteSpace: "nowrap" }}>
+                  <span key={kw} className={cn("ds-badge text-[10px] font-bold shadow-none", styles[i % styles.length])}>
                     {kw}
                   </span>
                 );
@@ -222,48 +222,38 @@ function Dashboard({ record }: { record: PersonRecord }) {
           오늘의 전체 흐름 카드
       ══════════════════════════════════════════ */}
       {lifeFlow && (
-        <div style={{ padding: "14px 16px 0" }}>
-          <div style={{ background: "#FFF", border: "1px solid #E8E4FC", borderRadius: 16, padding: "14px 16px", position: "relative", overflow: "hidden" }}>
-            {/* 배경 그라데이션 포인트 */}
-            <div style={{ position: "absolute", top: -20, right: -20, width: 80, height: 80, background: "radial-gradient(circle, rgba(99,102,241,0.08) 0%, transparent 70%)", pointerEvents: "none" }} />
-
-            {/* 제목 */}
-            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
-              <span style={{ fontSize: 13, fontWeight: 800, color: "#6366F1" }}>✦ 오늘의 전체 흐름</span>
+        <div className="px-4 pt-3">
+          <div className="ds-card relative overflow-hidden border-violet-200/80 p-4 shadow-none">
+            <div className="pointer-events-none absolute -right-5 -top-5 h-20 w-20 rounded-full bg-indigo-500/[0.08]" aria-hidden />
+            <div className="mb-2 flex items-center gap-2">
+              <span className="text-[13px] font-extrabold text-indigo-600">✦ 오늘의 전체 흐름</span>
             </div>
-
-            {/* 전체 텍스트 */}
-            <p style={{ fontSize: 13, color: "#333", lineHeight: 1.6, margin: "0 0 6px", fontWeight: 500 }}>
+            <p className="ds-body mb-1.5 font-medium text-foreground">
               {lifeFlow.overall.fullText}
             </p>
-
-            {/* 활동 방향 */}
             {lifeFlow.overall.activityFlow && (
-              <p style={{ fontSize: 12, color: "#6366F1", margin: "0 0 10px", fontWeight: 600 }}>
+              <p className="mb-2.5 text-xs font-semibold text-indigo-600">
                 {lifeFlow.overall.activityFlow}
               </p>
             )}
-
-            {/* 감정 흐름 + 결정 타이밍 2칸 */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            <div className="grid grid-cols-2 gap-2">
               {[
                 { label: "감정 흐름", text: lifeFlow.overall.emotional },
                 { label: "결정 타이밍", text: lifeFlow.overall.decisionTiming },
               ].map(({ label, text }) => (
-                <div key={label} style={{ background: "#F7F6FE", borderRadius: 10, padding: "9px 11px" }}>
-                  <p style={{ fontSize: 10, fontWeight: 700, color: "#8B8FCC", margin: "0 0 4px", letterSpacing: "0.03em" }}>{label}</p>
-                  <p style={{ fontSize: 12, color: "#444", margin: 0, lineHeight: 1.5 }}>{text}</p>
+                <div key={label} className="rounded-lg bg-violet-50/80 px-3 py-2.5">
+                  <p className="ds-caption mb-1 font-bold tracking-wide text-violet-600/90">{label}</p>
+                  <p className="text-xs leading-snug text-foreground/90">{text}</p>
                 </div>
               ))}
             </div>
-
-            {/* 오늘 운세 보러가기 버튼 */}
-            <button
+            <Button
+              type="button"
               onClick={goToTodayFortune}
-              style={{ display: "block", width: "100%", marginTop: 14, padding: "13px 0", borderRadius: 12, background: "linear-gradient(135deg,#6366F1,#8B5CF6)", color: "#FFF", fontSize: 14, fontWeight: 800, border: "none", cursor: "pointer", letterSpacing: "0.02em" }}
+              className="mt-3 w-full border-0 bg-gradient-to-r from-indigo-600 to-violet-600 text-primary-foreground shadow-none hover:from-indigo-600 hover:to-violet-600"
             >
               오늘 운세 보러가기 →
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -283,27 +273,33 @@ function Dashboard({ record }: { record: PersonRecord }) {
             : []),
         ];
         return (
-          <div style={{ padding: "10px 16px 0" }}>
-            <div style={{ border: "1px solid #EBEBEB", borderRadius: 12, background: "#FFF", overflow: "hidden" }}>
-              <div style={{ padding: "9px 14px 8px", borderBottom: "1px solid #F2F2F2" }}>
-                <span style={{ fontSize: 10, fontWeight: 700, color: "#AAAAAA", letterSpacing: "0.05em" }}>오늘 일운 해석</span>
+          <div className="px-4 pt-2">
+            <div className="ds-card overflow-hidden p-0 shadow-none">
+              <div className="border-b border-border px-3.5 py-2">
+                <span className="text-[10px] font-bold tracking-wide text-muted-foreground">오늘 일운 해석</span>
               </div>
-              {items.map((item, idx) => {
-                const tc = item.el ? elementColorVar(item.el, "strong") : "hsl(var(--primary))";
-                const bg = item.el ? elementColorVar(item.el, "muted") : "hsl(var(--muted))";
-                return (
-                  <div key={idx} style={{ padding: "10px 14px", borderBottom: idx < items.length - 1 ? "1px solid #F7F7F7" : "none" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
-                      <span style={{ fontSize: 11, fontWeight: 800, color: tc, background: bg, borderRadius: 20, padding: "2px 9px" }}>
-                        {item.label}
-                      </span>
-                      <span style={{ fontSize: 10, color: "#BBBBBB", fontWeight: 600 }}>{item.sub}</span>
-                    </div>
-                    <p style={{ fontSize: 12, color: "#555", margin: "0 0 3px", fontWeight: 600, lineHeight: 1.5 }}>{item.summary}</p>
-                    <p style={{ fontSize: 11, color: "#888", margin: 0, lineHeight: 1.55 }}>{item.guidance}</p>
+              {items.map((item, idx) => (
+                <div
+                  key={idx}
+                  className={cn("px-3.5 py-2.5", idx < items.length - 1 && "border-b border-border/60")}
+                >
+                  <div className="mb-1 flex items-center gap-1.5">
+                    <span
+                      className={cn(
+                        "ds-badge text-[11px] font-extrabold shadow-none",
+                        item.el
+                          ? cn(elementBgClass(item.el, "muted"), elementTextClass(item.el, "strong"), "border-transparent")
+                          : "bg-muted text-primary",
+                      )}
+                    >
+                      {item.label}
+                    </span>
+                    <span className="text-[10px] font-semibold text-muted-foreground">{item.sub}</span>
                   </div>
-                );
-              })}
+                  <p className="mb-1 text-xs font-semibold leading-snug text-foreground">{item.summary}</p>
+                  <p className="text-[11px] leading-snug text-muted-foreground">{item.guidance}</p>
+                </div>
+              ))}
             </div>
           </div>
         );
@@ -312,45 +308,51 @@ function Dashboard({ record }: { record: PersonRecord }) {
       {/* ══════════════════════════════════════════
           FLOW STRUCTURE CARD (대운/세운/월운/일운 2×2)
       ══════════════════════════════════════════ */}
-      <div style={{ padding: "14px 16px 0" }}>
-        <div
-          style={{ border: "1px solid #EBEBEB", borderRadius: 16, background: "#FFF", padding: "12px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+      <div className="px-4 pt-3">
+        <div className="ds-card grid grid-cols-2 gap-2 p-3 shadow-none">
           {fortune.luckLayers.map((layer) => {
             const stemEl = charToElement(layer.ganZhi[0]);
-            const stemColor = stemEl ? elementColorVar(stemEl as FiveElKey, "strong") : "hsl(var(--foreground))";
             const branchEl = charToElement(layer.ganZhi[1]);
-            const branchColor = branchEl ? elementColorVar(branchEl as FiveElKey, "strong") : "hsl(var(--foreground))";
             return (
               <div
                 key={layer.label}
+                role="button"
+                tabIndex={0}
                 onClick={() => {
                   sessionStorage.setItem("openReportTab", "운세");
                   sessionStorage.setItem("openLuckTab", layer.label);
                   navigate("/saju");
                 }}
-                style={{ background: "#FAFAF8", borderRadius: 10, padding: "10px 11px", cursor: "pointer" }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    sessionStorage.setItem("openReportTab", "운세");
+                    sessionStorage.setItem("openLuckTab", layer.label);
+                    navigate("/saju");
+                  }
+                }}
+                className="cursor-pointer rounded-lg bg-muted/30 p-2.5 transition-colors hover:bg-muted/50"
               >
-                <div style={{ display: "flex", alignItems: "baseline", gap: 5, marginBottom: 6 }}>
-                  <span style={{ fontSize: 10, fontWeight: 700, color: "#AAAAAA" }}>{layer.label}</span>
-                  <span style={{ fontSize: 14, fontWeight: 800, letterSpacing: "0.04em" }}>
-                    <span style={{ color: stemColor }}>{layer.ganZhi[0]}</span>
-                    <span style={{ color: branchColor }}>{layer.ganZhi[1]}</span>
+                <div className="mb-1.5 flex items-baseline gap-1">
+                  <span className="text-[10px] font-bold text-muted-foreground">{layer.label}</span>
+                  <span className="text-sm font-extrabold tracking-wide">
+                    <span className={stemEl ? elementTextClass(stemEl as FiveElKey, "strong") : "text-foreground"}>{layer.ganZhi[0]}</span>
+                    <span className={branchEl ? elementTextClass(branchEl as FiveElKey, "strong") : "text-foreground"}>{layer.ganZhi[1]}</span>
                   </span>
-                  {/* hanja 표기는 숨김 */}
                 </div>
-                <div style={{ display: "flex", gap: 3, flexWrap: "wrap" }}>
+                <div className="flex flex-wrap gap-1">
                   {layer.tenGod && (
-                    <span className="daewoon-tengod-tag" style={{ fontSize: 9, fontWeight: 700, background: "rgba(99,102,241,0.10)", color: "#6366F1", borderRadius: 20, padding: "2px 6px" }}>
+                    <span className="daewoon-tengod-tag ds-badge border-indigo-200/50 bg-indigo-500/10 px-1.5 py-0.5 text-[9px] font-bold text-indigo-700 shadow-none">
                       천:{layer.tenGod}
                     </span>
                   )}
                   {layer.branchTenGod && (
-                    <span className="daewoon-tengod-tag" style={{ fontSize: 9, fontWeight: 700, background: "rgba(20,184,166,0.10)", color: "#0F9B8E", borderRadius: 20, padding: "2px 6px" }}>
+                    <span className="daewoon-tengod-tag ds-badge border-teal-200/50 bg-teal-500/10 px-1.5 py-0.5 text-[9px] font-bold text-teal-700 shadow-none">
                       지:{layer.branchTenGod}
                     </span>
                   )}
                   {layer.twelveStage && (
-                    <span className="daewoon-tengod-tag" style={{ fontSize: 9, fontWeight: 700, background: "rgba(120,120,120,0.10)", color: "#666", borderRadius: 20, padding: "2px 6px" }}>
+                    <span className="daewoon-tengod-tag ds-badge border-border bg-muted/50 px-1.5 py-0.5 text-[9px] font-bold text-muted-foreground shadow-none">
                       {layer.twelveStage}
                     </span>
                   )}
@@ -359,7 +361,6 @@ function Dashboard({ record }: { record: PersonRecord }) {
             );
           })}
         </div>
-
       </div>
 
       {/* ══════════════════════════════════════════
@@ -395,11 +396,17 @@ function Dashboard({ record }: { record: PersonRecord }) {
 //  Luck Interpret Bottom Sheet
 // ════════════════════════════════════════════════════════════════════
 function LuckInterpretSheet({ fortune, onClose }: { fortune: ReturnType<typeof getTodayFortuneCard>; onClose: () => void }) {
-  const LAYER_COLORS: Record<string, { bg: string; color: string }> = {
-    대운: { bg: "rgba(99,102,241,0.12)", color: "#4F46E5" },
-    세운: { bg: "rgba(20,184,166,0.12)", color: "#0F766E" },
-    월운: { bg: "rgba(249,115,22,0.12)", color: "#C2410C" },
-    일운: { bg: "rgba(239,68,68,0.12)",  color: "#B91C1C" },
+  const LAYER_BAR: Record<string, string> = {
+    대운: "bg-indigo-500/10",
+    세운: "bg-teal-500/10",
+    월운: "bg-orange-500/10",
+    일운: "bg-red-500/10",
+  };
+  const LAYER_ACCENT: Record<string, string> = {
+    대운: "text-indigo-700",
+    세운: "text-teal-800",
+    월운: "text-orange-800",
+    일운: "text-red-800",
   };
 
   return (
@@ -418,66 +425,59 @@ function LuckInterpretSheet({ fortune, onClose }: { fortune: ReturnType<typeof g
 
         <div className="px-5 pb-10 pt-3">
           {fortune.luckLayers.map((layer) => {
-            const lc = LAYER_COLORS[layer.label] ?? { bg: "rgba(120,120,120,0.10)", color: "#555" };
+            const bar = LAYER_BAR[layer.label] ?? "bg-muted/40";
+            const accent = LAYER_ACCENT[layer.label] ?? "text-muted-foreground";
             const stemF   = getTenGodFortune(layer.tenGod);
             const branchF = getTenGodFortune(layer.branchTenGod);
-            const el = charToElement(layer.ganZhi[0]);
-            const stemColor  = el ? elementColorVar(el as FiveElKey, "strong") : "hsl(var(--foreground))";
+            const stemEl = charToElement(layer.ganZhi[0]);
             const brEl = charToElement(layer.ganZhi[1]);
-            const branchColor = brEl ? elementColorVar(brEl as FiveElKey, "strong") : "hsl(var(--foreground))";
             return (
-              <div key={layer.label} style={{ marginBottom: 16, border: "1px solid #F0F0F0", borderRadius: 14, overflow: "hidden" }}>
-                {/* Layer header */}
-                <div style={{ padding: "10px 14px 9px", background: lc.bg, display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ fontSize: 11, fontWeight: 800, color: lc.color, background: "#FFF", borderRadius: 20, padding: "2px 9px" }}>{layer.label}</span>
-                  <span style={{ fontSize: 15, fontWeight: 800, letterSpacing: "0.05em" }}>
-                    <span style={{ color: stemColor }}>{layer.ganZhi[0]}</span>
-                    <span style={{ color: branchColor }}>{layer.ganZhi[1]}</span>
+              <div key={layer.label} className="mb-4 overflow-hidden rounded-xl border border-border shadow-none">
+                <div className={cn("flex items-center gap-2 px-3.5 py-2.5", bar)}>
+                  <span className={cn("ds-badge bg-card text-[11px] font-extrabold shadow-none", accent)}>{layer.label}</span>
+                  <span className="text-[15px] font-extrabold tracking-wide">
+                    <span className={stemEl ? elementTextClass(stemEl as FiveElKey, "strong") : "text-foreground"}>{layer.ganZhi[0]}</span>
+                    <span className={brEl ? elementTextClass(brEl as FiveElKey, "strong") : "text-foreground"}>{layer.ganZhi[1]}</span>
                   </span>
-                  {/* hanja 표기는 숨김 */}
                   {layer.twelveStage && (
-                    <span style={{ fontSize: 10, fontWeight: 700, color: "#888", background: "rgba(0,0,0,0.06)", borderRadius: 20, padding: "2px 7px", marginLeft: "auto" }}>
+                    <span className="ds-badge ml-auto bg-muted/60 text-[10px] font-bold text-muted-foreground shadow-none">
                       {layer.twelveStage}
                     </span>
                   )}
                 </div>
 
-                {/* 천간 interpretation */}
                 {layer.tenGod && (
-                  <div style={{ padding: "10px 14px 8px", borderBottom: "1px solid #F8F8F8" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 4 }}>
-                      <span style={{ fontSize: 10, fontWeight: 800, color: lc.color, background: lc.bg, borderRadius: 20, padding: "2px 8px" }}>천 {layer.tenGod}</span>
+                  <div className="border-b border-border/60 px-3.5 py-2.5">
+                    <div className="mb-1 flex items-center gap-1">
+                      <span className={cn("ds-badge text-[10px] font-extrabold shadow-none", bar, accent)}>천 {layer.tenGod}</span>
                     </div>
-                    <p style={{ fontSize: 13, fontWeight: 700, color: "#222", margin: "0 0 3px", lineHeight: 1.5 }}>{stemF.summary}</p>
-                    <p style={{ fontSize: 12, color: "#666", margin: 0, lineHeight: 1.6 }}>{stemF.guidance}</p>
+                    <p className="mb-1 text-[13px] font-bold leading-snug text-foreground">{stemF.summary}</p>
+                    <p className="text-xs leading-relaxed text-muted-foreground">{stemF.guidance}</p>
                   </div>
                 )}
 
-                {/* 지지 interpretation (if different) */}
                 {layer.branchTenGod && layer.branchTenGod !== layer.tenGod && (
-                  <div style={{ padding: "10px 14px 10px" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 4 }}>
-                      <span style={{ fontSize: 10, fontWeight: 800, color: "#6B7280", background: "rgba(107,114,128,0.10)", borderRadius: 20, padding: "2px 8px" }}>지 {layer.branchTenGod}</span>
+                  <div className="px-3.5 py-2.5">
+                    <div className="mb-1 flex items-center gap-1">
+                      <span className="ds-badge border-slate-200/60 bg-slate-500/10 text-[10px] font-extrabold text-slate-700 shadow-none">지 {layer.branchTenGod}</span>
                     </div>
-                    <p style={{ fontSize: 13, fontWeight: 700, color: "#222", margin: "0 0 3px", lineHeight: 1.5 }}>{branchF.summary}</p>
-                    <p style={{ fontSize: 12, color: "#666", margin: 0, lineHeight: 1.6 }}>{branchF.guidance}</p>
+                    <p className="mb-1 text-[13px] font-bold leading-snug text-foreground">{branchF.summary}</p>
+                    <p className="text-xs leading-relaxed text-muted-foreground">{branchF.guidance}</p>
                   </div>
                 )}
 
-                {/* If branch same as stem, just show one paragraph */}
                 {layer.branchTenGod && layer.branchTenGod === layer.tenGod && (
-                  <div style={{ padding: "4px 14px 10px" }}>
-                    <p style={{ fontSize: 12, color: "#999", margin: 0, fontStyle: "italic" }}>천간·지지 동일 기운 — 에너지가 집중됩니다.</p>
+                  <div className="px-3.5 pb-2.5 pt-1">
+                    <p className="text-xs italic text-muted-foreground">천간·지지 동일 기운 — 에너지가 집중됩니다.</p>
                   </div>
                 )}
               </div>
             );
           })}
 
-          {/* Synthesis note */}
-          <div style={{ background: "linear-gradient(135deg,#FFF4F0,#F2EEFF)", border: "1px solid #EDE9FE", borderRadius: 14, padding: "14px 16px", marginBottom: 0, paddingBottom: 40 }}>
-            <p style={{ fontSize: 11, fontWeight: 700, color: "#7C3AED", margin: "0 0 6px", letterSpacing: "0.04em" }}>종합 흐름</p>
-            <p style={{ fontSize: 13, color: "#444", lineHeight: 1.7, margin: 0 }}>
+          <div className="rounded-xl border border-violet-200/80 bg-gradient-to-br from-orange-50/80 to-violet-50/90 p-4 pb-10 shadow-none">
+            <p className="mb-1.5 text-[11px] font-bold tracking-wide text-violet-700">종합 흐름</p>
+            <p className="text-[13px] leading-relaxed text-foreground/90">
               {fortune.guidance}
             </p>
           </div>

@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useCallback } from "react";
 import type { ComputedPillars, FiveElementCount } from "@/lib/sajuEngine";
-import { ELEMENT_BG_COLORS, ELEMENT_COLORS, countFiveElements, calculateProfileFromBirth } from "@/lib/sajuEngine";
+import { countFiveElements, calculateProfileFromBirth } from "@/lib/sajuEngine";
 import type { DaewoonSuOpts } from "@/lib/luckCycles";
 import {
   countFiveElementsNoHour,
@@ -32,7 +32,6 @@ import {
   elementBorderClass,
   elementChipColors,
   elementColorVar,
-  elementHslAlpha,
   elementTextClass,
   getTenGodGroup,
   type ElementTone,
@@ -114,6 +113,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 // ── Constants ──────────────────────────────────────────────────────
 
@@ -484,28 +484,32 @@ function PillarTable({
         </div>
       )}
 
-      <div className="rounded-xl overflow-hidden border border-border">
+      <div className="ds-card overflow-hidden shadow-none">
         <table className="w-full border-collapse table-fixed">
-          {/* Column headers */}
           <thead>
-            <tr className="bg-muted/40 border-b border-border">
-              <th className="py-1.5 px-1.5 w-[44px] bg-muted/20 border-r border-border/40" />
+            <tr className="border-b border-border bg-muted/40">
+              <th className="w-[44px] border-r border-border/40 bg-muted/20 px-1.5 py-2" />
               {computed.map((c, i) => (
-                <th key={i} className={`py-1.5 px-1 text-[12px] font-semibold text-center border-l border-border/40 ${c.isDayMaster ? "bg-amber-50 text-amber-700" : "text-muted-foreground"}`}>
+                <th
+                  key={i}
+                  className={cn(
+                    "border-l border-border/40 px-1 py-2 text-center text-xs font-semibold",
+                    c.isDayMaster ? "bg-primary/10 text-primary" : "text-muted-foreground",
+                  )}
+                >
                   {c.label}{c.isDayMaster && "★"}
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {/* 천간 row */}
             <tr className="border-b border-border/40">
-              <td className="text-[10px] text-muted-foreground font-medium py-1 px-1.5 bg-muted/20 border-r border-border/40 text-center leading-tight">천간</td>
+              <td className="border-r border-border/40 bg-muted/20 px-1.5 py-2 text-center text-[10px] font-medium leading-tight text-muted-foreground">천간</td>
               {computed.map((c, i) => (
-                <td key={i} className={`text-center py-1.5 px-0.5 border-l border-border/40 ${c.isDayMaster ? "bg-amber-50" : ""}`}>
+                <td key={i} className={cn("border-l border-border/40 px-0.5 py-2 text-center", c.isDayMaster && "bg-primary/10")}>
                   {c.isUnknown ? <span className="text-xl text-muted-foreground">?</span> : (
                     <div className="flex flex-col items-center">
-                      <span className={`text-xl font-bold leading-tight ${c.stemEl ? ELEMENT_COLORS[c.stemEl] : ""}`}>
+                      <span className={`text-xl font-bold leading-tight ${c.stemEl ? elementTextClass(c.stemEl, "strong") : ""}`}>
                         {c.stemChar}
                       </span>
                       <span className="text-[10px] text-muted-foreground">{STEM_SIGN[c.stemChar] ?? ""}</span>
@@ -519,7 +523,7 @@ function PillarTable({
             <tr className="border-b border-border/40">
               <td className="text-[10px] text-muted-foreground font-medium py-1 px-1.5 bg-muted/20 border-r border-border/40 text-center leading-tight">십성</td>
               {computed.map((c, i) => (
-                <td key={i} className={`text-center py-1.5 px-0.5 border-l border-border/40 ${c.isDayMaster ? "bg-amber-50" : ""}`}>
+                <td key={i} className={cn("border-l border-border/40 px-0.5 py-2 text-center", c.isDayMaster && "bg-primary/10")}>
                   {c.isUnknown ? <span className="text-[10px] text-muted-foreground">-</span> : editMode ? (
                     <select value={c.effStemTG ?? ""} onChange={(e) => setDerived("stemTenGod", i, e.target.value)} className={selectStyle}>
                       <option value="">-</option>
@@ -543,10 +547,10 @@ function PillarTable({
             <tr className="border-b border-border/40">
               <td className="text-[10px] text-muted-foreground font-medium py-1 px-1.5 bg-muted/20 border-r border-border/40 text-center leading-tight">지지</td>
               {computed.map((c, i) => (
-                <td key={i} className={`text-center py-1.5 px-0.5 border-l border-border/40 ${c.isDayMaster ? "bg-amber-50" : ""}`}>
+                <td key={i} className={cn("border-l border-border/40 px-0.5 py-2 text-center", c.isDayMaster && "bg-primary/10")}>
                   {c.isUnknown ? <span className="text-xl text-muted-foreground">?</span> : (
                     <div className="flex flex-col items-center">
-                      <span className={`text-xl font-bold leading-tight ${c.branchEl ? ELEMENT_COLORS[c.branchEl] : ""}`}>
+                      <span className={`text-xl font-bold leading-tight ${c.branchEl ? elementTextClass(c.branchEl, "strong") : ""}`}>
                         {c.branchChar}
                       </span>
                       <span className="text-[10px] text-muted-foreground">{BRANCH_SIGN[c.branchChar] ?? ""}</span>
@@ -560,7 +564,7 @@ function PillarTable({
             <tr className="border-b border-border/40">
               <td className="text-[10px] text-muted-foreground font-medium py-1 px-1.5 bg-muted/20 border-r border-border/40 text-center leading-tight">십성</td>
               {computed.map((c, i) => (
-                <td key={i} className={`text-center py-1.5 px-0.5 border-l border-border/40 ${c.isDayMaster ? "bg-amber-50" : ""}`}>
+                <td key={i} className={cn("border-l border-border/40 px-0.5 py-2 text-center", c.isDayMaster && "bg-primary/10")}>
                   {c.isUnknown ? <span className="text-[10px] text-muted-foreground">-</span>
                   : editMode ? (
                     <select value={c.effBranchTG ?? ""} onChange={(e) => setDerived("branchTenGod", i, e.target.value)} className={selectStyle}>
@@ -585,7 +589,7 @@ function PillarTable({
             <tr className="border-b border-border/40">
               <td className="text-[10px] text-muted-foreground font-medium py-1 px-1.5 bg-muted/20 border-r border-border/40 text-center leading-tight">지장간</td>
               {computed.map((c, i) => (
-                <td key={i} className={`text-center py-1 px-0.5 border-l border-border/40 ${c.isDayMaster ? "bg-amber-50" : ""}`}>
+                <td key={i} className={cn("border-l border-border/40 px-0.5 py-2 text-center", c.isDayMaster && "bg-primary/10")}>
                   {c.isUnknown ? <span className="text-[10px] text-muted-foreground">-</span>
                   : editMode ? (
                     <input type="text" value={c.effHidden} onChange={(e) => setDerived("hiddenStems", i, e.target.value)} className={inputStyle} maxLength={6} />
@@ -600,7 +604,7 @@ function PillarTable({
             <tr className="border-b border-border/40">
               <td className="text-[10px] text-muted-foreground font-medium py-1 px-1.5 bg-muted/20 border-r border-border/40 text-center leading-tight">12운성</td>
               {computed.map((c, i) => (
-                <td key={i} className={`text-center py-1 px-0.5 border-l border-border/40 ${c.isDayMaster ? "bg-amber-50" : ""}`}>
+                <td key={i} className={cn("border-l border-border/40 px-0.5 py-2 text-center", c.isDayMaster && "bg-primary/10")}>
                   {c.isUnknown ? <span className="text-[10px] text-muted-foreground">-</span>
                   : editMode ? (
                     <select value={c.effStage ?? ""} onChange={(e) => setDerived("twelveStage", i, e.target.value)} className={selectStyle}>
@@ -618,7 +622,7 @@ function PillarTable({
             <tr>
               <td className="text-[10px] text-muted-foreground font-medium py-1 px-1.5 bg-muted/20 border-r border-border/40 text-center leading-tight">12신살</td>
               {computed.map((c, i) => (
-                <td key={i} className={`text-center py-1 px-0.5 border-l border-border/40 ${c.isDayMaster ? "bg-amber-50" : ""}`}>
+                <td key={i} className={cn("border-l border-border/40 px-0.5 py-2 text-center", c.isDayMaster && "bg-primary/10")}>
                   {c.isUnknown ? <span className="text-[10px] text-muted-foreground">-</span>
                   : editMode ? (
                     <input type="text" value={c.effShinsal} onChange={(e) => setDerived("branchShinsal", i, e.target.value)} className={inputStyle} />
@@ -732,12 +736,12 @@ function FiveElementSection({
           용신 계산: <span className="font-semibold text-foreground">지장간 가중치 포함</span>
         </p>
       </div>
-      <div className="flex gap-4 text-[12px] self-start">
-        <span className="flex items-center gap-1 text-muted-foreground">
-          <span className="text-blue-500 font-bold">→</span> 상생
+      <div className="flex gap-4 self-start text-xs text-muted-foreground">
+        <span className="flex items-center gap-1">
+          <span className="font-bold text-chart-5">→</span> 상생
         </span>
-        <span className="flex items-center gap-1 text-muted-foreground">
-          <span className="text-red-500 font-bold">→</span> 상극
+        <span className="flex items-center gap-1">
+          <span className="font-bold text-destructive">→</span> 상극
         </span>
       </div>
       <div className="self-start flex items-center gap-2">
@@ -746,7 +750,7 @@ function FiveElementSection({
         </span>
         <span className={`text-[13px] font-black ${elementTextClass(primaryEl, "strong")}`}>{primaryEl}</span>
       </div>
-      <svg viewBox="0 0 296 296" width="100%" style={{ maxWidth: 444 }}>
+      <svg viewBox="0 0 296 296" width="100%" className="w-full max-w-[444px]">
         <defs>
           <marker id="arr-gen" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto">
             <path d="M0 0 L7 3.5 L0 7 Z" fill="hsl(var(--chart-5))" opacity="0.8" />
@@ -962,72 +966,65 @@ function TenGodDistributionSection({
           const p2 = detailed[s2] ?? 0;
           /* 대표 오행(오행 분포와 동일) = 이 행의 고정 범례 오행일 때만 강조 */
           const isPrimaryRow = primaryEl === rowEl;
-          const rowSurface =
-            isPrimaryRow
-              ? {
-                  backgroundColor: elementHslAlpha(rowEl, "base", 0.1),
-                  borderColor: elementHslAlpha(rowEl, "base", 0.22),
-                  borderWidth: 1,
-                  borderStyle: "solid" as const,
-                }
-              : undefined;
           return (
             <div
               key={g}
-              className="rounded-xl px-2 py-1 transition-colors"
-              style={rowSurface}
+              className={cn(
+                "rounded-xl border px-2 py-2 transition-colors",
+                isPrimaryRow
+                  ? cn(elementBgClass(rowEl, "muted"), elementBorderClass(rowEl, "muted"))
+                  : "border-transparent",
+              )}
             >
               <button
                 type="button"
                 onClick={() => onTap(g, pct)}
-                className="w-full flex items-center gap-3 text-left rounded px-1 py-0.5 transition-opacity hover:opacity-90"
+                className="flex w-full items-center gap-3 rounded px-1 py-0.5 text-left transition-opacity hover:opacity-90"
               >
                 <span
-                  className={`w-10 text-[13px] font-semibold shrink-0 ${isPrimaryRow ? "" : "text-foreground"}`}
-                  style={isPrimaryRow ? { color: elementColorVar(rowEl, "strong") } : undefined}
+                  className={cn(
+                    "w-10 shrink-0 text-[13px] font-semibold",
+                    isPrimaryRow ? elementTextClass(rowEl, "strong") : "text-foreground",
+                  )}
                 >
                   {g}
                 </span>
-                <div className="flex-1 h-2.5 bg-muted/60 rounded-full overflow-hidden">
+                <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-muted/60">
                   <div
-                    className="h-full rounded-full"
-                    style={{
-                      width: `${pct}%`,
-                      backgroundColor: elementColorVar(rowEl, "base"),
-                    }}
+                    className={cn("h-full rounded-full", elementBgClass(rowEl, "base"))}
+                    style={{ width: `${pct}%` }}
                   />
                 </div>
                 <span
-                  className="text-[13px] font-bold whitespace-nowrap text-right px-2 py-0.5 rounded-full border border-solid"
-                  style={{
-                    backgroundColor: elementHslAlpha(rowEl, "base", 0.1),
-                    color: elementColorVar(rowEl, "strong"),
-                    borderColor: elementHslAlpha(rowEl, "base", 0.28),
-                  }}
+                  className={cn(
+                    "ds-badge text-[13px] font-bold shadow-none",
+                    elementBgClass(rowEl, "muted"),
+                    elementTextClass(rowEl, "strong"),
+                    elementBorderClass(rowEl, "muted"),
+                  )}
                 >
                   {pct}%
                 </span>
               </button>
-              {/* Subcategory pills — 범주색 ~10% 배경 + 연한 테두리 */}
-              <div className="flex gap-1.5 mt-1 ml-11">
+              <div className="ml-11 mt-2 flex gap-2">
                 <span
-                  className="flex items-center gap-1 px-2 py-0.5 rounded-full border border-solid text-[11px]"
-                  style={{
-                    backgroundColor: elementHslAlpha(rowEl, "base", 0.1),
-                    borderColor: elementHslAlpha(rowEl, "base", 0.28),
-                    color: elementColorVar(rowEl, "strong"),
-                  }}
+                  className={cn(
+                    "ds-badge flex items-center gap-1 text-[11px] shadow-none",
+                    elementBgClass(rowEl, "muted"),
+                    elementTextClass(rowEl, "strong"),
+                    elementBorderClass(rowEl, "muted"),
+                  )}
                 >
                   <span className="font-semibold">{s1}</span>
                   <span className="opacity-80">{p1}%</span>
                 </span>
                 <span
-                  className="flex items-center gap-1 px-2 py-0.5 rounded-full border border-solid text-[11px]"
-                  style={{
-                    backgroundColor: elementHslAlpha(rowEl, "base", 0.1),
-                    borderColor: elementHslAlpha(rowEl, "base", 0.28),
-                    color: elementColorVar(rowEl, "strong"),
-                  }}
+                  className={cn(
+                    "ds-badge flex items-center gap-1 text-[11px] shadow-none",
+                    elementBgClass(rowEl, "muted"),
+                    elementTextClass(rowEl, "strong"),
+                    elementBorderClass(rowEl, "muted"),
+                  )}
                 >
                   <span className="font-semibold">{s2}</span>
                   <span className="opacity-80">{p2}%</span>
@@ -1228,7 +1225,7 @@ function SajuStructureSummary({
         {/* 대표 오행 */}
         <div className="rounded-lg bg-white border border-border/60 px-2 py-2.5">
           <p className="text-[11px] text-muted-foreground mb-1">대표 오행</p>
-          <p className={`text-base font-bold ${ELEMENT_COLORS[baseSchema.dominantElement]}`}>
+          <p className={`text-base font-bold ${elementTextClass(baseSchema.dominantElement, "strong")}`}>
             {baseSchema.dominantElement}
           </p>
           <p className="text-[10px] text-muted-foreground/60 mt-0.5">{ELEMENT_KO[baseSchema.dominantElement].split(" ")[1] ?? ""}</p>
@@ -1272,17 +1269,17 @@ function SajuStructureSummary({
                 <div key={entry.type} className="text-[10px] text-left">
                   <span className="text-muted-foreground/60">{entry.type.replace("용신", "")}:</span>{" "}
                   {entry.elements.map((el, i) => (
-                    <span key={i} className={`font-bold ${ELEMENT_COLORS[el as keyof typeof ELEMENT_COLORS] ?? ""}`}>{el}</span>
+                    <span key={i} className={`font-bold ${elementTextClass(el as FiveElKey, "strong")}`}>{el}</span>
                   )).reduce<React.ReactNode[]>((acc, node, i) => i === 0 ? [node] : [...acc, " ", node], [])}
                 </div>
               ))}
             </div>
           ) : (
             <>
-              <p className={`text-base font-bold ${ELEMENT_COLORS[yongshinPrimary]}`}>{yongshinPrimary}</p>
+              <p className={`text-base font-bold ${elementTextClass(yongshinPrimary, "strong")}`}>{yongshinPrimary}</p>
               {yongshinSecondary && (
                 <p className="text-[10px] text-muted-foreground/70 mt-0.5">
-                  희신: <span className={ELEMENT_COLORS[yongshinSecondary]}>{yongshinSecondary}</span>
+                  희신: <span className={elementTextClass(yongshinSecondary, "strong")}>{yongshinSecondary}</span>
                 </p>
               )}
             </>
@@ -1302,23 +1299,25 @@ function SajuStructureSummary({
       {editMode === "strength" && onStrengthLevelChange && (
         <div className="pt-1 space-y-2 border-t border-amber-100">
           <p className="text-[11px] font-semibold text-amber-700 uppercase tracking-wide">사주 강도 선택</p>
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap gap-2">
             {STRENGTH_LEVELS.map((lv) => {
               const isActive = (overrideStrengthLevel ?? baseSchema.strengthLevel) === lv;
               return (
                 <button
                   key={lv}
+                  type="button"
                   onClick={() => { onStrengthLevelChange(lv === baseSchema.strengthLevel ? null : lv); setEditMode("none"); }}
-                  className={`text-[13px] font-bold px-3 py-1.5 rounded-full border transition-all active:scale-95 ${
-                    isActive ? "border-amber-500 bg-amber-500 text-white shadow-none" : "border-border bg-muted/30 text-muted-foreground shadow-none hover:border-amber-300 hover:text-amber-700"
-                  }`}
+                  className={cn(
+                    "ds-badge text-[13px] font-bold shadow-none transition-colors active:scale-[0.98]",
+                    isActive ? "ds-badge-active border-primary bg-primary text-primary-foreground" : "bg-muted/40 text-muted-foreground",
+                  )}
                 >
                   {lv}
                 </button>
               );
             })}
             {overrideStrengthLevel && (
-              <button onClick={() => { onStrengthLevelChange(null); setEditMode("none"); }} className="text-[11px] text-muted-foreground px-2 py-1.5 rounded-full border border-border hover:bg-muted/40 transition-colors">초기화</button>
+              <button type="button" onClick={() => { onStrengthLevelChange(null); setEditMode("none"); }} className="ds-badge text-[11px] text-muted-foreground shadow-none hover:bg-muted/60">초기화</button>
             )}
           </div>
         </div>
@@ -1330,27 +1329,29 @@ function SajuStructureSummary({
           <div className="flex items-center justify-between">
             <p className="text-[11px] font-semibold text-amber-700 uppercase tracking-wide">용신 설정</p>
             <div className="flex gap-1.5">
-              <button onClick={saveYongshin} className="text-[12px] font-bold px-3 py-1 rounded-full bg-amber-500 text-white border-amber-500 transition-all active:scale-95">저장</button>
+              <button type="button" onClick={saveYongshin} className="ds-badge-active ds-badge border-primary bg-primary px-3 py-2 text-[12px] font-bold text-primary-foreground shadow-none transition-colors active:scale-[0.98]">저장</button>
               {overrideYongshinData && overrideYongshinData.length > 0 && (
                 <button onClick={() => { setLocalYongshinData([]); onYongshinDataChange([]); setEditMode("none"); }} className="text-[11px] text-muted-foreground px-2 py-1 rounded-full border border-border hover:bg-muted/40 transition-colors">초기화</button>
               )}
             </div>
           </div>
           {/* Type tabs */}
-          <div className="flex gap-1.5 overflow-x-auto pb-0.5">
+          <div className="scrollbar-none flex gap-2 overflow-x-auto pb-1">
             {YONGSHIN_TYPES.map((t) => {
               const hasEntries = getTypeElements(t).length > 0;
               return (
                 <button
                   key={t}
+                  type="button"
                   onClick={() => setActiveYongshinType(t)}
-                  className={`text-[12px] font-semibold px-2.5 py-1 rounded-full border whitespace-nowrap transition-all active:scale-95 ${
+                  className={cn(
+                    "ds-badge whitespace-nowrap text-[12px] font-semibold shadow-none transition-colors active:scale-[0.98]",
                     activeYongshinType === t
-                      ? "bg-amber-500 text-white border-amber-500"
+                      ? "ds-badge-active border-primary bg-primary text-primary-foreground"
                       : hasEntries
-                      ? "bg-amber-50 text-amber-700 border-amber-300"
-                      : "bg-muted/20 text-muted-foreground border-border"
-                  }`}
+                        ? "border-primary/30 bg-primary/10 text-primary"
+                        : "bg-muted/40 text-muted-foreground",
+                  )}
                 >
                   {t}
                   {hasEntries && `: ${getTypeElements(t).join("")}`}
@@ -1384,9 +1385,9 @@ function SajuStructureSummary({
           {localYongshinData.length > 0 && (
             <div className="flex flex-wrap gap-1.5">
               {localYongshinData.map((entry) => (
-                <div key={entry.type} className="flex items-center gap-1 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">
-                  <span className="text-[11px] text-amber-700 font-semibold">{entry.type.replace("용신", "")}: {entry.elements.join(" ")}</span>
-                  <button onClick={() => setLocalYongshinData((prev) => prev.filter((e) => e.type !== entry.type))} className="text-amber-400 hover:text-amber-700 text-[11px] leading-none">✕</button>
+                <div key={entry.type} className="ds-badge flex items-center gap-1 border-primary/25 bg-primary/10 text-primary shadow-none">
+                  <span className="text-[11px] font-semibold">{entry.type.replace("용신", "")}: {entry.elements.join(" ")}</span>
+                  <button type="button" onClick={() => setLocalYongshinData((prev) => prev.filter((e) => e.type !== entry.type))} className="text-[11px] leading-none text-primary/60 hover:text-primary">✕</button>
                 </div>
               ))}
             </div>
@@ -1592,13 +1593,13 @@ function FortuneCalendar({ record, dayStem, luckCycles, birthYear, adjustedDaewo
 
   const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
 
-  function toneDotColor(fortune: ReturnType<typeof getFortuneForDate>) {
+  function toneDotClass(fortune: ReturnType<typeof getFortuneForDate>) {
     const tg = fortune.dayTenGod;
     const favorable = ["식신", "정재", "정관", "정인"];
     const cautious = ["겁재", "상관", "편관", "편재"];
-    if (tg && favorable.includes(tg)) return "#22C55E";
-    if (tg && cautious.includes(tg)) return "#EF4444";
-    return "#F59E0B";
+    if (tg && favorable.includes(tg)) return "bg-chart-2";
+    if (tg && cautious.includes(tg)) return "bg-destructive";
+    return "bg-chart-4";
   }
 
   return (
@@ -1611,7 +1612,7 @@ function FortuneCalendar({ record, dayStem, luckCycles, birthYear, adjustedDaewo
 
       <div className="grid grid-cols-7 gap-px mb-1">
         {WEEKDAYS.map((d, i) => (
-          <div key={d} className={`text-center text-[11px] font-bold py-1 ${i === 0 ? "text-red-500" : i === 6 ? "text-blue-500" : "text-muted-foreground"}`}>
+          <div key={d} className={`py-1 text-center text-[11px] font-bold ${i === 0 ? "text-destructive" : i === 6 ? "text-chart-5" : "text-muted-foreground"}`}>
             {d}
           </div>
         ))}
@@ -1628,23 +1629,24 @@ function FortuneCalendar({ record, dayStem, luckCycles, birthYear, adjustedDaewo
           const ganjiStr = fortune.dayGanZhiStr ?? "";
           const stemEl = ganjiStr[0] ? charToElement(ganjiStr[0]) : null;
           const branchEl = ganjiStr[1] ? charToElement(ganjiStr[1]) : null;
-          const dot = toneDotColor(fortune);
+          const dotCls = toneDotClass(fortune);
           return (
             <button
               key={day}
+              type="button"
               onClick={() => setSelectedDay(isSelected ? null : day)}
-              className={`min-h-[52px] flex flex-col items-center justify-start pt-1 pb-1 rounded-lg transition-all active:scale-95 border ${
-                isSelected ? "border-orange-400 bg-orange-50" : isToday ? "border-amber-300 bg-amber-50/60" : "border-transparent hover:border-border hover:bg-muted/20"
+              className={`flex min-h-[52px] flex-col items-center justify-start rounded-lg border pb-1 pt-1 transition-all active:scale-95 ${
+                isSelected ? "border-primary/50 bg-primary/10" : isToday ? "border-primary/30 bg-primary/5" : "border-transparent hover:border-border hover:bg-muted/20"
               }`}
             >
-              <span className={`text-[12px] font-bold leading-none mb-0.5 ${dow === 0 ? "text-red-500" : dow === 6 ? "text-blue-500" : "text-foreground"}`}>
+              <span className={`mb-0.5 text-[12px] font-bold leading-none ${dow === 0 ? "text-destructive" : dow === 6 ? "text-chart-5" : "text-foreground"}`}>
                 {day}
               </span>
               <span className="text-[11px] font-bold leading-none">
-                <span style={{ color: stemEl ? elementColorVar(stemEl, "base") : "hsl(var(--muted-foreground))" }}>{ganjiStr[0] ?? ""}</span>
-                <span style={{ color: branchEl ? elementColorVar(branchEl, "base") : "hsl(var(--muted-foreground))" }}>{ganjiStr[1] ?? ""}</span>
+                <span className={stemEl ? elementTextClass(stemEl, "base") : "text-muted-foreground"}>{ganjiStr[0] ?? ""}</span>
+                <span className={branchEl ? elementTextClass(branchEl, "base") : "text-muted-foreground"}>{ganjiStr[1] ?? ""}</span>
               </span>
-              <span className="w-1.5 h-1.5 rounded-full mt-0.5 shrink-0" style={{ background: dot }} />
+              <span className={cn("mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full", dotCls)} />
             </button>
           );
         })}
@@ -1662,8 +1664,8 @@ function FortuneCalendar({ record, dayStem, luckCycles, birthYear, adjustedDaewo
             <div className="w-full rounded-xl border border-border bg-muted/20 px-3 py-3">
               <p className="text-[13px] text-muted-foreground mb-1.5">일운 · {viewMonth}월 {selectedDay}일</p>
               <div className="flex gap-0.5 items-baseline">
-                <span className={`text-xl font-bold ${se ? ELEMENT_COLORS[se] : ""}`}>{dayGZ.stem}</span>
-                <span className={`text-xl font-bold ${be ? ELEMENT_COLORS[be] : ""}`}>{dayGZ.branch}</span>
+                <span className={`text-xl font-bold ${se ? elementTextClass(se, "strong") : ""}`}>{dayGZ.stem}</span>
+                <span className={`text-xl font-bold ${be ? elementTextClass(be, "strong") : ""}`}>{dayGZ.branch}</span>
                 {/* hanja 표기는 숨김 */}
               </div>
               <div className="flex gap-1.5 mt-1.5 flex-wrap">
@@ -1791,8 +1793,8 @@ function LuckDetailCard({ luckType, ganZhi, period, tg, btg, dayStem }: {
       </div>
       <div className="flex items-baseline gap-2">
         <span className="text-xl font-bold">
-          <span className={se ? ELEMENT_COLORS[se] : ""}>{ganZhi.stem}</span>
-          <span className={be ? ELEMENT_COLORS[be] : ""}>{ganZhi.branch}</span>
+          <span className={se ? elementTextClass(se, "strong") : ""}>{ganZhi.stem}</span>
+          <span className={be ? elementTextClass(be, "strong") : ""}>{ganZhi.branch}</span>
         </span>
         {/* hanja 표기는 숨김 */}
         <span className="text-[12px] text-muted-foreground ml-1">{period}</span>
@@ -1888,17 +1890,16 @@ function LuckFlowTabs({
 
   return (
     <div className="space-y-3">
-      {/* Tab switcher */}
-      <div className="flex rounded-xl border border-border bg-muted/30 p-1 gap-1">
+      <div className="ds-segment-list min-h-10 rounded-xl border border-border shadow-none">
         {TABS.map(({ key, label }) => (
           <button
             key={key}
+            type="button"
             onClick={() => setTab(key)}
-            className={`flex-1 py-1.5 text-[13px] font-semibold rounded-lg transition-all active:scale-95 ${
-              tab === key
-                ? "border border-border/50 bg-background text-foreground shadow-none"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
+            className={cn(
+              "ds-segment-item text-[13px] shadow-none",
+              tab === key ? "ds-segment-item-active" : "ds-segment-item-inactive",
+            )}
           >
             {label}
           </button>
@@ -1959,8 +1960,8 @@ function LuckFlowTabs({
                         {isCurrent && <p className="text-[13px] text-amber-600 font-bold">현재</p>}
                       </div>
                       <div className="flex gap-0.5 items-center">
-                        <span className={`text-xl font-bold ${stemEl ? ELEMENT_COLORS[stemEl] : ""}`}>{entry.ganZhi.stem}</span>
-                        <span className={`text-xl font-bold ${branchEl ? ELEMENT_COLORS[branchEl] : ""}`}>{entry.ganZhi.branch}</span>
+                        <span className={`text-xl font-bold ${stemEl ? elementTextClass(stemEl, "strong") : ""}`}>{entry.ganZhi.stem}</span>
+                        <span className={`text-xl font-bold ${branchEl ? elementTextClass(branchEl, "strong") : ""}`}>{entry.ganZhi.branch}</span>
                       </div>
                     </button>
                   );
@@ -1994,8 +1995,8 @@ function LuckFlowTabs({
         <div className="space-y-3">
           <p className="text-[13px] text-muted-foreground px-0.5">연간 운세 · 탭하면 해석이 아래에 표시됩니다</p>
           {/* 수평 스크롤 연도 목록 */}
-          <div className="overflow-x-auto -mx-1 px-1 pb-1" style={{ scrollbarWidth: "none", msOverflowStyle: "none" as "none" }}>
-            <div className="flex gap-2 min-w-max">
+          <div className="-mx-1 overflow-x-auto px-1 pb-1 scrollbar-none">
+            <div className="flex min-w-max gap-2">
               {luckCycles.seun.map(({ year, ganZhi }) => {
                 const se = getStemElement(ganZhi.stem);
                 const be = STEM_ELEMENT[ganZhi.branch] ?? null;
@@ -2012,8 +2013,8 @@ function LuckFlowTabs({
                   >
                     <p className="text-[13px] text-muted-foreground">{year}년</p>
                     <div className="flex gap-0.5 justify-center mt-0.5">
-                      <span className={`text-lg font-bold ${se ? ELEMENT_COLORS[se] : ""}`}>{ganZhi.stem}</span>
-                      <span className={`text-lg font-bold ${be ? ELEMENT_COLORS[be] : ""}`}>{ganZhi.branch}</span>
+                      <span className={`text-lg font-bold ${se ? elementTextClass(se, "strong") : ""}`}>{ganZhi.stem}</span>
+                      <span className={`text-lg font-bold ${be ? elementTextClass(be, "strong") : ""}`}>{ganZhi.branch}</span>
                     </div>
                     {/* hanja 표기는 숨김 */}
                     {tg && <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded mt-0.5 inline-block ${getTenGodTw(tg, dayStem)}`} style={getTenGodChipStyle(tg, dayStem)}>{tg}</span>}
@@ -2093,8 +2094,8 @@ function LuckFlowTabs({
                       >
                         <span className="text-[11px] text-muted-foreground font-semibold">{m}월{isNow ? " ●" : ""}</span>
                         <div className="flex gap-0.5">
-                          <span className={`text-[15px] font-bold leading-tight ${se ? ELEMENT_COLORS[se] : ""}`}>{gz.stem}</span>
-                          <span className={`text-[15px] font-bold leading-tight ${be ? ELEMENT_COLORS[be] : ""}`}>{gz.branch}</span>
+                          <span className={`text-[15px] font-bold leading-tight ${se ? elementTextClass(se, "strong") : ""}`}>{gz.stem}</span>
+                          <span className={`text-[15px] font-bold leading-tight ${be ? elementTextClass(be, "strong") : ""}`}>{gz.branch}</span>
                         </div>
                         {tg && <span className={`text-[10px] font-bold px-1 py-0.5 rounded ${getTenGodTw(tg, dayStem)}`} style={getTenGodChipStyle(tg, dayStem)}>{tg}</span>}
                       </button>
@@ -2114,8 +2115,8 @@ function LuckFlowTabs({
                       <div className="w-full rounded-xl border border-border bg-muted/20 px-3 py-3">
                         <p className="text-[13px] text-muted-foreground mb-1.5">월운 · {selectedWolunYear}년 {selectedWolunMonth}월</p>
                         <div className="flex gap-0.5 items-baseline">
-                          <span className={`text-xl font-bold ${se ? ELEMENT_COLORS[se] : ""}`}>{gz.stem}</span>
-                          <span className={`text-xl font-bold ${be ? ELEMENT_COLORS[be] : ""}`}>{gz.branch}</span>
+                          <span className={`text-xl font-bold ${se ? elementTextClass(se, "strong") : ""}`}>{gz.stem}</span>
+                          <span className={`text-xl font-bold ${be ? elementTextClass(be, "strong") : ""}`}>{gz.branch}</span>
                           {/* hanja 표기는 숨김 */}
                         </div>
                         <div className="flex gap-1.5 mt-1.5 flex-wrap">
@@ -2676,16 +2677,16 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
 
       {/* ── 시주 모드 토글 (탭 바 위, 출생 시간 있을 때만) ── */}
       {hasHourPillar && (
-        <div className="flex items-center gap-1.5 bg-muted/30 border border-border rounded-xl p-1">
+        <div className="ds-segment-list min-h-10 rounded-xl border border-border shadow-none">
           {(["포함", "제외", "비교"] as const).map((m) => (
             <button
               key={m}
+              type="button"
               onClick={() => setHourMode(m)}
-              className={`flex-1 py-1.5 text-[12px] font-semibold rounded-lg transition-all active:scale-95 ${
-                hourMode === m
-                  ? "border border-border/50 bg-background text-foreground shadow-none"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
+              className={cn(
+                "ds-segment-item text-[12px] shadow-none",
+                hourMode === m ? "ds-segment-item-active" : "ds-segment-item-inactive",
+              )}
             >
               시주 {m}
             </button>
@@ -2693,17 +2694,16 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
         </div>
       )}
 
-      {/* ── 탭 바 ── */}
-      <div className="flex rounded-xl border border-border bg-muted/30 p-1 gap-1">
+      <div className="ds-segment-list min-h-11 rounded-xl border border-border shadow-none">
         {(["원국", "성향", "운세", "오늘운세"] as const).map((tab) => (
           <button
             key={tab}
+            type="button"
             onClick={() => setReportTab(tab)}
-            className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all active:scale-95 ${
-              reportTab === tab
-                ? "border border-border/50 bg-background text-foreground shadow-none"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
+            className={cn(
+              "ds-segment-item text-sm shadow-none",
+              reportTab === tab ? "ds-segment-item-active" : "ds-segment-item-inactive",
+            )}
           >
             {tab}
           </button>
@@ -2722,8 +2722,12 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                 <div className="shrink-0 text-center">
                   <p className="text-[10px] font-bold text-violet-500 uppercase tracking-wide mb-0.5">시주</p>
                   <div className="flex gap-0.5">
-                    {hourStem && <span className={`text-xl font-bold ${ELEMENT_COLORS[STEM_ELEMENT[hourStem] ?? ""] ?? ""}`}>{hourStem}</span>}
-                    {hourBranch && <span className={`text-xl font-bold ${ELEMENT_COLORS[STEM_ELEMENT[hourBranch] ?? ""] ?? ""}`}>{hourBranch}</span>}
+                    {hourStem && STEM_ELEMENT[hourStem] && (
+                      <span className={`text-xl font-bold ${elementTextClass(STEM_ELEMENT[hourStem] as FiveElKey, "strong")}`}>{hourStem}</span>
+                    )}
+                    {hourBranch && STEM_ELEMENT[hourBranch] && (
+                      <span className={`text-xl font-bold ${elementTextClass(STEM_ELEMENT[hourBranch] as FiveElKey, "strong")}`}>{hourBranch}</span>
+                    )}
                   </div>
                   <div className="flex gap-0.5 mt-0.5 justify-center flex-wrap">
                     {hourStemTg && <span className={`text-[10px] font-bold px-1 py-0.5 rounded ${getTenGodTw(hourStemTg, dayStem)}`} style={getTenGodChipStyle(hourStemTg, dayStem)}>{hourStemTg}</span>}
@@ -3014,7 +3018,13 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                                   {hidden.map((s, j) => {
                                     const el = STEM_ELEMENT[s];
                                     return (
-                                      <span key={j} className={`text-[13px] font-semibold px-1.5 py-0.5 rounded-sm ${el ? ELEMENT_BG_COLORS[el] : "bg-muted"}`}>
+                                      <span
+                                        key={j}
+                                        className={cn(
+                                          "rounded-sm border border-border px-1.5 py-0.5 text-[13px] font-semibold",
+                                          el ? cn(elementBgClass(el, "muted"), elementTextClass(el, "strong")) : "bg-muted text-muted-foreground",
+                                        )}
+                                      >
                                         {s}
                                       </span>
                                     );
@@ -3099,10 +3109,10 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                   <p className="text-[11px] font-bold text-violet-500 uppercase tracking-wide mb-0.5">시주</p>
                   <div className="flex gap-0.5">
                     {hourStem && (
-                      <span className={`text-2xl font-bold ${ELEMENT_COLORS[STEM_ELEMENT[hourStem] ?? ""] ?? ""}`}>{hourStem}</span>
+                      <span className={`text-2xl font-bold ${STEM_ELEMENT[hourStem] ? elementTextClass(STEM_ELEMENT[hourStem] as FiveElKey, "strong") : ""}`}>{hourStem}</span>
                     )}
                     {hourBranch && (
-                      <span className={`text-2xl font-bold ${ELEMENT_COLORS[STEM_ELEMENT[hourBranch] ?? ""] ?? ""}`}>{hourBranch}</span>
+                      <span className={`text-2xl font-bold ${STEM_ELEMENT[hourBranch] ? elementTextClass(STEM_ELEMENT[hourBranch] as FiveElKey, "strong") : ""}`}>{hourBranch}</span>
                     )}
                   </div>
                   <div className="flex gap-1 mt-0.5 justify-center">
@@ -3258,7 +3268,7 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                             <tr key={i} className={`border-t border-border ${isSelf ? "bg-amber-50/60" : ""}`}>
                               <td className="py-2 px-2 text-center text-[13px] text-muted-foreground">{label}</td>
                               <td className="py-2 px-2 text-center border-l border-border">
-                                <span className={`font-bold ${stemEl ? ELEMENT_COLORS[stemEl] : ""}`}>{stem}</span>
+                                <span className={`font-bold ${stemEl ? elementTextClass(stemEl, "strong") : ""}`}>{stem}</span>
                               </td>
                               <td className="py-2 px-2 text-center border-l border-border">
                                 {stemTg ? (
@@ -3266,7 +3276,7 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                                 ) : <span className="text-[13px] text-muted-foreground">-</span>}
                               </td>
                               <td className="py-2 px-2 text-center border-l border-border">
-                                <span className={`font-bold ${branchEl ? ELEMENT_COLORS[branchEl] : ""}`}>{branch}</span>
+                                <span className={`font-bold ${branchEl ? elementTextClass(branchEl, "strong") : ""}`}>{branch}</span>
                               </td>
                               <td className="py-2 px-2 text-center border-l border-border">
                                 {branchTg ? (
@@ -3323,22 +3333,22 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
       {/* ── 탭 3: 운세 ── */}
       {reportTab === "운세" && (
         <div className="space-y-3">
-          <Card className="border-border shadow-none">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+          <div className="ds-card overflow-hidden shadow-none">
+            <div className="border-b border-border px-4 pb-2 pt-4">
+              <h3 className="flex items-center gap-1.5 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                 <Layers className="h-3.5 w-3.5" />
                 운 흐름
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
+              </h3>
+            </div>
+            <div className="ds-card-pad">
               <LuckFlowTabs
                 luckCycles={luckCycles}
                 dayStem={dayStem}
                 birthYear={input.year}
                 record={record}
               />
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
       )}
 
@@ -3346,15 +3356,20 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
       {reportTab === "오늘운세" && dayStem && lifeFlowData && (
         <div className="space-y-3">
           {/* 해석 서브탭 */}
-          <div className="overflow-x-auto -mx-1 px-1 pb-1" style={{ scrollbarWidth: "none", msOverflowStyle: "none" as "none" }}>
-            <div className="flex gap-1.5 min-w-max">
+          <div className="-mx-1 overflow-x-auto px-1 pb-1 scrollbar-none">
+            <div className="flex min-w-max gap-2">
               {INTERPRET_TABS.map(({ key, icon }) => {
                 const active = interpretTab === key;
                 return (
-                  <button key={key} onClick={() => setInterpretTab(key)}
-                    className={`text-[13px] font-bold px-3 py-1.5 rounded-full border transition-all active:scale-95 whitespace-nowrap ${
-                      active ? "bg-foreground text-background border-foreground" : "bg-muted/30 text-muted-foreground border-border"
-                    }`}>
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setInterpretTab(key)}
+                    className={cn(
+                      "ds-badge text-[13px] font-bold shadow-none transition-colors active:scale-[0.98]",
+                      active ? "ds-badge-active" : "bg-muted/40 text-muted-foreground",
+                    )}
+                  >
                     {icon} {key}
                   </button>
                 );
@@ -3598,11 +3613,29 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                       {complementary.branches.map((b) => {
                         const el = ({"자":"수","축":"토","인":"목","묘":"목","진":"토","사":"화","오":"화","미":"토","신":"금","유":"금","술":"토","해":"수"} as Record<string,string>)[b];
                         return (
-                          <span key={b} className={`text-sm font-bold px-2.5 py-1 rounded-full ${el ? ELEMENT_BG_COLORS[el as keyof typeof ELEMENT_BG_COLORS] : "bg-muted"}`}>{b}</span>
+                          <span
+                            key={b}
+                            className={cn(
+                              "rounded-full px-2.5 py-1 text-sm font-bold",
+                              el
+                                ? cn(elementBgClass(el as FiveElKey, "muted"), elementTextClass(el as FiveElKey, "strong"), "border border-border")
+                                : "bg-muted text-muted-foreground",
+                            )}
+                          >
+                            {b}
+                          </span>
                         );
                       })}
                       {complementary.elements.map((e) => (
-                        <span key={e} className={`text-[13px] px-2 py-1 rounded-full ${ELEMENT_BG_COLORS[e as keyof typeof ELEMENT_BG_COLORS] ?? "bg-muted"}`}>{e} 기운</span>
+                        <span
+                          key={e}
+                          className={cn(
+                            "rounded-full border border-border px-2 py-1 text-[13px]",
+                            cn(elementBgClass(e as FiveElKey, "muted"), elementTextClass(e as FiveElKey, "strong")),
+                          )}
+                        >
+                          {e} 기운
+                        </span>
                       ))}
                     </div>
                   </CardContent>

@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useLocation, useParams } from "wouter";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,6 +21,7 @@ import {
 } from "@/lib/storage";
 import { useAuth } from "@/lib/authContext";
 import { upsertPartnerProfile } from "@/lib/db";
+import { cn } from "@/lib/utils";
 
 const REL_TYPES: RelationshipType[] = ["lover", "spouse", "friend", "coworker", "family", "other"];
 
@@ -40,8 +40,8 @@ export default function EditPerson() {
 
   if (!record) {
     return (
-      <div className="max-w-lg mx-auto px-4 py-8">
-        <p className="text-muted-foreground">해당 사람을 찾을 수 없습니다.</p>
+      <div className="ds-app-shell ds-page-pad py-8">
+        <p className="ds-body text-muted-foreground">해당 사람을 찾을 수 없습니다.</p>
       </div>
     );
   }
@@ -107,28 +107,28 @@ export default function EditPerson() {
   const defaultBirthValues: Partial<BirthInput> = { ...record.birthInput };
 
   return (
-    <div className="max-w-lg mx-auto px-4 py-8 space-y-6">
+    <div className="ds-app-shell ds-page-pad py-8 space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">사주 편집</h1>
-        <div className="flex items-center gap-2 mt-1">
-          <p className="text-muted-foreground text-sm">{record.birthInput.name}님</p>
+        <h1 className="ds-title-lg">사주 편집</h1>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <p className="ds-body text-muted-foreground">{record.birthInput.name}님</p>
           <MaritalBadge status={record.maritalStatus} />
         </div>
       </div>
 
       {/* 관계 유형 */}
       <div>
-        <p className="text-sm font-medium text-foreground mb-2">관계</p>
-        <div className="flex gap-2 flex-wrap">
+        <p className="ds-subtitle mb-2 block text-foreground">관계</p>
+        <div className="flex flex-wrap gap-2">
           {REL_TYPES.map((t) => (
             <button
               key={t}
+              type="button"
               onClick={() => setRelType(t)}
-              className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
-                relType === t
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-card text-foreground border-border hover:border-primary/50"
-              }`}
+              className={cn(
+                "ds-badge px-3 py-2 text-sm shadow-none transition-colors",
+                relType === t ? "ds-badge-active border-primary bg-primary text-primary-foreground" : "bg-card text-foreground",
+              )}
             >
               {RELATIONSHIP_TYPE_EMOJI[t]} {RELATIONSHIP_TYPE_LABEL[t]}
             </button>
@@ -143,8 +143,8 @@ export default function EditPerson() {
         </TabsList>
 
         <TabsContent value="birth">
-          <Card>
-            <CardContent className="pt-6">
+          <div className="ds-card shadow-none">
+            <div className="ds-card-pad pt-6">
               <BirthForm
                 defaultValues={defaultBirthValues}
                 onSubmit={handleBirthSubmit}
@@ -156,30 +156,30 @@ export default function EditPerson() {
                   />
                 }
               />
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </TabsContent>
 
         <TabsContent value="manual" className="space-y-4">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">현재 사주 (미리보기)</CardTitle>
-            </CardHeader>
-            <CardContent>
+          <div className="ds-card shadow-none">
+            <div className="border-b border-border px-4 pb-3 pt-4">
+              <h2 className="text-base font-semibold text-foreground">현재 사주 (미리보기)</h2>
+            </div>
+            <div className="ds-card-pad">
               <SajuDisplay
                 pillars={finalPillars}
                 fiveElements={record.profile.fiveElementDistribution}
                 timeUnknown={record.birthInput.timeUnknown}
                 compact
               />
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">사주 직접 수정</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
+          <div className="ds-card shadow-none">
+            <div className="border-b border-border px-4 pb-3 pt-4">
+              <h2 className="text-base font-semibold text-foreground">사주 직접 수정</h2>
+            </div>
+            <div className="ds-card-pad space-y-4">
               <p className="text-[13px] text-muted-foreground">
                 계산된 값이 잘못된 경우 직접 수정할 수 있습니다. 한글과 한자를 각각 입력하세요.
               </p>
@@ -217,11 +217,11 @@ export default function EditPerson() {
 
               <MaritalField value={maritalStatus} onChange={setMaritalStatus} />
 
-              <Button className="w-full" onClick={handleManualSave}>
+              <Button className="w-full shadow-none" onClick={handleManualSave}>
                 수정 저장
               </Button>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </TabsContent>
       </Tabs>
     </div>

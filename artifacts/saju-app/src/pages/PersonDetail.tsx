@@ -8,6 +8,7 @@ import { CopyButton } from "@/components/CopyButton";
 import { buildPersonClipboardText } from "@/lib/clipboardExport";
 import { charToElement, elementBgClass, type FiveElKey } from "@/lib/element-color";
 import { MaritalBadge, type MaritalBadgeStatus } from "@/components/MaritalField";
+import { cn } from "@/lib/utils";
 
 function partnerBadgeStatus(person: PersonRecord): MaritalBadgeStatus | undefined {
   if (person.maritalStatus) return person.maritalStatus;
@@ -32,10 +33,10 @@ export default function PersonDetail() {
 
   if (!person) {
     return (
-      <div className="max-w-lg mx-auto px-4 py-8 text-center">
-        <p className="text-muted-foreground mb-4">사람을 찾을 수 없습니다</p>
+      <div className="ds-app-shell ds-page-pad py-8 text-center">
+        <p className="ds-subtitle mb-4 block">사람을 찾을 수 없습니다</p>
         <Link href="/people">
-          <Button variant="outline">목록으로</Button>
+          <Button variant="outline" className="shadow-none">목록으로</Button>
         </Link>
       </div>
     );
@@ -52,10 +53,10 @@ export default function PersonDetail() {
   const badgeStatus = partnerBadgeStatus(person);
 
   return (
-    <div className="max-w-lg mx-auto px-4 py-8 space-y-5">
+    <div className="ds-app-shell ds-page-pad py-8 ds-section-gap">
 
       {/* ── Unified Identity Card (same structure as MyProfile) ── */}
-      <div className="rounded-2xl border border-border bg-card p-5 relative">
+      <div className="ds-card ds-card-pad relative shadow-none">
         <div className="flex items-start gap-4">
           {/* Zodiac mascot — element-based pastel background (same as PeopleList card) */}
           <div className={`shrink-0 w-[72px] h-[72px] rounded-2xl flex items-center justify-center overflow-hidden ${thumbBgClass}`}>
@@ -70,7 +71,12 @@ export default function PersonDetail() {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <h1 className="text-xl font-bold text-foreground">{input.name}</h1>
-              <span className={`text-sm font-bold ${input.gender === "여" ? "text-pink-500" : "text-blue-500"}`}>
+              <span
+                className={cn(
+                  "text-sm font-bold",
+                  input.gender === "여" ? "text-chart-3" : "text-chart-5",
+                )}
+              >
                 {input.gender === "여" ? "♀" : "♂"}
               </span>
             </div>
@@ -86,7 +92,7 @@ export default function PersonDetail() {
         </div>
 
         {/* Secondary info row */}
-        <div className="mt-3 pt-3 border-t border-border grid grid-cols-1 gap-1 text-[12px] text-muted-foreground">
+        <div className="mt-4 grid grid-cols-1 gap-1 border-t border-border pt-4 text-xs text-muted-foreground">
           <span>
             <span className="font-medium text-foreground/70">생년월일</span>{" "}
             {input.year}년 {input.month}월 {input.day}일
@@ -122,13 +128,13 @@ export default function PersonDetail() {
       {/* Bottom actions */}
       <div className="flex gap-3 pt-2">
         <Link href="/people" className="flex-1">
-          <Button variant="outline" className="w-full gap-2">
+          <Button variant="outline" className="w-full gap-2 shadow-none">
             <ArrowLeft className="h-4 w-4" />
             목록으로
           </Button>
         </Link>
         <Link href={`/compatibility/${person.id}`} className="flex-1">
-          <Button variant="outline" className="w-full gap-2">
+          <Button variant="outline" className="w-full gap-2 shadow-none">
             <Heart className="h-4 w-4" />
             궁합 보기
           </Button>

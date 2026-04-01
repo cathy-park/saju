@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { BirthForm } from "@/components/BirthForm";
 import { SajuReport } from "@/components/SajuReport";
 import { calculateProfileFromBirth, type BirthInput } from "@/lib/sajuEngine";
@@ -19,10 +18,11 @@ import { getZodiacFromDayPillar } from "@/lib/zodiacAnimal";
 import { useAuth } from "@/lib/authContext";
 import { upsertMyProfile, deleteMyProfileFromDb } from "@/lib/db";
 import { Pencil, Trash2 } from "lucide-react";
-import { MaritalField, MaritalBadge, MARITAL_OPTIONS } from "@/components/MaritalField";
+import { MaritalField, MaritalBadge } from "@/components/MaritalField";
 import { CopyButton } from "@/components/CopyButton";
 import { buildPersonClipboardText } from "@/lib/clipboardExport";
 import { charToElement, elementBgClass, type FiveElKey } from "@/lib/element-color";
+import { cn } from "@/lib/utils";
 
 export default function MyProfile() {
   const [editing, setEditing] = useState(false);
@@ -100,15 +100,15 @@ export default function MyProfile() {
 
   if (!record || editing) {
     return (
-      <div className="max-w-lg mx-auto px-4 py-8">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-foreground">내 사주 등록</h1>
-          <p className="text-muted-foreground text-sm mt-1">
+      <div className="ds-app-shell ds-page-pad py-8">
+        <div className="mb-8">
+          <h1 className="ds-title-lg">내 사주 등록</h1>
+          <p className="ds-subtitle mt-2 block font-normal">
             정확한 생년월일시를 입력하면 사주팔자를 계산합니다
           </p>
         </div>
-        <Card>
-          <CardContent className="pt-6">
+        <div className="ds-card shadow-none">
+          <div className="ds-card-pad pt-6">
             <BirthForm
               defaultValues={record ? { ...record.birthInput } : undefined}
               onSubmit={handleSubmit}
@@ -123,11 +123,11 @@ export default function MyProfile() {
                 />
               }
             />
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         {editing && (
-          <Button variant="ghost" className="w-full mt-3" onClick={() => setEditing(false)}>
+          <Button variant="ghost" className="mt-3 w-full shadow-none" onClick={() => setEditing(false)}>
             취소
           </Button>
         )}
@@ -145,21 +145,23 @@ export default function MyProfile() {
   const thumbBgClass = dayEl ? elementBgClass(dayEl, "muted") : "bg-muted";
 
   return (
-    <div className="max-w-lg mx-auto px-4 py-8 space-y-5">
+    <div className="ds-app-shell ds-page-pad py-8 ds-section-gap">
 
       {/* ── Unified Identity Card ── */}
-      <div className="rounded-2xl border border-border bg-card p-5 relative">
-        <div className="absolute top-4 right-4 flex gap-1">
+      <div className="ds-card ds-card-pad relative shadow-none">
+        <div className="absolute right-4 top-4 flex gap-1">
           <button
+            type="button"
             onClick={() => setEditing(true)}
-            className="h-8 w-8 rounded-lg flex items-center justify-center text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted/50 transition-colors"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground/50 transition-colors hover:bg-muted/50 hover:text-muted-foreground"
             title="수정"
           >
             <Pencil className="h-3.5 w-3.5" />
           </button>
           <button
+            type="button"
             onClick={() => setShowDeleteConfirm(true)}
-            className="h-8 w-8 rounded-lg flex items-center justify-center text-muted-foreground/50 hover:text-red-500 hover:bg-red-50 transition-colors"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground/50 transition-colors hover:bg-destructive/10 hover:text-destructive"
             title="삭제"
           >
             <Trash2 className="h-3.5 w-3.5" />
@@ -168,26 +170,25 @@ export default function MyProfile() {
 
         {/* ── 삭제 확인 오버레이 ── */}
         {showDeleteConfirm && (
-          <div className="absolute inset-0 z-10 rounded-2xl bg-card/95 backdrop-blur-sm flex flex-col items-center justify-center gap-3 p-5">
-            <p className="text-sm font-semibold text-foreground text-center">
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 rounded-xl bg-card/95 p-5 backdrop-blur-sm">
+            <p className="text-center text-sm font-semibold text-foreground">
               내 사주를 삭제할까요?
             </p>
-            <p className="text-xs text-muted-foreground text-center">
+            <p className="text-center text-xs text-muted-foreground">
               모든 설정과 분석 데이터가 사라지며 되돌릴 수 없습니다.
             </p>
-            <div className="flex gap-2 mt-1">
-              <button
+            <div className="mt-1 flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                className="shadow-none"
                 onClick={() => setShowDeleteConfirm(false)}
-                className="px-4 py-1.5 rounded-full text-sm border border-border bg-muted/40 hover:bg-muted text-foreground transition-colors"
               >
                 취소
-              </button>
-              <button
-                onClick={handleDelete}
-                className="px-4 py-1.5 rounded-full text-sm bg-red-500 hover:bg-red-600 text-white font-semibold transition-colors"
-              >
+              </Button>
+              <Button type="button" variant="destructive" className="shadow-none" onClick={handleDelete}>
                 삭제
-              </button>
+              </Button>
             </div>
           </div>
         )}
@@ -204,7 +205,12 @@ export default function MyProfile() {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <h1 className="text-xl font-bold text-foreground">{input.name}</h1>
-              <span className={`text-sm font-bold ${input.gender === "여" ? "text-pink-500" : "text-blue-500"}`}>
+              <span
+                className={cn(
+                  "text-sm font-bold",
+                  input.gender === "여" ? "text-chart-3" : "text-chart-5",
+                )}
+              >
                 {input.gender === "여" ? "♀" : "♂"}
               </span>
             </div>
@@ -219,7 +225,7 @@ export default function MyProfile() {
           </div>
         </div>
 
-        <div className="mt-3 pt-3 border-t border-border grid grid-cols-1 gap-1 text-[12px] text-muted-foreground">
+        <div className="mt-4 grid grid-cols-1 gap-1 border-t border-border pt-4 text-xs text-muted-foreground">
           <span>
             <span className="font-medium text-foreground/70">생년월일</span>{" "}
             {input.year}년 {input.month}월 {input.day}일
