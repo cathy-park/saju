@@ -4633,7 +4633,7 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
 
                                 {/* 2) 추천 행동 */}
                                 <div className="ds-inline-detail-nested">
-                                  <p className="text-[12px] font-bold uppercase tracking-wide text-muted-foreground">추천 행동</p>
+                                  <p className="text-[12px] font-semibold text-emerald-700 mb-1">추천 행동</p>
                                   <ul className="mt-1 space-y-1">
                                     {(RECOMMEND_BY_DOMAIN[todayDomainOpen] ?? []).slice(0, 3).map((t) => (
                                       <li key={t} className="text-[13px] text-foreground leading-relaxed">- {t}</li>
@@ -4643,7 +4643,7 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
 
                                 {/* 3) 주의 행동 */}
                                 <div className="ds-inline-detail-nested">
-                                  <p className="text-[12px] font-bold uppercase tracking-wide text-muted-foreground">주의 행동</p>
+                                  <p className="text-[12px] font-semibold text-amber-700 mb-1">주의 행동</p>
                                   <ul className="mt-1 space-y-1">
                                     {(CAUTION_BY_DOMAIN[todayDomainOpen] ?? []).slice(0, 3).map((t) => (
                                       <li key={t} className="text-[13px] text-foreground leading-relaxed">- {t}</li>
@@ -4788,7 +4788,9 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                         {todayOrderedShinsalInsights.map(({ name, oneLine }) => (
                           <div key={name} className="space-y-1.5">
                             <ShinsalChip name={name} />
-                            <p className="text-[13px] text-foreground leading-relaxed">{oneLine}</p>
+                            <div className="ds-inline-detail-nested">
+                              <p className="text-[13px] text-foreground leading-relaxed">{oneLine}</p>
+                            </div>
                           </div>
                         ))}
                       </div>
