@@ -4406,6 +4406,11 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                     if (lvl === "caution") return "border-orange-200/60 bg-orange-500/10 text-orange-700";
                     return "border-border bg-muted/50 text-muted-foreground";
                   };
+                  const domainToMiniCard = (lvl: "good" | "neutral" | "caution") => {
+                    if (lvl === "good") return "border-emerald-200/70 bg-emerald-50/60";
+                    if (lvl === "caution") return "border-orange-200/70 bg-orange-50/60";
+                    return "border-border/70 bg-muted/20";
+                  };
 
                   const scoreRows = [
                     { key: "사랑", src: love, fallback: { level: "neutral" as const, label: "보통" } },
@@ -4450,15 +4455,6 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                           </div>
                         </div>
 
-                        {/* 카테고리 태그 (복원) */}
-                        <div className="flex flex-wrap gap-1">
-                          {scoreRows.map((r) => (
-                            <span key={r.label} className={cn("ds-badge text-[10px] font-bold shadow-none", domainToChip(r.lvl))}>
-                              {r.label}
-                            </span>
-                          ))}
-                        </div>
-
                         {/* 키워드 태그 (홈 ds-badge 규칙) */}
                         {fortune.keywords.length > 0 && (
                           <div className="flex flex-wrap gap-1">
@@ -4473,12 +4469,12 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                         {/* 카테고리별 흐름 요약 스코어 (추가) */}
                         <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 pt-1">
                           {scoreRows.map((r) => (
-                            <div key={r.label} className={cn("rounded-lg border px-2.5 py-2", domainToChip(r.lvl))}>
-                              <div className="flex items-center justify-between">
+                            <div key={r.label} className={cn("rounded-lg border px-2.5 py-2", domainToMiniCard(r.lvl))}>
+                              <div className="flex items-center gap-1.5">
                                 <span className="text-[12px] font-extrabold text-foreground/90">{r.label}</span>
                                 <span className="text-base leading-none" aria-hidden>{r.emoji}</span>
                               </div>
-                              <p className="mt-0.5 text-[11px] font-bold">{r.state}</p>
+                              <p className="mt-0.5 text-[11px] font-bold text-muted-foreground">{r.state}</p>
                             </div>
                           ))}
                         </div>
