@@ -4614,10 +4614,10 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
 
                           const inlineTint =
                             row.lvl === "good"
-                              ? "border-emerald-200/70 bg-emerald-50/60"
+                              ? "border-emerald-200/40 bg-emerald-500/5"
                               : row.lvl === "caution"
-                                ? "border-orange-200/70 bg-orange-50/60"
-                                : "border-border/70 bg-muted/20";
+                                ? "border-orange-200/40 bg-orange-500/5"
+                                : "border-border/60 bg-muted/10";
 
                           return (
                             <div className={cn("ds-inline-detail mt-2 overflow-visible", inlineTint)}>
