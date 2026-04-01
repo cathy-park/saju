@@ -1212,11 +1212,42 @@ export default function Compatibility() {
                 </div>
 
               {/* ── 4. 연애/결혼 관점 해석 (별도 카드) ── */}
-                <div className="ds-card overflow-hidden shadow-none">
+                {(() => {
+                  const rel = mode === "me_other"
+                    ? (p2 as (PersonRecord & { relationshipType?: RelationshipType }) | null)?.relationshipType
+                    : undefined;
+
+                  const viewTitle =
+                    rel === "family" ? "가족 관점 해석" :
+                    rel === "friend" ? "친구 관점 해석" :
+                    "연애 관점 해석";
+
+                  const viewDesc =
+                    rel === "family"
+                      ? "가족으로서 서로를 대할 때 어떤 리듬과 소통 방식이 자연스러운지 정리합니다."
+                      : rel === "friend"
+                        ? "친구로서 서로를 대할 때 어떤 리듬과 소통 방식이 자연스러운지 정리합니다."
+                        : "서로를 대할 때 어떤 리듬과 소통 방식이 자연스러운지 정리합니다.";
+
+                  const deRomance = (text: string) => {
+                    if (!text) return text;
+                    // 비연인 관계에서는 연애/이성 전제를 줄이고 관계 일반 표현으로 치환
+                    if (rel !== "family" && rel !== "friend") return text;
+                    return text
+                      .replaceAll("연애", "관계")
+                      .replaceAll("이성", "상대")
+                      .replaceAll("데이트", "만남")
+                      .replaceAll("애정", "정서")
+                      .replaceAll("스킨십", "표현")
+                      .replaceAll("설렘", "활력");
+                  };
+
+                  return (
+                  <div className="ds-card overflow-hidden shadow-none">
                   <div className="border-b border-border bg-muted/20 px-4 py-3">
-                    <h2 className="text-sm font-bold text-foreground">연애 관점 해석</h2>
+                    <h2 className="text-sm font-bold text-foreground">{viewTitle}</h2>
                     <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">
-                      서로를 대할 때 어떤 리듬과 소통 방식이 자연스러운지 정리합니다.
+                      {viewDesc}
                     </p>
                   </div>
                   <div className="space-y-3 p-4">
@@ -1226,7 +1257,7 @@ export default function Compatibility() {
                           <GenderSymbol gender={myGender} />{myName}
                         </p>
                         <div className="ds-inline-detail-nested mt-2 py-2">
-                          <p className="text-sm font-bold text-foreground">{fullReport.styleComp.person1Style}</p>
+                          <p className="text-sm font-bold text-foreground">{deRomance(fullReport.styleComp.person1Style)}</p>
                         </div>
                       </div>
                       <div className={cn("rounded-xl border p-3 text-center", otherGender === "여" ? "border-rose-200 bg-rose-50/60" : "border-sky-200 bg-sky-50/60")}>
@@ -1234,15 +1265,17 @@ export default function Compatibility() {
                           <GenderSymbol gender={otherGender} />{otherName}
                         </p>
                         <div className="ds-inline-detail-nested mt-2 py-2">
-                          <p className="text-sm font-bold text-foreground">{fullReport.styleComp.person2Style}</p>
+                          <p className="text-sm font-bold text-foreground">{deRomance(fullReport.styleComp.person2Style)}</p>
                         </div>
                       </div>
                     </div>
                     <div className="ds-inline-detail-nested">
-                      <p className="ds-body">{fullReport.styleComp.dynamicsDesc}</p>
+                      <p className="ds-body">{deRomance(fullReport.styleComp.dynamicsDesc)}</p>
                     </div>
                   </div>
                 </div>
+                  );
+                })()}
 
                 {mode === "me_other" && (() => {
                   const rel = (p2 as (PersonRecord & { relationshipType?: RelationshipType }) | null)?.relationshipType;
@@ -1338,7 +1371,10 @@ export default function Compatibility() {
                           {myName} 일지
                         </p>
                         <span className="text-2xl font-bold" style={getBranchColor(fullReport.branchComp.myBranch)}>{fullReport.branchComp.myBranch}</span>
-                        <p className="text-[13px] leading-tight text-muted-foreground">{fullReport.branchComp.myPalaceTitle.split("—")[0]}</p>
+                        <div className="ds-inline-detail-nested mt-2 space-y-1 p-2.5 text-left">
+                          <p className="text-[13px] font-semibold text-muted-foreground">관계 키워드</p>
+                          <p className="text-sm text-foreground">{fullReport.branchComp.myPalaceTitle.split("—")[0]}</p>
+                        </div>
                     </div>
                     <div className="text-center">
                       <span className="text-lg text-muted-foreground">↔</span>
@@ -1367,7 +1403,10 @@ export default function Compatibility() {
                           {otherName} 일지
                         </p>
                         <span className="text-2xl font-bold" style={getBranchColor(fullReport.branchComp.otherBranch)}>{fullReport.branchComp.otherBranch}</span>
-                        <p className="text-[13px] leading-tight text-muted-foreground">{fullReport.branchComp.otherPalaceTitle.split("—")[0]}</p>
+                        <div className="ds-inline-detail-nested mt-2 space-y-1 p-2.5 text-left">
+                          <p className="text-[13px] font-semibold text-muted-foreground">관계 키워드</p>
+                          <p className="text-sm text-foreground">{fullReport.branchComp.otherPalaceTitle.split("—")[0]}</p>
+                        </div>
                     </div>
                   </div>
                   <div className="ds-inline-detail-nested flex items-center gap-2">
