@@ -249,7 +249,7 @@ function ShinsalTagStrip({
             className={cn(
               "max-w-full rounded border border-transparent px-1 py-px text-center text-[9px] font-bold leading-tight shadow-none transition-opacity active:scale-[0.98] break-words whitespace-normal",
               SHINSAL_COLOR[t.name] ?? "border-border bg-muted/50 text-foreground",
-              selectedId === t.id && "border-2 border-primary bg-primary/[0.06]",
+              selectedId === t.id && "border border-primary bg-primary/[0.06]",
             )}
           >
             {t.name}
@@ -578,8 +578,6 @@ function TenGodNatalInlineBlock({
             ? `${tg}이(가) 사주에 강하게(${pct}%) 자리합니다. 성격과 삶의 흐름에 뚜렷한 영향을 미치는 핵심 기운 중 하나입니다.`
             : `${tg}이(가) 사주에서 매우 강하게(${pct}%) 작용합니다. 삶 전반에 걸쳐 가장 핵심적인 영향을 미치는 지배적 기운입니다.`;
 
-  const tgEl = getTenGodElement(tg, dayStem);
-
   return (
     <div className="ds-inline-detail mt-0 overflow-visible">
       <div className="ds-inline-detail-header">
@@ -603,17 +601,7 @@ function TenGodNatalInlineBlock({
         </button>
       </div>
       <div className="ds-inline-detail-body">
-      <div
-        className="ds-inline-detail-nested"
-        style={
-          tgEl
-            ? {
-                borderColor: elementHslAlpha(tgEl, "strong", 0.18),
-                backgroundColor: elementHslAlpha(tgEl, "strong", 0.03),
-              }
-            : undefined
-        }
-      >
+      <div className="ds-inline-detail-nested space-y-0">
         <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide mb-0.5">원국 비중 맥락</p>
         <p className="text-[12px] leading-relaxed text-foreground break-words">{pctContext}</p>
       </div>
@@ -950,6 +938,15 @@ const ELEMENT_PENTAGON_FILL: Record<FiveElKey, string> = {
   금: "#B6C5DC",
 };
 
+/** 대표 노드 테두리·(괄호) 십성 그룹 글자 — 행동 스타일 행 범주색과 동일 */
+const PENT_TG_GROUP_EL: Record<string, FiveElKey> = {
+  비겁: "목",
+  식상: "화",
+  재성: "토",
+  관성: "금",
+  인성: "수",
+};
+
 function FiveElementSection({
   counts,
   dayStem,
@@ -1069,11 +1066,16 @@ function FiveElementSection({
           const fillH = count > 0 ? Math.max(fillHRaw, 4) : 0;
           const fillY = y + NODE_R - fillH;
           const isPrimary = el === primaryEl;
-          /* 계층: 오행 한 글자 = strong(가장 진함), 괄호 십성 그룹 = 같은 꼭짓점 오행의 base(중간) — 다른 오행색과 섞지 않음 */
+          const tgCatEl =
+            tenGodGroup && PENT_TG_GROUP_EL[tenGodGroup] ? PENT_TG_GROUP_EL[tenGodGroup] : el;
+          /* 오행 글자 = 꼭짓점 오행 strong / 대표 테두리·괄호 십성 = 십성 그룹 범주색 strong / 비대표 괄호 = 꼭짓점 base */
           const elLabelFill = elementColorVar(el, "strong");
-          const parenFill = elementColorVar(el, "base");
-          const stroke = isPrimary ? elementColorVar(el, "strong") : "hsl(var(--border))";
-          const strokeW = isPrimary ? 2 : 1.5;
+          const parenFill =
+            isPrimary && tenGodGroup
+              ? elementColorVar(tgCatEl, "strong")
+              : elementColorVar(el, "base");
+          const stroke = isPrimary ? elementColorVar(tgCatEl, "strong") : "hsl(var(--border))";
+          const strokeW = 1;
           return (
             <g key={el}>
               <circle cx={x} cy={y} r={NODE_R} fill="hsl(var(--card))" />
@@ -1107,7 +1109,16 @@ function FiveElementSection({
                 {el}
               </text>
               {tenGodGroup && (
-                <text x={x} y={y + 5} textAnchor="middle" fontSize="10" fontWeight="600" fill={parenFill}>({tenGodGroup})</text>
+                <text
+                  x={x}
+                  y={y + 5}
+                  textAnchor="middle"
+                  fontSize="10"
+                  fontWeight={isPrimary ? "700" : "600"}
+                  fill={parenFill}
+                >
+                  ({tenGodGroup})
+                </text>
               )}
               <text x={x} y={y + (tenGodGroup ? 18 : 11)} textAnchor="middle" fontSize="11" fill="hsl(var(--foreground))">
                 {count}개 {Math.round(pct * 100)}%
@@ -1270,22 +1281,21 @@ function TenGodDistributionSection({
           let rowBorder = "border border-transparent";
 
           if (rowHighlightMode === "personality" && isRowSelected) {
+            rowBorder = "border";
             if (personalityUserHasTapped) {
-              rowBorder = "border-2";
               rowStyle = {
                 backgroundColor: elementHslAlpha(rowEl, "strong", 0.07),
                 borderColor: elementColorVar(rowEl, "strong"),
               };
             } else {
-              rowBorder = "border";
               rowStyle = {
                 backgroundColor: elementHslAlpha(rowEl, "strong", 0.035),
-                borderColor: elementHslAlpha(rowEl, "strong", 0.22),
+                borderColor: elementHslAlpha(rowEl, "strong", 0.35),
               };
             }
           } else if (rowHighlightMode === "single") {
             if (isRowSelected) {
-              rowBorder = "border-2";
+              rowBorder = "border";
               rowStyle = {
                 backgroundColor: elementHslAlpha(rowEl, "strong", 0.07),
                 borderColor: elementColorVar(rowEl, "strong"),
@@ -1316,15 +1326,18 @@ function TenGodDistributionSection({
                     <span className="flex shrink-0 items-center gap-1.5">
                       {showRepChip ? (
                         <span
-                          className="inline-flex shrink-0 items-center gap-0.5 rounded-full border-2 px-2 py-0.5 text-[10px] font-black leading-none shadow-sm"
+                          className="inline-flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-black leading-none shadow-md"
                           style={{
-                            backgroundColor: elementHslAlpha(rowEl, "strong", 0.18),
+                            backgroundColor: elementHslAlpha(rowEl, "strong", 0.28),
                             borderColor: elementColorVar(rowEl, "strong"),
                             color: elementColorVar(rowEl, "strong"),
+                            boxShadow: `0 2px 8px ${elementHslAlpha(rowEl, "strong", 0.25)}`,
                           }}
                         >
-                          <span aria-hidden>★</span>
-                          대표
+                          <span aria-hidden className="text-sm leading-none">
+                            ⭐
+                          </span>
+                          <span className="tracking-tight">대표</span>
                         </span>
                       ) : showDominantHint ? (
                         <span
@@ -1819,7 +1832,7 @@ function GukgukSection({
           </div>
           <p className="text-[13px] leading-relaxed opacity-90">{gukguk.description}</p>
           {gukguk.explanation && gukguk.explanation.length > 0 && (
-            <div className="rounded-xl border border-border/40 bg-muted/20 px-3 py-2.5 space-y-1">
+            <div className="ds-inline-detail-nested space-y-1">
               <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide">격국 판정 근거</p>
               <ul className="text-[12px] text-foreground/90 list-disc pl-4 space-y-0.5">
                 {gukguk.explanation.map((line, i) => (
@@ -3347,13 +3360,13 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                     {hourBranchTg && <span className={`text-[10px] font-bold px-1 py-0.5 rounded ${getTenGodTw(hourBranchTg, dayStem)}`} style={getTenGodChipStyle(hourBranchTg, dayStem)}>{hourBranchTg}</span>}
                   </div>
                 </div>
-                <div className="flex-1 min-w-0 space-y-1.5">
+                <div className="ds-inline-detail-nested flex-1 min-w-0 space-y-1.5">
                   <p className="text-[11px] font-bold text-violet-600">시주 포함·제외 비교</p>
                   {/* 오행 변화 */}
                   {fiveElDiffBase.length > 0 ? (
                     <div className="flex flex-wrap gap-1">
                       {fiveElDiffBase.map(({ el, withHour, withoutHour, delta }) => (
-                        <div key={el} className="flex items-center gap-0.5 rounded-lg border border-border bg-white px-2 py-0.5">
+                        <div key={el} className="flex items-center gap-0.5 rounded-md border border-border bg-muted/20 px-2 py-0.5">
                           <span className={`text-[12px] font-black ${elementTextClass(el as FiveElKey, "strong")}`}>{el}</span>
                           <span className="text-[11px] text-muted-foreground">{withoutHour}→{withHour}</span>
                           <span className={`text-[10px] font-bold ${delta > 0 ? "text-emerald-600" : "text-rose-500"}`}>{delta > 0 ? `+${delta}` : delta}</span>
@@ -3480,7 +3493,7 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                                 isActive && rowEl
                                   ? {
                                       backgroundColor: elementHslAlpha(rowEl, "strong", 0.09),
-                                      border: `2px solid ${elementColorVar(rowEl, "strong")}`,
+                                      border: `1px solid ${elementColorVar(rowEl, "strong")}`,
                                       color: elementColorVar(rowEl, "strong"),
                                     }
                                   : { ...chipStyle, border: "1px solid transparent" }
@@ -3536,9 +3549,11 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                 pipelinePatterns={sajuPipelineResult?.interpretation.structurePatterns ?? []}
               />
               {seasonalNote ? (
-                <div className="mt-4 rounded-xl border border-border bg-white px-3 py-2.5 shadow-none dark:bg-card">
+                <div className="mt-4 rounded-xl border border-sky-200/80 bg-sky-50/40 p-3 shadow-none dark:border-sky-900/50 dark:bg-sky-950/25">
                   <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">조후(계절) 보정</p>
-                  <p className="mt-1 text-sm leading-relaxed text-foreground break-words">{seasonalNote}</p>
+                  <div className="ds-inline-detail-nested mt-2 space-y-0">
+                    <p className="text-sm leading-relaxed text-foreground break-words">{seasonalNote}</p>
+                  </div>
                   {seasonalNote.length > LONG_SEASONAL_CHARS ? (
                     <button
                       type="button"
@@ -3590,7 +3605,7 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                           className={cn(
                             "flex w-full flex-col items-center gap-1 border border-transparent py-2.5 px-1 transition-colors disabled:cursor-not-allowed disabled:opacity-50",
                             branch && "hover:bg-muted/20 active:bg-muted/35",
-                            isSel && "border-2 border-primary bg-primary/[0.06]",
+                            isSel && "border border-primary bg-primary/[0.06]",
                           )}
                         >
                           {branch ? (
@@ -3663,7 +3678,7 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                           }
                           className={cn(
                             "flex w-full items-center gap-2 rounded-xl border border-border bg-white px-3 py-2 text-left transition-colors hover:bg-muted/15 dark:bg-card",
-                            isSel && "border-2 border-primary bg-primary/[0.06]",
+                            isSel && "border border-primary bg-primary/[0.06]",
                           )}
                         >
                           <span className="text-[13px] text-muted-foreground w-8 shrink-0">{label}</span>
@@ -3721,7 +3736,7 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                     type="button"
                     className={cn(
                       "w-full flex items-center gap-2 rounded-xl border border-border bg-white px-3 py-2 text-left transition-colors active:bg-muted/15 dark:bg-card",
-                      isSel && "border-2 border-primary bg-primary/[0.06]",
+                      isSel && "border border-primary bg-primary/[0.06]",
                     )}
                     onClick={() =>
                       setYuanGuoInlineDetail((prev) =>
@@ -3783,8 +3798,8 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                     {hourBranchTg && <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded ${getTenGodTw(hourBranchTg, dayStem)}`} style={getTenGodChipStyle(hourBranchTg, dayStem)}>{hourBranchTg}</span>}
                   </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[11px] font-bold text-violet-600 uppercase tracking-wide mb-1">시주가 사주에 미치는 영향</p>
+                <div className="ds-inline-detail-nested flex-1 min-w-0 space-y-1">
+                  <p className="text-[11px] font-bold text-violet-600 uppercase tracking-wide">시주가 사주에 미치는 영향</p>
                   {hourStemTg && (
                     <p className="text-[12px] text-foreground leading-relaxed">
                       {TG_LUCK_MEANING[hourStemTg as TenGod]?.summary ?? ""}
@@ -3795,14 +3810,14 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
 
               {/* 오행 변화 */}
               {fiveElDiffBase.length > 0 && (
-                <div>
-                  <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5">
+                <div className="ds-inline-detail-nested space-y-1.5">
+                  <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">
                     시주 포함 시 오행 변화{" "}
                     <span className="font-normal normal-case text-violet-700">(위·아래 수치는 포함 vs 제외 차이)</span>
                   </p>
                   <div className="flex flex-wrap gap-1.5">
                     {fiveElDiffBase.map(({ el, withHour, withoutHour, delta }) => (
-                      <div key={el} className="flex items-center gap-1 rounded-lg border border-border bg-card px-2.5 py-1">
+                      <div key={el} className="flex items-center gap-1 rounded-md border border-border bg-muted/20 px-2.5 py-1">
                         <span className={`text-[13px] font-black ${elementTextClass(el as FiveElKey, "strong")}`}>{el}</span>
                         <span className="text-[12px] text-muted-foreground">{withoutHour}→{withHour}</span>
                         <span className={`text-[11px] font-bold ${delta > 0 ? "text-emerald-600" : "text-rose-500"}`}>
@@ -3816,8 +3831,8 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
 
               {/* 신살 변화 */}
               {(shinsalDiffBase.added.length > 0 || shinsalDiffBase.removed.length > 0) && (
-                <div>
-                  <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5">신살 변화</p>
+                <div className="ds-inline-detail-nested space-y-1.5">
+                  <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">신살 변화</p>
                   <div className="flex flex-wrap gap-1.5">
                     {shinsalDiffBase.removed.map((n) => (
                       <span key={`rem-${n}`} className={`text-[12px] font-bold px-2 py-0.5 rounded-full border line-through opacity-50 ${SHINSAL_COLOR[n] ?? "bg-muted text-muted-foreground border-border"}`}>
@@ -4155,12 +4170,12 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
               </CardHeader>
               <CardContent className="space-y-3">
                 {seasonalNote && (
-                  <p className="text-[12px] text-violet-600/80 border-l-2 border-violet-300 pl-2 leading-relaxed">
-                    {seasonalNote}
-                  </p>
+                  <div className="ds-inline-detail-nested border-l-2 border-violet-200 pl-3">
+                    <p className="text-[12px] text-foreground leading-relaxed">{seasonalNote}</p>
+                  </div>
                 )}
                 {ruleInsights.map((insight, i) => (
-                  <div key={i} className="rounded-xl bg-white/70 border border-violet-100 px-3 py-2.5">
+                  <div key={i} className="ds-inline-detail-nested">
                     <p className="text-[13px] text-foreground leading-relaxed">{insight}</p>
                   </div>
                 ))}
@@ -4184,8 +4199,8 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                   { label: "감정 흐름", text: lifeFlowData.overall.emotional },
                   { label: "결정 타이밍", text: lifeFlowData.overall.decisionTiming },
                 ].map(({ label, text }) => (
-                  <div key={label} className="rounded-lg bg-indigo-50/80 border border-indigo-100 px-2.5 py-2">
-                    <p className="text-[13px] font-semibold text-indigo-500 mb-0.5">{label}</p>
+                  <div key={label} className="ds-inline-detail-nested space-y-0">
+                    <p className="text-[13px] font-semibold text-muted-foreground mb-0.5">{label}</p>
                     <p className="text-[13px] text-foreground">{text}</p>
                   </div>
                 ))}
@@ -4261,12 +4276,14 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
 
           {/* 신살 해석 */}
           {lifeFlowData.shinsalInsight && (interpretTab === "전체" || interpretTab === "사랑" || interpretTab === "배우자운") && (
-            <div className="rounded-xl border border-amber-200 bg-amber-50/40 px-3.5 py-3 space-y-1.5">
+            <div className="rounded-xl border border-amber-200 bg-amber-50/40 px-3.5 py-3 space-y-2">
               <p className="text-[13px] font-semibold text-amber-700 uppercase tracking-wide flex items-center gap-1">
                 <Star className="h-3 w-3" />
                 신살 기운 해석
               </p>
-              <p className="text-[13px] text-foreground leading-relaxed">{lifeFlowData.shinsalInsight}</p>
+              <div className="ds-inline-detail-nested space-y-0">
+                <p className="text-[13px] text-foreground leading-relaxed">{lifeFlowData.shinsalInsight}</p>
+              </div>
             </div>
           )}
 

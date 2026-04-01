@@ -539,9 +539,12 @@
   .ds-inline-detail-body {
     @apply space-y-2.5 overflow-visible p-4 text-sm;
   }
-  /** 인라인 카드 안 중첩 블록(맥락·부가 설명) — 흰/아주 연한 톤 */
+  /**
+   * 부모가 pastel 강조 카드일 때 내부 정보 블록 — 배경 흰색·1px border (pastel 안에 pastel 금지)
+   * level 3 텍스트는 이 안에서 추가 배경 없이 배치
+   */
   .ds-inline-detail-nested {
-    @apply rounded-lg border border-border/60 bg-white px-3 py-2 dark:bg-card;
+    @apply rounded-lg border border-border bg-white px-3 py-2 text-sm shadow-none dark:bg-card;
   }
   /* Pills / badges (솔로·연애·십성·신살 등 공통) */
   .ds-badge {

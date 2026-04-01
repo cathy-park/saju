@@ -13,8 +13,8 @@ export function ShinsalCombinationsCard({ combinations }: { combinations: Shinsa
       </div>
       <div className="ds-card-pad space-y-3">
         {combinations.map((c) => (
-          <div key={c.title} className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2.5">
-            <div className="mb-1 flex flex-wrap gap-1">
+          <div key={c.title} className="ds-inline-detail-nested space-y-1.5">
+            <div className="flex flex-wrap gap-1">
               {c.members.map((m) => (
                 <span
                   key={m}
@@ -28,7 +28,7 @@ export function ShinsalCombinationsCard({ combinations }: { combinations: Shinsa
               ))}
             </div>
             <p className="text-[13px] font-semibold text-foreground">{c.title}</p>
-            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{c.text}</p>
+            <p className="text-xs leading-relaxed text-muted-foreground">{c.text}</p>
           </div>
         ))}
       </div>
