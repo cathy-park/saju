@@ -134,8 +134,10 @@ import {
   Calendar,
   Star,
   Heart,
+  Zap,
   Sparkles,
   Layers,
+  CheckCircle2,
   ChevronDown,
   User,
   RotateCcw,
@@ -1269,6 +1271,8 @@ function TenGodDistributionSection({
   onTap,
   selectedGroup,
   selectedGroupInlineSlot,
+  dominantPrimary,
+  dominantSecondary,
   rowHighlightMode = "single",
   personalityUserHasTapped = false,
   monthBranch,
@@ -1283,6 +1287,9 @@ function TenGodDistributionSection({
   onTap: (group: string, pct: number) => void;
   selectedGroup?: string | null;
   selectedGroupInlineSlot?: ReactNode;
+  /** 상위에서 단일 source로 계산된 대표/2순위(선택) */
+  dominantPrimary?: { group: "비겁" | "식상" | "재성" | "관성" | "인성"; pctExact: number; pctRounded: number; raw: number } | null;
+  dominantSecondary?: { group: "비겁" | "식상" | "재성" | "관성" | "인성"; pctExact: number; pctRounded: number; raw: number } | null;
   /** single: 한 가지 강조 스타일. personality: 초기=약한 강조, 탭 후=선택 강조 */
   rowHighlightMode?: "single" | "personality";
   /** 성격 탭 전용: 사용자가 행을 한 번이라도 눌렀는지 */
@@ -1294,7 +1301,9 @@ function TenGodDistributionSection({
 }) {
   const groups = ["비겁", "식상", "재성", "관성", "인성"] as const;
   const { topLevel, detailed, groupRaw, rawTotal } = computeTenGodDistribution(dayStem, dayEl, allChars, effectiveFiveElements);
-  const { primary, secondary } = pickDominantTenGodGroups({ groupRaw, rawTotal });
+  const computed = pickDominantTenGodGroups({ groupRaw, rawTotal });
+  const primary = dominantPrimary ?? computed.primary;
+  const secondary = dominantSecondary ?? computed.secondary;
   const dominantGroup = primary?.group ?? null;
 
   return (
@@ -2874,17 +2883,7 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
   }, [record.id, record.birthInput, fortuneOpts, scheduleSync, toast]);
 
   // ── Interpretation subtab state ────────────────────────────────
-  const INTERPRET_TABS = [
-    { key: "전체",    icon: "✨" },
-    { key: "사랑",    icon: "❤️" },
-    { key: "재물",    icon: "💰" },
-    { key: "건강",    icon: "🌿" },
-    { key: "일성과",  icon: "⚡" },
-    { key: "성격",    icon: "🌟" },
-    { key: "배우자운", icon: "💍" },
-  ] as const;
-  type InterpretTab = (typeof INTERPRET_TABS)[number]["key"];
-  const [interpretTab, setInterpretTab] = useState<InterpretTab>("전체");
+  // NOTE: 오늘운세 탭은 "오늘 하루 변화 흐름"만 보여주므로 해석 서브탭을 사용하지 않습니다.
 
   // ── Handlers ───────────────────────────────────────────────────
   function handleMaritalStatus(status: MaritalStatus) {
@@ -3056,18 +3055,23 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
     effectivePillars.year?.hangul?.[0], effectivePillars.year?.hangul?.[1],
   ].filter((c): c is string => !!c);
 
+  // ── 대표 십성(그룹) 단일 source ───────────────────────────────
+  const dominantTenGodPair = useMemo(() => {
+    if (!dayStem) return { primary: null as ReturnType<typeof pickDominantTenGodGroups>["primary"], secondary: null as ReturnType<typeof pickDominantTenGodGroups>["secondary"] };
+    const dayElStem = STEM_ELEMENT[dayStem] as FiveElKey | undefined;
+    const { groupRaw, rawTotal } = computeTenGodDistribution(dayStem, dayElStem, allChars, effectiveFiveElements);
+    return pickDominantTenGodGroups({ groupRaw, rawTotal });
+  }, [dayStem, allChars, effectiveFiveElements]);
+
   useEffect(() => {
     if (reportTab !== "성격해석" || !dayStem) return;
     if (personalityTengodSeededRef.current) return;
     personalityTengodSeededRef.current = true;
-    const dayElStem = STEM_ELEMENT[dayStem] as FiveElKey | undefined;
-    const { groupRaw, rawTotal } = computeTenGodDistribution(dayStem, dayElStem, allChars, effectiveFiveElements);
-    const { primary } = pickDominantTenGodGroups({ groupRaw, rawTotal });
-    if (primary) {
-      setSelectedTgGroupInline({ group: primary.group, pct: primary.pctRounded });
+    if (dominantTenGodPair.primary) {
+      setSelectedTgGroupInline({ group: dominantTenGodPair.primary.group, pct: dominantTenGodPair.primary.pctRounded });
       setPersonalityTengodUserPicked(false);
     }
-  }, [reportTab, dayStem, allChars, effectiveFiveElements]);
+  }, [reportTab, dayStem, dominantTenGodPair.primary]);
 
   const allStems = [
     effectivePillars.hour?.hangul?.[0], dayStem,
@@ -3579,8 +3583,8 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
             const allTgTotal = Object.values(displayCounts).reduce((s, c) => s + c, 0) || 1;
             const dayEl = STEM_ELEMENT[dayStem] as FiveElKey | undefined;
             // Align group % with 오행 분포(구조) 기준 (same effectiveFiveElements totals)
-            const { topLevel, detailed, groupRaw, rawTotal } = computeTenGodDistribution(dayStem, dayEl, allChars, effectiveFiveElements);
-            const { primary } = pickDominantTenGodGroups({ groupRaw, rawTotal });
+            const { topLevel, detailed } = computeTenGodDistribution(dayStem, dayEl, allChars, effectiveFiveElements);
+            const primary = dominantTenGodPair.primary;
             return (
               <div className="space-y-3">
                 {Object.entries(TEN_GOD_GROUPS).map(([group, members]) => {
@@ -4079,6 +4083,8 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                     dayEl={STEM_ELEMENT[dayStem] as FiveElKey | undefined}
                     allChars={allChars}
                     effectiveFiveElements={effectiveFiveElements}
+                    dominantPrimary={dominantTenGodPair.primary}
+                    dominantSecondary={dominantTenGodPair.secondary}
                     monthBranch={pillars.month?.hangul?.[1]}
                     dayBranch={dayBranch}
                     allStems={allStems}
@@ -4198,6 +4204,124 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
               </div>
             </AccSection>
           )}
+
+          {/* 연애·관계 구조 (오늘운세 탭에서 이동) */}
+          {(complementary || marriageTiming || relationshipPattern) && (
+            <AccSection title="연애·관계 구조" defaultOpen>
+              <div className="space-y-3">
+                {complementary && (
+                  <Card className="border-pink-100">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-semibold text-pink-700">잘 맞는 관계 · 배우자궁</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm text-foreground mb-3">{complementary.guidance}</p>
+                      <div className="flex gap-1.5 flex-wrap">
+                        {complementary.branches.map((b) => {
+                          const el = ({"자":"수","축":"토","인":"목","묘":"목","진":"토","사":"화","오":"화","미":"토","신":"금","유":"금","술":"토","해":"수"} as Record<string,string>)[b];
+                          return (
+                            <span
+                              key={b}
+                              className={cn(
+                                "rounded-full px-2.5 py-1 text-sm font-bold",
+                                el
+                                  ? cn(elementBgClass(el as FiveElKey, "muted"), elementTextClass(el as FiveElKey, "strong"), "border border-border")
+                                  : "bg-muted text-muted-foreground",
+                              )}
+                            >
+                              {b}
+                            </span>
+                          );
+                        })}
+                        {complementary.elements.map((e) => (
+                          <span
+                            key={e}
+                            className={cn(
+                              "rounded-full border border-border px-2 py-1 text-[13px]",
+                              cn(elementBgClass(e as FiveElKey, "muted"), elementTextClass(e as FiveElKey, "strong")),
+                            )}
+                          >
+                            {e} 기운
+                          </span>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {relationshipPattern && (
+                  <Card className="border-violet-100">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-semibold text-violet-700">연애 · 관계 패턴</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2.5">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[13px] text-muted-foreground">관계 스타일</span>
+                        <span className="text-[13px] font-bold bg-violet-100 text-violet-800 px-2 py-0.5 rounded-full">{relationshipPattern.style}</span>
+                      </div>
+                      <div className="rounded-lg bg-muted/20 border border-border px-3 py-2">
+                        <p className="text-[13px] font-semibold text-muted-foreground mb-1">성향 분석</p>
+                        <p className="text-sm text-foreground">{relationshipPattern.styleDesc}</p>
+                      </div>
+                      <div className="rounded-lg bg-muted/20 border border-border px-3 py-2">
+                        <p className="text-[13px] font-semibold text-muted-foreground mb-1">선호하는 배우자</p>
+                        <p className="text-sm text-foreground">{relationshipPattern.spouseStyle}</p>
+                      </div>
+                      <div className="rounded-lg bg-muted/20 border border-border px-3 py-2">
+                        <p className="text-[13px] font-semibold text-muted-foreground mb-1">오행 관계 특성</p>
+                        <p className="text-sm text-foreground">{relationshipPattern.elemental}</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {(lifeFlowData?.relationshipTiming || lifeFlowData?.connectionActivation) && (
+                  <Card className="border-rose-100 bg-rose-50/30">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-semibold text-rose-700">배우자 운 흐름</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      <div className="rounded-lg bg-white/70 border border-border/60 px-3 py-2.5">
+                        <p className="text-[13px] font-semibold text-muted-foreground mb-1">현재 흐름</p>
+                        <p className="text-sm text-foreground">{lifeFlowData.relationshipTiming.current}</p>
+                      </div>
+                      <div className="rounded-lg bg-white/70 border border-border/60 px-3 py-2.5">
+                        <p className="text-[13px] font-semibold text-muted-foreground mb-1">다가오는 흐름</p>
+                        <p className="text-sm text-foreground">{lifeFlowData.relationshipTiming.upcoming}</p>
+                      </div>
+                      <div className="rounded-lg bg-white/70 border border-border/60 px-3 py-2.5">
+                        <p className="text-[13px] font-semibold text-muted-foreground mb-1">인연운 활성</p>
+                        <p className="text-sm text-foreground">{lifeFlowData.connectionActivation.summary}</p>
+                        <p className="mt-1 text-[13px] text-muted-foreground">{lifeFlowData.connectionActivation.period}</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {marriageTiming && (
+                  <Card className="border-amber-100">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-semibold text-amber-700">결혼운 시기 힌트</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      <div className="rounded-lg bg-amber-50/60 border border-amber-100 px-3 py-2">
+                        <p className="text-sm text-foreground">{marriageTiming.general}</p>
+                      </div>
+                      <div className="rounded-lg bg-muted/20 border border-border px-3 py-2">
+                        <p className="text-[13px] font-semibold text-muted-foreground mb-1">대운 흐름 분석</p>
+                        <p className="text-sm text-foreground">{marriageTiming.daewoonHint}</p>
+                      </div>
+                      <div className="rounded-lg bg-muted/20 border border-border px-3 py-2">
+                        <p className="text-[13px] font-semibold text-muted-foreground mb-1">참고 사항</p>
+                        <p className="text-sm text-foreground">{marriageTiming.favorable}</p>
+                      </div>
+                      <p className="text-[13px] text-muted-foreground italic">※ 위 내용은 규칙 기반 간략 추정으로, 절대적 예언이 아닙니다.</p>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            </AccSection>
+          )}
         </div>
       )}
 
@@ -4223,116 +4347,16 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
         </div>
       )}
 
-      {/* ── 탭 4: 해석 ── */}
+      {/* ── 탭 4: 오늘운세 (오늘 하루 기준) ── */}
       {reportTab === "오늘운세" && dayStem && lifeFlowData && (
         <div className="space-y-3">
-          {/* 해석 서브탭 */}
-          <div className="-mx-1 overflow-x-auto px-1 pb-1 scrollbar-none">
-            <div className="flex min-w-max gap-2">
-              {INTERPRET_TABS.map(({ key, icon }) => {
-                const active = interpretTab === key;
-                return (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => setInterpretTab(key)}
-                    className={cn(
-                      "ds-badge text-[13px] font-bold shadow-none transition-colors active:scale-[0.98]",
-                      active ? "ds-badge-active" : "bg-muted/40 text-muted-foreground",
-                    )}
-                  >
-                    {icon} {key}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* ── 이번주 기운 미니 차트 (도메인 탭에서만 표시) ── */}
-          {(interpretTab === "사랑" || interpretTab === "재물" || interpretTab === "건강" || interpretTab === "일성과") && (() => {
-            const domainMap: Record<string, "관계" | "재물" | "건강" | "일"> = {
-              사랑: "관계", 재물: "재물", 건강: "건강", 일성과: "일",
-            };
-            const domain = domainMap[interpretTab];
-            const now = new Date();
-            const dow = now.getDay();
-            const sunday = new Date(now);
-            sunday.setDate(now.getDate() - dow);
-            const weekDays = Array.from({ length: 7 }, (_, i) => {
-              const d = new Date(sunday);
-              d.setDate(sunday.getDate() + i);
-              return d;
-            });
-            const DAY_LABELS = ["일", "월", "화", "수", "목", "금", "토"];
-            const startLabel = `${weekDays[0].getMonth() + 1}/${weekDays[0].getDate()}`;
-            const endLabel = `${weekDays[6].getMonth() + 1}/${weekDays[6].getDate()}`;
-            return (
-              <div className="rounded-xl border border-indigo-100 bg-gradient-to-br from-indigo-50/50 to-transparent px-3 py-2.5">
-                <p className="text-[11px] font-bold text-indigo-600 uppercase tracking-wide mb-2">
-                  이번주 기운 <span className="font-normal text-indigo-400">({startLabel}~{endLabel})</span>
-                </p>
-                <div className="flex justify-between gap-1">
-                  {weekDays.map((d, i) => {
-                    const fortune = getFortuneForDate(record, d.getFullYear(), d.getMonth() + 1, d.getDate());
-                    const df = fortune.domainFortunes.find((f) => f.domain === domain);
-                    const level = df?.level ?? "neutral";
-                    const emoji = level === "good" ? "☀️" : level === "caution" ? "🌧️" : "⛅";
-                    const isToday = i === dow;
-                    return (
-                      <div
-                        key={i}
-                        className={`flex-1 flex flex-col items-center gap-0.5 rounded-lg py-1.5 ${isToday ? "bg-indigo-100/70 ring-1 ring-indigo-300" : ""}`}
-                      >
-                        <span className={`text-[11px] font-bold ${isToday ? "text-indigo-600" : "text-muted-foreground"}`}>
-                          {DAY_LABELS[i]}
-                        </span>
-                        <span className="text-base leading-none">{emoji}</span>
-                        <span className={`text-[10px] font-semibold ${level === "good" ? "text-emerald-600" : level === "caution" ? "text-orange-500" : "text-muted-foreground"}`}>
-                          {df?.label ?? "보통"}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })()}
-
-          {/* ── 사주 구조 분석 (규칙 기반) — 전체 탭 ── */}
-          {interpretTab === "전체" && ruleInsights.length > 0 && (
-            <Card className="border-violet-100 bg-gradient-to-br from-violet-50/60 to-transparent">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-semibold text-violet-700 flex items-center gap-1.5">
-                  <Layers className="h-3.5 w-3.5" />
-                  사주 구조 분석
-                  {structureType && (
-                    <span className="ml-1 text-[11px] font-normal bg-violet-100 text-violet-600 px-2 py-0.5 rounded-full border border-violet-200">
-                      {structureType}
-                    </span>
-                  )}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {seasonalNote && (
-                  <div className="ds-inline-detail-nested border-l-2 border-violet-200 pl-3">
-                    <p className="text-[12px] text-foreground leading-relaxed">{seasonalNote}</p>
-                  </div>
-                )}
-                {ruleInsights.map((insight, i) => (
-                  <div key={i} className="ds-inline-detail-nested">
-                    <p className="text-[13px] text-foreground leading-relaxed">{insight}</p>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* 오늘의 전체 흐름 — 전체 탭에서만 노출 */}
-          {interpretTab === "전체" && <Card className="border-indigo-100 bg-gradient-to-br from-indigo-50/60 to-transparent">
+          {/* 오늘 전체 흐름 */}
+          <TodayFortuneCard record={record} />
+          <Card className="border-indigo-100 bg-gradient-to-br from-indigo-50/60 to-transparent">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-semibold text-indigo-700 flex items-center gap-1.5">
                 <Sparkles className="h-3.5 w-3.5" />
-                오늘의 전체 흐름
+                오늘 전체 흐름
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2.5">
@@ -4350,96 +4374,48 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                 ))}
               </div>
             </CardContent>
-          </Card>}
+          </Card>
 
-          {/* 도메인 카드 */}
+          {/* 오늘 십성 작동 */}
           {(() => {
-            const categoryTabMap: Record<string, InterpretTab> = {
-              "관계운": "사랑", "재물운": "재물", "건강운": "건강", "일·성과운": "일성과",
-            };
-            const visibleCards = lifeFlowData.lifeFlows.filter((card) => {
-              if (interpretTab === "전체") return true;
-              const mapped = categoryTabMap[card.category];
-              return mapped === interpretTab;
-            });
-            if (visibleCards.length === 0) return null;
+            const now = new Date();
+            const fortune = getFortuneForDate(record, now.getFullYear(), now.getMonth() + 1, now.getDate());
+            const tg = fortune.dayTenGod;
+            const hint = tg ? (TG_LUCK_MEANING[tg as TenGod]?.summary ?? "") : "";
             return (
-              <div className={`grid gap-3 ${visibleCards.length === 1 ? "grid-cols-1" : "grid-cols-2"}`}>
-                {visibleCards.map((card) => {
-                  const borderColor = card.level === "good" ? "border-green-200" : card.level === "caution" ? "border-orange-200" : "border-border";
-                  const bgColor = card.level === "good" ? "bg-green-50/40" : card.level === "caution" ? "bg-orange-50/40" : "bg-muted/20";
-                  const levelLabel = card.level === "good" ? "▲ 좋음" : card.level === "caution" ? "▼ 주의" : "— 보통";
-                  const levelColor = card.level === "good" ? "text-green-600" : card.level === "caution" ? "text-orange-600" : "text-muted-foreground";
-                  return (
-                    <div key={card.category} className={`rounded-lg border ${borderColor} ${bgColor} p-3`}>
-                      <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-sm font-bold">{card.icon} {card.category}</span>
-                        <span className={`text-[13px] font-bold ${levelColor}`}>{levelLabel}</span>
-                      </div>
-                      <p className="text-[13px] font-medium text-foreground mb-1">{card.summary}</p>
-                      <p className="text-[13px] text-muted-foreground leading-relaxed">{card.detail}</p>
+              <Card className="border-violet-100 bg-gradient-to-br from-violet-50/60 to-transparent">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-semibold text-violet-700 flex items-center gap-1.5">
+                    <Zap className="h-3.5 w-3.5" />
+                    오늘 십성 작동
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {tg ? (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className={`text-[13px] font-bold px-2.5 py-1 rounded-full ${getTenGodTw(tg as TenGod, dayStem)}`} style={getTenGodChipStyle(tg as TenGod, dayStem)}>
+                        {tg}
+                      </span>
+                      <span className="text-[13px] text-muted-foreground">오늘 일진 천간 기준</span>
                     </div>
-                  );
-                })}
-              </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">오늘 십성 정보를 계산할 수 없습니다.</p>
+                  )}
+                  {hint ? <p className="text-sm text-foreground leading-relaxed">{hint}</p> : null}
+                </CardContent>
+              </Card>
             );
           })()}
 
-          {/* 성격 카드 */}
-          {(interpretTab === "전체" || interpretTab === "성격") && (
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 mb-2">
-                <User className="h-3.5 w-3.5 text-sky-500" />
-                <p className="text-[13px] font-bold text-sky-700">성격 · 기질 분석</p>
-                <div className="h-px flex-1 bg-sky-100" />
-              </div>
-              <div className="rounded-lg border border-amber-200 bg-amber-50/60 p-3">
-                <p className="text-[13px] font-semibold text-amber-700 mb-1">일간 성향</p>
-                <p className="text-sm">
-                  {getDayMasterSummaryFromStrength(dayStem, sajuPipelineResult?.adjusted?.effectiveStrengthLevel ?? "중화")}
-                </p>
-              </div>
-              {(() => {
-                const acc = getElementBalanceAccent(effectiveFiveElements);
-                const style: CSSProperties | undefined = acc
-                  ? { backgroundColor: elementHslAlpha(acc, "strong", 0.06), borderColor: elementHslAlpha(acc, "strong", 0.22) }
-                  : { borderColor: elementHslAlpha("수", "strong", 0.12), backgroundColor: elementHslAlpha("수", "strong", 0.03) };
-                return (
-                  <div className="rounded-lg border p-3" style={style}>
-                    <p
-                      className="text-[13px] font-semibold mb-1"
-                      style={acc ? { color: elementColorVar(acc, "strong") } : { color: elementColorVar("수", "strong") }}
-                    >
-                      오행 균형
-                    </p>
-                    <p className="text-sm">{getElementBalanceSummary(effectiveFiveElements)}</p>
-                  </div>
-                );
-              })()}
-              {branchRelations.length > 0 && (
-                <div className="rounded-lg border border-border bg-muted/20 p-3">
-                  <p className="text-[13px] font-semibold text-muted-foreground mb-1">차트 특징</p>
-                  <p className="text-sm">
-                    {[
-                      branchRelations.some((r) => r.type === "지지충" || r.type === "충" || r.type === "천간충") && "충이 존재하여 변화와 활동성이 강합니다.",
-                      branchRelations.some((r) => r.type === "지지육합" || r.type === "지지삼합" || r.type === "지지방합" || r.type === "천간합" || r.type === "합") && "합이 있어 인연이 풍부하고 조화로운 면이 있습니다.",
-                      branchRelations.some((r) => r.type === "형") && "형이 포함되어 긴장이나 갈등 상황이 나타날 수 있습니다.",
-                    ].filter(Boolean).join(" ") || `${branchRelations.map((r) => r.description).join(", ")} 관계가 있습니다.`}
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* 신살 해석 */}
-          {todayOrderedShinsalInsights.length > 0 && (interpretTab === "전체" || interpretTab === "사랑" || interpretTab === "배우자운") && (
+          {/* 오늘 신살 작동 */}
+          {todayOrderedShinsalInsights.length > 0 && (
             <div className="rounded-xl border border-amber-200 bg-amber-50/40 px-3.5 py-3 space-y-2">
               <p className="text-[13px] font-semibold text-amber-700 uppercase tracking-wide flex items-center gap-1">
                 <Star className="h-3 w-3" />
-                신살 기운 해석
+                오늘 신살 작동
               </p>
               <p className="text-[11px] text-muted-foreground">
-                기준: <span className="font-semibold text-foreground">오늘 일진(일운) 간지</span> ↔ <span className="font-semibold text-foreground">내 원국(일간·일지)</span> 비교로 계산된 신살만 표시합니다.
+                기준: <span className="font-semibold text-foreground">오늘 일진(일운) 간지</span> ↔ <span className="font-semibold text-foreground">내 원국(일간·일지)</span> 비교
               </p>
               <div className="space-y-2">
                 {todayOrderedShinsalInsights.map(({ name, oneLine }) => (
@@ -4454,137 +4430,19 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
             </div>
           )}
 
-          {/* 배우자운 상세 */}
-          {(interpretTab === "전체" || interpretTab === "배우자운") && (
-            <div className="space-y-3">
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
-                    <TrendingUp className="h-3.5 w-3.5" />
-                    관계 흐름 변화 시기
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <div className="rounded-lg bg-muted/30 border border-border/50 px-3 py-2.5">
-                    <p className="text-[13px] font-semibold text-muted-foreground mb-1">현재 흐름</p>
-                    <p className="text-sm text-foreground">{lifeFlowData.relationshipTiming.current}</p>
-                  </div>
-                  <div className="rounded-lg bg-blue-50/50 border border-blue-100 px-3 py-2.5">
-                    <p className="text-[13px] font-semibold text-blue-600 mb-1">다가오는 흐름</p>
-                    <p className="text-sm text-foreground">{lifeFlowData.relationshipTiming.upcoming}</p>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
-                    <Heart className="h-3.5 w-3.5 text-rose-400" />
-                    인연운 활성 시기
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <p className="text-sm text-foreground">{lifeFlowData.connectionActivation.summary}</p>
-                  <p className="text-[13px] text-muted-foreground">{lifeFlowData.connectionActivation.period}</p>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-
-          {/* 관계·연애 보고서 */}
-          {(interpretTab === "전체" || interpretTab === "배우자운") && (complementary || marriageTiming || relationshipPattern) && (
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <Heart className="h-4 w-4 text-rose-500" />
-                <h3 className="text-sm font-bold text-foreground">관계 · 연애 사주 해석</h3>
-                <div className="h-px flex-1 bg-border" />
-              </div>
-              {complementary && (
-                <Card className="border-pink-100">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-semibold text-pink-700">잘 맞는 관계 · 배우자궁</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-foreground mb-3">{complementary.guidance}</p>
-                    <div className="flex gap-1.5 flex-wrap">
-                      {complementary.branches.map((b) => {
-                        const el = ({"자":"수","축":"토","인":"목","묘":"목","진":"토","사":"화","오":"화","미":"토","신":"금","유":"금","술":"토","해":"수"} as Record<string,string>)[b];
-                        return (
-                          <span
-                            key={b}
-                            className={cn(
-                              "rounded-full px-2.5 py-1 text-sm font-bold",
-                              el
-                                ? cn(elementBgClass(el as FiveElKey, "muted"), elementTextClass(el as FiveElKey, "strong"), "border border-border")
-                                : "bg-muted text-muted-foreground",
-                            )}
-                          >
-                            {b}
-                          </span>
-                        );
-                      })}
-                      {complementary.elements.map((e) => (
-                        <span
-                          key={e}
-                          className={cn(
-                            "rounded-full border border-border px-2 py-1 text-[13px]",
-                            cn(elementBgClass(e as FiveElKey, "muted"), elementTextClass(e as FiveElKey, "strong")),
-                          )}
-                        >
-                          {e} 기운
-                        </span>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-              {marriageTiming && (
-                <Card className="border-amber-100">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-semibold text-amber-700">결혼운 시기 힌트</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    <div className="rounded-lg bg-amber-50/60 border border-amber-100 px-3 py-2">
-                      <p className="text-sm text-foreground">{marriageTiming.general}</p>
-                    </div>
-                    <div className="rounded-lg bg-muted/20 border border-border px-3 py-2">
-                      <p className="text-[13px] font-semibold text-muted-foreground mb-1">대운 흐름 분석</p>
-                      <p className="text-sm text-foreground">{marriageTiming.daewoonHint}</p>
-                    </div>
-                    <div className="rounded-lg bg-muted/20 border border-border px-3 py-2">
-                      <p className="text-[13px] font-semibold text-muted-foreground mb-1">참고 사항</p>
-                      <p className="text-sm text-foreground">{marriageTiming.favorable}</p>
-                    </div>
-                    <p className="text-[13px] text-muted-foreground italic">※ 위 내용은 규칙 기반 간략 추정으로, 절대적 예언이 아닙니다.</p>
-                  </CardContent>
-                </Card>
-              )}
-              {relationshipPattern && (
-                <Card className="border-violet-100">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-semibold text-violet-700">연애 · 관계 패턴</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-2.5">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[13px] text-muted-foreground">관계 스타일</span>
-                      <span className="text-[13px] font-bold bg-violet-100 text-violet-800 px-2 py-0.5 rounded-full">{relationshipPattern.style}</span>
-                    </div>
-                    <div className="rounded-lg bg-muted/20 border border-border px-3 py-2">
-                      <p className="text-[13px] font-semibold text-muted-foreground mb-1">성향 분석</p>
-                      <p className="text-sm text-foreground">{relationshipPattern.styleDesc}</p>
-                    </div>
-                    <div className="rounded-lg bg-muted/20 border border-border px-3 py-2">
-                      <p className="text-[13px] font-semibold text-muted-foreground mb-1">선호하는 배우자</p>
-                      <p className="text-sm text-foreground">{relationshipPattern.spouseStyle}</p>
-                    </div>
-                    <div className="rounded-lg bg-muted/20 border border-border px-3 py-2">
-                      <p className="text-[13px] font-semibold text-muted-foreground mb-1">오행 관계 특성</p>
-                      <p className="text-sm text-foreground">{relationshipPattern.elemental}</p>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-            </div>
-          )}
+          {/* 오늘 행동 가이드 */}
+          <Card className="border-emerald-100 bg-gradient-to-br from-emerald-50/50 to-transparent">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-semibold text-emerald-700 flex items-center gap-1.5">
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                오늘 행동 가이드
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <p className="text-sm text-foreground leading-relaxed">{lifeFlowData.overall.decisionTiming}</p>
+              <p className="text-[13px] text-muted-foreground leading-relaxed">{lifeFlowData.overall.emotional}</p>
+            </CardContent>
+          </Card>
 
           {/* 개발 디버그 */}
           {import.meta.env.DEV && (
