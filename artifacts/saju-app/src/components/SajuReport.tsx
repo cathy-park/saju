@@ -4563,20 +4563,10 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                                   ✕
                                 </button>
                               </div>
-                              <div className="ds-inline-detail-body space-y-2">
-                                <div className="ds-inline-detail-nested">
-                                  <p className="text-[13px] text-foreground leading-relaxed">
-                                    이 키워드는 오늘 해석(일진·십성·신살·운흐름)을 요약한 근거 라벨이에요.
-                                  </p>
-                                </div>
-                                {todayFortune.basisKeywords?.length ? (
-                                  <div className="ds-inline-detail-nested">
-                                    <p className="text-[12px] font-bold uppercase tracking-wide text-muted-foreground">근거</p>
-                                    <p className="mt-1 text-[13px] text-foreground leading-relaxed">
-                                      {todayFortune.basisKeywords.slice(0, 6).join(" · ")}
-                                    </p>
-                                  </div>
-                                ) : null}
+                              <div className="ds-inline-detail-body">
+                                <p className="text-[13px] text-foreground leading-relaxed">
+                                  {(todayFortune.basisKeywords?.length ? todayFortune.basisKeywords.slice(0, 6).join(" · ") : "") || "근거 텍스트를 불러올 수 없습니다."}
+                                </p>
                               </div>
                             </div>
                           )}
@@ -4641,17 +4631,11 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                                     ✕
                                   </button>
                                 </div>
-                                <div className="ds-inline-detail-body space-y-2">
-                                  <div className="ds-inline-detail-nested">
-                                    <p className="text-[13px] text-foreground leading-relaxed">
-                                      {TEN_GOD_TOOLTIP[todayHeroInline.tenGod]?.headline ?? ""}
-                                    </p>
-                                    {TEN_GOD_TOOLTIP[todayHeroInline.tenGod]?.lines?.length ? (
-                                      <p className="mt-1 text-[13px] text-muted-foreground leading-relaxed">
-                                        {TEN_GOD_TOOLTIP[todayHeroInline.tenGod].lines.join(" · ")}
-                                      </p>
-                                    ) : null}
-                                  </div>
+                                <div className="ds-inline-detail-body">
+                                  <p className="text-[13px] text-foreground leading-relaxed">
+                                    {TEN_GOD_TOOLTIP[todayHeroInline.tenGod]?.headline ?? ""}
+                                    {TEN_GOD_TOOLTIP[todayHeroInline.tenGod]?.lines?.length ? ` — ${TEN_GOD_TOOLTIP[todayHeroInline.tenGod].lines.join(" · ")}` : ""}
+                                  </p>
                                 </div>
                               </div>
                             )}
