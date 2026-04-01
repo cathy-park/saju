@@ -1064,7 +1064,9 @@ function FiveElementSection({
         </span>
         <span className={`text-[13px] font-black ${elementTextClass(primaryEl, "strong")}`}>{primaryEl}</span>
       </div>
-      <svg viewBox="0 0 296 296" width="100%" className="w-full max-w-[444px]">
+      {/* graph wrapper padding (common rule): py-5 = 20px top/bottom */}
+      <div className="w-full py-5">
+        <svg viewBox="0 0 296 296" width="100%" className="mx-auto block w-full max-w-[444px]">
         <defs>
           <marker id="arr-gen" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto">
             <path d="M0 0 L7 3.5 L0 7 Z" fill="hsl(var(--chart-5))" opacity="0.8" />
@@ -1156,7 +1158,8 @@ function FiveElementSection({
             </g>
           );
         })}
-      </svg>
+        </svg>
+      </div>
     </div>
   );
 }
