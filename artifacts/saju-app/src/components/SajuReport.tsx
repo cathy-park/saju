@@ -28,15 +28,11 @@ import { useAuth } from "@/lib/authContext";
 import { computeSajuPipeline } from "@/lib/sajuPipeline";
 import {
   charToElement,
-  CONTROLS,
   elementBgClass,
   elementBorderClass,
   elementChipColors,
   elementColorVar,
   elementTextClass,
-  GENERATES,
-  getController,
-  getGenerator,
   getTenGodGroup,
   type ElementTone,
   type FiveElKey,
@@ -836,13 +832,15 @@ function FiveElementSection({
 
 // ── Ten-God Distribution Section ──────────────────────────────────
 
-function tenGodGroupElement(dayEl: FiveElKey, group: string): FiveElKey {
-  if (group === "비겁") return dayEl;
-  if (group === "인성") return getGenerator(dayEl);
-  if (group === "식상") return GENERATES[dayEl];
-  if (group === "재성") return CONTROLS[dayEl];
-  return getController(dayEl); // 관성
-}
+/** 십성 그룹 행 UI 색 — 일간과 무관하게 木→火→土→金→水 범례(참고 UI와 동일) */
+type TenGodGroupKey = "비겁" | "식상" | "재성" | "관성" | "인성";
+const TEN_GOD_GROUP_ROW_ELEMENT: Record<TenGodGroupKey, FiveElKey> = {
+  비겁: "목",
+  식상: "화",
+  재성: "토",
+  관성: "금",
+  인성: "수",
+};
 
 const TG_SUB_PAIRS: Record<string, [string, string]> = {
   비겁: ["비견", "겁재"],
@@ -958,18 +956,18 @@ function TenGodDistributionSection({
       <div className="space-y-3">
         {groups.map((g) => {
           const pct = topLevel[g];
-          const elForGroup = dayEl ? tenGodGroupElement(dayEl, g) : "토";
-          const tier = tiers[elForGroup];
+          const rowEl = TEN_GOD_GROUP_ROW_ELEMENT[g as TenGodGroupKey];
+          const tier = tiers[rowEl];
           const tone: ElementTone = tier === "primary" ? "strong" : tier === "secondary" ? "base" : "muted";
           const [s1, s2] = TG_SUB_PAIRS[g];
           const p1 = detailed[s1] ?? 0;
           const p2 = detailed[s2] ?? 0;
-          /* 대표 오행과 같은 오행을 나타내는 십성 행만 강조 (비율 최대 행과 무관) */
-          const isPrimaryRow = dayEl ? elForGroup === primaryEl : false;
+          /* 대표 오행(오행 분포와 동일) = 이 행의 고정 범례 오행일 때만 강조 */
+          const isPrimaryRow = primaryEl === rowEl;
           const rowSurface =
             isPrimaryRow
               ? {
-                  ...elementChipColors(elForGroup, { bg: "muted", text: "strong", border: "strong" }),
+                  ...elementChipColors(rowEl, { bg: "muted", text: "strong", border: "strong" }),
                   borderWidth: 1,
                   borderStyle: "solid" as const,
                 }
@@ -987,7 +985,7 @@ function TenGodDistributionSection({
               >
                 <span
                   className={`w-10 text-[13px] font-semibold shrink-0 ${isPrimaryRow ? "" : "text-foreground"}`}
-                  style={isPrimaryRow ? { color: elementColorVar(elForGroup, "strong") } : undefined}
+                  style={isPrimaryRow ? { color: elementColorVar(rowEl, "strong") } : undefined}
                 >
                   {g}
                 </span>
@@ -996,13 +994,13 @@ function TenGodDistributionSection({
                     className="h-full rounded-full"
                     style={{
                       width: `${pct}%`,
-                      backgroundColor: elementColorVar(elForGroup, tone),
+                      backgroundColor: elementColorVar(rowEl, tone),
                     }}
                   />
                 </div>
                 <span
                   className="text-[13px] font-bold whitespace-nowrap text-right px-2 py-0.5 rounded-full border border-solid"
-                  style={elementChipColors(elForGroup, {
+                  style={elementChipColors(rowEl, {
                     bg: "muted",
                     text: "strong",
                     border: "base",
@@ -1016,8 +1014,8 @@ function TenGodDistributionSection({
                 <span
                   className="flex items-center gap-1 px-2 py-0.5 rounded-full border border-solid text-[11px] bg-transparent"
                   style={{
-                    borderColor: elementColorVar(elForGroup, "base"),
-                    color: elementColorVar(elForGroup, "base"),
+                    borderColor: elementColorVar(rowEl, "base"),
+                    color: elementColorVar(rowEl, "base"),
                   }}
                 >
                   <span className="font-semibold">{s1}</span>
@@ -1026,8 +1024,8 @@ function TenGodDistributionSection({
                 <span
                   className="flex items-center gap-1 px-2 py-0.5 rounded-full border border-solid text-[11px] bg-transparent"
                   style={{
-                    borderColor: elementColorVar(elForGroup, "base"),
-                    color: elementColorVar(elForGroup, "base"),
+                    borderColor: elementColorVar(rowEl, "base"),
+                    color: elementColorVar(rowEl, "base"),
                   }}
                 >
                   <span className="font-semibold">{s2}</span>
