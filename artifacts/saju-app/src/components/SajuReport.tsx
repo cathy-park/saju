@@ -4772,26 +4772,28 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
 
                 {/* 4) 오늘 신살 작동 */}
                 {todayOrderedShinsalInsights.length > 0 && (
-                  <div className="rounded-xl border border-amber-200 bg-amber-50/40 px-3.5 py-3 space-y-2">
-                    <p className="text-[13px] font-semibold text-amber-700 uppercase tracking-wide flex items-center gap-1">
-                      <Star className="h-3 w-3" />
-                      오늘 신살 작동
-                    </p>
-                    <p className="text-[11px] text-muted-foreground">
-                      기준: <span className="font-semibold text-foreground">오늘 일진(일운) 간지</span> ↔{" "}
-                      <span className="font-semibold text-foreground">내 원국(일간·일지)</span> 비교
-                    </p>
-                    <div className="space-y-2">
-                      {todayOrderedShinsalInsights.map(({ name, oneLine }) => (
-                        <div key={name} className="ds-inline-detail-nested p-3 space-y-2">
-                          <ShinsalChip name={name} />
-                          <div className="ds-inline-detail-nested">
+                  <Card className="border-amber-200 bg-amber-50/40">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-semibold text-amber-700 flex items-center gap-1.5">
+                        <Star className="h-3.5 w-3.5" />
+                        오늘 신살 작동
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      <p className="text-[11px] text-muted-foreground">
+                        기준: <span className="font-semibold text-foreground">오늘 일진(일운) 간지</span> ↔{" "}
+                        <span className="font-semibold text-foreground">내 원국(일간·일지)</span> 비교
+                      </p>
+                      <div className="space-y-2">
+                        {todayOrderedShinsalInsights.map(({ name, oneLine }) => (
+                          <div key={name} className="space-y-1.5">
+                            <ShinsalChip name={name} />
                             <p className="text-[13px] text-foreground leading-relaxed">{oneLine}</p>
                           </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
                 )}
 
                 {/* 5) 오늘 행동 가이드 */}
