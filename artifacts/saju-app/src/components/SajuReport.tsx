@@ -662,13 +662,13 @@ function PillarTable({
 
 // ── Five-element pentagon diagram ────────────────────────────────
 
-/** 오행도 원 하단 채움 — 베이스 파스텔에서 약 10% 진하게(원색→검정 10% 블렌드) */
+/** 오행도 원 하단 채움 — 파스텔 유지하되 채도↑(회색끼 덜 나게) */
 const ELEMENT_PENTAGON_FILL: Record<FiveElKey, string> = {
-  수: "#C9D5DD",
-  목: "#CBDCD2",
-  화: "#E1CBCA",
-  토: "#DFD5BD",
-  금: "#D1D3D5",
+  수: "#9DCDF0",
+  목: "#9DDFB8",
+  화: "#F0A8A0",
+  토: "#E8D080",
+  금: "#B6C5DC",
 };
 
 function FiveElementSection({
@@ -779,11 +779,14 @@ function FiveElementSection({
           const fillH = count > 0 ? Math.max(fillHRaw, 4) : 0;
           const fillY = y + NODE_R - fillH;
           const isPrimary = el === primaryEl;
-          /* 대표 원 테두리 = 십성 분포 %·칩 글자 strong 토큰 */
-          const stroke = isPrimary ? elementColorVar(el, "strong") : "hsl(var(--border))";
+          /* 대표: strong / 그 외: 같은 범주 base를 연하게(무채 테두리 대신) */
+          const stroke = isPrimary
+            ? elementColorVar(el, "strong")
+            : elementHslAlpha(el, "base", 0.52);
           const strokeW = isPrimary ? 1.75 : 1.5;
-          /* 십성 분포 행 라벨과 동일: 대표 오행만 strong, 나머지 foreground */
-          const elLabelFill = isPrimary ? elementColorVar(el, "strong") : "hsl(var(--foreground))";
+          /* 오행 한 글자 = 십성 분포 %·칩과 동일 strong / 보조줄은 같은 범주 base */
+          const elLabelFill = elementColorVar(el, "strong");
+          const elSubFill = elementColorVar(el, "base");
           return (
             <g key={el}>
               <circle cx={x} cy={y} r={NODE_R} fill="hsl(var(--card))" />
@@ -817,9 +820,9 @@ function FiveElementSection({
                 {el}
               </text>
               {tenGodGroup && (
-                <text x={x} y={y + 5} textAnchor="middle" fontSize="10" fontWeight="700" fill="hsl(var(--muted-foreground))">({tenGodGroup})</text>
+                <text x={x} y={y + 5} textAnchor="middle" fontSize="10" fontWeight="700" fill={elSubFill}>({tenGodGroup})</text>
               )}
-              <text x={x} y={y + (tenGodGroup ? 18 : 11)} textAnchor="middle" fontSize="11" fill="hsl(var(--muted-foreground))">
+              <text x={x} y={y + (tenGodGroup ? 18 : 11)} textAnchor="middle" fontSize="11" fill={elSubFill}>
                 {count}개 {Math.round(pct * 100)}%
               </text>
             </g>
