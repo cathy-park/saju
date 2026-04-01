@@ -15,6 +15,7 @@ import {
   RELATIONSHIP_TYPE_EMOJI,
 } from "@/lib/storage";
 import { getZodiacFromDayPillar } from "@/lib/zodiacAnimal";
+import type { ZodiacInfo } from "@/lib/zodiacAnimal";
 import { type FiveElementCount } from "@/lib/sajuEngine";
 import { CheckCircle, XCircle, AlertTriangle, ChevronDown, ArrowLeftRight } from "lucide-react";
 import { GenderSymbol } from "@/components/GenderSymbol";
@@ -48,6 +49,72 @@ function scoreToMascot(score: number): MascotExpression {
   if (score >= 75) return "happy";
   if (score >= 55) return "neutral";
   return "warning";
+}
+
+function MiniPersonCard({
+  title,
+  name,
+  gender,
+  dayHangul,
+  zodiac,
+  extraBadge,
+  hourMode,
+  onHourModeChange,
+}: {
+  title: string;
+  name: string;
+  gender: string;
+  dayHangul: string;
+  zodiac: ZodiacInfo | null;
+  extraBadge?: { label: string; className?: string } | null;
+  hourMode: "포함" | "제외";
+  onHourModeChange: (m: "포함" | "제외") => void;
+}) {
+  const dayText = dayHangul && dayHangul.length >= 2 ? `${dayHangul[0]}${dayHangul[1]}일주` : "일주 정보 없음";
+  return (
+    <div className="ds-inline-detail-nested flex-1 min-w-0 p-3">
+      <div className="flex items-center gap-3">
+        <div className="h-12 w-12 shrink-0 overflow-hidden rounded-full border border-border bg-background flex items-center justify-center">
+          {zodiac ? (
+            <img src={zodiac.src} alt={zodiac.label} className="h-full w-full object-cover" />
+          ) : (
+            <span className="text-sm font-bold text-muted-foreground">{name.charAt(0) || "?"}</span>
+          )}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{title}</p>
+          <div className="mt-1 flex items-center gap-1.5 min-w-0">
+            <p className="truncate text-[15px] font-extrabold text-foreground">{name}</p>
+            <GenderSymbol gender={gender} />
+          </div>
+          <p className="mt-0.5 text-[12px] font-semibold text-muted-foreground">{dayText}</p>
+          {extraBadge ? (
+            <div className="mt-1">
+              <span className={cn("ds-badge text-[11px] font-semibold shadow-none", extraBadge.className)}>{extraBadge.label}</span>
+            </div>
+          ) : null}
+        </div>
+      </div>
+
+      <div className="mt-3">
+        <div className="ds-segment-list min-h-9 rounded-xl border border-border shadow-none">
+          {(["포함", "제외"] as const).map((m) => (
+            <button
+              key={m}
+              type="button"
+              onClick={() => onHourModeChange(m)}
+              className={cn(
+                "ds-segment-item text-[12px] shadow-none",
+                hourMode === m ? "ds-segment-item-active" : "ds-segment-item-inactive",
+              )}
+            >
+              사주 {m}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function normalizeRelationType(label: string): RelationType | null {
@@ -717,46 +784,9 @@ export default function Compatibility() {
             </div>
           )}
 
-          {/* ── 시주 포함/제외 모드 (인물별 개별 설정) ── */}
-          {p1 && p2 && (
-            <div className="space-y-1.5">
-              {(
-                [
-                  { label: p1.birthInput.name || "A", mode: hourModeA, setMode: setHourModeA },
-                  { label: p2.birthInput.name || "B", mode: hourModeB, setMode: setHourModeB },
-                ] as Array<{ label: string; mode: "포함" | "제외"; setMode: (m: "포함" | "제외") => void }>
-              ).map(({ label, mode: hm, setMode: setHm }) => (
-                <div key={label} className="flex items-center gap-2 min-w-0">
-                  <span className="text-[12px] text-muted-foreground shrink-0 w-16 truncate font-medium">{label}</span>
-                  <span className="text-[12px] text-muted-foreground shrink-0">시주</span>
-                  <div className="ds-segment-list flex-1 rounded-xl border border-border shadow-none">
-                    {(["포함", "제외"] as const).map((m) => (
-                      <button
-                        key={m}
-                        type="button"
-                        onClick={() => setHm(m)}
-                        className={cn(
-                          "ds-segment-item text-[12px] shadow-none",
-                          hm === m ? "ds-segment-item-active" : "ds-segment-item-inactive",
-                        )}
-                      >
-                        {m}
-                      </button>
-                    ))}
-                  </div>
-                  {hm === "제외" && (
-                    <span className="ds-badge border-border bg-muted/40 text-[11px] text-muted-foreground shadow-none">
-                      제외 중
-                    </span>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-
           {result && p1 && p2 && palette && fullReport && (() => {
             const myPillarsForZodiac = p1 ? getFinalPillars(p1) : null;
-            const myZodiac  = getZodiacFromDayPillar(myPillarsForZodiac?.day?.hangul ?? "");
+            const myZodiac = getZodiacFromDayPillar(myPillarsForZodiac?.day?.hangul ?? "");
             const otherZodiac = getZodiacFromDayPillar(otherPillarsFull?.day?.hangul ?? "");
             return (
             <div className="ds-section-gap">
@@ -771,6 +801,42 @@ export default function Compatibility() {
                       점수와 관계 유형을 먼저 확인한 뒤, 아래에서 구조·해석·가이드를 순서대로 살펴보시면 됩니다.
                     </p>
                   </div>
+                  {/* 상단: 두 사람 카드 (스샷 구조) */}
+                  <div className="ds-inline-detail-nested bg-background/70">
+                    <div className="flex items-center gap-2">
+                      <MiniPersonCard
+                        title="나"
+                        name={myName}
+                        gender={myGender}
+                        dayHangul={myPillarsForZodiac?.day?.hangul ?? ""}
+                        zodiac={myZodiac}
+                        extraBadge={null}
+                        hourMode={hourModeA}
+                        onHourModeChange={setHourModeA}
+                      />
+                      <div className="shrink-0 px-1 text-center">
+                        <span className="text-2xl leading-none text-muted-foreground">♡</span>
+                      </div>
+                      <MiniPersonCard
+                        title="상대"
+                        name={otherName}
+                        gender={otherGender}
+                        dayHangul={otherPillarsFull?.day?.hangul ?? ""}
+                        zodiac={otherZodiac}
+                        extraBadge={
+                          mode === "me_other"
+                            ? {
+                                label: `${RELATIONSHIP_TYPE_EMOJI[(p2 as PersonRecord & { relationshipType?: RelationshipType }).relationshipType ?? "other"]} ${(p2 as PersonRecord & { relationshipType?: RelationshipType }).relationshipType ? ({ lover: "연인", spouse: "배우자", friend: "친구", coworker: "동료", family: "가족", other: "기타" } as const)[(p2 as PersonRecord & { relationshipType?: RelationshipType }).relationshipType ?? "other"] : "관계"}`,
+                                className: "border-border bg-muted/40 text-foreground",
+                              }
+                            : null
+                        }
+                        hourMode={hourModeB}
+                        onHourModeChange={setHourModeB}
+                      />
+                    </div>
+                  </div>
+
                   <div className="flex flex-col items-center">
                     <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">궁합 점수</p>
                     <ScoreArc score={result.score} accentColor={palette.strong} />
