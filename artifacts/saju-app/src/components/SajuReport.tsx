@@ -4092,8 +4092,8 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
         <div className="space-y-3">
           <div className="rounded-xl border border-border/60 bg-muted/15 px-3 py-2.5 text-[12px] leading-relaxed text-muted-foreground">
             <span className="font-semibold text-foreground">성격 해석</span>은 문장으로 읽는{" "}
-            <span className="font-semibold text-foreground">기질·행동·균형</span> 중심입니다. 표·비율·지장간 같은 구조 데이터는{" "}
-            <span className="font-semibold text-foreground">원국</span> 탭을 보세요.
+            <span className="font-semibold text-foreground">기질·행동·균형</span>을 ‘내 얘기처럼’ 풀어보는 탭이에요. 표·비율·지장간 같은 구조 데이터는{" "}
+            <span className="font-semibold text-foreground">원국</span>에서 확인하면 더 편합니다.
           </div>
           {/* 사주 구조 요약 (항상 표시) */}
           {dayStem && (
@@ -4129,12 +4129,12 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
             <div className="border-b border-border bg-muted/20 px-4 py-3">
               <h2 className="text-sm font-bold text-foreground">오행 균형 (성격·행동)</h2>
               <p className="mt-1 text-[11px] text-muted-foreground">
-                원국과 동일한 분포 수치를 기질·행동 균형 관점에서 읽습니다
+                원국의 분포 수치를 ‘내 리듬’ 관점으로 읽어봐요
               </p>
             </div>
             <div className="ds-card-pad space-y-4">
               <p className="text-[12px] leading-relaxed text-muted-foreground">
-                오행이 기질·행동 스타일에 주는 균형을 해석합니다. 도형·간격·강조는 원국 탭 오행 분포와 동일한 기준입니다.
+                오행이 내 기질·행동에 어떤 균형을 만드는지 부드럽게 안내해요. 도형·간격·강조 기준은 원국 탭과 동일합니다.
               </p>
               {(() => {
                 const acc = getElementBalanceAccent(effectiveFiveElements);
@@ -4171,7 +4171,7 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
               <div className="space-y-4">
                 <div>
                   <p className="text-[13px] text-muted-foreground mb-2.5">
-                    그룹을 누르면 <span className="font-semibold text-foreground">해당 줄 바로 아래</span>에 행동·기질 해석 카드가 열립니다. 관계·직업·감정 측면은「더보기」로 확인하세요.
+                    그룹을 누르면 <span className="font-semibold text-foreground">바로 아래</span>에 행동·기질 해석이 열려요. 관계·직업·감정 쪽은 「더보기」로 이어서 볼 수 있어요.
                   </p>
                   <TenGodDistributionSection
                     dayStem={dayStem}
@@ -4547,7 +4547,7 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                             )}
                             {fortune.guidance && (
                               <p className="mt-1 text-[13px] text-muted-foreground leading-relaxed">
-                                오늘은 <span className="font-semibold text-foreground">“{fortune.guidance}”</span> 흐름이 유리합니다.
+                                오늘은 <span className="font-semibold text-foreground">“{fortune.guidance}”</span> 쪽으로 마음이 더 편하게 기울 수 있어요.
                               </p>
                             )}
                           </div>
@@ -4601,26 +4601,26 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                           const tenGodText = uniq.length > 0 ? `${uniq.join(" · ")} 작동` : "십성 정보 없음";
 
                           const RECOMMEND_BY_DOMAIN: Record<typeof todayDomainOpen, string[]> = {
-                            사랑: ["대화는 짧고 명확하게", "배려 표현 1번은 먼저", "거리/빈도 조절"],
-                            일: ["우선순위 1~2개만 고정", "계획 세우기", "마감·정리부터"],
-                            돈: ["지출/수입 정리", "필요·욕구 분리", "계약/결제는 한 번 더 확인"],
-                            건강: ["수면/휴식 확보", "가벼운 유산소", "과로·과식 줄이기"],
-                            대인관계: ["약속은 간단히", "경계선 지키기", "오해는 바로 정리"],
-                            학업: ["공부/독서 30~60분", "글쓰기/정리", "복습 위주로"],
+                            사랑: ["대화는 짧고 또렷하게 해보세요", "배려 표현은 한 번 먼저 건네보세요", "거리·빈도를 가볍게 조절해보세요"],
+                            일: ["우선순위 1~2개만 잡아두면 좋아요", "계획을 짧게 적어보세요", "마감·정리부터 처리해보세요"],
+                            돈: ["지출·수입을 한 번만 정리해보세요", "‘필요/욕구’를 잠깐 나눠보면 좋아요", "계약·결제는 한 번 더 확인해보세요"],
+                            건강: ["수면·휴식을 먼저 챙겨보세요", "가벼운 산책 정도가 좋아요", "과로·과식은 조금만 줄여봐요"],
+                            대인관계: ["약속은 단순하게 잡아두면 편해요", "경계선을 부드럽게 지켜봐요", "오해는 짧게 풀어두면 좋아요"],
+                            학업: ["30~60분만 가볍게 시작해봐요", "글/메모로 정리해보면 좋아요", "새로 늘리기보다 복습이 잘 맞아요"],
                           };
                           const CAUTION_BY_DOMAIN: Record<typeof todayDomainOpen, string[]> = {
-                            사랑: ["감정적 말싸움", "확답 압박", "상대 마음 추측 확대"],
-                            일: ["즉흥적 일정 확장", "한 번에 큰 결정", "불필요한 회의/잡일"],
-                            돈: ["충동구매", "무리한 투자/대출", "말로만 약속하는 거래"],
-                            건강: ["무리한 운동", "야식/카페인 과다", "스트레스 방치"],
-                            대인관계: ["감정적 반응", "험담/단정", "과한 기대/실망 반복"],
-                            학업: ["멀티태스킹", "완벽주의로 시작 지연", "밤샘 몰아치기"],
+                            사랑: ["감정이 올라올 때 말로 바로 맞붙는 것", "확답을 서두르게 만드는 것", "상대 마음을 과하게 추측하는 것"],
+                            일: ["즉흥적으로 일정을 늘리는 것", "한 번에 큰 결정을 확정하는 것", "불필요한 회의·잡일에 끌려가는 것"],
+                            돈: ["충동구매", "무리한 투자·대출", "말로만 약속하는 거래"],
+                            건강: ["무리한 운동", "야식·카페인을 과하게 늘리는 것", "스트레스를 그냥 넘기는 것"],
+                            대인관계: ["감정적으로 바로 반응하는 것", "단정/험담", "기대·실망을 반복하는 것"],
+                            학업: ["멀티태스킹", "완벽주의로 시작이 늦어지는 것", "밤샘 몰아치기"],
                           };
 
                           const summaryLines: string[] = [];
-                          summaryLines.push(`오늘은 ${todayDomainOpen} 영역에서 ${row.state} 흐름이 두드러집니다.`);
-                          if (row.hint) summaryLines.push(`오늘은 ${row.hint}`);
-                          summaryLines.push(`오늘은 ${tenGodText}이 중심이라, ${todayDomainOpen}에서는 “정리·조절·선택”이 유리합니다.`);
+                          summaryLines.push(`오늘은 ${todayDomainOpen} 쪽에서 ${row.state} 흐름이 더 잘 느껴질 수 있어요.`);
+                          if (row.hint) summaryLines.push(`${row.hint}`);
+                          summaryLines.push(`오늘은 ${tenGodText} 쪽 기운이 함께 움직여서, ${todayDomainOpen}에서는 “정리·조절·선택”이 특히 편안하게 맞을 수 있어요.`);
 
                           const inlineTint =
                             row.lvl === "good"
