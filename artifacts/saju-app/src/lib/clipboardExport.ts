@@ -224,7 +224,7 @@ export function buildPersonClipboardText(record: PersonRecord): string {
   lines.push(`  대표 오행: ${domEl}`);
   if (domGroup) lines.push(`  대표 십성(그룹): ${domGroup}`);
   lines.push(`  십성 기준(anchor): ${dayStem} 일간 기준`);
-  lines.push(`  오행 기준(anchor): ${dayStem} 일간 기준`);
+  lines.push(`  오행 기준(anchor): ${dayStem}${STEM_EL[dayStem] ?? ""} 일간 기준`);
   lines.push(`  오행 균형 해석: ${getElementBalanceSummary(counts)}`);
   lines.push(`  성격 기질 분석 요약: ${schema.strengthDesc} · 대표 오행(${domEl}) 성향이 비교적 또렷하게 드러납니다.`);
   lines.push(`  격국 해석 설명: 월지 기준(${monthBranch}) 십성(${monthTG ?? "불명"}) 흐름으로 ${geokguk} 성향을 참고합니다.`);
@@ -365,6 +365,8 @@ export function buildPersonClipboardText(record: PersonRecord): string {
   lines.push("");
   lines.push("일반적인 사주 설명이 아니라");
   lines.push("위 구조 기준을 유지한 해석을 요청합니다.");
+  lines.push("");
+  lines.push("본 분석은 자동 계산된 구조 해석 결과이며 전통 명리학 유파별 해석 차이가 있을 수 있습니다.");
 
   return lines.join("\n");
 }
