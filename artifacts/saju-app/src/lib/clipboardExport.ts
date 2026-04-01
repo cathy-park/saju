@@ -184,6 +184,8 @@ export function buildPersonClipboardText(record: PersonRecord): string {
   const lines: string[] = [];
 
   lines.push(`=== 사주 분석 데이터: ${input.name} ===`);
+  lines.push("이 데이터에는 화면에서 사용되는 대표 요약 / 균형 해석 / 격국 판단 / 용신 판단 기준이 포함되어 있습니다.");
+  lines.push("일반적인 사주 해석이 아니라 구조 중심 해석을 요청합니다.");
   lines.push(`생년월일: ${input.year}년 ${input.month}월 ${input.day}일 (${input.calendarType === "solar" ? "양력" : "음력"})`);
   if (!input.timeUnknown && input.hour != null) {
     lines.push(`출생시: ${String(input.hour).padStart(2, "0")}:${String(input.minute ?? 0).padStart(2, "0")}`);
@@ -219,10 +221,13 @@ export function buildPersonClipboardText(record: PersonRecord): string {
   const domGroup = (dmElKey && domEl) ? getTenGodGroup(dmElKey, domEl) : "";
   lines.push(`  대표 오행: ${domEl}`);
   if (domGroup) lines.push(`  대표 십성(그룹): ${domGroup}`);
+  lines.push(`  십성 기준(anchor): ${dayStem} 일간 기준`);
   lines.push(`  오행 균형 해석: ${getElementBalanceSummary(counts)}`);
   lines.push(`  성격 기질 분석 요약: ${schema.strengthDesc} · 대표 오행(${domEl}) 성향이 비교적 또렷하게 드러납니다.`);
   lines.push(`  격국 해석 설명: 월지 기준(${monthBranch}) 십성(${monthTG ?? "불명"}) 흐름으로 ${geokguk} 성향을 참고합니다.`);
+  lines.push(`  격국 기준(anchor): 월지 기준 ${geokguk}`);
   lines.push(`  용신 해석 설명: 일간 강약(${strengthLevel}) 흐름에 맞춰 ${yongshinEl}${heeshinEl ? `(+${heeshinEl})` : ""} 쪽을 우선으로 봅니다. (신뢰도: ${schema.yongshinConfidence})`);
+  lines.push(`  용신 판단 기준(anchor): 일간 강약 기반 자동 계산`);
   lines.push("");
 
   // 오행 분포
@@ -335,8 +340,27 @@ export function buildPersonClipboardText(record: PersonRecord): string {
   lines.push("");
 
   lines.push("---");
-  lines.push("이 데이터에는 화면에서 보이는 대표 요약/균형/용신/격국 힌트까지 포함되어 있습니다.");
-  lines.push("상단 요약(가이드 톤)과 하단 근거(분석 톤)를 분리해 해석해 주세요.");
+  lines.push("[해석 기준]");
+  lines.push("");
+  lines.push("이 분석은 다음 기준을 따릅니다:");
+  lines.push("");
+  lines.push("- 십성 기준: 일간 기준");
+  lines.push("- 일간 강약 중심 구조 해석");
+  lines.push("- 월지 기준 격국 참고");
+  lines.push("- 자동 계산된 용신 체계 사용");
+  lines.push("- 오행 균형 중심 해석");
+  lines.push("- 신살은 보조 해석으로만 사용");
+  lines.push("");
+  lines.push("대표 구조 우선순위:");
+  lines.push("");
+  lines.push("1순위: 일간 강약");
+  lines.push("2순위: 격국 흐름");
+  lines.push("3순위: 용신 판단");
+  lines.push("4순위: 오행 균형");
+  lines.push("5순위: 신살 보조 해석");
+  lines.push("");
+  lines.push("일반적인 사주 설명이 아니라");
+  lines.push("위 구조 기준을 유지한 해석을 요청합니다.");
 
   return lines.join("\n");
 }
