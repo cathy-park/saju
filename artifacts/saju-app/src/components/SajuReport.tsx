@@ -779,29 +779,40 @@ function FiveElementSection({
           const fillH = count > 0 ? Math.max(fillHRaw, 4) : 0;
           const fillY = y + NODE_R - fillH;
           const isPrimary = el === primaryEl;
-          /* 대표 원 테두리 = 십성 분포 뱃지·% 글자색과 동일(--element-*-strong) */
+          /* 대표 원 테두리 = 십성 분포 %·칩 글자 strong 토큰 */
           const stroke = isPrimary ? elementColorVar(el, "strong") : "hsl(var(--border))";
+          const strokeW = isPrimary ? 1.75 : 1.5;
+          /* 십성 분포 행 라벨과 동일: 대표 오행만 strong, 나머지 foreground */
+          const elLabelFill = isPrimary ? elementColorVar(el, "strong") : "hsl(var(--foreground))";
           return (
             <g key={el}>
+              <circle cx={x} cy={y} r={NODE_R} fill="hsl(var(--card))" />
+              {fillH > 0 && (
+                <rect
+                  x={x - NODE_R}
+                  y={fillY}
+                  width={NODE_R * 2}
+                  height={fillH}
+                  fill={ELEMENT_PENTAGON_FILL[el]}
+                  clipPath={`url(#pclip-${el})`}
+                />
+              )}
+              {/* 채움 위에 테두리가 오도록 stroke 전용 원을 맨 위(텍스트 제외)에 둠 */}
               <circle
                 cx={x}
                 cy={y}
                 r={NODE_R}
-                fill="hsl(var(--card))"
+                fill="none"
                 stroke={stroke}
-                strokeWidth={isPrimary ? 1.75 : 1.5}
+                strokeWidth={strokeW}
               />
-              {fillH > 0 && (
-              <rect x={x - NODE_R} y={fillY} width={NODE_R * 2} height={fillH}
-                fill={ELEMENT_PENTAGON_FILL[el]} clipPath={`url(#pclip-${el})`} />
-              )}
               <text
                 x={x}
                 y={y - (tenGodGroup ? 9 : 4)}
                 textAnchor="middle"
                 fontSize="15"
                 fontWeight={isPrimary ? "800" : "600"}
-                fill="hsl(var(--foreground))"
+                fill={elLabelFill}
               >
                 {el}
               </text>
