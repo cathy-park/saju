@@ -211,33 +211,31 @@ function Dashboard({ record }: { record: PersonRecord }) {
         </div>
       </div>
 
-      {/* ② 오늘 해석 */}
-      <div className="px-4 pt-1">
-        <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">오늘 해석</p>
-      </div>
+      {/* 오늘 해석 섹션 라벨 제거 — 상단 여백만 유지 */}
+      <div className="px-4 pt-1 mb-2" aria-hidden />
 
       {lifeFlow && (
         <div className="px-4 pt-0">
-          <div className="ds-card relative overflow-hidden border-violet-200/80 p-4 shadow-none">
+          <div className="ds-card relative overflow-hidden border-violet-200/80 p-5 shadow-none">
             <div className="pointer-events-none absolute -right-5 -top-5 h-20 w-20 rounded-full bg-indigo-500/[0.08]" aria-hidden />
-            <div className="mb-2 flex items-center gap-2">
+            <div className="mb-4 flex items-center gap-2">
               <span className="text-[13px] font-extrabold text-indigo-600">✦ 오늘의 전체 흐름</span>
             </div>
-            <p className="ds-body mb-1.5 font-medium text-foreground">
+            <p className="ds-body mb-3 font-medium text-foreground">
               {lifeFlow.overall.fullText}
             </p>
             {lifeFlow.overall.activityFlow && (
-              <p className="mb-2.5 text-xs font-semibold text-indigo-600">
+              <p className="mb-5 text-xs font-semibold text-indigo-600">
                 {lifeFlow.overall.activityFlow}
               </p>
             )}
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-3">
               {[
                 { label: "감정 흐름", text: lifeFlow.overall.emotional },
                 { label: "결정 타이밍", text: lifeFlow.overall.decisionTiming },
               ].map(({ label, text }) => (
-                <div key={label} className="rounded-lg bg-violet-50/80 px-3 py-2.5">
-                  <p className="ds-caption mb-1 font-bold tracking-wide text-violet-600/90">{label}</p>
+                <div key={label} className="rounded-lg bg-violet-50/80 px-3.5 py-3">
+                  <p className="ds-caption mb-1.5 font-bold tracking-wide text-violet-600/90">{label}</p>
                   <p className="text-xs leading-snug text-foreground/90">{text}</p>
                 </div>
               ))}
@@ -245,7 +243,7 @@ function Dashboard({ record }: { record: PersonRecord }) {
             <Button
               type="button"
               onClick={goToTodayFortune}
-              className="mt-3 w-full border-0 bg-gradient-to-r from-indigo-600 to-violet-600 text-primary-foreground shadow-none hover:from-indigo-600 hover:to-violet-600"
+              className="mt-4 w-full border-0 bg-gradient-to-r from-indigo-600 to-violet-600 text-primary-foreground shadow-none hover:from-indigo-600 hover:to-violet-600"
             >
               오늘 운세 보러가기 →
             </Button>
