@@ -5,10 +5,20 @@ import type { PersonRecord } from "./storage";
 import { getFinalPillars } from "./storage";
 import { buildInterpretSchema, STRENGTH_DISPLAY_LABEL, type StrengthLevel } from "./interpretSchema";
 import { computeBranchRelations } from "./branchRelations";
-import { calculateLuckCycles, calculateShinsalFull } from "./luckCycles";
+import {
+  calculateLuckCycles,
+  calculateShinsalFull,
+  type DaewoonSuOpts,
+} from "./luckCycles";
 import { getTenGod } from "./tenGods";
 import { getTenGodGroup, type FiveElKey } from "./element-color";
 import type { CompatibilityResult } from "./compatibilityScore";
+import {
+  countFiveElements,
+  type ComputedPillars,
+  type FiveElementCount,
+} from "./sajuEngine";
+import { computeSajuPipeline } from "./sajuPipeline";
 
 // ── 오행 관계 맵 (클립보드 전용) ────────────────────────────────────
 const GENERATES_EL: Record<string, string> = {
@@ -27,7 +37,11 @@ const CONTROLLER_EL: Record<string, string> = {
 const WINTER_BR = ["해", "자", "축"];
 const SUMMER_BR = ["사", "오", "미"];
 
-function getElementBalanceSummary(counts: Record<string, number>): string {
+function fmt2(n: number): string {
+  return Number(n).toFixed(2);
+}
+
+function getElementBalanceSummary(counts: FiveElementCount): string {
   const total = Object.values(counts).reduce((a, b) => a + b, 0) || 1;
   const missing = (["목", "화", "토", "금", "수"] as const).filter((el) => (counts[el] ?? 0) === 0);
   const dominant = (["목", "화", "토", "금", "수"] as const).filter((el) => ((counts[el] ?? 0) / total) >= 0.4);
@@ -65,6 +79,58 @@ export function buildPersonClipboardText(record: PersonRecord): string {
     .filter((s): s is string => !!s);
   const monthBranch = pillars.month?.hangul?.[1] ?? "";
 
+  const cp = record.profile.computedPillars;
+  const daewoonSuOpts: DaewoonSuOpts = {
+    exactSolarTermBoundaryOn: record.fortuneOptions?.exactSolarTermBoundaryOn ?? true,
+    trueSolarTimeOn: record.fortuneOptions?.trueSolarTimeOn ?? false,
+  };
+  const luckCycles = calculateLuckCycles(input, cp, daewoonSuOpts);
+
+  const dayStemPipe = cp.day?.hangul?.[0] ?? "";
+  const monthBrPipe = cp.month?.hangul?.[1] ?? "";
+  const dayBrPipe = cp.day?.hangul?.[1] ?? "";
+  const allStemsPipe = [
+    cp.hour?.hangul?.[0],
+    dayStemPipe,
+    cp.month?.hangul?.[0],
+    cp.year?.hangul?.[0],
+  ].filter((c): c is string => !!c);
+  const allBranchesPipe = [
+    cp.hour?.hangul?.[1],
+    dayBrPipe,
+    monthBrPipe,
+    cp.year?.hangul?.[1],
+  ].filter((c): c is string => !!c);
+  const fePipe = countFiveElements(cp as ComputedPillars);
+
+  const currentYear = new Date().getFullYear();
+  const age = currentYear - input.year;
+  const dw0 = luckCycles.daewoon[0]?.startAge ?? 0;
+  const adjustedDw = luckCycles.daewoon.map((entry, i) => ({
+    ...entry,
+    startAge: dw0 + i * 10,
+    endAge: dw0 + i * 10 + 9,
+  }));
+  const curDwForPipe = adjustedDw.find((e) => age >= e.startAge && age <= e.endAge);
+  const seunEntryForPipe = luckCycles.seun.find((e) => e.year === currentYear);
+
+  const pipelineSnapshot =
+    dayStemPipe && monthBrPipe
+      ? computeSajuPipeline({
+          dayStem: dayStemPipe,
+          monthBranch: monthBrPipe,
+          dayBranch: dayBrPipe,
+          allStems: allStemsPipe,
+          allBranches: allBranchesPipe,
+          effectiveFiveElements: fePipe,
+          expertOptions: { seasonalAdjustmentOff: false },
+          timingDaewoonHangul: curDwForPipe?.ganZhi.hangul,
+          timingSeunHangul: seunEntryForPipe?.ganZhi.hangul,
+        })
+      : null;
+
+  const geokguk = pipelineSnapshot?.interpretation.gukguk?.name ?? "불명";
+
   const counts = record.profile.fiveElementDistribution;
 
   const schema = buildInterpretSchema(
@@ -101,17 +167,6 @@ export function buildPersonClipboardText(record: PersonRecord): string {
   const supportCount = allChars.filter(c => { const e = STEM_EL[c]; return e === dmEl || e === inseongEl; }).length;
   const drainCount   = allChars.filter(c => { const e = STEM_EL[c]; return e === sikanEl || e === jaeEl || e === gwansEl; }).length;
   const deungseStr   = supportCount > drainCount ? "yes" : supportCount === drainCount ? "partial" : "no";
-
-  // 격국: 월지 십성 기반
-  const monthTG = dayStem && monthBranch ? getTenGod(dayStem, monthBranch) : null;
-  const geokgukMap: Record<string, string> = {
-    비견: "비겁격", 겁재: "비겁격",
-    식신: "식신격", 상관: "상관격",
-    편재: "편재격", 정재: "정재격",
-    편관: "편관격", 정관: "정관격",
-    편인: "편인격", 정인: "정인격",
-  };
-  const geokguk = monthTG ? (geokgukMap[monthTG] ?? `${monthTG}격`) : "불명";
 
   // 조후 필요 오행: 계절 기반 온도 보정 원소
   let johu = "조후 보완 불필요";
@@ -171,9 +226,6 @@ export function buildPersonClipboardText(record: PersonRecord): string {
     ],
   );
 
-  const luckCycles = calculateLuckCycles(input, record.profile.computedPillars);
-
-  const currentYear = new Date().getFullYear();
   const birthYear = input.year;
   const currentDaewoon = luckCycles.daewoon.find((d) => {
     const dStart = birthYear + d.startAge;
@@ -216,6 +268,72 @@ export function buildPersonClipboardText(record: PersonRecord): string {
   lines.push(`  조후: ${johu}`);
   lines.push("");
 
+  const strengthDebug = pipelineSnapshot?.adjusted.strengthResult.strengthDebug;
+  if (strengthDebug) {
+    lines.push(`[강약 검증 리포트]`);
+    lines.push("");
+    lines.push(`일간 기준: ${strengthDebug.dayStem}`);
+    lines.push("");
+    lines.push(`득령: ${fmt2(strengthDebug.deukryeong)}`);
+    lines.push(`득지: ${fmt2(strengthDebug.branchContrib)}`);
+    lines.push(`득세: ${fmt2(strengthDebug.stemContrib)}`);
+    lines.push("");
+    lines.push(`설기 차감: ${fmt2(strengthDebug.leakagePenalty)}`);
+    lines.push(`음간 보정: ${fmt2(strengthDebug.yinAdjustment)}`);
+    lines.push("");
+    lines.push(`최종 점수: ${fmt2(strengthDebug.finalScore)}`);
+    lines.push(`최종 단계: ${strengthDebug.finalLevel}`);
+    lines.push("");
+  }
+
+  const evaluations = pipelineSnapshot?.evaluations;
+  if (evaluations) {
+    const o = evaluations.officerActivation;
+    const s = evaluations.spousePalaceStability;
+    const w = evaluations.wealthActivation;
+    lines.push(`[관계·재물 작동 점수]`);
+    lines.push("");
+    lines.push(`관성 작동 점수:`);
+    lines.push(`${fmt2(o.score)}`);
+    lines.push(`(${o.grade})`);
+    lines.push("");
+    lines.push(`배우자궁 안정도:`);
+    lines.push(`${fmt2(s.score)}`);
+    lines.push(`(${s.grade})`);
+    lines.push("");
+    lines.push(`재성 작동 점수:`);
+    lines.push(`${fmt2(w.score)}`);
+    lines.push(`(${w.grade})`);
+    lines.push("");
+    lines.push(`관성 요약:`);
+    lines.push(`${o.summary}`);
+    lines.push("");
+    lines.push(`배우자궁 요약:`);
+    lines.push(`${s.summary}`);
+    lines.push("");
+    lines.push(`재성 요약:`);
+    lines.push(`${w.summary}`);
+    lines.push("");
+  }
+
+  const timingActivation = pipelineSnapshot?.timingActivation;
+  if (timingActivation) {
+    lines.push(`[현재 운 활성화 점수]`);
+    lines.push("");
+    lines.push(`현재 관성 활성도:`);
+    lines.push(`${fmt2(timingActivation.officerActivationNow)}`);
+    lines.push(`(${timingActivation.officerActivationTrend})`);
+    lines.push("");
+    lines.push(`현재 재성 활성도:`);
+    lines.push(`${fmt2(timingActivation.wealthActivationNow)}`);
+    lines.push(`(${timingActivation.wealthActivationTrend})`);
+    lines.push("");
+    lines.push(`현재 배우자궁 안정도:`);
+    lines.push(`${fmt2(timingActivation.spousePalaceStabilityNow)}`);
+    lines.push(`(${timingActivation.spouseActivationTrend})`);
+    lines.push("");
+  }
+
   // 대표 요약 (화면 해석 핵심)
   lines.push(`[대표 요약]`);
   const domEl = schema.dominantElement as FiveElKey;
@@ -227,9 +345,9 @@ export function buildPersonClipboardText(record: PersonRecord): string {
   lines.push(`  오행 기준(anchor): ${dayStem}${STEM_EL[dayStem] ?? ""} 일간 기준`);
   lines.push(`  오행 균형 해석: ${getElementBalanceSummary(counts)}`);
   lines.push(`  성격 기질 분석 요약: ${schema.strengthDesc} · 대표 오행(${domEl}) 성향이 비교적 또렷하게 드러납니다.`);
-  lines.push(`  격국 해석 설명: 월지 기준(${monthBranch}) 십성(${monthTG ?? "불명"}) 흐름으로 ${geokguk} 성향을 참고합니다.`);
-  lines.push(`  격국 기준(anchor): 월지 기준 ${geokguk}`);
-  lines.push(`  격국 판단 방식(anchor): 월지 중심 정격 판단`);
+  lines.push(`  격국 해석 설명: 앱 파이프라인 격국(${geokguk})을 참고합니다.`);
+  lines.push(`  격국 기준(anchor): ${geokguk}`);
+  lines.push(`  격국 판단 방식(anchor): 월지 지장간 투출 기준(determineGukguk)`);
   lines.push(`  용신 해석 설명: 일간 강약(${strengthLevel}) 흐름에 맞춰 ${yongshinEl}${heeshinEl ? `(+${heeshinEl})` : ""} 쪽을 우선으로 봅니다. (신뢰도: ${schema.yongshinConfidence})`);
   lines.push(`  용신 판단 기준(anchor): 일간 강약 기반 자동 계산`);
   lines.push("");
@@ -350,7 +468,7 @@ export function buildPersonClipboardText(record: PersonRecord): string {
   lines.push("");
   lines.push("- 십성 기준: 일간 기준");
   lines.push("- 일간 강약 중심 구조 해석");
-  lines.push("- 월지 기준 격국 참고");
+  lines.push("- 파이프라인 격국(determineGukguk) 참고");
   lines.push("- 자동 계산된 용신 체계 사용");
   lines.push("- 오행 균형 중심 해석");
   lines.push("- 신살은 보조 해석으로만 사용");
@@ -367,6 +485,18 @@ export function buildPersonClipboardText(record: PersonRecord): string {
   lines.push("위 구조 기준을 유지한 해석을 요청합니다.");
   lines.push("");
   lines.push("본 분석은 자동 계산된 구조 해석 결과이며 전통 명리학 유파별 해석 차이가 있을 수 있습니다.");
+  lines.push("");
+  lines.push(`[엔진 계산 기준]`);
+  lines.push("");
+  lines.push("strengthDebug: enabled");
+  lines.push("relationshipWealthEvaluations: enabled");
+  lines.push("timingActivation: enabled");
+  lines.push("");
+  lines.push("engineVersion: structure-v1.3-strength+evaluation+timing");
+  lines.push("");
+  lines.push("본 분석에는 강약 보정(설기·음간 포함),");
+  lines.push("관계·재물 작동 점수,");
+  lines.push("대운·세운 활성화 가중이 적용되었습니다.");
 
   return lines.join("\n");
 }

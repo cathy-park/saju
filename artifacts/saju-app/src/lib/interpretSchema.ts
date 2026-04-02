@@ -106,6 +106,18 @@ export interface StrengthReason {
   adjustments: string[];
 }
 
+/** 검증·개발용 강약 내부 점수 (UI 기본 노출 금지; dev 로그 또는 전용 리포트용) */
+export interface StrengthDebug {
+  dayStem: string;
+  deukryeong: number;
+  branchContrib: number;
+  stemContrib: number;
+  leakagePenalty: number;
+  yinAdjustment: number;
+  finalScore: number;
+  finalLevel: StrengthLevel;
+}
+
 export interface StrengthResult {
   score: number;
   level: StrengthLevel;
@@ -113,6 +125,7 @@ export interface StrengthResult {
   reason: StrengthReason;
   description: string;
   explanation: string[];
+  strengthDebug: StrengthDebug;
 }
 
 function isDevRuntime(): boolean {
@@ -312,20 +325,37 @@ export function computeStrengthResult(
     }
   }
 
+  const yinAdjustment = isYinDayStem(dayStem) ? YIN_STEM_SCORE_ADJ : 0;
   let score = deukryeong + branchContrib + stemContrib - leakagePenalty;
   if (leakagePenalty > 0) {
     adjustments.push(`설기(洩氣·식상·재성): −${Number(leakagePenalty.toFixed(2))}`);
   }
-  if (isYinDayStem(dayStem)) {
-    score -= YIN_STEM_SCORE_ADJ;
+  if (yinAdjustment > 0) {
+    score -= yinAdjustment;
     adjustments.push(`음간 일간 보정: −${YIN_STEM_SCORE_ADJ}`);
   }
 
-  score = Number(score.toFixed(2));
-  if (!Number.isFinite(score)) return null;
+  const finalScore = Number(score.toFixed(2));
+  if (!Number.isFinite(finalScore)) return null;
 
-  const level = levelFromScore(score);
-  const dayMasterState = toDayMasterState(level);
+  const finalLevel = levelFromScore(finalScore);
+  const dayMasterState = toDayMasterState(finalLevel);
+
+  const strengthDebug: StrengthDebug = {
+    dayStem,
+    deukryeong: Number(deukryeong.toFixed(2)),
+    branchContrib: Number(branchContrib.toFixed(2)),
+    stemContrib: Number(stemContrib.toFixed(2)),
+    leakagePenalty: Number(leakagePenalty.toFixed(2)),
+    yinAdjustment,
+    finalScore,
+    finalLevel,
+  };
+
+  if (isDevRuntime()) {
+    // eslint-disable-next-line no-console
+    console.log("[strength-debug]", strengthDebug);
+  }
 
   const explanation: string[] = [];
   if (monthBranch) {
@@ -342,15 +372,15 @@ export function computeStrengthResult(
   if (leakagePenalty > 0.05) {
     explanation.push(`설기: 식상·재성 구조로 일간 기운이 일부 소모·유출됩니다(−${Number(leakagePenalty.toFixed(2))})`);
   }
-  if (isYinDayStem(dayStem)) {
+  if (yinAdjustment > 0) {
     explanation.push(`음간 일간: 환경 민감도 보정으로 강도 판정을 약간 보수적으로 조정합니다(−${YIN_STEM_SCORE_ADJ})`);
   }
 
-  const description = STRENGTH_SHORT_DESC[level] ?? "";
+  const description = STRENGTH_SHORT_DESC[finalLevel] ?? "";
 
   return {
-    score,
-    level,
+    score: finalScore,
+    level: finalLevel,
     dayMasterState,
     reason: {
       deukryeong: { score: Number(deukryeong.toFixed(2)), note: monthBranch ? `월지 ${monthBranch}` : "월지 미상" },
@@ -360,6 +390,7 @@ export function computeStrengthResult(
     },
     description,
     explanation,
+    strengthDebug,
   };
 }
 

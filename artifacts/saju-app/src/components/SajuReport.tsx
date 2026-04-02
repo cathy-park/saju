@@ -3029,6 +3029,19 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
     return countFiveElements(effectivePillars as ComputedPillars);
   }, [effectivePillars, dayStemForCompute]);
 
+  const daewoonSuOpts: DaewoonSuOpts = useMemo(
+    () => ({
+      exactSolarTermBoundaryOn: fortuneOpts?.exactSolarTermBoundaryOn ?? true,
+      trueSolarTimeOn: fortuneOpts?.trueSolarTimeOn ?? false,
+    }),
+    [fortuneOpts?.exactSolarTermBoundaryOn, fortuneOpts?.trueSolarTimeOn],
+  );
+
+  const luckCycles = useMemo(
+    () => calculateLuckCycles(input, effectivePillars as ComputedPillars, daewoonSuOpts),
+    [input, effectivePillars, daewoonSuOpts],
+  );
+
   // ── 4-Layer Saju Pipeline (auto-recomputes when any input changes) ──
   // 오행·십성·신강약·조후·용신·규칙 해석을 한 번에 재계산합니다.
   // 계산 순서: 오행 → 십성 → 신강약 → 조후 보정 → 용신 → 규칙 해석
@@ -3043,6 +3056,16 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
       effectivePillars.hour?.hangul?.[1], effectivePillars.day?.hangul?.[1],
       effectivePillars.month?.hangul?.[1], effectivePillars.year?.hangul?.[1],
     ].filter((c): c is string => !!c);
+    const y = new Date().getFullYear();
+    const age = y - input.year;
+    const dw0 = luckCycles.daewoon[0]?.startAge ?? 0;
+    const adjustedDw = luckCycles.daewoon.map((entry, i) => ({
+      ...entry,
+      startAge: dw0 + i * 10,
+      endAge: dw0 + i * 10 + 9,
+    }));
+    const curDw = adjustedDw.find((e) => age >= e.startAge && age <= e.endAge);
+    const seunEntry = luckCycles.seun.find((e) => e.year === y);
     return computeSajuPipeline({
       dayStem: dayStemNow,
       monthBranch: effectivePillars.month?.hangul?.[1],
@@ -3053,8 +3076,10 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
       expertOptions: {
         seasonalAdjustmentOff: false,
       },
+      timingDaewoonHangul: curDw?.ganZhi.hangul,
+      timingSeunHangul: seunEntry?.ganZhi.hangul,
     });
-  }, [effectiveFiveElements, effectivePillars]);
+  }, [effectiveFiveElements, effectivePillars, luckCycles, input.year]);
 
   const ruleInsights = sajuPipelineResult?.interpretation.ruleInsights ?? [];
   const structureType = sajuPipelineResult?.interpretation.structureType ?? "";
@@ -3163,11 +3188,6 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
   }
 
   const branchRelations = analyzeBranchRelations(effectivePillars as Parameters<typeof analyzeBranchRelations>[0]);
-  const daewoonSuOpts: DaewoonSuOpts = {
-    exactSolarTermBoundaryOn: fortuneOpts?.exactSolarTermBoundaryOn ?? true,
-    trueSolarTimeOn: fortuneOpts?.trueSolarTimeOn ?? false,
-  };
-  const luckCycles = calculateLuckCycles(input, localProfile.computedPillars, daewoonSuOpts);
 
   // ── 오늘운세: 오늘 날짜 기준 요약 데이터 ────────────────────────
   const todayFortune = useMemo(() => {

@@ -16,6 +16,7 @@
 import type { FiveElementCount } from "./sajuEngine";
 import {
   type FiveElKey,
+  getController,
   getTenGodGroup,
   STEM_TO_ELEMENT,
   BRANCH_TO_ELEMENT,
@@ -37,6 +38,14 @@ import {
   type GukgukResult,
   type StructurePattern,
 } from "./gukguk";
+import {
+  computeRelationshipWealthEvaluations,
+  type RelationshipWealthEvaluations,
+} from "./evaluations/relationshipWealthEvaluation";
+import {
+  computeLuckTimingActivation,
+  type TimingActivationResult,
+} from "./evaluations/luckTimingActivation";
 
 // ── 지장간 오행 증폭 (地藏干 Augmentation) ────────────────────────
 // Adds hidden stem elements to a five-element count with fractional weights.
@@ -99,6 +108,10 @@ export interface PipelineInput {
     /** Disable 조후 보정 (seasonal yongshin secondary injection) */
     seasonalAdjustmentOff?: boolean;
   };
+  /** 현재 대운 간지(한글 2글자). 없으면 timing 가중치 0 */
+  timingDaewoonHangul?: string;
+  /** 현재 세운 간지(한글 2글자). 없으면 timing 가중치 0 */
+  timingSeunHangul?: string;
 }
 
 // ── Layer 2: Base Structure Calculation ───────────────────────────
@@ -161,7 +174,7 @@ function computeBaseStructure(input: PipelineInput): BaseStructure {
       allBranches,
     });
   }
-  const strengthResult: StrengthResult = computedStrength ?? ({
+  const strengthResult: StrengthResult = computedStrength ?? {
     score: strengthScore,
     level: strengthLevel,
     dayMasterState: (strengthLevel === "중화" ? "balanced" : ["신강", "태강", "극신강"].includes(strengthLevel) ? "strong" : "weak"),
@@ -173,7 +186,17 @@ function computeBaseStructure(input: PipelineInput): BaseStructure {
     },
     description: "",
     explanation: ["강도 계산 상세가 없어 fallback 경로로 대체되었습니다."],
-  } as StrengthResult);
+    strengthDebug: {
+      dayStem,
+      deukryeong: 0,
+      branchContrib: 0,
+      stemContrib: 0,
+      leakagePenalty: 0,
+      yinAdjustment: 0,
+      finalScore: strengthScore,
+      finalLevel: strengthLevel,
+    },
+  };
 
   // Use 지장간-augmented element counts for yongshin.
   // This gives a more accurate picture of the qi balance (including 여기/중기 hidden stems)
@@ -264,6 +287,11 @@ function computeAdjustedStructure(
       ? "balanced"
       : ["신강", "태강", "극신강"].includes(effectiveStrengthLevel) ? "strong" : "weak",
     description: STRENGTH_SHORT_DESC[effectiveStrengthLevel] ?? base.strengthResult.description,
+    strengthDebug: {
+      ...base.strengthResult.strengthDebug,
+      finalLevel: effectiveStrengthLevel,
+      finalScore: base.strengthResult.score,
+    },
   };
 
   // Recompute yongshin from effective strength level using 지장간-augmented counts
@@ -415,6 +443,10 @@ export interface SajuPipelineResult {
   adjusted: AdjustedStructure; // Layer 3
   interpretation: InterpretationResult; // Layer 4
   diagnostics: EngineDiagnostics;
+  /** 원국 기반 보조 지표(관성·배우자궁·재성) — 강약/격국/용신과 분리 */
+  evaluations: RelationshipWealthEvaluations;
+  /** 대운·세운 가중 활성화(원국 evaluations는 변경하지 않음) */
+  timingActivation: TimingActivationResult;
 }
 
 /**
@@ -438,6 +470,42 @@ export function computeSajuPipeline(input: PipelineInput): SajuPipelineResult {
   const adjusted    = computeAdjustedStructure(input, base);
   const interpretation = buildInterpretationResult(input, adjusted);
   const strength = adjusted.strengthResult;
+
+  const evaluations = computeRelationshipWealthEvaluations({
+    dayStem: input.dayStem,
+    dayBranch: input.dayBranch,
+    monthBranch: input.monthBranch,
+    allStems: input.allStems,
+    allBranches: input.allBranches,
+    effectiveFiveElements: input.effectiveFiveElements,
+    yongshinPrimary: adjusted.effectiveYongshin,
+    yongshinSecondary: adjusted.effectiveYongshinSecondary,
+    dayPillarHangul:
+      input.dayStem && input.dayBranch ? `${input.dayStem}${input.dayBranch}` : undefined,
+    tenGodGroups: base.tenGodGroups,
+  });
+
+  if (isDevRuntime()) {
+    // eslint-disable-next-line no-console
+    console.log("[evaluations: relationship-wealth]", evaluations);
+  }
+
+  const timingActivation = computeLuckTimingActivation(
+    evaluations,
+    input.timingDaewoonHangul,
+    input.timingSeunHangul,
+    input.dayStem,
+    input.dayBranch,
+    adjusted.effectiveYongshin,
+    adjusted.effectiveYongshinSecondary,
+    getController(adjusted.effectiveYongshin),
+  );
+
+  if (isDevRuntime()) {
+    // eslint-disable-next-line no-console
+    console.log("[timingActivation]", timingActivation);
+  }
+
   const diagnostics: EngineDiagnostics = {
     strength: {
       source: "interpretSchema.computeStrengthResult",
@@ -471,5 +539,5 @@ export function computeSajuPipeline(input: PipelineInput): SajuPipelineResult {
       reason: interpretation.seasonalNote,
     },
   };
-  return { input, base, adjusted, interpretation, diagnostics };
+  return { input, base, adjusted, interpretation, diagnostics, evaluations, timingActivation };
 }
