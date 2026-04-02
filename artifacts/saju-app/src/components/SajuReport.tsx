@@ -1671,6 +1671,32 @@ function SajuStructureSummary({
             {strengthDesc}
             {typeof strengthScore === "number" && Number.isFinite(strengthScore) ? ` · ${strengthScore}점` : ""}
           </p>
+          {pipelineStrength?.level &&
+            STRENGTH_LEVELS.includes(pipelineStrength.level as StrengthLevel) && (
+              <div
+                className="mt-2 flex flex-nowrap items-center gap-0 overflow-x-auto text-[13px] text-muted-foreground [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+                style={{ flexWrap: "nowrap" }}
+                aria-label={`파이프라인 강약 단계: ${pipelineStrength.level}`}
+              >
+                {STRENGTH_LEVELS.map((lv, i) => {
+                  const isCurrent = pipelineStrength.level === lv;
+                  return (
+                    <span key={lv} className="flex shrink-0 items-center whitespace-nowrap">
+                      {i > 0 ? (
+                        <span className="mx-0.5 select-none opacity-70" aria-hidden>
+                          ─
+                        </span>
+                      ) : null}
+                      <span
+                        className={isCurrent ? "font-semibold text-foreground" : undefined}
+                      >
+                        {isCurrent ? `●${lv}` : lv}
+                      </span>
+                    </span>
+                  );
+                })}
+              </div>
+            )}
         </div>
 
         {pipelineSeasonalNote && (
