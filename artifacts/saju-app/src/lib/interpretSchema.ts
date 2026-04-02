@@ -48,6 +48,22 @@ const JIJANGGAN: Record<string, string[]> = {
 // the non-본기 stems that the surface scoring misses.
 const JZG_W = [0.05, 0.12, 0.00] as const; // 본기=0 (not double-counted; main branch already captures it)
 
+/** 음간 일간: 동일 score 대비 과대 강 판정 완화용 보정 */
+const YIN_DAY_STEMS = new Set(["을", "정", "기", "신", "계"]);
+const YIN_STEM_SCORE_ADJ = 0.6;
+
+/** 설기(洩氣): 식상·재성을 독립 항으로 차감 (천간/지지/지장간 여·중기) */
+const LEAK_STEM_SIK = 0.6;
+const LEAK_STEM_JAE = 0.4;
+const LEAK_BRANCH_SIK = 0.5;
+const LEAK_BRANCH_JAE = 0.3;
+const LEAK_HIDDEN_SIK = 0.15;
+const LEAK_HIDDEN_JAE = 0.08;
+
+function isYinDayStem(stem: string): boolean {
+  return YIN_DAY_STEMS.has(stem);
+}
+
 // ── Strength level (7-level for graph visualization) ─────────────
 
 export type StrengthLevel =
@@ -144,6 +160,9 @@ function levelFromScore(score: number): StrengthLevel {
  * - 득령: 월령(월지) 기여 + 월령충 조정
  * - 득지: 지지(통근) 기여 + 일반 지지충 조정 + 지장간 보정
  * - 득세: 천간(비겁/인성 등) 기여
+ *
+ * 최종 score = 득령 + 득지 + 득세 − 설기(leakagePenalty) − 음간보정(음간 일간만).
+ * 설기: 식상·재성을 천간/표면 지지/지장간(여기·중기)에서 별도 합산해 차감.
  */
 export function computeStrengthResult(
   dayStem: string,
@@ -268,7 +287,41 @@ export function computeStrengthResult(
   }
   branchContrib += hiddenOverlay;
 
-  const score = Number((deukryeong + branchContrib + stemContrib).toFixed(2));
+  // 6) 설기(洩氣): 식상·재성 독립 차감 (기존 득지/득세 가중과 별도)
+  let leakagePenalty = 0;
+  for (const s of allStems) {
+    if (s === dayStem) continue;
+    const sEl = STEM_ELEMENT[s] as FiveElKey | undefined;
+    if (!sEl) continue;
+    if (sEl === sikEl) leakagePenalty += LEAK_STEM_SIK;
+    else if (sEl === jaeEl) leakagePenalty += LEAK_STEM_JAE;
+  }
+  for (const b of allBranches) {
+    const bEl = STEM_ELEMENT[b] as FiveElKey | undefined;
+    if (!bEl) continue;
+    if (bEl === sikEl) leakagePenalty += LEAK_BRANCH_SIK;
+    else if (bEl === jaeEl) leakagePenalty += LEAK_BRANCH_JAE;
+  }
+  for (const b of allBranches) {
+    const hiddens = JIJANGGAN[b] ?? [];
+    for (let j = 0; j < hiddens.length - 1; j++) {
+      const hEl = STEM_ELEMENT[hiddens[j]] as FiveElKey | undefined;
+      if (!hEl) continue;
+      if (hEl === sikEl) leakagePenalty += LEAK_HIDDEN_SIK;
+      else if (hEl === jaeEl) leakagePenalty += LEAK_HIDDEN_JAE;
+    }
+  }
+
+  let score = deukryeong + branchContrib + stemContrib - leakagePenalty;
+  if (leakagePenalty > 0) {
+    adjustments.push(`설기(洩氣·식상·재성): −${Number(leakagePenalty.toFixed(2))}`);
+  }
+  if (isYinDayStem(dayStem)) {
+    score -= YIN_STEM_SCORE_ADJ;
+    adjustments.push(`음간 일간 보정: −${YIN_STEM_SCORE_ADJ}`);
+  }
+
+  score = Number(score.toFixed(2));
   if (!Number.isFinite(score)) return null;
 
   const level = levelFromScore(score);
@@ -286,6 +339,12 @@ export function computeStrengthResult(
   if (stemContrib > 0.2) explanation.push("득세: 천간에서 비겁·인성의 지지가 있습니다");
   else if (stemContrib < -0.2) explanation.push("득세: 천간에서 관성·식상·재성의 부담이 있습니다");
   else explanation.push("득세: 천간 영향이 크지 않습니다");
+  if (leakagePenalty > 0.05) {
+    explanation.push(`설기: 식상·재성 구조로 일간 기운이 일부 소모·유출됩니다(−${Number(leakagePenalty.toFixed(2))})`);
+  }
+  if (isYinDayStem(dayStem)) {
+    explanation.push(`음간 일간: 환경 민감도 보정으로 강도 판정을 약간 보수적으로 조정합니다(−${YIN_STEM_SCORE_ADJ})`);
+  }
 
   const description = STRENGTH_SHORT_DESC[level] ?? "";
 
@@ -311,6 +370,8 @@ export function computeStrengthResult(
 //   2. 통근 (branch root support)
 //   3. 인성/비겁 stem support
 //   4. 식상/재성/관성 drain/control
+//   5. 설기(洩氣): 식상·재성 독립 차감(천간/지지/지장간 여·중기)
+//   6. 음간 일간 보정(을·정·기·신·계)
 
 export function computeStrengthScore(
   dayStem: string,
