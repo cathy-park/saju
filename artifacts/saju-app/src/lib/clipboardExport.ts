@@ -18,7 +18,7 @@ import {
   type ComputedPillars,
   type FiveElementCount,
 } from "./sajuEngine";
-import { computeSajuPipeline } from "./sajuPipeline";
+import { computePersonPipelineSnapshot } from "./personPipelineSnapshot";
 
 // ── 오행 관계 맵 (클립보드 전용) ────────────────────────────────────
 const GENERATES_EL: Record<string, string> = {
@@ -85,49 +85,13 @@ export function buildPersonClipboardText(record: PersonRecord): string {
     trueSolarTimeOn: record.fortuneOptions?.trueSolarTimeOn ?? false,
   };
   const luckCycles = calculateLuckCycles(input, cp, daewoonSuOpts);
+  /** 월운·일운과 동일한 기준일( calculateLuckCycles 내부의 올해 ) */
+  const refYear = luckCycles.wolun.year;
+  // seun[i].year = refYear - 2 + i 이므로 올해 항목은 항상 인덱스 2
+  const seunForCurrentYear =
+    luckCycles.seun.find((e) => e.year === refYear) ?? luckCycles.seun[2];
 
-  const dayStemPipe = cp.day?.hangul?.[0] ?? "";
-  const monthBrPipe = cp.month?.hangul?.[1] ?? "";
-  const dayBrPipe = cp.day?.hangul?.[1] ?? "";
-  const allStemsPipe = [
-    cp.hour?.hangul?.[0],
-    dayStemPipe,
-    cp.month?.hangul?.[0],
-    cp.year?.hangul?.[0],
-  ].filter((c): c is string => !!c);
-  const allBranchesPipe = [
-    cp.hour?.hangul?.[1],
-    dayBrPipe,
-    monthBrPipe,
-    cp.year?.hangul?.[1],
-  ].filter((c): c is string => !!c);
-  const fePipe = countFiveElements(cp as ComputedPillars);
-
-  const currentYear = new Date().getFullYear();
-  const age = currentYear - input.year;
-  const dw0 = luckCycles.daewoon[0]?.startAge ?? 0;
-  const adjustedDw = luckCycles.daewoon.map((entry, i) => ({
-    ...entry,
-    startAge: dw0 + i * 10,
-    endAge: dw0 + i * 10 + 9,
-  }));
-  const curDwForPipe = adjustedDw.find((e) => age >= e.startAge && age <= e.endAge);
-  const seunEntryForPipe = luckCycles.seun.find((e) => e.year === currentYear);
-
-  const pipelineSnapshot =
-    dayStemPipe && monthBrPipe
-      ? computeSajuPipeline({
-          dayStem: dayStemPipe,
-          monthBranch: monthBrPipe,
-          dayBranch: dayBrPipe,
-          allStems: allStemsPipe,
-          allBranches: allBranchesPipe,
-          effectiveFiveElements: fePipe,
-          expertOptions: { seasonalAdjustmentOff: false },
-          timingDaewoonHangul: curDwForPipe?.ganZhi.hangul,
-          timingSeunHangul: seunEntryForPipe?.ganZhi.hangul,
-        })
-      : null;
+  const pipelineSnapshot = computePersonPipelineSnapshot(record, { daewoonSuOpts });
 
   const geokguk = pipelineSnapshot?.interpretation.gukguk?.name ?? "불명";
 
@@ -139,7 +103,7 @@ export function buildPersonClipboardText(record: PersonRecord): string {
 
   const strengthLevel: StrengthLevel = record.manualStrengthLevel
     ? (record.manualStrengthLevel as StrengthLevel)
-    : schema.strengthLevel;
+    : (pipelineSnapshot?.adjusted.effectiveStrengthLevel ?? schema.strengthLevel);
 
   const branchRelations = computeBranchRelations(allBranches);
 
@@ -196,9 +160,14 @@ export function buildPersonClipboardText(record: PersonRecord): string {
     } else if (record.manualYongshin) {
       const match = record.manualYongshin.match(/^[목화토금수]/);
       if (match && FIVE_EL_SET.has(match[0])) yongshinEl = match[0] as FiveElStr;
+    } else if (pipelineSnapshot?.adjusted.effectiveYongshin) {
+      yongshinEl = pipelineSnapshot.adjusted.effectiveYongshin as FiveElStr;
     }
   }
-  const heeshinEl  = schema.yongshinSecondary ?? "";
+  const heeshinEl =
+    (record.manualYongshinData && record.manualYongshinData.length > 0) || record.manualYongshin
+      ? (schema.yongshinSecondary ?? "")
+      : (pipelineSnapshot?.adjusted.effectiveYongshinSecondary ?? schema.yongshinSecondary ?? "");
   const isWeak = ["극신약", "태약", "신약"].includes(strengthLevel);
   const gishinEls = isWeak
     ? [sikanEl, jaeEl, gwansEl].filter(Boolean)
@@ -230,7 +199,7 @@ export function buildPersonClipboardText(record: PersonRecord): string {
   const currentDaewoon = luckCycles.daewoon.find((d) => {
     const dStart = birthYear + d.startAge;
     const dEnd   = birthYear + d.endAge;
-    return currentYear >= dStart && currentYear <= dEnd;
+    return refYear >= dStart && refYear <= dEnd;
   });
 
   const lines: string[] = [];
@@ -448,8 +417,10 @@ export function buildPersonClipboardText(record: PersonRecord): string {
       ` (${dStart}~${dEnd}년)`,
     );
   }
-  if (luckCycles.seun[0]) {
-    lines.push(`  세운 (${luckCycles.seun[0].year}): ${luckCycles.seun[0].ganZhi.stem}${luckCycles.seun[0].ganZhi.branch}`);
+  if (seunForCurrentYear) {
+    lines.push(
+      `  세운 (${seunForCurrentYear.year}): ${seunForCurrentYear.ganZhi.stem}${seunForCurrentYear.ganZhi.branch}`,
+    );
   }
   lines.push(
     `  월운: ${luckCycles.wolun.ganZhi.stem}${luckCycles.wolun.ganZhi.branch}` +

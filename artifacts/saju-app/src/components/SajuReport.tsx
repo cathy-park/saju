@@ -2304,12 +2304,13 @@ function LuckFlowTabs({
     { key: "월운", label: "월운" },
     { key: "일운", label: "일운" },
   ];
-  const now = new Date();
-  const [selectedWolunYear, setSelectedWolunYear] = useState(now.getFullYear());
-  const [selectedWolunMonth, setSelectedWolunMonth] = useState(now.getMonth() + 1);
-  const age = now.getFullYear() - birthYear;
+  const refYear = luckCycles.wolun.year;
+  const refMonth = luckCycles.wolun.month;
+  const [selectedWolunYear, setSelectedWolunYear] = useState(refYear);
+  const [selectedWolunMonth, setSelectedWolunMonth] = useState(refMonth);
+  const age = refYear - birthYear;
   const daewoonSu = luckCycles.daewoon[0]?.startAge ?? 0;
-  const currentSeun = luckCycles.seun.find((e) => e.year === now.getFullYear()) ?? null;
+  const currentSeun = luckCycles.seun.find((e) => e.year === refYear) ?? luckCycles.seun[2] ?? null;
   const displayDaewoonSu = daewoonSu;
 
   // ── 대운수 기준으로 전체 연령 재계산 ─────────────────────────
@@ -2327,7 +2328,7 @@ function LuckFlowTabs({
   const [selectedDaewoonIdx, setSelectedDaewoonIdx] = useState<number>(
     currentDaewoonIdx >= 0 ? currentDaewoonIdx : 0
   );
-  const [selectedSeunYear, setSelectedSeunYear] = useState<number>(now.getFullYear());
+  const [selectedSeunYear, setSelectedSeunYear] = useState<number>(refYear);
   const selectedSeunEntry = luckCycles.seun.find((e) => e.year === selectedSeunYear) ?? null;
 
   // Read-only: 대운수는 엔진 자동 계산값만 표시합니다.
@@ -2444,7 +2445,7 @@ function LuckFlowTabs({
               {luckCycles.seun.map(({ year, ganZhi }) => {
                 const se = getStemElement(ganZhi.stem);
                 const be = STEM_ELEMENT[ganZhi.branch] ?? null;
-                const isThisYear = year === now.getFullYear();
+                const isThisYear = year === refYear;
                 const isSelected = year === selectedSeunYear;
                 const tg = dayStem ? getTenGod(dayStem, ganZhi.stem) : null;
                 return (
@@ -2508,8 +2509,8 @@ function LuckFlowTabs({
         <div className="space-y-3">
           {/* 월운 content */}
           {(() => {
-            const thisYear = now.getFullYear();
-            const thisMonth = now.getMonth() + 1;
+            const thisYear = refYear;
+            const thisMonth = refMonth;
             const wolunSeun = luckCycles.seun.find(e => e.year === selectedWolunYear) ?? null;
             const wolunDaewoon = adjustedDaewoon.find(e => (selectedWolunYear - birthYear) >= e.startAge && (selectedWolunYear - birthYear) <= e.endAge) ?? currentDaewoon;
             return (
@@ -3082,8 +3083,8 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
       effectivePillars.hour?.hangul?.[1], effectivePillars.day?.hangul?.[1],
       effectivePillars.month?.hangul?.[1], effectivePillars.year?.hangul?.[1],
     ].filter((c): c is string => !!c);
-    const y = new Date().getFullYear();
-    const age = y - input.year;
+    const refYear = luckCycles.wolun.year;
+    const age = refYear - input.year;
     const dw0 = luckCycles.daewoon[0]?.startAge ?? 0;
     const adjustedDw = luckCycles.daewoon.map((entry, i) => ({
       ...entry,
@@ -3091,7 +3092,7 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
       endAge: dw0 + i * 10 + 9,
     }));
     const curDw = adjustedDw.find((e) => age >= e.startAge && age <= e.endAge);
-    const seunEntry = luckCycles.seun.find((e) => e.year === y);
+    const seunEntry = luckCycles.seun.find((e) => e.year === refYear) ?? luckCycles.seun[2];
     return computeSajuPipeline({
       dayStem: dayStemNow,
       monthBranch: effectivePillars.month?.hangul?.[1],
@@ -3099,13 +3100,15 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
       allStems: allStemsNow,
       allBranches: allBranchesNow,
       effectiveFiveElements,
+      manualStrengthLevel: record.manualStrengthLevel ?? null,
+      manualYongshinData: record.manualYongshinData ?? null,
       expertOptions: {
-        seasonalAdjustmentOff: false,
+        seasonalAdjustmentOff: fortuneOpts?.seasonalAdjustmentOff === true,
       },
       timingDaewoonHangul: curDw?.ganZhi.hangul,
       timingSeunHangul: seunEntry?.ganZhi.hangul,
     });
-  }, [effectiveFiveElements, effectivePillars, luckCycles, input.year]);
+  }, [effectiveFiveElements, effectivePillars, luckCycles, input.year, record.manualStrengthLevel, record.manualYongshinData, fortuneOpts?.seasonalAdjustmentOff]);
 
   const ruleInsights = sajuPipelineResult?.interpretation.ruleInsights ?? [];
   const structureType = sajuPipelineResult?.interpretation.structureType ?? "";
@@ -3217,9 +3220,11 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
 
   // ── 오늘운세: 오늘 날짜 기준 요약 데이터 ────────────────────────
   const todayFortune = useMemo(() => {
-    const now = new Date();
-    return getFortuneForDate(record, now.getFullYear(), now.getMonth() + 1, now.getDate());
-  }, [record]);
+    const refY = luckCycles.wolun.year;
+    const refM = luckCycles.wolun.month;
+    const refD = luckCycles.ilun.day;
+    return getFortuneForDate(record, refY, refM, refD);
+  }, [record, luckCycles]);
 
   const todayScoreRows = useMemo(() => {
     const dayLayer = todayFortune.luckLayers.find((l) => l.label === "일운") ?? todayFortune.luckLayers[todayFortune.luckLayers.length - 1];
@@ -3285,10 +3290,9 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
   }, [reportTab]);
 
   const shinsalLuckCtx = useMemo(() => {
-    const now = new Date();
-    const y = now.getFullYear();
-    const seun = luckCycles.seun.find((e) => e.year === y);
-    const age = y - input.year;
+    const refYear = luckCycles.wolun.year;
+    const seun = luckCycles.seun.find((e) => e.year === refYear) ?? luckCycles.seun[2];
+    const age = refYear - input.year;
     const dw0 = luckCycles.daewoon[0]?.startAge ?? 0;
     const adjustedDw = luckCycles.daewoon.map((entry, i) => ({
       ...entry,
@@ -3461,9 +3465,27 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
     return yuanGuoShinsalInterpretEntries.find((e) => e.id === yuanGuoInlineDetail.id) ?? null;
   }, [yuanGuoInlineDetail, yuanGuoShinsalInterpretEntries]);
 
-  const lifeFlowData = buildLifeFlowInsights(
-    { ...record, maritalStatus },
-    { finalShinsalNames: todayFinalShinsalNames }
+  const lifeFlowData = useMemo(
+    () =>
+      buildLifeFlowInsights(
+        { ...record, maritalStatus },
+        {
+          finalShinsalNames: todayFinalShinsalNames,
+          calendarYear: luckCycles.wolun.year,
+          calendarMonth: luckCycles.wolun.month,
+          calendarDay: luckCycles.ilun.day,
+          timingActivation: sajuPipelineResult?.timingActivation ?? null,
+        },
+      ),
+    [
+      record,
+      maritalStatus,
+      todayFinalShinsalNames,
+      luckCycles.wolun.year,
+      luckCycles.wolun.month,
+      luckCycles.ilun.day,
+      sajuPipelineResult?.timingActivation,
+    ],
   );
 
   const tenGodPairs = [
@@ -4215,6 +4237,21 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                 <p className="text-sm text-foreground leading-relaxed">
                   {getDayMasterSummaryFromStrength(dayStem, sajuPipelineResult?.adjusted?.effectiveStrengthLevel ?? "중화")}
                 </p>
+                {sajuPipelineResult?.interpretation?.gukguk?.name && (
+                  <p className="mt-2 text-sm text-foreground/90 leading-relaxed">
+                    파이프라인 격국(determineGukguk)은 「{sajuPipelineResult.interpretation.gukguk!.name}」로 정리됩니다.
+                    {sajuPipelineResult.interpretation.gukguk!.explanation?.[0]
+                      ? ` ${sajuPipelineResult.interpretation.gukguk!.explanation[0]}`
+                      : ""}
+                  </p>
+                )}
+                {sajuPipelineResult?.evaluations && (
+                  <p className="mt-1.5 text-[12px] text-muted-foreground leading-relaxed">
+                    원국 구조 지표: 관성 {sajuPipelineResult.evaluations.officerActivation.grade} · 배우자궁{" "}
+                    {sajuPipelineResult.evaluations.spousePalaceStability.grade} · 재성{" "}
+                    {sajuPipelineResult.evaluations.wealthActivation.grade}
+                  </p>
+                )}
               </div>
             </div>
           )}
@@ -4534,6 +4571,47 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
               />
             </div>
           </div>
+          {sajuPipelineResult?.timingActivation && sajuPipelineResult.evaluations && (
+            <div className="ds-card overflow-hidden shadow-none border-border/80">
+              <div className="border-b border-border px-4 pb-2 pt-4">
+                <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                  올해 구조·운 가중 (timingActivation)
+                </h3>
+                <p className="mt-1 text-[11px] text-muted-foreground leading-relaxed">
+                  원국 점수는 그대로 두고, 현재 대운·세운 간지로 활성도만 가중한 값입니다. 월운 연도({luckCycles.wolun.year}년) 기준 세운과 동일 입력입니다.
+                </p>
+              </div>
+              <div className="ds-card-pad space-y-2 text-[13px] leading-relaxed">
+                <p>
+                  <span className="font-semibold text-foreground">관성(연애·사회)</span> 지금{" "}
+                  {sajuPipelineResult.timingActivation.officerActivationNow}점 · 추세{" "}
+                  {sajuPipelineResult.timingActivation.officerActivationTrend}
+                  <span className="text-muted-foreground">
+                    {" "}
+                    (원국 {sajuPipelineResult.evaluations.officerActivation.grade})
+                  </span>
+                </p>
+                <p>
+                  <span className="font-semibold text-foreground">재성(현실·재물)</span> 지금{" "}
+                  {sajuPipelineResult.timingActivation.wealthActivationNow}점 · 추세{" "}
+                  {sajuPipelineResult.timingActivation.wealthActivationTrend}
+                  <span className="text-muted-foreground">
+                    {" "}
+                    (원국 {sajuPipelineResult.evaluations.wealthActivation.grade})
+                  </span>
+                </p>
+                <p>
+                  <span className="font-semibold text-foreground">배우자궁 안정</span> 지금{" "}
+                  {sajuPipelineResult.timingActivation.spousePalaceStabilityNow}점 · 추세{" "}
+                  {sajuPipelineResult.timingActivation.spouseActivationTrend}
+                  <span className="text-muted-foreground">
+                    {" "}
+                    (원국 {sajuPipelineResult.evaluations.spousePalaceStability.grade})
+                  </span>
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

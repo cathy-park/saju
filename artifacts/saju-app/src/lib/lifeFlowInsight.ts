@@ -2,6 +2,7 @@ import type { PersonRecord } from "./storage";
 import { getFinalPillars } from "./storage";
 import { getDayGanZhi, getYearGanZhi, getMonthGanZhi, calculateDaewoon } from "./luckCycles";
 import { getTenGod } from "./tenGods";
+import type { TimingActivationResult } from "./evaluations/luckTimingActivation";
 
 const STEM_ELEMENT: Record<string, string> = {
   갑: "목", 을: "목", 병: "화", 정: "화",
@@ -636,9 +637,49 @@ export interface LifeFlowInsightResult {
   shinsalInsight?: string;
 }
 
+export interface BuildLifeFlowInsightsOptions {
+  finalShinsalNames?: Set<string>;
+  /** 미지정 시 `new Date()`와 동일(기존 동작). 리포트에서는 luckCycles.wolun/ilun과 맞출 것. */
+  calendarYear?: number;
+  calendarMonth?: number;
+  calendarDay?: number;
+  /** 대운·세운 활성화 레이어 — 전체 요약 문장에 덧붙입니다. */
+  timingActivation?: TimingActivationResult | null;
+}
+
+function mergeTimingIntoOverall(
+  overall: OverallFlowSummary,
+  timing: TimingActivationResult | null | undefined,
+): OverallFlowSummary {
+  if (!timing) return overall;
+  const parts: string[] = [];
+  if (timing.officerActivationTrend === "상승") {
+    parts.push("올해 운에서 관계·사회적 역할(관성) 쪽 활성 가중이 오르는 흐름입니다.");
+  } else if (timing.officerActivationTrend === "하락") {
+    parts.push("올해 운에서 관성 가중은 약해져, 인연이 ‘저절로’ 굳기보다는 관계를 설계해야 하는 쪽에 가깝습니다.");
+  }
+  if (timing.wealthActivationTrend === "상승") {
+    parts.push("재성 활성 가중이 올라 현실·수입 흐름이 원국보다 다소 유리하게 붙는 편입니다.");
+  } else if (timing.wealthActivationTrend === "하락") {
+    parts.push("재성 활성 가중은 낮아, 무리한 지출·확장보다 현금·리스크 관리 쪽이 맞습니다.");
+  }
+  if (timing.spouseActivationTrend === "하락") {
+    parts.push("배우자궁 안정도는 운에서 흔들릴 수 있어, 관계 유지·약속 이행에 신경 쓸 때입니다.");
+  } else if (timing.spouseActivationTrend === "상승") {
+    parts.push("배우자궁(관계 기반) 안정 가중이 운에서 조금 보강되는 편입니다.");
+  }
+  if (parts.length === 0) return overall;
+  const extra = parts.join(" ");
+  return {
+    ...overall,
+    fullText: `${overall.fullText} ${extra}`,
+    activityFlow: `${overall.activityFlow} (${extra})`,
+  };
+}
+
 export function buildLifeFlowInsights(
   record: PersonRecord,
-  options?: { finalShinsalNames?: Set<string> }
+  options?: BuildLifeFlowInsightsOptions,
 ): LifeFlowInsightResult | null {
   const pillars = getFinalPillars(record);
   const dayStem = pillars.day?.hangul?.[0] ?? "";
@@ -649,9 +690,9 @@ export function buildLifeFlowInsights(
   const finalShinsalNames = options?.finalShinsalNames;
 
   const now = new Date();
-  const year = now.getFullYear();
-  const month = now.getMonth() + 1;
-  const day = now.getDate();
+  const year = options?.calendarYear ?? now.getFullYear();
+  const month = options?.calendarMonth ?? now.getMonth() + 1;
+  const day = options?.calendarDay ?? now.getDate();
 
   const dayGZ = getDayGanZhi(year, month, day);
   const monthGZ = getMonthGanZhi(year, month);
@@ -679,9 +720,12 @@ export function buildLifeFlowInsights(
     ? getShinsalInsight(finalShinsalNames) ?? undefined
     : undefined;
 
+  const overallBase = getOverallFlowSummary(ctx, maritalStatus);
+  const overall = mergeTimingIntoOverall(overallBase, options?.timingActivation);
+
   return {
     ctx,
-    overall: getOverallFlowSummary(ctx, maritalStatus),
+    overall,
     lifeFlows: getLifeFlowInsights(ctx, gender, maritalStatus, finalShinsalNames),
     relationshipTiming: getRelationshipFlowTiming(ctx, daywoonTGSeries, maritalStatus),
     connectionActivation: getConnectionActivation(ctx, gender, maritalStatus),

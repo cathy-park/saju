@@ -7,6 +7,9 @@ import { getFinalPillars } from "./storage";
 import type { FiveElementCount } from "./sajuEngine";
 import { computeBranchRelations } from "./branchRelations";
 import { getTenGod } from "./tenGods";
+import { getController, type FiveElKey } from "./element-color";
+import { computePersonPipelineSnapshot } from "./personPipelineSnapshot";
+import type { SajuPipelineResult } from "./sajuPipeline";
 
 // ── 기초 상수 ─────────────────────────────────────────────────────────────
 
@@ -361,6 +364,68 @@ function scoreYongshinDelta(
   return { delta, note };
 }
 
+function yongshinCompatRowsFromPipeline(pipe: SajuPipelineResult): { type: string; elements: string[] }[] {
+  const primary = pipe.adjusted.effectiveYongshin as FiveElKey;
+  const secondary = pipe.adjusted.effectiveYongshinSecondary as FiveElKey | undefined;
+  const gisin = getController(primary);
+  const rows: { type: string; elements: string[] }[] = [{ type: "용신", elements: [primary] }];
+  if (secondary) rows.push({ type: "희신", elements: [secondary] });
+  if (gisin) rows.push({ type: "기신", elements: [gisin] });
+  return rows;
+}
+
+function mergeYongshinCompatInput(
+  manual: PersonRecord["manualYongshinData"],
+  pipe: SajuPipelineResult | null,
+): { type: string; elements: string[] }[] | undefined {
+  if (manual && manual.length > 0) return manual;
+  if (pipe) return yongshinCompatRowsFromPipeline(pipe);
+  return undefined;
+}
+
+function buildStructureCompatDetails(
+  pipe1: SajuPipelineResult,
+  pipe2: SajuPipelineResult,
+  n1: string,
+  n2: string,
+): CompatibilityResult["details"] {
+  const g1 = pipe1.interpretation.gukguk?.name ?? "격국 미확정";
+  const g2 = pipe2.interpretation.gukguk?.name ?? "격국 미확정";
+  const o1 = pipe1.evaluations.officerActivation;
+  const o2 = pipe2.evaluations.officerActivation;
+  const s1 = pipe1.evaluations.spousePalaceStability;
+  const s2 = pipe2.evaluations.spousePalaceStability;
+  const w1 = pipe1.evaluations.wealthActivation;
+  const w2 = pipe2.evaluations.wealthActivation;
+  const t1 = pipe1.timingActivation;
+  const t2 = pipe2.timingActivation;
+  return [
+    { title: "구조 격국(파이프라인)", description: `${n1}: ${g1} · ${n2}: ${g2}`, isPositive: true },
+    {
+      title: "관성 작동(원국)",
+      description: `${n1} ${o1.score}점(${o1.grade}) vs ${n2} ${o2.score}점(${o2.grade})`,
+      isPositive: (o1.score + o2.score) / 2 >= 45,
+    },
+    {
+      title: "배우자궁 안정(원국)",
+      description: `${n1} ${s1.score}점(${s1.grade}) vs ${n2} ${s2.score}점(${s2.grade})`,
+      isPositive: (s1.score + s2.score) / 2 >= 45,
+    },
+    {
+      title: "재성 작동(원국)",
+      description: `${n1} ${w1.score}점(${w1.grade}) vs ${n2} ${w2.score}점(${w2.grade})`,
+      isPositive: (w1.score + w2.score) / 2 >= 45,
+    },
+    {
+      title: "올해 운 가중(타이밍)",
+      description:
+        `${n1}: 관${t1.officerActivationTrend}·재${t1.wealthActivationTrend}·궁${t1.spouseActivationTrend} / ` +
+        `${n2}: 관${t2.officerActivationTrend}·재${t2.wealthActivationTrend}·궁${t2.spouseActivationTrend}`,
+      isPositive: true,
+    },
+  ];
+}
+
 // ═══════════════════════════════════════════════════════════════════════
 //  구조적 등급 조정 (tier shift)
 // ═══════════════════════════════════════════════════════════════════════
@@ -552,6 +617,9 @@ export function calculateCompatibilityScore(
   const el1 = elemsFromPillars(p1);
   const el2 = elemsFromPillars(p2);
 
+  const pipe1 = computePersonPipelineSnapshot(person1);
+  const pipe2 = computePersonPipelineSnapshot(person2);
+
   // ── Compute 7 adjustment deltas ──
   const dm   = scoreDayMasterDelta(s1, s2);
   const sp   = scoreSpousePalaceDelta(b1, b2);
@@ -560,8 +628,8 @@ export function calculateCompatibilityScore(
   const ec   = scoreElementComplementarityDelta(el1, el2);
   const tg   = scoreTenGodDelta(s1, s2);
   const yong = scoreYongshinDelta(
-    person1.manualYongshinData, el2,
-    person2.manualYongshinData, el1,
+    mergeYongshinCompatInput(person1.manualYongshinData, pipe1), el2,
+    mergeYongshinCompatInput(person2.manualYongshinData, pipe2), el1,
   );
 
   const adjustmentSteps: AdjustmentStep[] = [
@@ -614,6 +682,7 @@ export function calculateCompatibilityScore(
     { title: "오행 보완",  description: ec.note,   isPositive: ec.delta >= 0 },
     { title: "십성 관계",  description: tg.note,   isPositive: tg.delta >= 0 },
     { title: "용신 보완",  description: yong.note, isPositive: yong.delta >= 0 },
+    ...(pipe1 && pipe2 ? buildStructureCompatDetails(pipe1, pipe2, person1.birthInput.name, person2.birthInput.name) : []),
   ];
 
   return {
