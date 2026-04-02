@@ -41,6 +41,106 @@ function fmt2(n: number): string {
   return Number(n).toFixed(2);
 }
 
+/** 년주·월주·일주·시주 → 디버그 위치 라벨 */
+const PILLAR_POS: Record<string, { gan: string; ji: string; whole: string }> = {
+  년주: { gan: "년천간", ji: "년지", whole: "년주" },
+  월주: { gan: "월천간", ji: "월지", whole: "월주" },
+  일주: { gan: "일천간", ji: "일지", whole: "일주" },
+  시주: { gan: "시천간", ji: "시지", whole: "시주" },
+};
+
+function collectShinsalPositionLines(shinsalFull: { pillar: string; stemItems: string[]; branchItems: string[]; pillarItems: string[] }[]): string[] {
+  const rows: string[] = [];
+  const seen = new Set<string>();
+  for (const ps of shinsalFull) {
+    const pos = PILLAR_POS[ps.pillar];
+    if (!pos) continue;
+    for (const n of ps.branchItems) {
+      const key = `${n}|${pos.ji}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      rows.push(`  ${n} (${pos.ji})`);
+    }
+    for (const n of ps.stemItems) {
+      const key = `${n}|${pos.gan}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      rows.push(`  ${n} (${pos.gan})`);
+    }
+    for (const n of ps.pillarItems) {
+      const key = `${n}|${pos.whole}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      rows.push(`  ${n} (${pos.whole})`);
+    }
+  }
+  rows.sort((a, b) => a.localeCompare(b, "ko"));
+  return rows;
+}
+
+function buildYongshinDebugAnchorLines(
+  record: PersonRecord,
+  pipelineSnapshot: ReturnType<typeof computePersonPipelineSnapshot> | null,
+): string[] {
+  const out: string[] = [];
+  const manual =
+    !!(record.manualYongshinData && record.manualYongshinData.length > 0) || !!record.manualYongshin?.trim();
+  if (manual) {
+    out.push("  (참고) 수동 용신·용신 데이터가 있으면 화면/요약은 수동값 우선. 아래는 파이프라인 억부·조후 산출 흐름입니다.");
+  }
+  if (!pipelineSnapshot) {
+    out.push("  파이프라인 스냅샷 없음 — 용신 근거 생략.");
+    return out;
+  }
+  const adj = pipelineSnapshot.adjusted;
+  const sd = adj.strengthResult.strengthDebug;
+  const level = adj.effectiveStrengthLevel;
+  const y = adj.effectiveYongshin;
+  const h = adj.effectiveYongshinSecondary;
+  const yr = adj.yongshinResult;
+  const leak = sd ? fmt2(sd.leakagePenalty) : null;
+  const leakNote =
+    sd && sd.leakagePenalty <= -0.01
+      ? `설기(식상·재·관 설기) 차감 ${leak} 반영 → 강약 단계 산출에 반영`
+      : sd
+        ? `설기 차감 ${leak} (미미)`
+        : "";
+  out.push(`  강약 단계: ${level}${leakNote ? ` · ${leakNote}` : ""}`);
+  out.push(
+    `  억부용신 규칙(지장간 가중 count 기준): ${yr.tenGodGroup} 우선 → 용신 ${y}${h ? `, 희신(보조) ${h}` : ""} (신뢰도 ${yr.confidence})`,
+  );
+  const sn = adj.seasonalAdjustment;
+  out.push(
+    sn.needsFireBoost || sn.needsWaterBoost
+      ? `  조후 보정 발동: ${sn.adjustmentNote}`
+      : `  조후: ${sn.adjustmentNote}`,
+  );
+  return out;
+}
+
+function buildDaewoonDebugLine(
+  currentDaewoon: { ganZhi: { stem: string; branch: string; hangul?: string } } | undefined,
+  yong: string,
+  hee: string,
+): string | null {
+  if (!currentDaewoon) return null;
+  const { stem, branch } = currentDaewoon.ganZhi;
+  const hangul = currentDaewoon.ganZhi.hangul ?? `${stem}${branch}`;
+  const sEl = STEM_EL[stem] ?? "";
+  const bEl = STEM_EL[branch] ?? "";
+  const hits: string[] = [];
+  if (sEl === yong) hits.push(`${sEl}(용신) 천간 유입`);
+  else if (hee && sEl === hee) hits.push(`${sEl}(희신) 천간 유입`);
+  if (bEl === yong) hits.push(`${bEl}(용신) 지지 유입`);
+  else if (hee && bEl === hee) hits.push(`${bEl}(희신) 지지 유입`);
+  const rest: string[] = [];
+  if (sEl && sEl !== yong && (!hee || sEl !== hee)) rest.push(`${sEl}(천간)`);
+  if (bEl && bEl !== yong && (!hee || bEl !== hee)) rest.push(`${bEl}(지지)`);
+  const mid = hits.length > 0 ? hits.join(" + ") : "용신·희신과 직접 일치하는 오행 없음(간지 조합은 아래 참고)";
+  const tail = rest.length > 0 ? ` · 운에서 추가 기운: ${rest.join(", ")}` : "";
+  return `  ${hangul} 대운 → ${mid}${tail}`;
+}
+
 function getElementBalanceSummary(counts: FiveElementCount): string {
   const total = Object.values(counts).reduce((a, b) => a + b, 0) || 1;
   const missing = (["목", "화", "토", "금", "수"] as const).filter((el) => (counts[el] ?? 0) === 0);
@@ -468,6 +568,48 @@ export function buildPersonClipboardText(record: PersonRecord): string {
   lines.push("본 분석에는 강약 보정(설기·음간 포함),");
   lines.push("관계·재물 작동 점수,");
   lines.push("대운·세운 활성화 가중이 적용되었습니다.");
+
+  // ── debug anchor (append-only: 기존 payload 순서·필드 유지) ─────────
+  lines.push("");
+  lines.push("[debug anchor: 신살 발생 위치]");
+  const shinsalPosLines = collectShinsalPositionLines(shinsalFull);
+  if (shinsalPosLines.length > 0) {
+    for (const l of shinsalPosLines) lines.push(l);
+  } else {
+    lines.push("  (해당 없음 또는 신살 미검출)");
+  }
+
+  lines.push("");
+  lines.push("[debug anchor: 격국 성립 근거]");
+  const gkDbg = pipelineSnapshot?.interpretation.gukguk;
+  if (gkDbg) {
+    const tEl = gkDbg.transparentStem ? STEM_EL[gkDbg.transparentStem] : "";
+    lines.push(
+      `  요약: ${gkDbg.name} (월지 ${gkDbg.monthBranch}${gkDbg.transparentStem ? ` · 지장간 투출 천간 ${gkDbg.transparentStem}${tEl ? `=${tEl}` : ""}` : ""})`,
+    );
+    for (const ex of gkDbg.explanation ?? []) lines.push(`  ${ex}`);
+  } else {
+    lines.push("  투출 조건 미충족 등으로 격국 미확정(determineGukguk → null).");
+  }
+
+  lines.push("");
+  lines.push("[debug anchor: 용신 판단 근거]");
+  for (const l of buildYongshinDebugAnchorLines(record, pipelineSnapshot)) lines.push(l);
+
+  lines.push("");
+  lines.push("[debug anchor: 현재 대운 영향]");
+  const dwDbg = buildDaewoonDebugLine(currentDaewoon, yongshinEl, heeshinEl ?? "");
+  if (dwDbg) lines.push(dwDbg);
+  else lines.push("  현재 대운 구간 없음 또는 데이터 없음.");
+
+  lines.push("");
+  lines.push("[debug anchor: 배우자궁 안정도 산출 근거]");
+  const spouseDbg = evaluations?.spousePalaceStability?.debug;
+  if (spouseDbg && spouseDbg.length > 0) {
+    for (const d of spouseDbg) lines.push(`  ${d}`);
+  } else {
+    lines.push("  (평가 블록 없음 또는 일지 미상으로 중립 처리)");
+  }
 
   return lines.join("\n");
 }
