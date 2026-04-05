@@ -82,11 +82,13 @@ import {
 import type { InfoSheetType } from "@/components/InfoBottomSheet";
 import {
   analyzeBranchRelations,
+  computeBranchRelations,
   RELATION_COLORS,
   RELATION_DESC,
   RELATION_DETAIL,
   type BranchRelation,
 } from "@/lib/branchRelations";
+import type { RelationshipWealthEvaluations } from "@/lib/evaluations/relationshipWealthEvaluation";
 import {
   getTwelveStage,
   TWELVE_STAGE_COLOR,
@@ -2755,6 +2757,53 @@ function wealthBandBadgeClass(band: string): string {
   }
 }
 
+/** 재물·배우자 구조 카드 공통 토큰 (radius·간격·타이틀·그리드·종합 박스 정렬) */
+const STRUCTURE_CARD = {
+  emerald: {
+    shell: "rounded-xl border border-emerald-200/55 bg-emerald-50/20 px-3 py-2.5 shadow-none",
+    kicker: "text-[11px] font-bold uppercase tracking-wide text-emerald-800/90",
+    sub: "text-[10px] text-muted-foreground mt-0.5",
+    sectionEyebrow: "text-[11px] font-bold text-muted-foreground uppercase tracking-wide",
+    gridBtn:
+      "rounded-lg border-2 px-1.5 py-2.5 text-center transition-colors flex flex-col items-stretch gap-1 touch-manipulation",
+    gridOn: "border-emerald-600 bg-emerald-100/65 shadow-sm",
+    gridOff: "border-emerald-100/90 bg-white/70 active:bg-emerald-50/50",
+    labelOn: "text-[11px] font-semibold text-emerald-950",
+    labelOff: "text-[11px] font-semibold text-muted-foreground",
+    scoreOn: "text-[15px] font-black tabular-nums self-center text-emerald-900",
+    scoreOff: "text-[15px] font-black tabular-nums self-center text-foreground",
+    expandBox: "mt-2.5 rounded-lg border-2 border-emerald-400/70 bg-white/90 px-3 py-2.5 shadow-sm",
+    expandTitle: "text-[11px] font-bold text-emerald-950 tracking-wide",
+    expandBand: "font-semibold text-emerald-800/90",
+    synthBox: "mt-2.5 rounded-lg border border-emerald-200/80 bg-emerald-50/50 px-3 py-2.5",
+    synthTitle: "text-[11px] font-bold text-emerald-950 uppercase tracking-wide",
+    foot: "mt-2 border-t border-border/50 pt-2 text-[11px] leading-snug text-muted-foreground",
+    listDisc: "marker:text-emerald-700",
+  },
+  rose: {
+    shell: "rounded-xl border border-rose-200/55 bg-rose-50/20 px-3 py-2.5 shadow-none",
+    kicker: "text-[11px] font-bold uppercase tracking-wide text-rose-800/90",
+    sub: "text-[10px] text-muted-foreground mt-0.5",
+    sectionEyebrow: "text-[11px] font-bold text-muted-foreground uppercase tracking-wide",
+    gridBtn:
+      "rounded-lg border-2 px-1.5 py-2.5 text-center transition-colors flex flex-col items-stretch gap-1 touch-manipulation",
+    gridOn: "border-rose-600 bg-rose-100/65 shadow-sm",
+    gridOff: "border-rose-100/90 bg-white/70 active:bg-rose-50/50",
+    labelOn: "text-[11px] font-semibold text-rose-950",
+    labelOff: "text-[11px] font-semibold text-muted-foreground",
+    scoreOn: "text-[15px] font-black tabular-nums self-center text-rose-900",
+    scoreOff: "text-[15px] font-black tabular-nums self-center text-foreground",
+    expandBox: "mt-2.5 rounded-lg border-2 border-rose-400/70 bg-white/90 px-3 py-2.5 shadow-sm",
+    expandTitle: "text-[11px] font-bold text-rose-950 tracking-wide",
+    expandBand: "font-semibold text-rose-800/90",
+    synthBox: "mt-2.5 rounded-lg border border-rose-200/80 bg-rose-50/50 px-3 py-2.5",
+    synthTitle: "text-[11px] font-bold text-rose-950 uppercase tracking-wide",
+    foot: "mt-2 border-t border-border/50 pt-2 text-[11px] leading-snug text-muted-foreground",
+    listDisc: "marker:text-rose-700",
+    summaryDt: "text-[10px] font-bold text-rose-900/85 uppercase tracking-wide",
+  },
+} as const;
+
 function clampWealthAxisFallback(n: number): number {
   if (!Number.isFinite(n)) return 50;
   return Math.max(0, Math.min(100, Math.round(n)));
@@ -2791,7 +2840,7 @@ function wealthTypeParagraph(classification: string): string {
   const stem = classification.replace(/ 재물형$/, "").replace(/ 재물$/, "");
   const byStem = WEALTH_TYPE_STEM_DESCRIPTIONS[stem];
   if (byStem) return byStem;
-  return "사주 구조에 따라 재물이 움직이는 방식이 달라집니다. 아래 세 가지(채널·감당·축적)를 함께 보시면 이해가 쉬워요.";
+  return "사주 구조에 따라 재물이 움직이는 방식이 달라집니다. 아래 세 가지(채널·유지·축적)를 함께 보시면 이해가 쉬워요.";
 }
 
 /** 2차 유형 설명 (1차 유형 + 팔자 힌트로 선택) */
@@ -2915,7 +2964,7 @@ const WEALTH_AXIS_ONE_LINE: Record<WealthAxisKey, string> = {
 
 const WEALTH_AXIS_LABEL: Record<WealthAxisKey, string> = {
   channel: "채널",
-  capacity: "감당",
+  capacity: "유지",
   accumulation: "축적",
 };
 
@@ -2954,7 +3003,7 @@ function getWealthAxisDetail(axis: WealthAxisKey, band: string, useNow: boolean)
     }
     if (band === "보통") {
       const a = "들어온 돈을 지키는 힘은 보통 수준입니다.";
-      const b = "지출 습관과 현금흐름만 정기적으로 점검해도 감당력이 단단해지기 쉽습니다.";
+      const b = "지출 습관과 현금흐름만 정기적으로 점검해도 유지력이 단단해지기 쉽습니다.";
       return `${useNow ? "현재는 " : ""}${a}\n${b}`;
     }
     if (band === "낮음") {
@@ -3010,7 +3059,7 @@ function buildWealthSynthesis(
     return {
       paragraphs: [
         now(
-          `수입 기회(채널)와 안정성(감당)은 좋은 편이며${
+          `수입 기회(채널)와 안정성(유지)은 좋은 편이며${
             prod ? " 노동 기반 생산형 재물 구조가 잘 형성되어 있습니다." : ` 「${classification}」 패턴에 맞는 수입 기반이 갖춰져 있습니다.`
           }`,
         ),
@@ -3044,7 +3093,7 @@ function buildWealthSynthesis(
     return {
       paragraphs: [
         now("수입 기회는 있는 편인데, 지출·리스크에 흔들리기 쉬운 구간일 수 있습니다."),
-        "예산·현금흐름·비상금부터 정리하면 감당 점수가 같이 오르는 경우가 많습니다.",
+        "예산·현금흐름·비상금부터 정리하면 유지 점수가 같이 오르는 경우가 많습니다.",
       ],
     };
   }
@@ -3063,8 +3112,8 @@ function buildWealthSynthesis(
       paragraphs: [
         now("채널은 ‘중간’ 단계입니다. 한두 가지 수입 루트만 골라 집중하면 중상 이상으로 끌어올리기 좋습니다."),
         capStrong
-          ? "감당은 받쳐주고 있어, 루트 정리만 해도 재물 체감이 빨리 나아질 수 있어요."
-          : "감당·축적과 맞물려 보시면, 어디를 먼저 올릴지 우선순위가 보입니다.",
+          ? "유지는 받쳐주고 있어, 루트 정리만 해도 재물 체감이 빨리 나아질 수 있어요."
+          : "유지·축적과 맞물려 보시면, 어디를 먼저 올릴지 우선순위가 보입니다.",
       ],
     };
   }
@@ -3072,7 +3121,7 @@ function buildWealthSynthesis(
   if (capMid && accWeak) {
     return {
       paragraphs: [
-        now("감당은 무난한데 축적이 약하게 보입니다. 벌기만큼 ‘남기는 구조’를 하나 붙이는 것이 핵심입니다."),
+        now("유지는 무난한데 축적이 약하게 보입니다. 벌기만큼 ‘남기는 구조’를 하나 붙이는 것이 핵심입니다."),
         "멤버십·콘텐츠·소액 분산 투자처럼 반복 수익이 나는 축을 하나 만드는 것을 추천합니다.",
       ],
       bullets: [...WEALTH_SYNTHESIS_SUGGESTIONS],
@@ -3091,8 +3140,175 @@ function buildWealthSynthesis(
 
   return {
     paragraphs: [
-      `채널「${channelBand}」, 감당「${capacityBand}」, 축적「${accumulationBand}」 조합으로 읽힙니다.`,
+      `채널「${channelBand}」, 유지「${capacityBand}」, 축적「${accumulationBand}」 조합으로 읽힙니다.`,
       `「${classification}」 특성 안에서 가장 낮게 느껴지는 축을 먼저 다지면, 전체 재물 체감이 좋아지기 쉽습니다.`,
+    ],
+  };
+}
+
+function dayBranchStressPenalty(dayBranch: string, allBranches: string[]): number {
+  const uniq = [...new Set(allBranches.filter(Boolean))];
+  if (!dayBranch || uniq.length < 2) return 0;
+  const rels = computeBranchRelations(uniq);
+  let pen = 0;
+  for (const r of rels) {
+    if (r.branch1 !== dayBranch && r.branch2 !== dayBranch) continue;
+    if (r.type === "지지충" || r.type === "충") pen += 14;
+    if (r.type === "형") pen += 9;
+    if (r.type === "파" || r.type === "해") pen += 6;
+  }
+  return Math.min(34, pen);
+}
+
+function computeSpouseAxisScores(input: {
+  dayStem: string;
+  dayBranch: string;
+  allChars: string[];
+  allBranches: string[];
+  counts: FiveElementCount;
+  evaluations: RelationshipWealthEvaluations | null | undefined;
+  shinsalNames: Set<string>;
+  spouseElement?: string;
+}): { wealthAttr: number; stability: number; charm: number } {
+  const ev = input.evaluations;
+  const wAct = ev?.wealthActivation?.score ?? 52;
+  const oAct = ev?.officerActivation?.score ?? 52;
+  const sPal = ev?.spousePalaceStability?.score ?? 52;
+  const stem = input.dayStem;
+  const dayB = input.dayBranch;
+  let jaeBoost = 0;
+  if (stem && dayB) {
+    const tg = getTenGod(stem, dayB);
+    if (tg && JAE_SET.has(tg)) jaeBoost = 9;
+  }
+  let 재력 = 0.42 * wAct + 0.28 * oAct + 0.22 * sPal + jaeBoost;
+  재력 = Math.max(0, Math.min(100, Math.round(재력)));
+
+  const stress = dayBranchStressPenalty(dayB, input.allBranches);
+  const inj = countTenGodsInChars(stem, input.allChars, IN_SET);
+  let inAdj = 0;
+  if (inj >= 1 && inj <= 3) inAdj = 7;
+  else if (inj === 0) inAdj = -6;
+  else inAdj = -3;
+  let stability = 0.52 * sPal + 0.26 * oAct + 0.12 * (100 - stress) + inAdj;
+  stability = Math.max(0, Math.min(100, Math.round(stability)));
+
+  const sik = countTenGodsInChars(stem, input.allChars, SIK_SANG_SET);
+  const total = Object.values(input.counts).reduce((a, b) => a + b, 0) || 1;
+  const metalWater = (input.counts.금 + input.counts.수) / total;
+  let charm = 34 + Math.min(26, sik * 5) + metalWater * 32;
+  if (input.shinsalNames.has("도화")) charm += 15;
+  if (input.shinsalNames.has("홍염")) charm += 12;
+  const spEl = input.spouseElement;
+  if (spEl === "금" || spEl === "화") charm += 5;
+  charm = Math.max(0, Math.min(100, Math.round(charm)));
+
+  return { wealthAttr: 재력, stability, charm };
+}
+
+type SpouseAxisKey = "wealthAttr" | "stability" | "charm";
+
+const SPOUSE_AXIS_LABEL: Record<SpouseAxisKey, string> = {
+  wealthAttr: "재력",
+  stability: "성격 안정성",
+  charm: "외모·이미지 매력",
+};
+
+const SPOUSE_AXIS_ONE_LINE: Record<SpouseAxisKey, string> = {
+  wealthAttr: "배우자궁 재성·관성 안정도와 재성 위치·세기를 반영한 물질·생활 기반 지표입니다.",
+  stability: "관성·인성 균형, 충·형 부담, 배우자궁 안정도를 반영한 성향·유지 지표입니다.",
+  charm: "식상·도화·홍염·금·수 기운과 배우자궁 미감 힌트를 반영한 이미지 지표입니다.",
+};
+
+function spouseAxisBand(axis: SpouseAxisKey, score: number): string {
+  if (axis === "wealthAttr") return wealthCapacityBand(score);
+  return wealthChannelBand(score);
+}
+
+function getSpouseAxisDetail(axis: SpouseAxisKey, band: string, useNow: boolean): string {
+  if (axis === "wealthAttr") {
+    if (band === "양호") {
+      return `${useNow ? "현재는 " : ""}배우자궁과 재성 작동이 받쳐줘 현실적 재력·생활 기반이 잡히기 쉽습니다.\n관성 안정과 재성 위치가 맞물려 ‘같이 살림을 굴리기 좋은’ 흐름으로 읽힙니다.`;
+    }
+    if (band === "보통") {
+      return `${useNow ? "현재는 " : ""}재력 지표는 중간대입니다. 수입 구조·역할 분담을 명확히 하면 체감이 좋아질 수 있어요.\n재성이 약해 보이면 식상·용신 쪽 보완을 함께 보세요.`;
+    }
+    return `${useNow ? "현재는 " : ""}물질 기반이 들쭉날쭉하게 느껴질 수 있습니다.\n배우자궁 충·형과 재성 고립 여부를 점검하고, 현금흐름부터 잡는 것이 우선입니다.`;
+  }
+  if (axis === "stability") {
+    if (band === "높음" || band === "중상") {
+      return `${useNow ? "현재는 " : ""}관성·인성 균형과 배우자궁 안정도가 좋아 정서적 균형과 유지력이 탄탄한 편입니다.\n갈등이 있어도 대화로 복구하기 쉬운 구조로 읽힙니다.`;
+    }
+    if (band === "중") {
+      return `${useNow ? "현재는 " : ""}성향 안정성은 중간입니다. 규칙·역할만 정리하면 한 단계 올라가기 좋습니다.\n일지 충·형이 있으면 속도 조절과 신뢰 쌓기가 중요합니다.`;
+    }
+    if (band === "낮음" || band === "매우 낮음") {
+      return `${useNow ? "현재는 " : ""}정서·관계 유지에 에너지가 많이 드는 구간일 수 있습니다.\n충·형·파·해 부담을 함께 보고, 짧은 주기의 점검 대화가 도움이 됩니다.`;
+    }
+    return `성격 안정성은 「${band}」 구간입니다. 관성·인성 분포와 배우자궁 긴장을 함께 참고하세요.`;
+  }
+  if (axis === "charm") {
+    if (band === "높음" || band === "중상") {
+      return `${useNow ? "현재는 " : ""}식상·도화·홍염·금·수 기운이 받쳐 첫인상·이미지 매력이 살아나기 쉽습니다.\n만남 초반 호감 형성에 유리한 편으로 읽힙니다.`;
+    }
+    if (band === "중") {
+      return `${useNow ? "현재는 " : ""}외모·이미지는 중간대입니다. 스타일·콘텐츠·말투만 정돈해도 인상이 올라가기 쉽습니다.\n시간이 지날수록 매력이 드러나는 타입일 수 있어요.`;
+    }
+    return `${useNow ? "현재는 " : ""}첫인상보다 안정·신뢰 쪽 매력이 더 큰 편으로 읽힐 수 있습니다.\n도화·홍염·식상 보강과 금·수 기운 균형을 보면 개선 여지가 보입니다.`;
+  }
+  return "축 설명을 불러오지 못했습니다.";
+}
+
+function spouseUseNowNarrative(wb: string, sb: string, cb: string): boolean {
+  const stabHi = sb === "높음" || sb === "중상";
+  const stabMid = sb === "중";
+  const charmMid = cb === "중상" || cb === "중";
+  const charmLo = cb === "낮음" || cb === "매우 낮음";
+  if (stabHi && (charmMid || charmLo)) return true;
+  if (stabMid && charmLo) return true;
+  if (wb === "낮음" && (sb === "높음" || sb === "중상")) return true;
+  return false;
+}
+
+function buildSpouseSynthesis(
+  wealthBand: string,
+  stabilityBand: string,
+  charmBand: string,
+  useNow: boolean,
+): { paragraphs: string[] } {
+  const stabHi = stabilityBand === "높음" || stabilityBand === "중상";
+  const charmMid = charmBand === "중상" || charmBand === "중";
+  const charmLo = charmBand === "낮음" || charmBand === "매우 낮음";
+  const now = (s: string) => (useNow ? (s.startsWith("현재") ? s : `현재는 ${s}`) : s.replace(/^현재는\s+/, ""));
+
+  if (stabHi && charmMid) {
+    return {
+      paragraphs: [
+        now("현실적이고 안정적인 배우자 구조가 형성되기 쉬우며, 정서적 균형과 관계 유지력이 좋은 편입니다."),
+        "다만 외모·이미지 매력 요소는 중간 수준이므로, 초기 호감 형성보다 관계 안정 이후 매력이 강화되는 유형입니다.",
+      ],
+    };
+  }
+  if (stabHi && charmLo) {
+    return {
+      paragraphs: [
+        now("관계 유지력과 현실적 안정성은 강한 편입니다."),
+        "외모·이미지 매력은 상대적으로 여유가 있으니, 표현·스타일·취향 공유로 초반 호감을 보완하면 좋습니다.",
+      ],
+    };
+  }
+  if ((stabilityBand === "낮음" || stabilityBand === "매우 낮음") && (charmBand === "높음" || charmBand === "중상")) {
+    return {
+      paragraphs: [
+        now("첫인상·매력은 살아 있으나, 정서·관계 유지에는 더 많은 합의가 필요할 수 있습니다."),
+        "속도 조절과 기대치 정리가 안정적으로 가는 데 도움이 됩니다.",
+      ],
+    };
+  }
+  return {
+    paragraphs: [
+      now(`재력「${wealthBand}」, 성격 안정성「${stabilityBand}」, 외모·이미지「${charmBand}」 조합으로 읽힙니다.`),
+      "가장 낮게 보이는 축부터 다지면 전체 배우자 구조 체감이 좋아지기 쉽습니다.",
     ],
   };
 }
@@ -3158,49 +3374,148 @@ function YuanSpouseStructureCard({
   spousePalace,
   relationshipPattern,
   spouseStabilityGrade,
+  dayStem,
+  dayBranch,
+  allChars,
+  allBranches,
+  counts,
+  evaluations,
+  shinsalNames,
 }: {
   monthBranch?: string;
   spousePalace: SpousePalaceInfo | null;
   relationshipPattern: RelationshipPattern | null;
   spouseStabilityGrade: string | null;
+  dayStem: string;
+  dayBranch: string;
+  allChars: string[];
+  allBranches: string[];
+  counts: FiveElementCount;
+  evaluations: RelationshipWealthEvaluations | null | undefined;
+  shinsalNames: Set<string>;
 }) {
-  const s = buildYuanSpouseStructureInsight(
+  const [openAxis, setOpenAxis] = useState<SpouseAxisKey | null>(null);
+  const tr = STRUCTURE_CARD.rose;
+  const summary = buildYuanSpouseStructureInsight(
     monthBranch,
     spousePalace,
     relationshipPattern,
     spouseStabilityGrade,
   );
+  const scores = computeSpouseAxisScores({
+    dayStem,
+    dayBranch,
+    allChars,
+    allBranches,
+    counts,
+    evaluations,
+    shinsalNames,
+    spouseElement: spousePalace?.element,
+  });
+  const wB = spouseAxisBand("wealthAttr", scores.wealthAttr);
+  const sB = spouseAxisBand("stability", scores.stability);
+  const cB = spouseAxisBand("charm", scores.charm);
+  const axisCells: { key: SpouseAxisKey; label: string; score: number; band: string }[] = [
+    { key: "wealthAttr", label: SPOUSE_AXIS_LABEL.wealthAttr, score: scores.wealthAttr, band: wB },
+    { key: "stability", label: SPOUSE_AXIS_LABEL.stability, score: scores.stability, band: sB },
+    { key: "charm", label: SPOUSE_AXIS_LABEL.charm, score: scores.charm, band: cB },
+  ];
+  const useNow = spouseUseNowNarrative(wB, sB, cB);
+  const spouseSynth = buildSpouseSynthesis(wB, sB, cB, useNow);
+  const openBand = openAxis ? axisCells.find((c) => c.key === openAxis)?.band : null;
+
+  function toggleAxis(key: SpouseAxisKey) {
+    setOpenAxis((prev) => (prev === key ? null : key));
+  }
+
   return (
-    <div className="rounded-xl border border-rose-200/65 bg-gradient-to-br from-rose-50/50 to-pink-50/30 px-3 py-2.5 shadow-none">
+    <div className={tr.shell}>
       <div className="flex items-start justify-between gap-2">
         <div>
-          <p className="text-[11px] font-bold uppercase tracking-wide text-rose-800/90">원국 기반 배우자 구조</p>
-          <p className="text-[10px] text-muted-foreground mt-0.5">일지·월지·관계 패턴 요약</p>
+          <p className={tr.kicker}>원국 기반 배우자 구조</p>
+          <p className={tr.sub}>일지·월지·관계 패턴 요약</p>
         </div>
       </div>
-      <dl className="mt-2.5 space-y-2 text-[12px] leading-relaxed">
-        <div>
-          <dt className="text-[10px] font-bold text-rose-900/85 uppercase tracking-wide">배우자 유형</dt>
-          <dd className="mt-0.5 text-foreground font-semibold">{s.spouseType}</dd>
+      <div className="mt-2 rounded-lg border border-rose-200/70 bg-white/55 px-3 py-2.5">
+        <p className={cn(tr.sectionEyebrow, "mb-1.5")}>배우자 유형 요약</p>
+        <dl className="space-y-2 text-[12px] leading-relaxed">
+          <div>
+            <dt className={tr.summaryDt}>배우자 유형</dt>
+            <dd className="mt-0.5 text-foreground font-semibold">{summary.spouseType}</dd>
+          </div>
+          <div>
+            <dt className={tr.summaryDt}>관계 구조 특징</dt>
+            <dd className="mt-0.5 text-foreground/92">{summary.relationFeature}</dd>
+          </div>
+          <div>
+            <dt className={tr.summaryDt}>만남 경로 유형</dt>
+            <dd className="mt-0.5 text-foreground/92">{summary.meetPath}</dd>
+          </div>
+          <div>
+            <dt className={tr.summaryDt}>배우자 성향 특징</dt>
+            <dd className="mt-0.5 text-foreground/92">{summary.spouseTendency}</dd>
+          </div>
+        </dl>
+      </div>
+      <div className="mt-2 flex flex-wrap items-baseline gap-x-1 gap-y-0">
+        <span className="text-[13px] font-semibold text-foreground">배우자 구조 점수</span>
+      </div>
+      <div className="mt-2.5 grid grid-cols-3 gap-2">
+        {axisCells.map(({ key, label, score, band }) => {
+          const sel = openAxis === key;
+          return (
+            <button
+              key={key}
+              type="button"
+              onClick={() => toggleAxis(key)}
+              aria-expanded={sel}
+              aria-pressed={sel}
+              className={cn(tr.gridBtn, sel ? tr.gridOn : tr.gridOff)}
+            >
+              <span className={sel ? tr.labelOn : tr.labelOff}>{label}</span>
+              <p className="text-[9px] leading-snug text-muted-foreground line-clamp-4 min-h-[2.5rem]">
+                {SPOUSE_AXIS_ONE_LINE[key]}
+              </p>
+              <span className={sel ? tr.scoreOn : tr.scoreOff}>{score}</span>
+              <span
+                className={cn(
+                  "self-center mt-0.5 inline-flex max-w-full items-center justify-center rounded-full px-2 py-0.5 text-[10px] font-bold leading-tight",
+                  wealthBandBadgeClass(band),
+                )}
+              >
+                {band}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      {openAxis != null && openBand != null ? (
+        <div className={tr.expandBox} role="region" aria-live="polite">
+          <p className={tr.expandTitle}>
+            {SPOUSE_AXIS_LABEL[openAxis]}{" "}
+            <span className={tr.expandBand}>({openBand})</span>
+          </p>
+          <p className="mt-1.5 text-[12px] leading-relaxed text-foreground whitespace-pre-line">
+            {getSpouseAxisDetail(openAxis, openBand, useNow)}
+          </p>
         </div>
-        <div>
-          <dt className="text-[10px] font-bold text-rose-900/85 uppercase tracking-wide">관계 구조 특징</dt>
-          <dd className="mt-0.5 text-foreground/92">{s.relationFeature}</dd>
-        </div>
-        <div>
-          <dt className="text-[10px] font-bold text-rose-900/85 uppercase tracking-wide">만남 경로 유형</dt>
-          <dd className="mt-0.5 text-foreground/92">{s.meetPath}</dd>
-        </div>
-        <div>
-          <dt className="text-[10px] font-bold text-rose-900/85 uppercase tracking-wide">배우자 성향 특징</dt>
-          <dd className="mt-0.5 text-foreground/92">{s.spouseTendency}</dd>
-        </div>
-      </dl>
+      ) : null}
+      <div className={tr.synthBox}>
+        <p className={tr.synthTitle}>종합 배우자 구조 분석</p>
+        {spouseSynth.paragraphs.map((p, i) => (
+          <p key={i} className="mt-1.5 text-[12px] leading-relaxed text-foreground">
+            {p}
+          </p>
+        ))}
+      </div>
+      <p className={tr.foot}>
+        구조는 원국 경향이며, 실제 인연은 선택과 소통에 따라 달라질 수 있어요.
+      </p>
     </div>
   );
 }
 
-/** 원국 탭 — 최종/유형/채널·감당·축적 요약 */
+/** 원국 탭 — 최종/유형·채널·유지·축적 요약 */
 function StructureWealthBriefCard({
   wealth,
   dayStem,
@@ -3238,19 +3553,21 @@ function StructureWealthBriefCard({
     score: number;
     band: string;
   }[] = [
-    { key: "channel", label: "채널", score: ax.channelScore, band: ch },
-    { key: "capacity", label: "감당", score: ax.capacityScore, band: ca },
-    { key: "accumulation", label: "축적", score: ax.accumulationScore, band: ac },
+    { key: "channel", label: WEALTH_AXIS_LABEL.channel, score: ax.channelScore, band: ch },
+    { key: "capacity", label: WEALTH_AXIS_LABEL.capacity, score: ax.capacityScore, band: ca },
+    { key: "accumulation", label: WEALTH_AXIS_LABEL.accumulation, score: ax.accumulationScore, band: ac },
   ];
 
   const openBand = openAxis ? axisCells.find((c) => c.key === openAxis)?.band : null;
 
+  const te = STRUCTURE_CARD.emerald;
+
   return (
-    <div className="rounded-xl border border-emerald-200/55 bg-emerald-50/20 px-3 py-2.5 shadow-none">
+    <div className={te.shell}>
       <div className="flex items-start justify-between gap-2">
         <div>
-          <p className="text-[11px] font-bold uppercase tracking-wide text-emerald-800/90">구조 기반 재물운</p>
-          <p className="text-[10px] text-muted-foreground mt-0.5">원국 · 구조 요약</p>
+          <p className={te.kicker}>구조 기반 재물운</p>
+          <p className={te.sub}>원국 · 구조 요약</p>
         </div>
       </div>
       {axesAreFallback ? (
@@ -3264,12 +3581,12 @@ function StructureWealthBriefCard({
         <span className="text-[12px] font-semibold text-emerald-900/90">점</span>
       </div>
       <div className="mt-1.5 space-y-1">
-        <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide">1차 유형</p>
+        <p className={cn(te.sectionEyebrow)}>1차 유형</p>
         <p className="text-[13px] font-semibold text-foreground leading-snug">{wealth.classification}</p>
         <p className="text-[12px] leading-relaxed text-foreground/90">{typeParagraph}</p>
         {subtype ? (
           <>
-            <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide pt-1">2차 유형</p>
+            <p className={cn(te.sectionEyebrow, "pt-1")}>2차 유형</p>
             <p className="text-[13px] font-semibold text-emerald-900/95 leading-snug">{subtype.label}</p>
             <p className="text-[12px] leading-relaxed text-foreground/88">{subtype.description}</p>
           </>
@@ -3285,32 +3602,13 @@ function StructureWealthBriefCard({
               onClick={() => toggleAxis(key)}
               aria-expanded={sel}
               aria-pressed={sel}
-              className={cn(
-                "rounded-lg border-2 px-1.5 py-2.5 text-center transition-colors flex flex-col items-stretch gap-1 touch-manipulation",
-                sel
-                  ? "border-emerald-600 bg-emerald-100/65 shadow-sm"
-                  : "border-emerald-100/90 bg-white/70 active:bg-emerald-50/50",
-              )}
+              className={cn(te.gridBtn, sel ? te.gridOn : te.gridOff)}
             >
-              <span
-                className={cn(
-                  "text-[11px] font-semibold",
-                  sel ? "text-emerald-950" : "text-muted-foreground",
-                )}
-              >
-                {label}
-              </span>
+              <span className={sel ? te.labelOn : te.labelOff}>{label}</span>
               <p className="text-[9px] leading-snug text-muted-foreground line-clamp-4 min-h-[2.5rem]">
                 {WEALTH_AXIS_ONE_LINE[key]}
               </p>
-              <span
-                className={cn(
-                  "text-[15px] font-black tabular-nums self-center",
-                  sel ? "text-emerald-900" : "text-foreground",
-                )}
-              >
-                {score}
-              </span>
+              <span className={sel ? te.scoreOn : te.scoreOff}>{score}</span>
               <span
                 className={cn(
                   "self-center mt-0.5 inline-flex max-w-full items-center justify-center rounded-full px-2 py-0.5 text-[10px] font-bold leading-tight",
@@ -3324,36 +3622,37 @@ function StructureWealthBriefCard({
         })}
       </div>
       {openAxis != null && openBand != null ? (
-        <div
-          className="mt-2.5 rounded-lg border-2 border-emerald-400/70 bg-white/90 px-3 py-2.5 shadow-sm"
-          role="region"
-          aria-live="polite"
-        >
-          <p className="text-[11px] font-bold text-emerald-950 tracking-wide">
+        <div className={te.expandBox} role="region" aria-live="polite">
+          <p className={te.expandTitle}>
             {WEALTH_AXIS_LABEL[openAxis]}{" "}
-            <span className="font-semibold text-emerald-800/90">({openBand})</span>
+            <span className={te.expandBand}>({openBand})</span>
           </p>
           <p className="mt-1.5 text-[12px] leading-relaxed text-foreground whitespace-pre-line">
             {getWealthAxisDetail(openAxis, openBand, useNow)}
           </p>
         </div>
       ) : null}
-      <div className="mt-2.5 rounded-lg border border-emerald-200/80 bg-emerald-50/50 px-3 py-2.5">
-        <p className="text-[11px] font-bold text-emerald-950 uppercase tracking-wide">종합 재물 구조 분석</p>
+      <div className={te.synthBox}>
+        <p className={te.synthTitle}>종합 재물 구조 분석</p>
         {synthesis.paragraphs.map((p, i) => (
           <p key={i} className="mt-1.5 text-[12px] leading-relaxed text-foreground">
             {p}
           </p>
         ))}
         {synthesis.bullets && synthesis.bullets.length > 0 ? (
-          <ul className="mt-2 space-y-1 pl-4 text-[12px] leading-relaxed text-foreground list-disc marker:text-emerald-700">
+          <ul
+            className={cn(
+              "mt-2 space-y-1 pl-4 text-[12px] leading-relaxed text-foreground list-disc",
+              te.listDisc,
+            )}
+          >
             {synthesis.bullets.map((b) => (
               <li key={b}>{b}</li>
             ))}
           </ul>
         ) : null}
       </div>
-      <p className="mt-2 border-t border-border/50 pt-2 text-[11px] leading-snug text-muted-foreground">
+      <p className={te.foot}>
         돈의 기회가 많아도, 실제로 운영하고 남기는 힘에 따라 체감은 달라질 수 있어요.
       </p>
     </div>
@@ -4401,6 +4700,13 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
               spousePalace={spousePalace}
               relationshipPattern={relationshipPattern}
               spouseStabilityGrade={sajuPipelineResult?.evaluations?.spousePalaceStability?.grade ?? null}
+              dayStem={dayStem}
+              dayBranch={dayBranch}
+              allChars={allChars}
+              allBranches={allBranches}
+              counts={effectiveFiveElements}
+              evaluations={sajuPipelineResult?.evaluations}
+              shinsalNames={yuanGuoFinalShinsalNames}
             />
           ) : null}
 
@@ -5286,7 +5592,7 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                   </span>
                 </p>
                 <p className="text-[11px] text-muted-foreground pl-0.5">
-                  원국 종합은 재물 채널·감당·축적의 결합값이며, 재성 작동만을 뜻하지 않습니다. 세 축은 원국 탭 재물 카드를 참고하세요.
+                  원국 종합은 재물 채널·유지·축적의 결합값이며, 재성 작동만을 뜻하지 않습니다. 세 축은 원국 탭 재물 카드를 참고하세요.
                 </p>
                 <p>
                   <span className="font-semibold text-foreground">배우자궁 안정</span> 지금{" "}
