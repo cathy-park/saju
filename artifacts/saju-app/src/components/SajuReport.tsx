@@ -127,6 +127,8 @@ import {
   getComplementaryInfo,
   getMarriageTimingHint,
   getRelationshipPattern,
+  type RelationshipPattern,
+  type SpousePalaceInfo,
 } from "@/lib/relationshipReport";
 import type { DomainScoreResult } from "@/lib/evaluations/structureDomainScores";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -2762,18 +2764,14 @@ function clampWealthAxisFallback(n: number): number {
 const WEALTH_TYPE_DESCRIPTIONS: Record<string, string> = {
   "생산형 재물":
     "노동, 프로젝트, 강의, 사업 등 직접 활동을 통해 지속적으로 수입을 만들어내는 재물 구조입니다.",
-  "관리형 재물":
-    "들어온 수입을 안정적으로 유지하고 지출을 통제하는 능력이 강한 구조입니다. 큰 손실 없이 자산을 보존하는 안정성이 특징입니다.",
+  "관리형 재물": "들어온 수입을 안정적으로 유지하고 지출을 통제하는 능력이 강한 구조입니다.",
   "축적형 재물":
     "수익이 자산으로 전환되어 시간이 지나면서 자연스럽게 증가하는 구조입니다. 투자·지분·콘텐츠·자동화 수익과 연결되는 경우가 많습니다.",
   "직접 재물형":
     "재물과 직접 맞닿아 수입이 분명한 루트로 들어오는 구조입니다. 성실한 운용과 규칙적인 현금흐름과 잘 맞습니다.",
-  "불안정 재물형":
-    "수입의 변동성이 크지만 기회에 따라 큰 수익이 발생할 수 있는 구조입니다. 안정성 관리가 중요합니다.",
-  "관계형 재물":
-    "인맥, 협업, 네트워크를 통해 수입 기회가 확장되는 구조입니다. 파트너십과 협력 환경에서 강점을 보입니다.",
-  "기회형 재물":
-    "특정 시기나 환경 변화에 따라 수입 기회가 열리는 구조입니다. 타이밍 활용이 중요합니다.",
+  "불안정 재물형": "수입 변동성이 있지만 기회에 따라 큰 수익 가능성이 있는 구조입니다. 안정성 관리가 중요합니다.",
+  "관계형 재물": "인맥과 협업을 통해 수입 기회가 확장되는 구조입니다.",
+  "기회형 재물": "특정 시기나 환경 변화에 따라 수입 기회가 열리는 구조입니다. 타이밍 활용이 중요합니다.",
 };
 
 const WEALTH_TYPE_STEM_DESCRIPTIONS: Record<string, string> = {
@@ -2796,6 +2794,117 @@ function wealthTypeParagraph(classification: string): string {
   return "사주 구조에 따라 재물이 움직이는 방식이 달라집니다. 아래 세 가지(채널·감당·축적)를 함께 보시면 이해가 쉬워요.";
 }
 
+/** 2차 유형 설명 (1차 유형 + 팔자 힌트로 선택) */
+const WEALTH_SUBTYPE_DESCRIPTIONS: Record<string, string> = {
+  콘텐츠형:
+    "영상·글·클래스 등 결과물이 쌓이며 수입이 반복되는 생산 구조에 잘 맞습니다. 포트폴리오를 자산처럼 다루면 유리합니다.",
+  지식형:
+    "강의·컨설팅·전문 노하우로 가치를 파는 생산 구조에 잘 맞습니다. 경력·자격·레퍼런스가 수입으로 이어지기 쉽습니다.",
+  브랜드형:
+    "신뢰·이름·일관된 품질이 수입으로 이어지는 확장형 생산 구조에 가깝습니다. 단가·선택과 집중이 효과적입니다.",
+  조직형:
+    "조직·직무·규정 안에서 재물을 다지는 관리형에 가깝습니다. 역할과 책임이 분명할수록 안정감이 커집니다.",
+  플랫폼형:
+    "여러 채널·협업·유통을 묶어 기회를 키우는 형태에 가깝습니다. 네트워크가 곧 수입 통로가 됩니다.",
+  IP형:
+    "저작·라이선스·고유 자산이 수익으로 이어지는 형태에 가깝습니다. 한 번 만든 가치를 복제·확장하기 좋습니다.",
+  시스템형:
+    "루틴·체크리스트·반복 운영으로 안정성을 쌓는 형태에 가깝습니다. 지출·수입 흐름을 제도화하면 강해집니다.",
+};
+
+const SIK_SANG_SET = new Set<TenGod>(["식신", "상관"]);
+const IN_SET = new Set<TenGod>(["정인", "편인"]);
+const JAE_SET = new Set<TenGod>(["정재", "편재"]);
+const GWAN_SET = new Set<TenGod>(["정관", "편관"]);
+
+function countTenGodsInChars(dayStem: string, chars: string[], set: Set<TenGod>): number {
+  let n = 0;
+  for (const c of chars) {
+    const tg = getTenGod(dayStem, c);
+    if (tg && set.has(tg)) n++;
+  }
+  return n;
+}
+
+function computeWealthSubtypeInsight(
+  classification: string,
+  dayStem: string,
+  allChars: string[],
+  counts: FiveElementCount,
+): { label: string; key: string; description: string } | null {
+  if (!dayStem || allChars.length === 0) return null;
+  const sik = countTenGodsInChars(dayStem, allChars, SIK_SANG_SET);
+  const inj = countTenGodsInChars(dayStem, allChars, IN_SET);
+  const jae = countTenGodsInChars(dayStem, allChars, JAE_SET);
+  const gwan = countTenGodsInChars(dayStem, allChars, GWAN_SET);
+  const totalEl = Object.values(counts).reduce((a, b) => a + b, 0) || 1;
+  const elOrder = ["목", "화", "토", "금", "수"] as const;
+  let maxEl: (typeof elOrder)[number] = "목";
+  for (const el of elOrder) {
+    if (counts[el] > counts[maxEl]) maxEl = el;
+  }
+  const maxRatio = counts[maxEl] / totalEl;
+
+  if (classification === "생산형 재물") {
+    if (sik >= 2) {
+      const k = "콘텐츠형";
+      return { key: k, label: "콘텐츠 기반 생산형 재물", description: WEALTH_SUBTYPE_DESCRIPTIONS[k] ?? "" };
+    }
+    if (inj >= 2) {
+      const k = "지식형";
+      return { key: k, label: "지식 기반 생산형 재물", description: WEALTH_SUBTYPE_DESCRIPTIONS[k] ?? "" };
+    }
+    if (jae >= 2 || maxRatio >= 0.32) {
+      const k = "브랜드형";
+      return { key: k, label: "브랜드 확장형 생산 재물", description: WEALTH_SUBTYPE_DESCRIPTIONS[k] ?? "" };
+    }
+    const k = "콘텐츠형";
+    return { key: k, label: "활동 기반 생산형 재물", description: WEALTH_SUBTYPE_DESCRIPTIONS[k] ?? "" };
+  }
+  if (classification === "관리형 재물") {
+    if (gwan >= 2) {
+      const k = "조직형";
+      return { key: k, label: "조직·직무 기반 관리형 재물", description: WEALTH_SUBTYPE_DESCRIPTIONS[k] ?? "" };
+    }
+    const k = "시스템형";
+    return { key: k, label: "운영·통제 기반 관리형 재물", description: WEALTH_SUBTYPE_DESCRIPTIONS[k] ?? "" };
+  }
+  if (classification === "기회형 재물") {
+    if (inj >= 2 || maxEl === "수") {
+      const k = "플랫폼형";
+      return { key: k, label: "관계·연결 기반 기회형 재물", description: WEALTH_SUBTYPE_DESCRIPTIONS[k] ?? "" };
+    }
+    const k = "플랫폼형";
+    return { key: k, label: "환경·타이밍 기반 기회형 재물", description: WEALTH_SUBTYPE_DESCRIPTIONS[k] ?? "" };
+  }
+  if (classification === "불안정 재물형") {
+    const k = "IP형";
+    return { key: k, label: "변동·기회 혼합형 재물", description: WEALTH_SUBTYPE_DESCRIPTIONS[k] ?? "" };
+  }
+  if (classification === "직접 재물형") {
+    const k = "IP형";
+    return { key: k, label: "직접 수입 루트형 재물", description: WEALTH_SUBTYPE_DESCRIPTIONS[k] ?? "" };
+  }
+  return null;
+}
+
+/** ‘현재는’ 내러티브: 한 축은 강한데 다른 축이 약해 개선 여지가 읽힐 때만 */
+function wealthUseNowNarrative(channelBand: string, capacityBand: string, accumulationBand: string): boolean {
+  const chHi = channelBand === "높음" || channelBand === "중상";
+  const chMid = channelBand === "중";
+  const chLo = channelBand === "낮음";
+  const capHi = capacityBand === "양호";
+  const capLo = capacityBand === "낮음";
+  const accLo = accumulationBand === "낮음";
+  if (chLo && capLo) return false;
+  if (chHi && capHi && accumulationBand === "보통") return false;
+  if (accLo && (chHi || chMid)) return true;
+  if (chHi && capLo) return true;
+  if (capHi && accLo && !chLo) return true;
+  if (chMid && capHi && accLo) return true;
+  return false;
+}
+
 type WealthAxisKey = "channel" | "capacity" | "accumulation";
 
 const WEALTH_AXIS_ONE_LINE: Record<WealthAxisKey, string> = {
@@ -2810,36 +2919,64 @@ const WEALTH_AXIS_LABEL: Record<WealthAxisKey, string> = {
   accumulation: "축적",
 };
 
-const WEALTH_AXIS_DETAILED: Record<WealthAxisKey, Record<string, string>> = {
-  channel: {
-    높음:
-      "수입 기회와 활동 경로가 풍부한 편입니다. 여러 경로로 수입이 열리기 쉽고, 제안·계약·노동 루트를 넓히기 좋은 상태입니다.",
-    중상:
-      "현재 수입 기회와 활동 기반은 충분히 안정적인 편입니다. 노동·사업·계약 기반 수입 구조가 잘 형성된 상태입니다.",
-    중:
-      "수입 경로는 있으나 아직 패턴이 고정되기 전일 수 있습니다. 한두 개 루트에 집중해 다듬으면 체감이 빨리 좋아질 수 있어요.",
-    낮음:
-      "수입이 들어오는 통로가 좁게 느껴질 수 있습니다. 활동 영역·제안·계약 기반 루트를 넓히는 것이 우선입니다.",
-  },
-  capacity: {
-    양호:
-      "들어온 돈을 무리 없이 관리하고 유지할 수 있는 안정성이 있습니다. 지출 통제와 리스크 관리 능력이 비교적 좋은 편입니다.",
-    보통:
-      "들어온 돈을 지키는 힘은 보통 수준입니다. 지출 습관과 현금흐름만 정기적으로 점검해도 감당력이 단단해지기 쉽습니다.",
-    낮음:
-      "지출이나 변동에 쉽게 흔들릴 수 있는 구조입니다. 예산·비상금·리스크 한도를 먼저 잡는 것이 좋습니다.",
-  },
-  accumulation: {
-    보통:
-      "수익이 어느 정도 자산으로 남는 흐름입니다. 저축·투자·콘텐츠·자동화 중 한 가지라도 루틴화하면 축적감이 커질 수 있어요.",
-    낮음:
-      "현재는 수익이 자산으로 자동 전환되는 구조는 약한 편입니다. 투자·지분·콘텐츠·시스템 수익 구조를 만들면 개선됩니다.",
-  },
-};
-
-function wealthAxisDetail(axis: WealthAxisKey, band: string): string {
-  const m = WEALTH_AXIS_DETAILED[axis][band];
-  if (m) return m;
+function getWealthAxisDetail(axis: WealthAxisKey, band: string, useNow: boolean): string {
+  if (axis === "channel") {
+    if (band === "높음") {
+      const a = "수입 기회와 활동 경로가 풍부한 편입니다.";
+      const b = "여러 경로로 수입이 열리기 쉽고, 제안·계약·노동 루트를 넓히기 좋은 상태입니다.";
+      return `${useNow ? "현재는 " : ""}${a}\n${b}`;
+    }
+    if (band === "중상") {
+      const a = useNow
+        ? "현재 수입 기회와 활동 기반은 충분히 안정적인 편입니다."
+        : "수입 기회와 활동 기반은 충분히 안정적인 편입니다.";
+      const b = "노동·사업·계약 기반 수입 구조가 잘 형성된 상태입니다.";
+      return `${a}\n${b}`;
+    }
+    if (band === "중") {
+      const a = "수입 경로는 있으나 아직 패턴이 고정되기 전일 수 있습니다.";
+      const b = "한두 개 루트에 집중해 다듬으면 체감이 빨리 좋아질 수 있어요.";
+      return `${useNow ? "현재는 " : ""}${a}\n${b}`;
+    }
+    if (band === "낮음") {
+      const a = "수입이 들어오는 통로가 좁게 느껴질 수 있습니다.";
+      const b = "활동 영역·제안·계약 기반 루트를 넓히는 것이 우선입니다.";
+      return `${useNow ? "현재는 " : ""}${a}\n${b}`;
+    }
+  }
+  if (axis === "capacity") {
+    if (band === "양호") {
+      const a = useNow
+        ? "현재 들어온 돈을 무리 없이 관리하고 유지할 수 있는 안정성이 있습니다."
+        : "들어온 돈을 무리 없이 관리하고 유지할 수 있는 안정성이 있습니다.";
+      const b = "지출 통제와 리스크 관리 능력이 비교적 좋은 편입니다.";
+      return `${a}\n${b}`;
+    }
+    if (band === "보통") {
+      const a = "들어온 돈을 지키는 힘은 보통 수준입니다.";
+      const b = "지출 습관과 현금흐름만 정기적으로 점검해도 감당력이 단단해지기 쉽습니다.";
+      return `${useNow ? "현재는 " : ""}${a}\n${b}`;
+    }
+    if (band === "낮음") {
+      const a = "지출이나 변동에 쉽게 흔들릴 수 있는 구조입니다.";
+      const b = "예산·비상금·리스크 한도를 먼저 잡는 것이 좋습니다.";
+      return `${useNow ? "현재는 " : ""}${a}\n${b}`;
+    }
+  }
+  if (axis === "accumulation") {
+    if (band === "보통") {
+      const a = "수익이 어느 정도 자산으로 남는 흐름입니다.";
+      const b = "저축·투자·콘텐츠·자동화 중 한 가지라도 루틴화하면 축적감이 커질 수 있어요.";
+      return `${useNow ? "현재는 " : ""}${a}\n${b}`;
+    }
+    if (band === "낮음") {
+      const a = useNow
+        ? "현재는 수익이 자산으로 자동 전환되는 구조는 약한 편입니다."
+        : "수익이 자산으로 자동 전환되는 구조는 약한 편입니다.";
+      const b = "투자·지분·콘텐츠·시스템 수익 구조를 만들면 개선됩니다.";
+      return `${a}\n${b}`;
+    }
+  }
   return `${WEALTH_AXIS_LABEL[axis]} 항목은 「${band}」 구간으로 읽힙니다. 위 한 줄 설명과 함께 점수 추이를 참고해 주세요.`;
 }
 
@@ -2855,6 +2992,7 @@ function buildWealthSynthesis(
   capacityBand: string,
   accumulationBand: string,
   classification: string,
+  useNow: boolean,
 ): { paragraphs: string[]; bullets?: string[] } {
   const chStrong = channelBand === "높음" || channelBand === "중상";
   const chWeak = channelBand === "낮음";
@@ -2866,14 +3004,19 @@ function buildWealthSynthesis(
   const accWeak = accumulationBand === "낮음";
 
   const prod = classification.includes("생산");
+  const now = (s: string) => (useNow ? (s.startsWith("현재") ? s : `현재는 ${s}`) : s.replace(/^현재는\s+/, ""));
 
   if (chStrong && capStrong && accWeak) {
     return {
       paragraphs: [
-        `현재는 수입 기회(채널)와 안정성(감당)은 좋은 편이며${
-          prod ? " 노동 기반 생산형 재물 구조가 잘 형성되어 있습니다." : ` 「${classification}」 패턴에 맞는 수입 기반이 갖춰져 있습니다.`
-        }`,
-        "다만 자산으로 자동 전환되는 축적 구조는 약한 편이므로 아래 중 하나를 추가하면 재물 안정성이 크게 상승할 수 있습니다.",
+        now(
+          `수입 기회(채널)와 안정성(감당)은 좋은 편이며${
+            prod ? " 노동 기반 생산형 재물 구조가 잘 형성되어 있습니다." : ` 「${classification}」 패턴에 맞는 수입 기반이 갖춰져 있습니다.`
+          }`,
+        ),
+        useNow
+          ? "다만 자산으로 자동 전환되는 축적 구조는 약한 편이므로 아래 중 하나를 추가하면 재물 안정성이 크게 상승할 수 있습니다."
+          : "자산으로 자동 전환되는 축적 구조는 아직 여지가 있으므로, 아래 중 하나를 더하면 재물 안정성이 크게 상승할 수 있습니다.",
       ],
       bullets: [...WEALTH_SYNTHESIS_SUGGESTIONS],
     };
@@ -2883,7 +3026,7 @@ function buildWealthSynthesis(
     return {
       paragraphs: [
         "수입 경로와 유지력이 모두 무난한 편이라, 재물이 한 번에 크게 무너지기 어려운 구조에 가깝습니다.",
-        "축적도 버티고 있으니, 이번에는 장기 자산(투자·지분 등) 설계까지 넓혀 보시면 좋습니다.",
+        "축적도 버티고 있으니, 장기 자산(투자·지분 등) 설계까지 넓혀 보시면 좋습니다.",
       ],
     };
   }
@@ -2891,7 +3034,7 @@ function buildWealthSynthesis(
   if (chWeak && capStrong) {
     return {
       paragraphs: [
-        "들어온 돈을 지키는 힘은 있는데, 수입 통로가 좁게 느껴질 수 있습니다.",
+        now("들어온 돈을 지키는 힘은 있는데, 수입 통로가 좁게 느껴질 수 있습니다."),
         "활동·제안·계약 루트를 조금씩 넓히는 데 집중하면 체감 수입이 따라오기 쉽습니다.",
       ],
     };
@@ -2900,7 +3043,7 @@ function buildWealthSynthesis(
   if (chStrong && capWeak) {
     return {
       paragraphs: [
-        "수입 기회는 있는 편인데, 지출·리스크에 흔들리기 쉬운 구간일 수 있습니다.",
+        now("수입 기회는 있는 편인데, 지출·리스크에 흔들리기 쉬운 구간일 수 있습니다."),
         "예산·현금흐름·비상금부터 정리하면 감당 점수가 같이 오르는 경우가 많습니다.",
       ],
     };
@@ -2918,7 +3061,7 @@ function buildWealthSynthesis(
   if (chMid) {
     return {
       paragraphs: [
-        "채널은 ‘중간’ 단계입니다. 한두 가지 수입 루트만 골라 집중하면 중상 이상으로 끌어올리기 좋습니다.",
+        now("채널은 ‘중간’ 단계입니다. 한두 가지 수입 루트만 골라 집중하면 중상 이상으로 끌어올리기 좋습니다."),
         capStrong
           ? "감당은 받쳐주고 있어, 루트 정리만 해도 재물 체감이 빨리 나아질 수 있어요."
           : "감당·축적과 맞물려 보시면, 어디를 먼저 올릴지 우선순위가 보입니다.",
@@ -2929,7 +3072,7 @@ function buildWealthSynthesis(
   if (capMid && accWeak) {
     return {
       paragraphs: [
-        "감당은 무난한데 축적이 약하게 보입니다. 벌기만큼 ‘남기는 구조’를 하나 붙이는 것이 핵심입니다.",
+        now("감당은 무난한데 축적이 약하게 보입니다. 벌기만큼 ‘남기는 구조’를 하나 붙이는 것이 핵심입니다."),
         "멤버십·콘텐츠·소액 분산 투자처럼 반복 수익이 나는 축을 하나 만드는 것을 추천합니다.",
       ],
       bullets: [...WEALTH_SYNTHESIS_SUGGESTIONS],
@@ -2939,7 +3082,7 @@ function buildWealthSynthesis(
   if (chStrong && capMid && accWeak) {
     return {
       paragraphs: [
-        "들어올 기회는 있는데, 지켜 내고 쌓는 데는 여지가 있습니다.",
+        now("들어올 기회는 있는데, 지켜 내고 쌓는 데는 여지가 있습니다."),
         "지출 설계와 자산 파이프라인을 한 번에 잡으면 균형이 맞춰지기 쉽습니다.",
       ],
       bullets: [...WEALTH_SYNTHESIS_SUGGESTIONS],
@@ -2948,14 +3091,127 @@ function buildWealthSynthesis(
 
   return {
     paragraphs: [
-      `지금은 채널「${channelBand}」, 감당「${capacityBand}」, 축적「${accumulationBand}」 조합으로 읽힙니다.`,
+      `채널「${channelBand}」, 감당「${capacityBand}」, 축적「${accumulationBand}」 조합으로 읽힙니다.`,
       `「${classification}」 특성 안에서 가장 낮게 느껴지는 축을 먼저 다지면, 전체 재물 체감이 좋아지기 쉽습니다.`,
     ],
   };
 }
 
+function buildYuanSpouseStructureInsight(
+  monthBranch: string | undefined,
+  spouse: SpousePalaceInfo | null,
+  rel: RelationshipPattern | null,
+  spouseStabilityGrade: string | null,
+): { spouseType: string; relationFeature: string; meetPath: string; spouseTendency: string } {
+  const el = spouse?.element ?? "";
+  const spouseType =
+    el === "토" || el === "금"
+      ? "안정·책임형 배우자"
+      : el === "화"
+        ? "열정·표현형 배우자"
+        : el === "목"
+          ? "성장·주도형 배우자"
+          : el === "수"
+            ? "감성·독립형 배우자"
+            : "균형형 배우자";
+
+  const relationFeature = spouse
+    ? `현실적이고 책임감 있는 관계 구조가 형성되기 쉽습니다. ${spouse.summary}`
+    : "일지(배우자궁)를 알 수 있을 때 관계 구조를 더 구체적으로 읽을 수 있습니다.";
+
+  const fire = new Set(["인", "사", "오"]);
+  const move = new Set(["해", "자", "신"]);
+  const soft = new Set(["묘", "미"]);
+  const network = new Set(["축", "진", "술", "유"]);
+  let meetPath =
+    "소개·모임·직장·온라인 등 여러 경로를 열어 두면 인연이 붙기 쉽습니다.";
+  if (monthBranch && fire.has(monthBranch)) {
+    meetPath =
+      "직장·협업·프로젝트·행사 등 ‘함께 일하거나 공개적으로 만나는’ 경로에서 인연이 강해지기 쉽습니다.";
+  } else if (monthBranch && move.has(monthBranch)) {
+    meetPath =
+      "이동·유학·거리·SNS·온라인 등 공간을 넘는 경로에서 만남이 열리기 쉽습니다.";
+  } else if (monthBranch && soft.has(monthBranch)) {
+    meetPath =
+      "취미·교육·콘텐츠·소개 등 부드러운 모임·온라인 채널에서 연결이 잘 됩니다.";
+  } else if (monthBranch && network.has(monthBranch)) {
+    meetPath =
+      "소개·친지·단체·직장 내 신뢰 관계 등 안정적인 네트워크에서 인연이 자라나기 쉽습니다.";
+  }
+
+  if (spouseStabilityGrade === "강함" || spouseStabilityGrade === "양호") {
+    meetPath += " 배우자궁 안정 지표가 높아, 관계가 맺어지면 유지력이 좋은 편으로 읽힙니다.";
+  } else if (spouseStabilityGrade === "약함" || spouseStabilityGrade === "매우약함") {
+    meetPath += " 배우자궁 변동 요인을 함께 보며 속도 조절이 도움이 될 수 있습니다.";
+  }
+
+  const spouseTendency =
+    rel?.spouseStyle ||
+    spouse?.strengths[0] ||
+    "서로의 장점을 존중하는 균형 잡힌 성향을 기대하기 쉽습니다.";
+
+  return { spouseType, relationFeature, meetPath, spouseTendency };
+}
+
+function YuanSpouseStructureCard({
+  monthBranch,
+  spousePalace,
+  relationshipPattern,
+  spouseStabilityGrade,
+}: {
+  monthBranch?: string;
+  spousePalace: SpousePalaceInfo | null;
+  relationshipPattern: RelationshipPattern | null;
+  spouseStabilityGrade: string | null;
+}) {
+  const s = buildYuanSpouseStructureInsight(
+    monthBranch,
+    spousePalace,
+    relationshipPattern,
+    spouseStabilityGrade,
+  );
+  return (
+    <div className="rounded-xl border border-rose-200/65 bg-gradient-to-br from-rose-50/50 to-pink-50/30 px-3 py-2.5 shadow-none">
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <p className="text-[11px] font-bold uppercase tracking-wide text-rose-800/90">원국 기반 배우자 구조</p>
+          <p className="text-[10px] text-muted-foreground mt-0.5">일지·월지·관계 패턴 요약</p>
+        </div>
+      </div>
+      <dl className="mt-2.5 space-y-2 text-[12px] leading-relaxed">
+        <div>
+          <dt className="text-[10px] font-bold text-rose-900/85 uppercase tracking-wide">배우자 유형</dt>
+          <dd className="mt-0.5 text-foreground font-semibold">{s.spouseType}</dd>
+        </div>
+        <div>
+          <dt className="text-[10px] font-bold text-rose-900/85 uppercase tracking-wide">관계 구조 특징</dt>
+          <dd className="mt-0.5 text-foreground/92">{s.relationFeature}</dd>
+        </div>
+        <div>
+          <dt className="text-[10px] font-bold text-rose-900/85 uppercase tracking-wide">만남 경로 유형</dt>
+          <dd className="mt-0.5 text-foreground/92">{s.meetPath}</dd>
+        </div>
+        <div>
+          <dt className="text-[10px] font-bold text-rose-900/85 uppercase tracking-wide">배우자 성향 특징</dt>
+          <dd className="mt-0.5 text-foreground/92">{s.spouseTendency}</dd>
+        </div>
+      </dl>
+    </div>
+  );
+}
+
 /** 원국 탭 — 최종/유형/채널·감당·축적 요약 */
-function StructureWealthBriefCard({ wealth }: { wealth: DomainScoreResult }) {
+function StructureWealthBriefCard({
+  wealth,
+  dayStem,
+  allChars,
+  counts,
+}: {
+  wealth: DomainScoreResult;
+  dayStem: string;
+  allChars: string[];
+  counts: FiveElementCount;
+}) {
   const [openAxis, setOpenAxis] = useState<WealthAxisKey | null>(null);
   if (wealth.domainKey !== "wealth") return null;
   const ax = wealth.wealthAxes ?? {
@@ -2967,8 +3223,10 @@ function StructureWealthBriefCard({ wealth }: { wealth: DomainScoreResult }) {
   const ch = wealthChannelBand(ax.channelScore);
   const ca = wealthCapacityBand(ax.capacityScore);
   const ac = wealthAccumulationBand(ax.accumulationScore);
+  const useNow = wealthUseNowNarrative(ch, ca, ac);
   const typeParagraph = wealthTypeParagraph(wealth.classification);
-  const synthesis = buildWealthSynthesis(ch, ca, ac, wealth.classification);
+  const subtype = computeWealthSubtypeInsight(wealth.classification, dayStem, allChars, counts);
+  const synthesis = buildWealthSynthesis(ch, ca, ac, wealth.classification, useNow);
 
   function toggleAxis(key: WealthAxisKey) {
     setOpenAxis((prev) => (prev === key ? null : key));
@@ -2997,7 +3255,7 @@ function StructureWealthBriefCard({ wealth }: { wealth: DomainScoreResult }) {
       </div>
       {axesAreFallback ? (
         <p className="mt-1 text-[10px] text-amber-900/85 bg-amber-50/70 border border-amber-100/90 rounded-md px-2 py-1.5 leading-snug">
-          세 축이 같은 숫자로 보이면, 지금은 종합 점수만 반영된 상태예요. 각 칸을 눌러 이 축의 상세 설명을 펼칠 수 있어요.
+          세 축이 같은 숫자로 보이면 종합 점수만 반영된 상태예요. 각 칸을 눌러 이 축의 상세 설명을 펼칠 수 있어요.
         </p>
       ) : null}
       <div className="mt-2 flex flex-wrap items-baseline gap-x-1 gap-y-0">
@@ -3005,9 +3263,17 @@ function StructureWealthBriefCard({ wealth }: { wealth: DomainScoreResult }) {
         <span className="text-2xl font-black tabular-nums leading-none text-emerald-700">{wealth.score}</span>
         <span className="text-[12px] font-semibold text-emerald-900/90">점</span>
       </div>
-      <div className="mt-1.5">
+      <div className="mt-1.5 space-y-1">
+        <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide">1차 유형</p>
         <p className="text-[13px] font-semibold text-foreground leading-snug">{wealth.classification}</p>
-        <p className="mt-1 text-[12px] leading-relaxed text-foreground/90">{typeParagraph}</p>
+        <p className="text-[12px] leading-relaxed text-foreground/90">{typeParagraph}</p>
+        {subtype ? (
+          <>
+            <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide pt-1">2차 유형</p>
+            <p className="text-[13px] font-semibold text-emerald-900/95 leading-snug">{subtype.label}</p>
+            <p className="text-[12px] leading-relaxed text-foreground/88">{subtype.description}</p>
+          </>
+        ) : null}
       </div>
       <div className="mt-2.5 grid grid-cols-3 gap-2">
         {axisCells.map(({ key, label, score, band }) => {
@@ -3068,7 +3334,7 @@ function StructureWealthBriefCard({ wealth }: { wealth: DomainScoreResult }) {
             <span className="font-semibold text-emerald-800/90">({openBand})</span>
           </p>
           <p className="mt-1.5 text-[12px] leading-relaxed text-foreground whitespace-pre-line">
-            {wealthAxisDetail(openAxis, openBand)}
+            {getWealthAxisDetail(openAxis, openBand, useNow)}
           </p>
         </div>
       ) : null}
@@ -4121,7 +4387,21 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
           )}
 
           {structureWealthDomain ? (
-            <StructureWealthBriefCard wealth={structureWealthDomain} />
+            <StructureWealthBriefCard
+              wealth={structureWealthDomain}
+              dayStem={dayStem}
+              allChars={allChars}
+              counts={effectiveFiveElements}
+            />
+          ) : null}
+
+          {dayBranch ? (
+            <YuanSpouseStructureCard
+              monthBranch={effectivePillars.month?.hangul?.[1]}
+              spousePalace={spousePalace}
+              relationshipPattern={relationshipPattern}
+              spouseStabilityGrade={sajuPipelineResult?.evaluations?.spousePalaceStability?.grade ?? null}
+            />
           ) : null}
 
           <div className="rounded-lg border border-border/60 bg-muted/15 px-3 py-2.5 text-[12px] leading-relaxed text-muted-foreground">
