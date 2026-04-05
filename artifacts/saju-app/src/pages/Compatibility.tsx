@@ -1150,51 +1150,92 @@ export default function Compatibility() {
                 </div>
                 </div>
 
-              {/* ── 배우자 구조 비교: 스냅샷 3축(보조·메인 점수 미반영) ── */}
-              {result.spouseStructureAxisComparison && (
-                <div className="ds-card overflow-hidden shadow-none border-rose-200/50 bg-rose-50/25 dark:border-rose-900/35 dark:bg-rose-950/20">
-                  <div className="border-b border-border bg-muted/20 px-4 py-3">
-                    <h2 className="text-sm font-bold text-foreground">배우자 구조 비교</h2>
-                    <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">
-                      원국 카드와 같은 파이프라인 스냅샷으로 각자의 현실·정서·매력 궁합 축만 뽑아 비교한 보조 지표입니다. 위 궁합 점수(기준 50+7조정)에는 포함되지 않습니다.
-                    </p>
-                  </div>
-                  <div className="space-y-4 p-4">
-                    {(
-                      [
-                        { axis: "practical" as const, label: "현실 궁합" },
-                        { axis: "emotional" as const, label: "정서 궁합" },
-                        { axis: "image" as const, label: "매력 궁합" },
-                      ] as const
-                    ).map(({ axis, label }) => {
-                      const block = result.spouseStructureAxisComparison!;
-                      const v1 = block.person1[axis];
-                      const v2 = block.person2[axis];
-                      const sentence = block.sentences[axis];
-                      return (
-                        <div key={axis} className="ds-inline-detail-nested space-y-2">
-                          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                            {label}
-                          </p>
-                          <div className="grid grid-cols-2 gap-2 text-center">
-                            <div className="rounded-lg border border-border/60 bg-background/80 py-2">
-                              <p className="text-[11px] text-muted-foreground">{myName}</p>
-                              <p className="text-lg font-bold tabular-nums text-foreground">{v1}</p>
-                              <p className="text-[10px] text-muted-foreground">점</p>
+              {/* ── 배우자 구조 비교: 스냅샷 3축 교차 해석(보조·메인 점수 미반영) ── */}
+              {result.spouseStructureAxisComparison && (() => {
+                const spouseBlock = result.spouseStructureAxisComparison!;
+                const higherLabel = (
+                  h: "person1" | "person2" | "tie",
+                ): string => {
+                  if (h === "tie") return "동일";
+                  if (h === "person1")
+                    return `${myName}${ptcl(myName, "이", "가")} 더 높음`;
+                  return `${otherName}${ptcl(otherName, "이", "가")} 더 높음`;
+                };
+                return (
+                  <div className="ds-card overflow-hidden shadow-none border-rose-200/50 bg-rose-50/25 dark:border-rose-900/35 dark:bg-rose-950/20">
+                    <div className="border-b border-border bg-muted/20 px-4 py-3">
+                      <h2 className="text-sm font-bold text-foreground">배우자 구조 비교</h2>
+                      <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">
+                        원국 스냅샷으로 각자의 현실·정서·매력 축을 뽑은 뒤, 갭·방향·유지/만족을 교차 해석한 보조 섹션입니다. 위 궁합 점수(기준 50+7조정)에는 반영되지 않습니다.
+                      </p>
+                    </div>
+                    <div className="space-y-4 p-4">
+                      {(
+                        [
+                          { axis: "practical" as const, label: "현실 궁합" },
+                          { axis: "emotional" as const, label: "정서 궁합" },
+                          { axis: "image" as const, label: "매력 궁합" },
+                        ] as const
+                      ).map(({ axis, label }) => {
+                        const v1 = spouseBlock.person1[axis];
+                        const v2 = spouseBlock.person2[axis];
+                        const st = spouseBlock.stats[axis];
+                        const sentence = spouseBlock.crossSentences[axis];
+                        return (
+                          <div key={axis} className="ds-inline-detail-nested space-y-2">
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                              {label}
+                            </p>
+                            <div className="grid grid-cols-2 gap-2 text-center">
+                              <div className="rounded-lg border border-border/60 bg-background/80 py-2">
+                                <p className="text-[11px] text-muted-foreground">{myName}</p>
+                                <p className="text-lg font-bold tabular-nums text-foreground">{v1}</p>
+                                <p className="text-[10px] text-muted-foreground">점</p>
+                              </div>
+                              <div className="rounded-lg border border-border/60 bg-background/80 py-2">
+                                <p className="text-[11px] text-muted-foreground">{otherName}</p>
+                                <p className="text-lg font-bold tabular-nums text-foreground">{v2}</p>
+                                <p className="text-[10px] text-muted-foreground">점</p>
+                              </div>
                             </div>
-                            <div className="rounded-lg border border-border/60 bg-background/80 py-2">
-                              <p className="text-[11px] text-muted-foreground">{otherName}</p>
-                              <p className="text-lg font-bold tabular-nums text-foreground">{v2}</p>
-                              <p className="text-[10px] text-muted-foreground">점</p>
+                            <div className="rounded-md border border-border/50 bg-muted/15 px-3 py-2 text-[11px] leading-relaxed text-muted-foreground">
+                              <span className="tabular-nums">차이 {st.gap}점</span>
+                              <span className="mx-1.5 text-border">·</span>
+                              <span className="tabular-nums">
+                                최소 {st.min} · 최대 {st.max} · 평균 {st.average}
+                              </span>
+                              <span className="mx-1.5 text-border">·</span>
+                              <span>{higherLabel(st.higher)}</span>
                             </div>
+                            <p className="text-[12px] leading-relaxed text-foreground/90">{sentence}</p>
                           </div>
-                          <p className="text-[12px] leading-relaxed text-foreground/90">{sentence}</p>
+                        );
+                      })}
+
+                      <div className="ds-inline-detail-nested space-y-3 rounded-lg border border-rose-200/40 bg-background/70 p-3 dark:border-rose-900/30">
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                          종합 배우자 구조 비교
+                        </p>
+                        <p className="text-[12px] leading-relaxed text-foreground/95">
+                          {spouseBlock.holisticSummary}
+                        </p>
+                        <div className="space-y-2 border-t border-border/50 pt-2 text-[12px] leading-relaxed">
+                          <p>
+                            <span className="font-semibold text-foreground">유지 구조</span>
+                            <span className="text-muted-foreground"> (생활·역할·약속) </span>
+                            {spouseBlock.maintenanceLine}
+                          </p>
+                          <p>
+                            <span className="font-semibold text-foreground">만족 구조</span>
+                            <span className="text-muted-foreground"> (정서·끌림 체감) </span>
+                            {spouseBlock.satisfactionLine}
+                          </p>
                         </div>
-                      );
-                    })}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
 
               {/* ── 시주 제외 비교 (중립 카드 + 흰 nested) ── */}
               {hasHourExcluded && resultBase && result && (

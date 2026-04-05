@@ -187,68 +187,216 @@ export interface SpouseAxisComparisonSentences {
   image: string;
 }
 
+/** 축별 두 사람 점수와 차이·방향(메인 점수 미반영, 보조 UI). */
+export interface SpouseAxisPairStats {
+  person1: number;
+  person2: number;
+  gap: number;
+  min: number;
+  max: number;
+  average: number;
+  higher: "person1" | "person2" | "tie";
+}
+
 export interface SpouseStructureAxisComparisonBlock {
   person1: SpouseStructureAxisBundle;
   person2: SpouseStructureAxisBundle;
+  /** 축별 수치 비교 */
+  stats: {
+    practical: SpouseAxisPairStats;
+    emotional: SpouseAxisPairStats;
+    image: SpouseAxisPairStats;
+  };
+  /** 축별 교차 해석(점수·갭을 전제로 한 문장) */
+  crossSentences: SpouseAxisComparisonSentences;
+  /** 생활·역할·약속 등 ‘관계가 굴러가는지’ 쪽 */
+  maintenanceLine: string;
+  /** 정서 기대·끌림 체감 등 ‘마음이 채워지는지’ 쪽 */
+  satisfactionLine: string;
+  /** 3축을 한데 묶은 한 문단 */
+  holisticSummary: string;
+  /** @deprecated UI는 crossSentences 사용 */
   sentences: SpouseAxisComparisonSentences;
 }
 
-/** 두 사람 3축 점수 차이를 짧은 비교 문장으로 정리(보조 UI용). 이후 메인 가중 연동 시 재사용 가능. */
+function computeSpouseAxisPairStats(p1: number, p2: number): SpouseAxisPairStats {
+  const gap = Math.abs(p1 - p2);
+  const min = Math.min(p1, p2);
+  const max = Math.max(p1, p2);
+  const average = Math.round(((p1 + p2) / 2) * 10) / 10;
+  let higher: SpouseAxisPairStats["higher"];
+  if (p1 > p2) higher = "person1";
+  else if (p2 > p1) higher = "person2";
+  else higher = "tie";
+  return { person1: p1, person2: p2, gap, min, max, average, higher };
+}
+
+function ptcl(name: string, whenHasBatchim: string, otherwise: string): string {
+  if (!name) return otherwise;
+  const last = name[name.length - 1];
+  if (last < "가" || last > "힣") return otherwise;
+  const code = (last.charCodeAt(0) - 0xac00) % 28;
+  return code > 0 ? whenHasBatchim : otherwise;
+}
+
+function conjAnd(a: string, b: string): string {
+  return `${a}${ptcl(a, "과", "와")} ${b}`;
+}
+
+/**
+ * 스냅샷 3축 교차 비교 블록(갭·방향·유지/만족 분리·종합). 메인 궁합 점수와 분리 유지.
+ */
+export function buildSpouseStructureAxisComparisonBlock(
+  a: SpouseStructureAxisBundle,
+  b: SpouseStructureAxisBundle,
+  name1: string,
+  name2: string,
+): SpouseStructureAxisComparisonBlock {
+  const n1 = name1 || "A";
+  const n2 = name2 || "B";
+  const st = {
+    practical: computeSpouseAxisPairStats(a.practical, b.practical),
+    emotional: computeSpouseAxisPairStats(a.emotional, b.emotional),
+    image: computeSpouseAxisPairStats(a.image, b.image),
+  };
+
+  const thrHi = 62;
+  const thrLo = 46;
+  const bigP = st.practical.gap >= 16;
+  const bigE = st.emotional.gap >= 16;
+  const bigI = st.image.gap >= 18;
+
+  const higherName = (h: SpouseAxisPairStats["higher"]) =>
+    h === "person1" ? n1 : h === "person2" ? n2 : null;
+
+  // ── 현실 궁합: 교차 ──
+  let practical: string;
+  if (a.practical >= thrHi && b.practical >= thrHi) {
+    practical = bigP
+      ? `${conjAnd(n1, n2)} 모두 생활 안정 지향성이 높아 큰 틀의 운영 방식은 비슷하지만, 점수 차(${st.practical.gap}점)만큼 책임을 표현하는 방식·우선순위는 어긋날 수 있습니다.`
+      : `두 사람 모두 생활 안정 지향성이 높아 운영 방식은 비슷한 편입니다. 다만 누가 먼저 말로 정리하느냐 같은 표현 방식 차이는 여전히 있을 수 있습니다.`;
+  } else if (a.practical <= thrLo && b.practical <= thrLo) {
+    practical =
+      "둘 다 현실 축에서 조건·역할을 먼저 다져야 하는 편이라, 합의와 규칙을 함께 세우는 것이 관계 유지에 직결됩니다.";
+  } else if (bigP && st.practical.higher !== "tie") {
+    const hi = higherName(st.practical.higher)!;
+    const lo = st.practical.higher === "person1" ? n2 : n1;
+    practical = `${hi}${ptcl(hi, "은", "는")} 현실·책임 축이 더 뚜렷하고 ${lo}${ptcl(lo, "은", "는")} 상대적으로 변동·조율 여지가 커 보여, 생활 속도와 역할 기대를 맞추는 대화가 필요할 수 있습니다.`;
+  } else {
+    practical =
+      "현실 구조는 완전히 반대는 아니나, 세부 기대치는 말로 한 번씩 확인할수록 부담이 줄어듭니다.";
+  }
+
+  // ── 정서 궁합: 교차 ──
+  let emotional: string;
+  const splitHiLo =
+    (a.emotional >= thrHi && b.emotional <= thrLo) || (b.emotional >= thrHi && a.emotional <= thrLo);
+  if (bigE && splitHiLo) {
+    const hi = a.emotional >= b.emotional ? n1 : n2;
+    const lo = a.emotional >= b.emotional ? n2 : n1;
+    emotional = `${hi}${ptcl(hi, "은", "는")} 감정 기대치가 상대적으로 높게 읽히고 ${lo}${ptcl(lo, "은", "는")} 억제·점잖음 쪽에 가깝게 읽혀, 서운함이 누적되기 쉬운 교차입니다. 짧은 주기로 감정을 이름 붙여 말하는 연습이 도움이 됩니다.`;
+  } else if (a.emotional >= thrHi && b.emotional >= thrHi) {
+    emotional =
+      "정서 구조는 두 사람 모두 관계 안정·소통 여지가 넓은 편으로, 감정 리듬을 맞추기 비교적 수월할 수 있습니다.";
+  } else if (a.emotional <= thrLo && b.emotional <= thrLo) {
+    emotional =
+      "둘 다 정서 축에서 일지 긴장·부담 신호가 함께 읽히는 편이라, 오해를 줄이려면 감정만이 아니라 사실·요청도 분리해서 말하는 것이 좋습니다.";
+  } else if (bigE) {
+    emotional = `정서 점수 차가 ${st.emotional.gap}점으로 벌어져 있어, 한쪽이 ‘이미 충분히 했다’고 느낄 때 다른 쪽은 ‘부족하다’고 느끼기 쉽습니다. 기대치를 숫자나 상황 예시로 맞춰 보세요.`;
+  } else {
+    emotional =
+      "정서 구조는 중간대에서 겹치는 부분이 있으나, 속도·기대치는 상황에 따라 조율하면 관계 만족도가 따라옵니다.";
+  }
+
+  // ── 매력 궁합: 교차 ──
+  let image: string;
+  if (bigI) {
+    image =
+      "서로 끌림을 느끼는 방식이 달라, 초반 설렘과 익숙해진 뒤의 온도차를 의심해 보는 것이 좋습니다. 취향·스킨십·칭찬 표현을 구체적으로 물어보면 간극이 줄어듭니다.";
+  } else if (a.image >= thrHi && b.image >= thrHi) {
+    image =
+      "둘 다 매력·인상 신호가 살아 있는 편이라, 시간이 지나며 익숙함 속에서도 분위기를 다시 맞출 여지가 있습니다.";
+  } else if (st.image.average <= thrLo) {
+    image =
+      "매력 축은 둘 다 한풀 꺾인 편으로 읽힐 수 있어, 관계가 식은 것이 아니라 표현이 잠시 얇아진 것인지 구분해 보는 것이 좋습니다.";
+  } else {
+    image =
+      "끌림 방식이 완전히 같지는 않아도, 표현 방식만 조정하면 인상·호감 체감 차이를 줄이기 쉬운 구간입니다.";
+  }
+
+  const crossSentences: SpouseAxisComparisonSentences = { practical, emotional, image };
+
+  // ── 유지 vs 만족 (부모 사례 등: 오래 가는 것 ≠ 마음이 차는 것) ──
+  const prAvg = st.practical.average;
+  const emAvg = st.emotional.average;
+  const imAvg = st.image.average;
+
+  let maintenanceLine: string;
+  if (prAvg >= thrHi && st.practical.gap <= 14) {
+    maintenanceLine =
+      "생활·역할·약속을 굴리는 ‘유지 구조’는 두 사람 모두 비교적 받쳐지는 편으로 읽힙니다. 다툼이 적어도 역할 불만이 쌓일 수는 있으니 역할 점검은 따로 하는 것이 안전합니다.";
+  } else if (prAvg <= thrLo) {
+    maintenanceLine =
+      "현실 축이 둘 다 낮게 잡혀 ‘같이 살아가기’의 조건·규칙을 먼저 합의하지 않으면 유지 자체가 버거워질 수 있는 교차입니다.";
+  } else {
+    maintenanceLine =
+      "유지 구조는 한쪽이 더 끌고 가거나 역할이 기울어질 수 있어, 고정 루틴과 비상 시나리오를 짧게라도 맞춰 두는 것이 좋습니다.";
+  }
+
+  let satisfactionLine: string;
+  if (emAvg >= thrHi && bigE) {
+    satisfactionLine =
+      "정서 기대치 차이가 커 ‘만족 구조’만 보면 한쪽은 충분히 했다고 느낄 때 다른 쪽은 허전함을 느끼기 쉽습니다. 관계가 유지되는 것과 정서적으로 잘 맞는 것은 별개일 수 있습니다.";
+  } else if (emAvg >= thrHi && !bigE) {
+    satisfactionLine =
+      "정서·소통 쪽 ‘만족 구조’는 둘 다 여유가 있어 보이는 편입니다. 다만 일상 스트레스가 몰리면 이 여유가 먼저 깎일 수 있으니 방어적으로 쉬는 시간을 남겨 두면 좋습니다.";
+  } else if (emAvg <= thrLo) {
+    satisfactionLine =
+      "만족 구조(정서·끌림 체감)는 둘 다 보수적으로 읽히는 편이라, 사랑의 언어가 달라도 ‘의도는 같다’는 신호를 자주 확인해 주는 것이 중요합니다.";
+  } else {
+    satisfactionLine =
+      "만족 구조는 중간대에서 서로 다른 방식으로 애정을 표현할 가능성이 큽니다. 말·행동·선물 중 무엇이 와닿는지 주기적으로 확인하면 체감 격차가 줄어듭니다.";
+  }
+
+  if (imAvg >= thrHi && bigI) {
+    satisfactionLine +=
+      " 매력·끌림은 ‘같이 높다’와 ‘같이 느낀다’가 다를 수 있어, 인상 형성 방식 차이를 전제로 두는 편이 덜 실망스럽습니다.";
+  }
+
+  // ── 종합 한 문단 ──
+  let holisticSummary: string;
+  const prOk = prAvg >= 58 && st.practical.gap <= 18;
+  const emTense = emAvg < 52 || bigE;
+  const emOk = emAvg >= 58 && !bigE;
+
+  if (prOk && emTense) {
+    holisticSummary = `지금 교차로 보면 두 사람은 현실 운영 감각은 비슷한 편에 가깝지만, 정서 표현 방식 차이로 관계 만족도에는 간극이 생기기 쉬운 구조로 읽힙니다. 즉, 관계가 유지되는 것과 정서적으로 잘 맞는 것은 별개일 수 있으니, 역할은 잘 돌아가도 ‘마음이 비는’ 느낌이 든다면 정서 축을 따로 점검하는 것이 좋습니다.`;
+  } else if (!prOk && emOk) {
+    holisticSummary = `정서·소통 쪽은 서로 맞추기 쉬운 편으로 읽히나, 생활·조건·책임 축에서 기대가 엇갈리면 일상 피로가 정서를 잠식하기 쉽습니다. 감정은 좋은데 살림이 힘들다는 식의 불균형에 주의하세요.`;
+  } else if (prOk && emOk) {
+    holisticSummary = `현실·정서 모두 중간 이상에서 크게 벌어지지 않는 편으로, 유지와 만족을 함께 다지기 좋은 교차에 가깝습니다. 그래도 습관화되면 표현이 얇아질 수 있으니 분기마다 한 번은 관계 점검을 권합니다.`;
+  } else {
+    holisticSummary = `세 축 가운데 특히 낮게 느껴지는 축이 있으면, 그 축부터 짧은 실험(규칙 하나, 대화 포맷 하나)으로 맞추는 것이 전체 체감을 끌어올리기 쉽습니다. 한 번에 세 축을 다 잡으려 하기보다 순서를 정하는 것이 부담이 적습니다.`;
+  }
+
+  return {
+    person1: a,
+    person2: b,
+    stats: st,
+    crossSentences,
+    maintenanceLine,
+    satisfactionLine,
+    holisticSummary,
+    sentences: crossSentences,
+  };
+}
+
+/** @deprecated buildSpouseStructureAxisComparisonBlock 사용 권장 */
 export function buildSpouseAxisComparisonNarrative(
   a: SpouseStructureAxisBundle,
   b: SpouseStructureAxisBundle,
 ): SpouseAxisComparisonSentences {
-  const thrHi = 62;
-  const thrLo = 46;
-  const gap = (x: number, y: number) => Math.abs(x - y);
-
-  let practical: string;
-  if (a.practical >= thrHi && b.practical >= thrHi) {
-    practical =
-      "현실 구조는 두 사람 모두 생활·책임 축이 비교적 받쳐지는 편이라, 운영 방식이 비슷하게 맞춰지기 쉽습니다.";
-  } else if (a.practical <= thrLo && b.practical <= thrLo) {
-    practical =
-      "현실 구조는 두 사람 모두 조건·역할을 먼저 다져야 하는 편이라, 합의와 규칙을 함께 세우는 것이 중요합니다.";
-  } else if (gap(a.practical, b.practical) >= 18) {
-    practical =
-      "현실 구조는 한쪽은 안정 지향이 뚜렷하고 다른 한쪽은 변동·조율 여지가 커, 생활 운영 방식에서 우선순위를 맞추는 논의가 필요할 수 있습니다.";
-  } else {
-    practical =
-      "현실 구조는 크게 엇갈리지 않으나, 세부 기대치는 대화로 맞추면 관계 부담이 줄어듭니다.";
-  }
-
-  let emotional: string;
-  const bigEmoGap = gap(a.emotional, b.emotional) >= 18;
-  const splitHiLo =
-    (a.emotional >= thrHi && b.emotional <= thrLo) || (b.emotional >= thrHi && a.emotional <= thrLo);
-
-  if (a.emotional >= thrHi && b.emotional >= thrHi) {
-    emotional =
-      "정서 구조는 두 사람 모두 관계 안정·소통 여지가 넓은 편으로, 감정 리듬을 맞추기 비교적 수월할 수 있습니다.";
-  } else if (bigEmoGap && splitHiLo) {
-    emotional =
-      "정서 구조는 한쪽은 예민·개방 쪽으로 읽히고 다른 한쪽은 억제·보수 쪽으로 읽혀, 감정 표현 방식 차이가 날 수 있습니다.";
-  } else if (a.emotional <= thrLo && b.emotional <= thrLo) {
-    emotional =
-      "정서 구조는 두 사람 모두 일지 긴장·부담 요인을 함께 의식할 때 오해가 줄어드는 편입니다.";
-  } else {
-    emotional =
-      "정서 구조는 중간대에서 겹치는 부분이 있으나, 속도·기대치는 상황에 따라 조율하면 좋습니다.";
-  }
-
-  let image: string;
-  if (gap(a.image, b.image) >= 20) {
-    image =
-      "매력 구조는 서로 느끼는 끌림·인상 형성 방식이 다를 수 있으니, 취향과 분위기 기대를 서로 확인해 보는 것이 도움이 됩니다.";
-  } else if (a.image >= thrHi && b.image >= thrHi) {
-    image =
-      "매력 구조는 두 사람 모두 대외적 인상·끌림 신호가 살아 있는 편으로, 첫 만남 이후에도 분위기 조율이 비교적 자연스러울 수 있습니다.";
-  } else {
-    image =
-      "매력 구조는 완전히 같지는 않아도, 표현 방식만 조정하면 인상 차이를 줄이기 쉬운 구간입니다.";
-  }
-
-  return { practical, emotional, image };
+  return buildSpouseStructureAxisComparisonBlock(a, b, "", "").crossSentences;
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -775,11 +923,12 @@ export function calculateCompatibilityScore(
   const axis2 = computeSpouseStructureAxisBundleFromPersonRecord(person2);
   const spouseStructureAxisComparison =
     axis1 && axis2
-      ? {
-          person1: axis1,
-          person2: axis2,
-          sentences: buildSpouseAxisComparisonNarrative(axis1, axis2),
-        }
+      ? buildSpouseStructureAxisComparisonBlock(
+          axis1,
+          axis2,
+          person1.birthInput.name,
+          person2.birthInput.name,
+        )
       : null;
 
   return {
