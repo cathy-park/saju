@@ -1,6 +1,12 @@
 // ── 사주 궁합 점수 계산 엔진 ─────────────────────────────────────────────
 // 기준점 50 + 7가지 가중 조정 → 0-100 클램프 후 등급 결정
 // 구조적 조정(상향/하향)은 등급 티어에만 영향을 미치며 점수 숫자는 변경 없음
+//
+// 데이터 출처 요약(점검):
+// - 메인 7조정: getFinalPillars 기반 일간·일지·월지·지지 교차·오행 보완·십성(일간쌍)·용신.
+//   용신·구조 상세 줄만 computePersonPipelineSnapshot(=원국 카드와 동일 스냅샷) 사용.
+// - spouseStructureAxisComparison: 스냅샷 evaluations·십성그룹·동일 기둥/신살 입력으로 보조 3축만
+//   (메인 점수 미가산). sPal·emotionalLoad·관재/재성 작동은 3축에만 반영되고 7조정에는 직접 미포함.
 
 import type { PersonRecord } from "./storage";
 import { getFinalPillars } from "./storage";
@@ -10,6 +16,10 @@ import { getTenGod } from "./tenGods";
 import { getController, type FiveElKey } from "./element-color";
 import { computePersonPipelineSnapshot } from "./personPipelineSnapshot";
 import type { SajuPipelineResult } from "./sajuPipeline";
+import {
+  computeSpouseStructureAxisBundleFromPersonRecord,
+  type SpouseStructureAxisBundle,
+} from "./evaluations/spouseStructureAxisBundle";
 
 // ── 기초 상수 ─────────────────────────────────────────────────────────────
 
@@ -163,6 +173,82 @@ export interface CompatibilityResult {
     monthBranch: number;
     yongshin: number;
   };
+
+  /**
+   * 원국 파이프라인 스냅샷과 동일 입력으로 산출한 배우자 구조 3축(보조 비교).
+   * calculateCompatibilityScore의 기준점·7조정 합계에는 반영하지 않음.
+   */
+  spouseStructureAxisComparison: SpouseStructureAxisComparisonBlock | null;
+}
+
+export interface SpouseAxisComparisonSentences {
+  practical: string;
+  emotional: string;
+  image: string;
+}
+
+export interface SpouseStructureAxisComparisonBlock {
+  person1: SpouseStructureAxisBundle;
+  person2: SpouseStructureAxisBundle;
+  sentences: SpouseAxisComparisonSentences;
+}
+
+/** 두 사람 3축 점수 차이를 짧은 비교 문장으로 정리(보조 UI용). 이후 메인 가중 연동 시 재사용 가능. */
+export function buildSpouseAxisComparisonNarrative(
+  a: SpouseStructureAxisBundle,
+  b: SpouseStructureAxisBundle,
+): SpouseAxisComparisonSentences {
+  const thrHi = 62;
+  const thrLo = 46;
+  const gap = (x: number, y: number) => Math.abs(x - y);
+
+  let practical: string;
+  if (a.practical >= thrHi && b.practical >= thrHi) {
+    practical =
+      "현실 구조는 두 사람 모두 생활·책임 축이 비교적 받쳐지는 편이라, 운영 방식이 비슷하게 맞춰지기 쉽습니다.";
+  } else if (a.practical <= thrLo && b.practical <= thrLo) {
+    practical =
+      "현실 구조는 두 사람 모두 조건·역할을 먼저 다져야 하는 편이라, 합의와 규칙을 함께 세우는 것이 중요합니다.";
+  } else if (gap(a.practical, b.practical) >= 18) {
+    practical =
+      "현실 구조는 한쪽은 안정 지향이 뚜렷하고 다른 한쪽은 변동·조율 여지가 커, 생활 운영 방식에서 우선순위를 맞추는 논의가 필요할 수 있습니다.";
+  } else {
+    practical =
+      "현실 구조는 크게 엇갈리지 않으나, 세부 기대치는 대화로 맞추면 관계 부담이 줄어듭니다.";
+  }
+
+  let emotional: string;
+  const bigEmoGap = gap(a.emotional, b.emotional) >= 18;
+  const splitHiLo =
+    (a.emotional >= thrHi && b.emotional <= thrLo) || (b.emotional >= thrHi && a.emotional <= thrLo);
+
+  if (a.emotional >= thrHi && b.emotional >= thrHi) {
+    emotional =
+      "정서 구조는 두 사람 모두 관계 안정·소통 여지가 넓은 편으로, 감정 리듬을 맞추기 비교적 수월할 수 있습니다.";
+  } else if (bigEmoGap && splitHiLo) {
+    emotional =
+      "정서 구조는 한쪽은 예민·개방 쪽으로 읽히고 다른 한쪽은 억제·보수 쪽으로 읽혀, 감정 표현 방식 차이가 날 수 있습니다.";
+  } else if (a.emotional <= thrLo && b.emotional <= thrLo) {
+    emotional =
+      "정서 구조는 두 사람 모두 일지 긴장·부담 요인을 함께 의식할 때 오해가 줄어드는 편입니다.";
+  } else {
+    emotional =
+      "정서 구조는 중간대에서 겹치는 부분이 있으나, 속도·기대치는 상황에 따라 조율하면 좋습니다.";
+  }
+
+  let image: string;
+  if (gap(a.image, b.image) >= 20) {
+    image =
+      "매력 구조는 서로 느끼는 끌림·인상 형성 방식이 다를 수 있으니, 취향과 분위기 기대를 서로 확인해 보는 것이 도움이 됩니다.";
+  } else if (a.image >= thrHi && b.image >= thrHi) {
+    image =
+      "매력 구조는 두 사람 모두 대외적 인상·끌림 신호가 살아 있는 편으로, 첫 만남 이후에도 분위기 조율이 비교적 자연스러울 수 있습니다.";
+  } else {
+    image =
+      "매력 구조는 완전히 같지는 않아도, 표현 방식만 조정하면 인상 차이를 줄이기 쉬운 구간입니다.";
+  }
+
+  return { practical, emotional, image };
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -685,6 +771,17 @@ export function calculateCompatibilityScore(
     ...(pipe1 && pipe2 ? buildStructureCompatDetails(pipe1, pipe2, person1.birthInput.name, person2.birthInput.name) : []),
   ];
 
+  const axis1 = computeSpouseStructureAxisBundleFromPersonRecord(person1);
+  const axis2 = computeSpouseStructureAxisBundleFromPersonRecord(person2);
+  const spouseStructureAxisComparison =
+    axis1 && axis2
+      ? {
+          person1: axis1,
+          person2: axis2,
+          sentences: buildSpouseAxisComparisonNarrative(axis1, axis2),
+        }
+      : null;
+
   return {
     baseScore,
     adjustmentSteps,
@@ -711,12 +808,14 @@ export function calculateCompatibilityScore(
       monthBranch:            mb.delta,
       yongshin:               yong.delta,
     },
+    spouseStructureAxisComparison,
   };
 }
 
 // ── 배우자 3축(단일 원국) — 궁합에서 A/B 각각 산출 후 교차 비교할 때 사용 ──
 export {
   computeSpouseStructureAxisBundle,
+  computeSpouseStructureAxisBundleFromPersonRecord,
   toSpouseStructureAxisBundle,
 } from "./evaluations/spouseStructureAxisBundle";
 export type {

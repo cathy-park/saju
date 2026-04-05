@@ -4,6 +4,7 @@
  */
 
 import type { FiveElementCount } from "../sajuEngine";
+import { countFiveElements, type ComputedPillars } from "../sajuEngine";
 import {
   BRANCH_TO_ELEMENT,
   STEM_TO_ELEMENT,
@@ -14,6 +15,11 @@ import {
 import { computeBranchRelations } from "../branchRelations";
 import { getTenGod, type TenGod } from "../tenGods";
 import { getHiddenStems } from "../hiddenStems";
+import { calculateShinsalFull } from "../luckCycles";
+import { computePersonPipelineSnapshot } from "../personPipelineSnapshot";
+import { getSpousePalaceInfo } from "../relationshipReport";
+import type { PersonRecord } from "../storage";
+import { getFinalPillars } from "../storage";
 import type { RelationshipWealthEvaluations } from "./relationshipWealthEvaluation";
 
 // ── 십성 집합(이 파일 전용) ─────────────────────────────────────────────
@@ -448,4 +454,89 @@ export function computeSpouseStructureAxisBundle(
     axisDebug,
     spouseStructureAxisBundle: toSpouseStructureAxisBundle(scores),
   };
+}
+
+// ── PersonRecord → 동일 입력(원국 카드·computePersonPipelineSnapshot)으로 3축 산출 ──
+
+/**
+ * `getFinalPillars` + `computePersonPipelineSnapshot`의 evaluations·십성 그룹과,
+ * 리포트 원국과 동일한 allChars/allStems/allBranches·신살(자동+수동−제외)로 3축을 계산합니다.
+ * 궁합 메인 점수와는 별도(보조 비교용).
+ */
+export function computeSpouseStructureAxisBundleFromPersonRecord(
+  record: PersonRecord,
+): SpouseStructureAxisBundle | null {
+  const pillars = getFinalPillars(record);
+  const dayStem = pillars.day?.hangul?.[0] ?? "";
+  const dayBranch = pillars.day?.hangul?.[1] ?? "";
+  if (!dayStem || !dayBranch) return null;
+
+  const pipe = computePersonPipelineSnapshot(record);
+  if (!pipe?.evaluations) return null;
+
+  const allChars = [
+    pillars.hour?.hangul?.[0],
+    pillars.hour?.hangul?.[1],
+    pillars.day?.hangul?.[1],
+    pillars.month?.hangul?.[0],
+    pillars.month?.hangul?.[1],
+    pillars.year?.hangul?.[0],
+    pillars.year?.hangul?.[1],
+  ].filter((c): c is string => !!c);
+
+  const allStems = [
+    pillars.hour?.hangul?.[0],
+    dayStem,
+    pillars.month?.hangul?.[0],
+    pillars.year?.hangul?.[0],
+  ].filter((c): c is string => !!c);
+
+  const allBranches = [
+    pillars.hour?.hangul?.[1],
+    dayBranch,
+    pillars.month?.hangul?.[1],
+    pillars.year?.hangul?.[1],
+  ].filter((c): c is string => !!c);
+
+  const counts = countFiveElements(pillars as ComputedPillars);
+  const shinsalMode = record.fortuneOptions?.shinsalMode ?? "default";
+  const shinsalFull = calculateShinsalFull(
+    dayStem,
+    dayBranch,
+    record.birthInput.month,
+    [
+      { pillar: "년주", stem: pillars.year?.hangul?.[0] ?? "", branch: pillars.year?.hangul?.[1] ?? "" },
+      { pillar: "월주", stem: pillars.month?.hangul?.[0] ?? "", branch: pillars.month?.hangul?.[1] ?? "" },
+      { pillar: "일주", stem: pillars.day?.hangul?.[0] ?? "", branch: pillars.day?.hangul?.[1] ?? "" },
+      { pillar: "시주", stem: pillars.hour?.hangul?.[0] ?? "", branch: pillars.hour?.hangul?.[1] ?? "" },
+    ],
+    shinsalMode,
+  );
+  const shinsalNames = new Set<string>();
+  for (const ps of shinsalFull) {
+    for (const n of ps.stemItems) shinsalNames.add(n);
+    for (const n of ps.branchItems) shinsalNames.add(n);
+    for (const n of ps.pillarItems) shinsalNames.add(n);
+  }
+  for (const it of record.manualShinsal ?? []) {
+    if (it?.name) shinsalNames.add(it.name);
+  }
+  for (const it of record.excludedAutoShinsal ?? []) {
+    if (it?.name) shinsalNames.delete(it.name);
+  }
+
+  const spousePalace = getSpousePalaceInfo(dayBranch);
+
+  return computeSpouseStructureAxisBundle({
+    dayStem,
+    dayBranch,
+    allChars,
+    allStems,
+    allBranches,
+    counts,
+    evaluations: pipe.evaluations,
+    shinsalNames,
+    spouseElement: spousePalace?.element,
+    tenGodGroups: pipe.base?.tenGodGroups ?? null,
+  }).spouseStructureAxisBundle;
 }
