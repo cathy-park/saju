@@ -144,7 +144,9 @@ import {
   User,
   RotateCcw,
   AlertTriangle,
+  CircleHelp,
 } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
@@ -2734,19 +2736,29 @@ function clampWealthAxisFallback(n: number): number {
   return Math.max(0, Math.min(100, Math.round(n)));
 }
 
-/** 원국·성격 탭 공통 — 최종/유형/채널·감당·축적 요약(검증·보조 노출) */
-function StructureWealthBriefCard({
-  wealth,
-  context,
-  hideDuplicateHeading = false,
-}: {
-  wealth: DomainScoreResult;
-  context: "yuan" | "personality";
-  /** 성격 탭 AccSection 제목과 겹치지 않게 내부 머리글 숨김 */
-  hideDuplicateHeading?: boolean;
-}) {
+const WEALTH_TYPE_ONE_LINE: Record<string, string> = {
+  "생산형 재물": "직접 만들고 벌어들이는 구조가 강한 타입",
+  "기회형 재물": "연결과 기회를 통해 수익이 들어오기 쉬운 타입",
+  "관리형 재물": "안정적으로 운영하고 유지하는 힘이 강한 타입",
+  "직접 재물형": "재물과 직접 연결되는 구조가 강한 타입",
+  "불안정 재물형": "수익 기회는 있어도 유지와 축적 변동성이 큰 타입",
+};
+
+type WealthAxisKey = "channel" | "capacity" | "accumulation";
+
+const WEALTH_AXIS_INLINE: Record<WealthAxisKey, string> = {
+  channel:
+    "돈과 연결되는 통로를 뜻합니다. 제안, 수익 기회, 일거리 흐름 등이 여기에 포함됩니다.",
+  capacity:
+    "들어온 돈을 실제로 운영하고 유지할 수 있는 힘입니다. 감당력이 낮으면 기회가 있어도 체감 수익이 줄 수 있습니다.",
+  accumulation:
+    "번 돈이 얼마나 남고 쌓이는지를 뜻합니다. 축적이 낮으면 벌어도 남는 느낌이 적을 수 있습니다.",
+};
+
+/** 원국 탭 — 최종/유형/채널·감당·축적 요약 */
+function StructureWealthBriefCard({ wealth }: { wealth: DomainScoreResult }) {
+  const [openAxis, setOpenAxis] = useState<WealthAxisKey | null>(null);
   if (wealth.domainKey !== "wealth") return null;
-  /** wealthAxes 누락 시에도 카드가 사라지지 않도록(구버전 번들·예외 경로 대비) */
   const ax = wealth.wealthAxes ?? {
     channelScore: clampWealthAxisFallback(wealth.score),
     capacityScore: clampWealthAxisFallback(wealth.score),
@@ -2756,58 +2768,89 @@ function StructureWealthBriefCard({
   const ch = wealthChannelBand(ax.channelScore);
   const ca = wealthCapacityBand(ax.capacityScore);
   const ac = wealthAccumulationBand(ax.accumulationScore);
+  const typeLine =
+    WEALTH_TYPE_ONE_LINE[wealth.classification] ?? "사주 구조에 따라 재물이 움직이는 방식이 달라집니다.";
+
+  function toggleAxis(key: WealthAxisKey) {
+    setOpenAxis((prev) => (prev === key ? null : key));
+  }
+
+  const axisCells: {
+    key: WealthAxisKey;
+    label: string;
+    score: number;
+    band: string;
+  }[] = [
+    { key: "channel", label: "채널", score: ax.channelScore, band: ch },
+    { key: "capacity", label: "감당", score: ax.capacityScore, band: ca },
+    { key: "accumulation", label: "축적", score: ax.accumulationScore, band: ac },
+  ];
+
   return (
-    <div
-      className={cn(
-        "rounded-xl border px-3 py-2.5 shadow-none",
-        context === "yuan"
-          ? "border-emerald-200/55 bg-emerald-50/20"
-          : hideDuplicateHeading
-            ? "border-emerald-100/60 bg-emerald-50/15"
-            : "border-emerald-200/45 bg-emerald-50/15",
-      )}
-    >
-      {!hideDuplicateHeading ? (
-        <div className="flex items-start justify-between gap-2">
-          <div>
-            <p className="text-[11px] font-bold uppercase tracking-wide text-emerald-800/90">구조 기반 재물운</p>
-            <p className="text-[10px] text-muted-foreground mt-0.5">
-              {context === "yuan" ? "원국 · 구조 요약" : "검증용 · 최종 해석값"}
-            </p>
-          </div>
+    <div className="rounded-xl border border-emerald-200/55 bg-emerald-50/20 px-3 py-2.5 shadow-none">
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <p className="text-[11px] font-bold uppercase tracking-wide text-emerald-800/90">구조 기반 재물운</p>
+          <p className="text-[10px] text-muted-foreground mt-0.5">원국 · 구조 요약</p>
         </div>
-      ) : (
-        <p className="text-[10px] text-muted-foreground mb-1">최종 점수·유형·채널/감당/축적 (클립보드와 동일 출처)</p>
-      )}
+      </div>
       {axesAreFallback ? (
-        <p className="mt-1 text-[10px] text-amber-800/90 bg-amber-50/80 border border-amber-100 rounded px-2 py-1 leading-snug">
-          채널·감당·축적 세부치는 이 빌드에서 누락되어 최종 점수로 대체 표시했습니다. 앱을 최신으로 갱신해 주세요.
+        <p className="mt-1 text-[10px] text-amber-900/85 bg-amber-50/70 border border-amber-100/90 rounded-md px-2 py-1.5 leading-snug">
+          세 축이 같은 숫자로 보이면, 지금은 종합 점수만 반영된 상태예요. 각각의 의미는 아래 칸을 눌러 참고해 주세요.
         </p>
       ) : null}
       <div className="mt-2 flex flex-wrap items-baseline gap-2">
         <span className="text-2xl font-black tabular-nums leading-none text-emerald-700">{wealth.score}</span>
         <span className="text-[12px] font-medium text-emerald-900/85">점 · 최종 재물운</span>
       </div>
-      <p className="mt-1.5 text-[13px] font-semibold text-foreground leading-snug">{wealth.classification}</p>
-      <div className="mt-2 grid grid-cols-3 gap-1.5 text-center">
-        <div className="rounded-md border border-emerald-100/70 bg-white/55 px-1 py-1.5">
-          <p className="text-[10px] text-muted-foreground">채널</p>
-          <p className="text-[12px] font-bold tabular-nums text-foreground">{ax.channelScore}</p>
-          <p className="text-[10px] font-semibold text-emerald-800">{ch}</p>
-        </div>
-        <div className="rounded-md border border-emerald-100/70 bg-white/55 px-1 py-1.5">
-          <p className="text-[10px] text-muted-foreground">감당</p>
-          <p className="text-[12px] font-bold tabular-nums text-foreground">{ax.capacityScore}</p>
-          <p className="text-[10px] font-semibold text-emerald-800">{ca}</p>
-        </div>
-        <div className="rounded-md border border-emerald-100/70 bg-white/55 px-1 py-1.5">
-          <p className="text-[10px] text-muted-foreground">축적</p>
-          <p className="text-[12px] font-bold tabular-nums text-foreground">{ax.accumulationScore}</p>
-          <p className="text-[10px] font-semibold text-emerald-800">{ac}</p>
-        </div>
+      <div className="mt-1.5 flex flex-wrap items-center gap-1">
+        <p className="text-[13px] font-semibold text-foreground leading-snug">{wealth.classification}</p>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-emerald-200/80 bg-white/70 text-emerald-700/90 hover:bg-emerald-50/90 active:scale-95 transition-transform"
+              aria-label="재물 유형 안내"
+            >
+              <CircleHelp className="h-3 w-3" strokeWidth={2.2} />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="max-w-[240px] text-[11px] leading-snug px-2.5 py-2">
+            채널·감당·축적 점수를 함께 읽어 정리한 패턴 이름이에요. 아래 칸을 누르면 각 점수의 뜻을 볼 수 있어요.
+          </TooltipContent>
+        </Tooltip>
+      </div>
+      <p className="mt-1 text-[11px] leading-snug text-muted-foreground">{typeLine}</p>
+      <div className="mt-2 grid grid-cols-3 gap-1.5">
+        {axisCells.map(({ key, label, score, band }) => {
+          const open = openAxis === key;
+          return (
+            <button
+              key={key}
+              type="button"
+              onClick={() => toggleAxis(key)}
+              aria-expanded={open}
+              className={cn(
+                "rounded-md border bg-white/55 px-1 py-2 transition-colors flex flex-col items-center min-h-[4.25rem]",
+                open
+                  ? "border-emerald-400/70 ring-1 ring-emerald-300/50 bg-emerald-50/40"
+                  : "border-emerald-100/70 active:bg-emerald-50/30",
+              )}
+            >
+              <span className="text-[10px] text-muted-foreground">{label}</span>
+              <span className="text-[12px] font-bold tabular-nums text-foreground">{score}</span>
+              <span className="text-[10px] font-semibold text-emerald-800">{band}</span>
+              {open ? (
+                <div className="mt-1.5 w-full rounded-md border border-emerald-100/80 bg-emerald-50/60 px-1.5 py-1.5 text-[10px] leading-snug text-foreground/90 text-left font-normal">
+                  {WEALTH_AXIS_INLINE[key]}
+                </div>
+              ) : null}
+            </button>
+          );
+        })}
       </div>
       <p className="mt-2 border-t border-border/50 pt-2 text-[11px] leading-snug text-muted-foreground">
-        재물 채널이 강하더라도 실제 감당력과 축적력에 따라 체감은 달라질 수 있습니다.
+        돈의 기회가 많아도, 실제로 운영하고 남기는 힘에 따라 체감은 달라질 수 있어요.
       </p>
     </div>
   );
@@ -3840,7 +3883,7 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
           )}
 
           {structureWealthDomain ? (
-            <StructureWealthBriefCard wealth={structureWealthDomain} context="yuan" />
+            <StructureWealthBriefCard wealth={structureWealthDomain} />
           ) : null}
 
           <div className="rounded-lg border border-border/60 bg-muted/15 px-3 py-2.5 text-[12px] leading-relaxed text-muted-foreground">
@@ -4371,13 +4414,6 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                     <p className="text-[11px] text-muted-foreground leading-relaxed">
                       파생 등급(타이밍·호환 레이어): 관성 {sajuPipelineResult.evaluations.officerActivation.grade} · 배우자궁{" "}
                       {sajuPipelineResult.evaluations.spousePalaceStability.grade}
-                      <span className="text-muted-foreground/85">
-                        {" "}
-                        · 재물 관련 등급 {sajuPipelineResult.evaluations.wealthActivation.grade}
-                      </span>
-                    </p>
-                    <p className="text-[10px] leading-snug text-muted-foreground/90">
-                      재물의 대표값은 이 탭에서 십성 분포 아래·배우자궁 바로 위 「구조 기반 재물운」카드의 최종 점수·유형입니다. 위 등급만으로 ‘돈복’을 단정하지 않도록 보조 정보로 두었습니다.
                     </p>
                   </div>
                 )}
@@ -4526,29 +4562,6 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">일간 정보가 없습니다</p>
-            )}
-          </AccSection>
-
-          <AccSection
-            title="구조 기반 재물운"
-            defaultOpen
-            id="personality-structure-wealth"
-            titleExtra={
-              <span className="text-[9px] font-semibold text-emerald-800 bg-emerald-50/90 px-1.5 py-0.5 rounded-md border border-emerald-200/80 whitespace-nowrap shrink-0">
-                최종·3축
-              </span>
-            }
-          >
-            {structureWealthDomain ? (
-              <StructureWealthBriefCard
-                wealth={structureWealthDomain}
-                context="personality"
-                hideDuplicateHeading
-              />
-            ) : (
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                구조 재물 데이터를 불러오지 못했습니다. 앱·웹을 최신 빌드로 갱신하거나 저장 공간 캐시를 비운 뒤 다시 열어 주세요.
-              </p>
             )}
           </AccSection>
 
@@ -4702,16 +4715,7 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
             </AccSection>
           )}
 
-          <div className="rounded-lg border border-dashed border-border/70 bg-muted/10 px-3 py-2">
-            <CopyButton
-              buildText={() => buildPersonClipboardText(record)}
-              label="사주 분석 전체 복사 (구조 재물·7영역 포함)"
-            />
-            <p className="mt-1.5 text-[10px] text-muted-foreground leading-snug">
-              원국 탭과 동일한 클립보드입니다. 복사본 하단 엔진 메타에{" "}
-              <span className="font-mono">structure-v1.5-wealth-ui+clipboard-summary</span>가 보이면 최신입니다.
-            </p>
-          </div>
+          <CopyButton buildText={() => buildPersonClipboardText(record)} label="사주 분석 전체 복사" />
         </div>
       )}
 
