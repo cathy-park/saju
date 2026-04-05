@@ -21,13 +21,18 @@ import type {
   PipelineInput,
 } from "../sajuPipeline";
 
-/** 재물 카드 전용: 최종 점수는 기하평균, 채널은 ‘재성 작동’ 축(보조 지표) */
+/** 재물 카드 전용: 최종 점수는 기하평균, 채널은 ‘재성 작동’ 축(보조 지표) — 1차 유형 10종 */
 export type WealthStructureClassification =
-  | "직접 재물형"
   | "생산형 재물"
   | "관리형 재물"
-  | "기회형 재물"
-  | "불안정 재물형";
+  | "투자형 재물"
+  | "브랜드형 재물"
+  | "관계형 재물"
+  | "전문직형 재물"
+  | "조직형 재물"
+  | "지식형 재물"
+  | "콘텐츠형 재물"
+  | "후반축적형 재물";
 
 export interface WealthAxisScores {
   /** 재성·용신·월일 뿌리 등 ‘수입 통로’ (과대 체감 방지를 위해 별도 압축) */
@@ -281,6 +286,11 @@ function classifyWealthStructure(args: {
   final: number;
   hasGw: boolean;
   wealthGroup: number;
+  sikGroup: number;
+  inGroup: number;
+  bijobGroup: number;
+  wealthTransparent: boolean;
+  officerStemCount: number;
 }): WealthStructureClassification {
   const {
     gukName,
@@ -295,6 +305,11 @@ function classifyWealthStructure(args: {
     final,
     hasGw,
     wealthGroup,
+    sikGroup,
+    inGroup,
+    bijobGroup,
+    wealthTransparent,
+    officerStemCount,
   } = args;
 
   const fragileCarry = (weakBody || sf < 0.38) && relWealthStrength > 1.72;
@@ -311,37 +326,47 @@ function classifyWealthStructure(args: {
     (weakBody || fragileCarry || relWealthStrength > 1.4) &&
     channel - Math.min(capacity, accumulation) >= 8;
 
-  // 1) 식상생재 + 감당이 받쳐주면 생산형 우선(축적 흔들림은 보조 지표로만 둠) — 소연 류
-  // 태약·극신약은 ‘지속 생산’ 축이 약해 동일 식상생재라도 생산형에서 제외(현욱 류)
+  // 식상생재 + 감당 우선(기존 엔진과 동일 순위) → 세부는 식상·인성·투출
   if (shengCai && capacity >= 58 && channel >= 52 && !fragileCarry && sf >= 0.48) {
+    if (sikGroup >= 0.5) return "콘텐츠형 재물";
+    if (inGroup >= 0.46) return "지식형 재물";
+    if (wealthTransparent && wealthGroup >= 0.38) return "브랜드형 재물";
     return "생산형 재물";
   }
 
-  // 2) 정재격 — 직접 재물·성실 축 (아빠 류)
   if (gukName.includes("정재격")) {
-    return "직접 재물형";
+    return "전문직형 재물";
   }
 
-  // 3) 불안정 — 태약·과재·축적 붕괴
+  // 변동·과재 부담 → 투자·후반축적·관계형으로 세분
   if (unstableRisk) {
-    return "불안정 재물형";
+    if (opportunityLike || channel >= 58) return "투자형 재물";
+    if (capacity >= 56 && accumulation >= 44) return "후반축적형 재물";
+    return "관계형 재물";
   }
 
-  // 4) 통로는 세 보이나 감당이 못 따라가는 기회형 — 현욱 류
   if (opportunityLike) {
-    return "기회형 재물";
+    return "관계형 재물";
   }
 
-  // 5) 관성+재성 — 조직·직무로 재를 묶는 관리형 (엄마 류)
   if (hasGw && wealthGroup >= 0.34) {
+    if (officerStemCount >= 2) return "조직형 재물";
     return "관리형 재물";
+  }
+
+  if (final >= 54 && accumulation >= 48 && channel <= 54 && capacity >= 54) {
+    return "후반축적형 재물";
+  }
+
+  if (bijobGroup + inGroup >= 0.52 && wealthGroup >= 0.28 && channel >= 56) {
+    return "관계형 재물";
   }
 
   if (final >= 58 && capacity >= 56) {
     return "관리형 재물";
   }
 
-  return "기회형 재물";
+  return "관리형 재물";
 }
 
 function scoreWealth(
@@ -496,6 +521,7 @@ function scoreWealth(
     ? geomMean3WealthProduction(channelScore, cap, accForGeom, 0.235)
     : geomMean3(channelScore, cap, accForGeom);
   const hasGw = (g["관성"] ?? 0) >= 0.45;
+  const officerStemCount = stemGroupCount(dayStem, allStems, "관성");
 
   const cls = classifyWealthStructure({
     gukName,
@@ -510,12 +536,17 @@ function scoreWealth(
     final,
     hasGw,
     wealthGroup,
+    sikGroup: g["식상"] ?? 0,
+    inGroup: g["인성"] ?? 0,
+    bijobGroup: g["비겁"] ?? 0,
+    wealthTransparent,
+    officerStemCount,
   });
 
   const disclaimer =
     "재물 채널이 강하더라도 실제 감당력과 축적력에 따라 체감은 달라질 수 있습니다. 메인 점수는 세 축의 결합값입니다." +
     (productionCandidate
-      ? " 생산형은 저축만이 아니라 ‘계속 벌어 들이는’ 루트를 반영해, 표시 축적 점수보다 종합에 덜 깎이도록 가중·보정합니다."
+      ? " 식상생재형은 ‘계속 벌어 들이는’ 루트를 반영해, 표시 축적 점수보다 종합에 덜 깎이도록 가중·보정합니다."
       : "");
 
   const summary =

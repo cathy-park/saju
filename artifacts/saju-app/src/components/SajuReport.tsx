@@ -2810,18 +2810,65 @@ function clampWealthAxisFallback(n: number): number {
   return Math.max(0, Math.min(100, Math.round(n)));
 }
 
+/** 재물 카드 연령 레이어 (해석 초점·개선 제안 풀 분기) */
+type WealthAgeCohort = "lt30" | "30_50" | "50_70" | "ge70";
+
+function wealthAgeCohortFromYears(ageYears: number | null): WealthAgeCohort {
+  if (ageYears == null || !Number.isFinite(ageYears)) return "30_50";
+  if (ageYears < 30) return "lt30";
+  if (ageYears < 50) return "30_50";
+  if (ageYears < 70) return "50_70";
+  return "ge70";
+}
+
+/** 배우자 카드 연령 레이어 */
+type SpouseAgeCohort = "lt30" | "30_49" | "ge50";
+
+function spouseAgeCohortFromYears(ageYears: number | null): SpouseAgeCohort {
+  if (ageYears == null || !Number.isFinite(ageYears)) return "30_49";
+  if (ageYears < 30) return "lt30";
+  if (ageYears < 50) return "30_49";
+  return "ge50";
+}
+
+function wealthAgeLensParagraph(cohort: WealthAgeCohort): string {
+  if (cohort === "lt30") {
+    return "이 연령대에서는 역량·경력·성장 가능성을 중심으로 보면 해석이 잘 맞습니다.";
+  }
+  if (cohort === "30_50") {
+    return "이 연령대에서는 실행·확장으로 수입 구조를 굳히는 관점이 잘 맞습니다.";
+  }
+  if (cohort === "50_70") {
+    return "이 연령대에서는 안정 유지·지출 통제·자산 비중 조절 관점이 잘 맞습니다.";
+  }
+  return "이 연령대에서는 자산 보존·현금흐름 단순화·리스크 축소 관점이 잘 맞습니다.";
+}
+
 /** 엔진 분류값 → 사용자용 장문 (없으면 접두로 조합 시도) */
 const WEALTH_TYPE_DESCRIPTIONS: Record<string, string> = {
   "생산형 재물":
-    "노동, 프로젝트, 강의, 사업 등 직접 활동을 통해 지속적으로 수입을 만들어내는 재물 구조입니다.",
-  "관리형 재물": "들어온 수입을 안정적으로 유지하고 지출을 통제하는 능력이 강한 구조입니다.",
+    "노동·프로젝트·용역 등 활동을 반복해 수입을 만드는 구조입니다. 루트를 고정할수록 체감이 안정됩니다.",
+  "콘텐츠형 재물":
+    "글·영상·클래스 등 결과물이 쌓이며 수입으로 이어지기 쉬운 구조입니다. 포트폴리오를 자산처럼 다루면 유리합니다.",
+  "지식형 재물":
+    "전문 지식·자격·컨설팅으로 가치를 파는 구조입니다. 경력·레퍼런스가 수입으로 연결되기 쉽습니다.",
+  "브랜드형 재물":
+    "신뢰·이름·일관된 품질이 단가와 선택으로 이어지는 구조입니다. 집중과 차별화가 효과적입니다.",
+  "관리형 재물": "들어온 수입을 지키고 지출·리스크를 통제하는 힘이 중심인 구조입니다.",
+  "조직형 재물": "조직·직무·규정 안에서 재물을 다지는 구조입니다. 역할과 책임이 분명할수록 안정감이 큽니다.",
+  "전문직형 재물":
+    "정재·전문 역할에 가까운 성실·직무 기반 수입 구조입니다. 규칙적인 현금흐름과 잘 맞습니다.",
+  "관계형 재물": "인맥·협업·소개·플랫폼 연결이 수입 통로를 넓히는 구조입니다.",
+  "투자형 재물":
+    "변동과 기회가 함께 있는 구조입니다. 타이밍·분산·손실 한도를 정하면 체감이 나아질 수 있습니다.",
+  "후반축적형 재물":
+    "통로보다 저축·유지·장기 적립이 앞서는 구조로 읽히기 쉽습니다. 늦게 붙는 축적에 유리한 면이 있습니다.",
   "축적형 재물":
-    "수익이 자산으로 전환되어 시간이 지나면서 자연스럽게 증가하는 구조입니다. 투자·지분·콘텐츠·자동화 수익과 연결되는 경우가 많습니다.",
+    "수익이 자산으로 전환되어 시간이 지나며 늘어나는 흐름입니다. 저축·분산·안전자산과 잘 맞습니다.",
   "직접 재물형":
-    "재물과 직접 맞닿아 수입이 분명한 루트로 들어오는 구조입니다. 성실한 운용과 규칙적인 현금흐름과 잘 맞습니다.",
-  "불안정 재물형": "수입 변동성이 있지만 기회에 따라 큰 수익 가능성이 있는 구조입니다. 안정성 관리가 중요합니다.",
-  "관계형 재물": "인맥과 협업을 통해 수입 기회가 확장되는 구조입니다.",
-  "기회형 재물": "특정 시기나 환경 변화에 따라 수입 기회가 열리는 구조입니다. 타이밍 활용이 중요합니다.",
+    "재물과 직접 맞닿아 수입 루트가 분명한 구조입니다. 성실한 운용과 규칙적인 현금흐름과 잘 맞습니다.",
+  "불안정 재물형": "수입 변동성이 있지만 기회에 따라 수익이 열리는 구조입니다. 안정성 관리가 중요합니다.",
+  "기회형 재물": "시기·환경 변화에 따라 기회가 열리는 구조입니다. 타이밍 활용이 중요합니다.",
 };
 
 const WEALTH_TYPE_STEM_DESCRIPTIONS: Record<string, string> = {
@@ -2833,15 +2880,26 @@ const WEALTH_TYPE_STEM_DESCRIPTIONS: Record<string, string> = {
   기회형: WEALTH_TYPE_DESCRIPTIONS["기회형 재물"] ?? "",
   직접: WEALTH_TYPE_DESCRIPTIONS["직접 재물형"] ?? "",
   불안정: WEALTH_TYPE_DESCRIPTIONS["불안정 재물형"] ?? "",
+  투자형: WEALTH_TYPE_DESCRIPTIONS["투자형 재물"] ?? "",
+  브랜드형: WEALTH_TYPE_DESCRIPTIONS["브랜드형 재물"] ?? "",
+  전문직형: WEALTH_TYPE_DESCRIPTIONS["전문직형 재물"] ?? "",
+  조직형: WEALTH_TYPE_DESCRIPTIONS["조직형 재물"] ?? "",
+  지식형: WEALTH_TYPE_DESCRIPTIONS["지식형 재물"] ?? "",
+  콘텐츠형: WEALTH_TYPE_DESCRIPTIONS["콘텐츠형 재물"] ?? "",
+  후반축적형: WEALTH_TYPE_DESCRIPTIONS["후반축적형 재물"] ?? "",
 };
 
-function wealthTypeParagraph(classification: string): string {
+function wealthTypeParagraph(classification: string, cohort: WealthAgeCohort): string {
   const direct = WEALTH_TYPE_DESCRIPTIONS[classification];
-  if (direct) return direct;
+  if (direct) {
+    return `${direct} ${wealthAgeLensParagraph(cohort)}`;
+  }
   const stem = classification.replace(/ 재물형$/, "").replace(/ 재물$/, "");
   const byStem = WEALTH_TYPE_STEM_DESCRIPTIONS[stem];
-  if (byStem) return byStem;
-  return "사주 구조에 따라 재물이 움직이는 방식이 달라집니다. 아래 세 가지(채널·유지·축적)를 함께 보시면 이해가 쉬워요.";
+  const base =
+    byStem ??
+    "사주 구조에 따라 재물이 움직이는 방식이 달라집니다. 아래 세 가지(채널·유지·축적)를 함께 보시면 이해가 쉬워요.";
+  return `${base} ${wealthAgeLensParagraph(cohort)}`;
 }
 
 /** 2차 유형 설명 (1차 유형 + 팔자 힌트로 선택) */
@@ -2881,8 +2939,11 @@ function computeWealthSubtypeInsight(
   dayStem: string,
   allChars: string[],
   counts: FiveElementCount,
+  cohort: WealthAgeCohort,
 ): { label: string; key: string; description: string } | null {
   if (!dayStem || allChars.length === 0) return null;
+  if (cohort === "ge70") return null;
+
   const sik = countTenGodsInChars(dayStem, allChars, SIK_SANG_SET);
   const inj = countTenGodsInChars(dayStem, allChars, IN_SET);
   const jae = countTenGodsInChars(dayStem, allChars, JAE_SET);
@@ -2894,6 +2955,16 @@ function computeWealthSubtypeInsight(
     if (counts[el] > counts[maxEl]) maxEl = el;
   }
   const maxRatio = counts[maxEl] / totalEl;
+
+  if (
+    classification === "콘텐츠형 재물" ||
+    classification === "지식형 재물" ||
+    classification === "브랜드형 재물" ||
+    classification === "조직형 재물" ||
+    classification === "전문직형 재물"
+  ) {
+    return null;
+  }
 
   if (classification === "생산형 재물") {
     if (sik >= 2) {
@@ -2919,21 +2990,25 @@ function computeWealthSubtypeInsight(
     const k = "시스템형";
     return { key: k, label: "운영·통제 기반 관리형 재물", description: WEALTH_SUBTYPE_DESCRIPTIONS[k] ?? "" };
   }
-  if (classification === "기회형 재물") {
+  if (classification === "관계형 재물") {
     if (inj >= 2 || maxEl === "수") {
       const k = "플랫폼형";
-      return { key: k, label: "관계·연결 기반 기회형 재물", description: WEALTH_SUBTYPE_DESCRIPTIONS[k] ?? "" };
+      return { key: k, label: "관계·연결 중심 재물", description: WEALTH_SUBTYPE_DESCRIPTIONS[k] ?? "" };
     }
     const k = "플랫폼형";
-    return { key: k, label: "환경·타이밍 기반 기회형 재물", description: WEALTH_SUBTYPE_DESCRIPTIONS[k] ?? "" };
+    return { key: k, label: "환경·타이밍과 맞물린 관계형 재물", description: WEALTH_SUBTYPE_DESCRIPTIONS[k] ?? "" };
   }
-  if (classification === "불안정 재물형") {
+  if (classification === "투자형 재물") {
     const k = "IP형";
-    return { key: k, label: "변동·기회 혼합형 재물", description: WEALTH_SUBTYPE_DESCRIPTIONS[k] ?? "" };
+    return { key: k, label: "변동·분산 대응형 재물", description: WEALTH_SUBTYPE_DESCRIPTIONS[k] ?? "" };
   }
-  if (classification === "직접 재물형") {
-    const k = "IP형";
-    return { key: k, label: "직접 수입 루트형 재물", description: WEALTH_SUBTYPE_DESCRIPTIONS[k] ?? "" };
+  if (classification === "후반축적형 재물") {
+    const k = "시스템형";
+    return {
+      key: k,
+      label: "저축·적립 루틴형 재물",
+      description: "통로보다 꾸준한 납입·지출 통제로 자산을 쌓기 좋은 흐름으로 읽힙니다.",
+    };
   }
   return null;
 }
@@ -2978,7 +3053,7 @@ const WEALTH_AXIS_LABEL: Record<WealthAxisKey, string> = {
   accumulation: "축적",
 };
 
-function getWealthAxisDetail(axis: WealthAxisKey, band: string, useNow: boolean): string {
+function getWealthAxisDetail(axis: WealthAxisKey, band: string, useNow: boolean, cohort: WealthAgeCohort): string {
   if (axis === "channel") {
     if (band === "높음") {
       const a = "수입 기회와 활동 경로가 풍부한 편입니다.";
@@ -3025,14 +3100,22 @@ function getWealthAxisDetail(axis: WealthAxisKey, band: string, useNow: boolean)
   if (axis === "accumulation") {
     if (band === "보통") {
       const a = "수익이 어느 정도 자산으로 남는 흐름입니다.";
-      const b = "저축·투자·콘텐츠·자동화 중 한 가지라도 루틴화하면 축적감이 커질 수 있어요.";
+      const b =
+        cohort === "ge70"
+          ? "저축·안전자산 중 한 가지를 루틴화하면 축적감이 커질 수 있습니다."
+          : "저축·투자·콘텐츠·자동화 중 한 가지라도 루틴화하면 축적감이 커질 수 있어요.";
       return `${useNow ? "현재는 " : ""}${a}\n${b}`;
     }
     if (band === "낮음") {
       const a = useNow
         ? "현재는 수익이 자산으로 자동 전환되는 구조는 약한 편입니다."
         : "수익이 자산으로 자동 전환되는 구조는 약한 편입니다.";
-      const b = "투자·지분·콘텐츠·시스템 수익 구조를 만들면 개선됩니다.";
+      const b =
+        cohort === "ge70"
+          ? "예금·국채 등 보존형 배분과 생활비 현금을 먼저 잡는 것이 좋습니다."
+          : cohort === "50_70"
+            ? "연금·적립·분산 투자로 리스크를 나누며 천천히 쌓는 전략이 맞기 쉽습니다."
+            : "투자·지분·콘텐츠·시스템 수익 구조를 만들면 개선됩니다.";
       return `${a}\n${b}`;
     }
   }
@@ -3065,15 +3148,34 @@ function wealthImprovementNeedHigh(
   return false;
 }
 
-/** 항상 2~4개 또는 빈 배열(→플레이스홀더). 출력 형식 통일용 */
+const WEALTH_IMPROVEMENT_PRESERVE: readonly string[] = [
+  "예금·국채 등 원금 보존형 비중을 생활비와 맞춰 점검해 보세요.",
+  "의료·생활비 대비 현금 버퍼를 숫자로 정해 두세요.",
+  "상속·증여·계좌 구조를 단순하게 정리해 두면 부담이 줄어듭니다.",
+];
+
+const WEALTH_IMPROVEMENT_MATURE: readonly string[] = [
+  "연금·적금·장기 적립 납입을 끊기지 않게 유지해 보세요.",
+  "변동성 자산 비중을 생활비와 분리해 보세요.",
+  "월별 예산과 비상금 규모를 숫자로 정해 유지 축을 다져 보세요.",
+  "제안·계약이 명확한 수입 루트를 한 가지 고정해 보세요.",
+];
+
+/** 항상 2~4개 또는 빈 배열(→플레이스홀더). 70+ 에는 실행형(콘텐츠·멤버십·자동화) 제외 */
 function buildWealthImprovementBullets(
   channelBand: string,
   capacityBand: string,
   accumulationBand: string,
+  cohort: WealthAgeCohort,
 ): string[] {
   if (!wealthImprovementNeedHigh(channelBand, capacityBand, accumulationBand)) {
     return [];
   }
+
+  if (cohort === "ge70") {
+    return [...WEALTH_IMPROVEMENT_PRESERVE];
+  }
+
   const chStrong = channelBand === "높음" || channelBand === "중상";
   const chWeak = channelBand === "낮음";
   const chMid = channelBand === "중";
@@ -3084,7 +3186,11 @@ function buildWealthImprovementBullets(
 
   const picked: string[] = [];
   if (accWeak) {
-    picked.push(WEALTH_IMPROVEMENT_POOL[0], WEALTH_IMPROVEMENT_POOL[1], WEALTH_IMPROVEMENT_POOL[2], WEALTH_IMPROVEMENT_POOL[3]);
+    if (cohort === "50_70") {
+      picked.push(WEALTH_IMPROVEMENT_MATURE[0]!, WEALTH_IMPROVEMENT_MATURE[1]!, WEALTH_IMPROVEMENT_POOL[5]);
+    } else {
+      picked.push(WEALTH_IMPROVEMENT_POOL[0], WEALTH_IMPROVEMENT_POOL[1], WEALTH_IMPROVEMENT_POOL[2], WEALTH_IMPROVEMENT_POOL[3]);
+    }
   }
   if (chWeak) {
     picked.push(WEALTH_IMPROVEMENT_POOL[4]);
@@ -3102,12 +3208,16 @@ function buildWealthImprovementBullets(
     if (!uniq.includes(p)) uniq.push(p);
   }
   if (uniq.length === 0) {
-    uniq.push(WEALTH_IMPROVEMENT_POOL[0], WEALTH_IMPROVEMENT_POOL[4]);
+    uniq.push(
+      cohort === "50_70" ? WEALTH_IMPROVEMENT_MATURE[0]! : WEALTH_IMPROVEMENT_POOL[0],
+      WEALTH_IMPROVEMENT_POOL[4],
+    );
   }
   if (uniq.length >= 4) return uniq.slice(0, 4);
   if (uniq.length >= 2) return uniq.slice(0, 4);
   if (uniq.length === 1) {
-    const extra = WEALTH_IMPROVEMENT_POOL.find((x) => x !== uniq[0]);
+    const pool = cohort === "50_70" ? [...WEALTH_IMPROVEMENT_MATURE, ...WEALTH_IMPROVEMENT_POOL] : [...WEALTH_IMPROVEMENT_POOL];
+    const extra = pool.find((x) => x !== uniq[0]);
     if (extra) uniq.push(extra);
   }
   if (uniq.length === 1) {
@@ -3126,6 +3236,7 @@ function buildWealthSynthesis(
   accumulationBand: string,
   classification: string,
   useNow: boolean,
+  cohort: WealthAgeCohort,
 ): { paragraph1: string; paragraph2: string } {
   const chStrong = channelBand === "높음" || channelBand === "중상";
   const chWeak = channelBand === "낮음";
@@ -3159,24 +3270,38 @@ function buildWealthSynthesis(
     focus = "세 축을 함께 보며 가장 낮게 느껴지는 축을 먼저 다지면 전체가 따라오기 쉽습니다.";
   }
 
-  const manage = classification.includes("관리");
-  const chance = classification.includes("기회");
-  const volatile = classification.includes("불안정");
   let typeNote: string;
-  if (classification.includes("생산")) {
-    typeNote = "활동·프로젝트 기반 수입과 잘 맞으니 반복 가능한 루트를 고정하는 데 초점을 두면 좋습니다.";
-  } else if (manage) {
+  if (classification.includes("콘텐츠") || classification === "생산형 재물") {
+    typeNote = "활동·산출물 기반 수입과 잘 맞으니 반복 가능한 루트를 고정하는 데 초점을 두면 좋습니다.";
+  } else if (classification.includes("지식")) {
+    typeNote = "전문성·교육·노하우로 가치를 바꿔 먹는 흐름과 잘 맞습니다.";
+  } else if (classification.includes("브랜드")) {
+    typeNote = "신뢰·일관성·선택과 집중이 수입으로 이어지기 쉽습니다.";
+  } else if (classification.includes("조직") || classification.includes("관리")) {
     typeNote = "지출 통제와 운영 안정을 우선하면 이 유형의 장점이 잘 살아납니다.";
-  } else if (chance) {
-    typeNote = "시기와 환경 변화에 맞춰 수입 루트를 조정하는 유연함이 도움이 됩니다.";
-  } else if (volatile) {
-    typeNote = "변동 폭이 크므로 리스크 한도와 비상자금을 분명히 두는 것이 안전합니다.";
+  } else if (classification.includes("전문직")) {
+    typeNote = "성실한 직무·전문 루트를 중심으로 현금흐름을 설계하면 잘 맞습니다.";
+  } else if (classification.includes("관계")) {
+    typeNote = "협업·소개·네트워크와 타이밍을 함께 보면 기회가 열리기 쉽습니다.";
+  } else if (classification.includes("투자")) {
+    typeNote = "변동을 전제로 손실 한도·분산·현금 비중을 정하는 것이 안전합니다.";
+  } else if (classification.includes("후반축적")) {
+    typeNote = "장기 저축·분산·지출 루틴으로 천천히 쌓는 전략이 잘 맞습니다.";
   } else {
     typeNote = "유형에 맞는 수입 루트를 한 가지 정한 뒤 나머지 두 축을 순서대로 보강하면 균형이 맞춰집니다.";
   }
 
+  const cohortAction =
+    cohort === "lt30"
+      ? "같은 연령대에서는 성장 가능성을 보며 루트를 시험해 보기 좋습니다."
+      : cohort === "30_50"
+        ? "같은 연령대에서는 실행과 확장으로 구조를 굳히기 좋습니다."
+        : cohort === "50_70"
+          ? "같은 연령대에서는 안정 유지·자산 비중·지출 통제에 무게를 두면 좋습니다."
+          : "같은 연령대에서는 보존·현금·의료비 대비를 우선하는 편이 맞습니다.";
+
   const paragraph1 = useNow ? `${triplet} 현재는 ${focus}` : `${triplet} ${focus}`;
-  const paragraph2 = `「${classification}」 패턴과 연결해 보면, ${typeNote}`;
+  const paragraph2 = `「${classification}」 패턴과 연결해 보면, ${typeNote} ${cohortAction}`;
 
   return { paragraph1, paragraph2 };
 }
@@ -3461,6 +3586,7 @@ function buildSpouseStructureSynthesis(
   emotionalBand: string,
   imageBand: string,
   useNow: boolean,
+  cohort: SpouseAgeCohort,
 ): { paragraph1: string; paragraph2: string } {
   const triplet = `현실 안정성은 「${practicalBand}」, 정서 궁합성은 「${emotionalBand}」, 매력·이미지는 「${imageBand}」로 읽힙니다.`;
 
@@ -3486,10 +3612,88 @@ function buildSpouseStructureSynthesis(
   }
 
   const paragraph1 = useNow ? `${triplet} 현재는 ${focus}` : `${triplet} ${focus}`;
-  const paragraph2 =
-    "위 점수는 배우자궁·십성 분포·지지 관계·오행 비율·신살을 한 엔진에서 합산한 구조 지표이며, 실제 관계는 선택과 대화에 따라 달라질 수 있습니다.";
+  const cohortLine =
+    cohort === "lt30"
+      ? "같은 연령대에서는 연애 스타일·만남 방식을 우선 보는 해석이 자연스럽습니다."
+      : cohort === "30_49"
+        ? "같은 연령대에서는 결혼·가정 안정과 역할 조율을 함께 보는 해석이 맞습니다."
+        : "같은 연령대에서는 동반자 관계·생활 동행·신뢰를 중심으로 보는 해석이 맞습니다.";
+  const paragraph2 = `위 점수는 배우자궁·십성 분포·지지 관계·오행 비율·신살을 한 엔진에서 합산한 구조 지표이며, 실제 관계는 선택과 대화에 따라 달라질 수 있습니다. ${cohortLine}`;
 
   return { paragraph1, paragraph2 };
+}
+
+function spouseBranchHapChung(dayBranch: string, allBranches: string[]): { hap: boolean; chung: boolean } {
+  const u = [...new Set(allBranches.filter(Boolean))];
+  if (!dayBranch || u.length < 2) return { hap: false, chung: false };
+  const rels = computeBranchRelations(u);
+  let hap = false;
+  let chung = false;
+  for (const r of rels) {
+    if (r.branch1 !== dayBranch && r.branch2 !== dayBranch) continue;
+    if (r.type === "지지충" || r.type === "충") chung = true;
+    if (r.type === "지지육합" || r.type === "지지삼합" || r.type === "지지방합" || r.type === "합") hap = true;
+  }
+  return { hap, chung };
+}
+
+/** 관성·재성·일지 합충·일간 강약·배우자궁을 묶은 성향 문장 (단일 십성 키워드 지양) */
+function buildCompositeSpouseTendency(input: {
+  dayStem: string;
+  dayBranch: string;
+  allChars: string[];
+  allBranches: string[];
+  spouse: SpousePalaceInfo | null;
+  rel: RelationshipPattern | null;
+  strengthLevel: string | null | undefined;
+}): string {
+  const { dayStem, dayBranch, allChars, allBranches, spouse, rel, strengthLevel } = input;
+  const parts: string[] = [];
+
+  const gwanN = countTenGodsInChars(dayStem, allChars, GWAN_SET);
+  if (gwanN >= 3) {
+    parts.push("관성이 여러 기둥에 퍼져 규범·역할 의식이 배우자 관계에서 뚜렷하게 드러날 수 있습니다.");
+  } else if (gwanN >= 1) {
+    parts.push("관성이 자리를 잡아 약속·책임감을 중시하는 흐름과 맞닿아 있습니다.");
+  }
+
+  const jaeN = countTenGodsInChars(dayStem, allChars, JAE_SET);
+  const dayTg = dayStem && dayBranch ? getTenGod(dayStem, dayBranch) : null;
+  const dayJae = !!(dayTg && JAE_SET.has(dayTg));
+  if (jaeN >= 2 || dayJae) {
+    parts.push("재성 기운이 겹쳐 생활·물질 현실을 함께 따지는 성향이 섞여 읽힙니다.");
+  }
+
+  const { hap, chung } = spouseBranchHapChung(dayBranch, allBranches);
+  if (chung) {
+    parts.push("일지 충 후보가 있어 속도·기대치가 엇갈리기 쉬우니 합의 리듬이 중요합니다.");
+  } else if (hap) {
+    parts.push("일지 주변에 합 기운이 있어 인연·동행이 붙기 쉬운 편입니다.");
+  }
+
+  if (spouse) {
+    parts.push(spouse.summary);
+  }
+
+  const sl = strengthLevel ?? "";
+  if (sl.includes("극신약") || sl.includes("태약") || sl.includes("신약")) {
+    parts.push("일간이 약한 편으로 읽힐 때는 관계에서 요구를 분명히 말하는 것이 부담을 줄입니다.");
+  } else if (sl.includes("극신강") || sl.includes("태강") || sl.includes("신강") || sl === "중화") {
+    parts.push("일간 힘이 비교적 있는 편으로 읽혀 주도와 양보의 균형이 필요합니다.");
+  }
+
+  if (rel?.spouseStyle) {
+    parts.push(rel.spouseStyle);
+  }
+
+  const text = parts.filter(Boolean).slice(0, 5).join(" ");
+  return text.trim() || spouse?.strengths[0] || "서로의 장점을 존중하는 균형을 기대하기 쉽습니다.";
+}
+
+function cohortSpouseMeetSuffix(cohort: SpouseAgeCohort): string {
+  if (cohort === "lt30") return " 20대 전후에는 연애 스타일·만남 심리가 먼저 드러나기 쉽습니다.";
+  if (cohort === "30_49") return " 30~40대 흐름에서는 결혼·가정 안정과 역할 조율이 함께 읽히기 쉽습니다.";
+  return " 50대 이상에서는 동반 생활·신뢰·돌봄의 균형이 중심이 되기 쉽습니다.";
 }
 
 function buildYuanSpouseStructureInsight(
@@ -3497,6 +3701,8 @@ function buildYuanSpouseStructureInsight(
   spouse: SpousePalaceInfo | null,
   rel: RelationshipPattern | null,
   spouseStabilityGrade: string | null,
+  cohort: SpouseAgeCohort,
+  compositeTendency: string,
 ): { spouseType: string; relationFeature: string; meetPath: string; spouseTendency: string } {
   const el = spouse?.element ?? "";
   const spouseType =
@@ -3540,12 +3746,9 @@ function buildYuanSpouseStructureInsight(
     meetPath += " 배우자궁 변동 요인을 함께 보며 속도 조절이 도움이 될 수 있습니다.";
   }
 
-  const spouseTendency =
-    rel?.spouseStyle ||
-    spouse?.strengths[0] ||
-    "서로의 장점을 존중하는 균형 잡힌 성향을 기대하기 쉽습니다.";
+  meetPath += cohortSpouseMeetSuffix(cohort);
 
-  return { spouseType, relationFeature, meetPath, spouseTendency };
+  return { spouseType, relationFeature, meetPath, spouseTendency: compositeTendency };
 }
 
 function YuanSpouseStructureCard({
@@ -3560,6 +3763,8 @@ function YuanSpouseStructureCard({
   counts,
   evaluations,
   shinsalNames,
+  ageYears,
+  strengthLevel,
 }: {
   monthBranch?: string;
   spousePalace: SpousePalaceInfo | null;
@@ -3572,14 +3777,28 @@ function YuanSpouseStructureCard({
   counts: FiveElementCount;
   evaluations: RelationshipWealthEvaluations | null | undefined;
   shinsalNames: Set<string>;
+  ageYears: number | null;
+  strengthLevel: string | null | undefined;
 }) {
   const [openAxis, setOpenAxis] = useState<SpouseStructureAxisKey | null>(null);
   const tr = STRUCTURE_CARD.rose;
+  const spouseCohort = spouseAgeCohortFromYears(ageYears);
+  const compositeTendency = buildCompositeSpouseTendency({
+    dayStem,
+    dayBranch,
+    allChars,
+    allBranches,
+    spouse: spousePalace,
+    rel: relationshipPattern,
+    strengthLevel,
+  });
   const summary = buildYuanSpouseStructureInsight(
     monthBranch,
     spousePalace,
     relationshipPattern,
     spouseStabilityGrade,
+    spouseCohort,
+    compositeTendency,
   );
   const totalEl = Object.values(counts).reduce((a, b) => a + b, 0) || 1;
   const metalWaterRatio = (counts.금 + counts.수) / totalEl;
@@ -3603,7 +3822,7 @@ function YuanSpouseStructureCard({
     { key: "image", label: SPOUSE_STRUCTURE_AXIS_LABEL.image, score: scores.image, band: iB },
   ];
   const useNow = spouseUseNowNarrative(pB, eB, iB);
-  const spouseSynth = buildSpouseStructureSynthesis(pB, eB, iB, useNow);
+  const spouseSynth = buildSpouseStructureSynthesis(pB, eB, iB, useNow, spouseCohort);
   const openBand = openAxis ? axisCells.find((c) => c.key === openAxis)?.band : null;
 
   const axisDetailCtx = {
@@ -3728,11 +3947,13 @@ function StructureWealthBriefCard({
   dayStem,
   allChars,
   counts,
+  ageYears,
 }: {
   wealth: DomainScoreResult;
   dayStem: string;
   allChars: string[];
   counts: FiveElementCount;
+  ageYears: number | null;
 }) {
   const [openAxis, setOpenAxis] = useState<WealthAxisKey | null>(null);
   if (wealth.domainKey !== "wealth") return null;
@@ -3745,11 +3966,12 @@ function StructureWealthBriefCard({
   const ch = wealthChannelBand(ax.channelScore);
   const ca = wealthCapacityBand(ax.capacityScore);
   const ac = wealthAccumulationBand(ax.accumulationScore);
+  const wealthCohort = wealthAgeCohortFromYears(ageYears);
   const useNow = wealthUseNowNarrative(ch, ca, ac);
-  const typeParagraph = wealthTypeParagraph(wealth.classification);
-  const subtype = computeWealthSubtypeInsight(wealth.classification, dayStem, allChars, counts);
-  const synthesis = buildWealthSynthesis(ch, ca, ac, wealth.classification, useNow);
-  const improvementBullets = buildWealthImprovementBullets(ch, ca, ac);
+  const typeParagraph = wealthTypeParagraph(wealth.classification, wealthCohort);
+  const subtype = computeWealthSubtypeInsight(wealth.classification, dayStem, allChars, counts, wealthCohort);
+  const synthesis = buildWealthSynthesis(ch, ca, ac, wealth.classification, useNow, wealthCohort);
+  const improvementBullets = buildWealthImprovementBullets(ch, ca, ac, wealthCohort);
 
   function toggleAxis(key: WealthAxisKey) {
     setOpenAxis((prev) => (prev === key ? null : key));
@@ -3843,7 +4065,7 @@ function StructureWealthBriefCard({
             <span className={te.expandBand}>({openBand})</span>
           </p>
           <p className="mt-1.5 text-[12px] leading-relaxed text-foreground whitespace-pre-line">
-            {getWealthAxisDetail(openAxis, openBand, useNow)}
+            {getWealthAxisDetail(openAxis, openBand, useNow, wealthCohort)}
           </p>
         </div>
       ) : null}
@@ -4289,6 +4511,11 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
       return null;
     }
   }, [sajuPipelineResult, record, daewoonSuOpts]);
+
+  const yuanReportAge = useMemo(() => {
+    if (!Number.isFinite(input.year)) return null;
+    return Math.max(0, luckCycles.wolun.year - input.year);
+  }, [input.year, luckCycles.wolun.year]);
 
   const ruleInsights = sajuPipelineResult?.interpretation.ruleInsights ?? [];
   const structureType = sajuPipelineResult?.interpretation.structureType ?? "";
@@ -4908,6 +5135,7 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
               dayStem={dayStem}
               allChars={allChars}
               counts={effectiveFiveElements}
+              ageYears={yuanReportAge}
             />
           ) : null}
 
@@ -4924,6 +5152,8 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
               counts={effectiveFiveElements}
               evaluations={sajuPipelineResult?.evaluations}
               shinsalNames={yuanGuoFinalShinsalNames}
+              ageYears={yuanReportAge}
+              strengthLevel={sajuPipelineResult?.adjusted?.effectiveStrengthLevel}
             />
           ) : null}
 
