@@ -46,6 +46,7 @@ import {
   elementHslAlpha,
   elementTextClass,
   getTenGodGroup,
+  getController,
   STEM_TO_ELEMENT,
   BRANCH_TO_ELEMENT,
   type ElementTone,
@@ -2800,6 +2801,7 @@ const STRUCTURE_CARD = {
     expandTitle: "text-[11px] font-bold text-rose-950 tracking-wide",
     expandBand: "font-semibold text-rose-800/90",
     synthBox: "mt-2.5 rounded-lg border border-rose-200/80 bg-rose-50/50 px-3 py-2.5",
+    improveBox: "mt-2.5 rounded-lg border border-rose-200/80 bg-rose-50/50 px-3 py-2.5",
     synthTitle: "text-[11px] font-bold text-rose-950 uppercase tracking-wide",
     foot: "mt-2 border-t border-border/50 pt-2 text-[11px] leading-snug text-muted-foreground",
     listDisc: "marker:text-rose-700",
@@ -2823,14 +2825,15 @@ function wealthAgeCohortFromYears(ageYears: number | null): WealthAgeCohort {
   return "ge70";
 }
 
-/** 배우자 카드 연령 레이어 */
-type SpouseAgeCohort = "lt30" | "30_49" | "ge50";
+/** 배우자 카드 연령 레이어 (해석 초점 분리) */
+type SpouseAgeCohort = "lt30" | "30_49" | "50_69" | "ge70";
 
 function spouseAgeCohortFromYears(ageYears: number | null): SpouseAgeCohort {
   if (ageYears == null || !Number.isFinite(ageYears)) return "30_49";
   if (ageYears < 30) return "lt30";
   if (ageYears < 50) return "30_49";
-  return "ge50";
+  if (ageYears < 70) return "50_69";
+  return "ge70";
 }
 
 function wealthAgeLensParagraph(cohort: WealthAgeCohort): string {
@@ -2926,6 +2929,7 @@ const SIK_SANG_SET = new Set<TenGod>(["식신", "상관"]);
 const IN_SET = new Set<TenGod>(["정인", "편인"]);
 const JAE_SET = new Set<TenGod>(["정재", "편재"]);
 const GWAN_SET = new Set<TenGod>(["정관", "편관"]);
+const SANG_ONLY_SET = new Set<TenGod>(["상관"]);
 
 function countTenGodsInChars(dayStem: string, chars: string[], set: Set<TenGod>): number {
   let n = 0;
@@ -3228,9 +3232,57 @@ function buildWealthImprovementBullets(
   return uniq.slice(0, 4);
 }
 
+/** 채널·유지·축적 구간을 한 줄 풀이(자연어) */
+function wealthBandPlainKo(
+  axis: "channel" | "capacity" | "accumulation",
+  band: string,
+): string {
+  if (axis === "channel") {
+    if (band === "높음" || band === "중상") return "높은 편";
+    if (band === "중") return "중간";
+    return "낮은 편";
+  }
+  if (axis === "capacity") {
+    if (band === "양호") return "안정적인 편";
+    if (band === "보통") return "무난한 편";
+    return "약한 편";
+  }
+  if (band === "보통") return "무난한 편";
+  return "약한 편";
+}
+
+/** 짧은 보조 맥락만 (1차·2차 유형 문장 반복 금지) */
+function wealthSynthesisTypeHint(classification: string): string {
+  if (classification.includes("관계")) {
+    return "이 패턴에서는 협업·소개가 수입 기회를 넓히기 쉽습니다.";
+  }
+  if (classification.includes("콘텐츠") || classification === "생산형 재물") {
+    return "산출·활동을 반복 수익으로 묶을 때 구조가 잘 맞습니다.";
+  }
+  if (classification.includes("지식")) {
+    return "노하우·교육으로 가치를 바꿔 먹는 흐름과 맞닿아 있습니다.";
+  }
+  if (classification.includes("브랜드")) {
+    return "신뢰와 일관성이 통로로 이어지기 쉽습니다.";
+  }
+  if (classification.includes("조직") || classification.includes("관리")) {
+    return "운영·지출 통제를 앞세울 때 안정감이 커집니다.";
+  }
+  if (classification.includes("전문직")) {
+    return "직무·전문 루트를 축으로 잡을 때 잘 맞습니다.";
+  }
+  if (classification.includes("투자") || classification.includes("기회")) {
+    return "변동이 큰 만큼 한도·분산을 정해 두는 편이 안전합니다.";
+  }
+  if (classification.includes("후반축적") || classification.includes("축적")) {
+    return "장기 루틴으로 천천히 쌓는 쪽이 잘 맞습니다.";
+  }
+  return "";
+}
+
 /**
- * 종합 재물 구조 분석: 항상 2문단(각 1문장), 동일 톤(평서·해요체 혼용 최소화 → 평서체 위주).
- * 해석 문장 앞에만 `현재는`을 붙임 (wealthUseNowNarrative 참일 때, 플레이스홀더 문구에는 사용하지 않음).
+ * 종합 재물 구조 분석: 3축 조합 중심(유형 문장 반복 없음).
+ * ① 상태 요약 ② 현실적 의미 ③ 전략 한 줄 (+ 선택적 유형 힌트 1문장, 보조만).
  */
 function buildWealthSynthesis(
   channelBand: string,
@@ -3239,73 +3291,83 @@ function buildWealthSynthesis(
   classification: string,
   useNow: boolean,
   cohort: WealthAgeCohort,
-): { paragraph1: string; paragraph2: string } {
-  const chStrong = channelBand === "높음" || channelBand === "중상";
-  const chWeak = channelBand === "낮음";
+): { paragraph1: string; paragraph2: string; paragraph3: string } {
+  const chHi = channelBand === "높음" || channelBand === "중상";
+  const chLo = channelBand === "낮음";
   const chMid = channelBand === "중";
-  const capStrong = capacityBand === "양호";
-  const capWeak = capacityBand === "낮음";
+  const capHi = capacityBand === "양호";
+  const capLo = capacityBand === "낮음";
   const capMid = capacityBand === "보통";
-  const accStrong = accumulationBand === "보통";
-  const accWeak = accumulationBand === "낮음";
+  const accOk = accumulationBand === "보통";
+  const accLo = accumulationBand === "낮음";
 
-  const triplet = `채널은 「${channelBand}」, 유지는 「${capacityBand}」, 축적은 「${accumulationBand}」로 읽힙니다.`;
+  const chKo = wealthBandPlainKo("channel", channelBand);
+  const capKo = wealthBandPlainKo("capacity", capacityBand);
+  const accKo = wealthBandPlainKo("accumulation", accumulationBand);
 
-  let focus: string;
-  if (chStrong && capStrong && accStrong) {
-    focus = "세 축이 동시에 무너지기 어려운 균형에 가깝습니다.";
-  } else if (accWeak && (chStrong || chMid) && capStrong) {
-    focus = "들어오고 지키는 힘은 있으나 남기는 축을 보강하면 체감이 좋아질 수 있습니다.";
-  } else if (chWeak && capStrong) {
-    focus = "지키는 힘은 있으나 들어오는 통로를 넓힐 여지가 있습니다.";
-  } else if (chStrong && capWeak) {
-    focus = "들어올 기회는 있으나 지출·리스크에 흔들리기 쉬운 구간으로 볼 수 있습니다.";
-  } else if (chWeak && capWeak) {
-    focus = "통로와 유지 모두 부담으로 느껴질 수 있어 작은 수입원 하나를 먼저 고정하는 편이 안전합니다.";
-  } else if (chMid) {
-    focus = "수입 루트가 중간대이므로 한두 가지로 좁히면 체감이 빨리 나아질 수 있습니다.";
-  } else if (capMid && accWeak) {
-    focus = "유지는 무난한 편이나 남기는 축이 상대적으로 약하게 보입니다.";
-  } else if (chStrong && capMid && accWeak) {
-    focus = "들어올 여지는 있으나 지키고 쌓는 데 손볼 포인트가 있습니다.";
+  const triplet = `채널은 「${channelBand}」, 유지는 「${capacityBand}」, 축적은 「${accumulationBand}」입니다.`;
+
+  let naturalSummary: string;
+  let meaning: string;
+  let strategy: string;
+
+  if (chHi && (capLo || capMid) && accLo) {
+    naturalSummary = `채널은 ${chKo}이나, 유지·축적은 상대적으로 ${capLo && accLo ? "모두 약한" : "축적이 약한"} 구조입니다.`;
+    meaning =
+      "즉, 기회는 들어오기 쉬운데 들어온 수익이 안정적으로 남거나 자산으로 이어지기까지는 아직 공백이 큰 상태로 읽힙니다.";
+    strategy = "수입을 더 넓히기보다 반복·고정 수익과 지출 상한을 먼저 설계하는 편이 더 효과적입니다.";
+  } else if ((chMid || chHi) && capHi && accLo) {
+    naturalSummary = `채널은 ${chKo}이고 유지는 ${capKo}이나, 축적은 ${accKo}입니다.`;
+    meaning =
+      "즉, 들어온 돈을 지키는 힘은 있는 편인데 자산·저축으로 전환되는 흐름은 아직 얇게 느껴질 수 있습니다.";
+    strategy = "저축·분산·지분 등 ‘남기는 장치’를 하나 고정하면 재물 안정성이 크게 올라갈 수 있습니다.";
+  } else if (chHi && capHi && accOk) {
+    naturalSummary = `채널·유지·축적이 한꺼번에 무너지기 어려운 균형에 가깝습니다.`;
+    meaning = "즉, 들어오는 길과 지키는 힘, 쌓이는 흐름이 함께 받쳐 주는 편입니다.";
+    strategy = "이미 안정성이 있으므로 과도한 보수보다는 확장과 자산화를 병행해 보는 전략이 유효합니다.";
+  } else if (chLo && (capHi || capMid) && accOk) {
+    naturalSummary = `채널은 ${chKo}이나, 유지와 축적은 비교적 ${capHi || accOk ? "건강한" : "무난한"} 편입니다.`;
+    meaning =
+      "즉, 새로운 유입은 좁게 느껴질 수 있어도 들어온 자원은 지키고 쌓는 쪽에 강점이 있는 구조입니다.";
+    strategy = "지금은 지키기보다 새 수입 루트를 하나 열어 통로를 넓히는 데 무게를 두는 편이 좋습니다.";
+  } else if (chLo && capLo && accLo) {
+    naturalSummary = `세 축 모두 부담이 크게 느껴질 수 있는 구간입니다.`;
+    meaning = "즉, 통로·유지·축적 가운데 어디에도 여유가 크지 않아 작은 흐름부터 고정하는 것이 안전합니다.";
+    strategy = "작은 수입원 하나와 비상금·지출 한도부터 잡는 순서가 우선입니다.";
+  } else if (chHi && capLo && accOk) {
+    naturalSummary = `채널은 ${chKo}인데 유지만 상대적으로 약합니다.`;
+    meaning = "즉, 기회는 있는데 변동·지출에 흔들리기 쉬워 체감 안정이 떨어질 수 있습니다.";
+    strategy = "유지력을 먼저 높이는 것이 수입 확대보다 앞서야 합니다.";
+  } else if (chMid && capMid && accLo) {
+    naturalSummary = `채널·유지는 중간대이고 축적이 ${accKo}입니다.`;
+    meaning = "즉, 구조 자체는 무난하나 자산으로 굳는 흐름이 아직 약합니다.";
+    strategy = "루트를 한두 가지로 좁힌 뒤 남기는 습관을 붙이면 전체가 따라오기 쉽습니다.";
+  } else if (chLo && capHi && accLo) {
+    naturalSummary = `채널은 좁게 느껴질 수 있으나 유지는 ${capKo}이고 축적은 ${accKo}입니다.`;
+    meaning =
+      "즉, 새 유입은 적어도 들어온 자원을 지키려는 힘이 있으나 자산으로 이어지는 흐름은 더 다져야 합니다.";
+    strategy = "통로를 하나 여는 것과 적립·분산 루틴을 함께 붙이면 균형이 맞춰지기 쉽습니다.";
   } else {
-    focus = "세 축을 함께 보며 가장 낮게 느껴지는 축을 먼저 다지면 전체가 따라오기 쉽습니다.";
+    naturalSummary = `채널 ${chKo}, 유지 ${capKo}, 축적 ${accKo}로 읽힙니다.`;
+    meaning = "즉, 세 축 가운데 가장 낮게 느껴지는 축을 먼저 다지면 나머지가 따라오기 쉽습니다.";
+    strategy = "낮은 축 하나만 집중해 다듬어도 체감이 빨리 나아질 수 있습니다.";
   }
 
-  let typeNote: string;
-  if (classification.includes("콘텐츠") || classification === "생산형 재물") {
-    typeNote = "활동·산출물 기반 수입과 잘 맞으니 반복 가능한 루트를 고정하는 데 초점을 두면 좋습니다.";
-  } else if (classification.includes("지식")) {
-    typeNote = "전문성·교육·노하우로 가치를 바꿔 먹는 흐름과 잘 맞습니다.";
-  } else if (classification.includes("브랜드")) {
-    typeNote = "신뢰·일관성·선택과 집중이 수입으로 이어지기 쉽습니다.";
-  } else if (classification.includes("조직") || classification.includes("관리")) {
-    typeNote = "지출 통제와 운영 안정을 우선하면 이 유형의 장점이 잘 살아납니다.";
-  } else if (classification.includes("전문직")) {
-    typeNote = "성실한 직무·전문 루트를 중심으로 현금흐름을 설계하면 잘 맞습니다.";
-  } else if (classification.includes("관계")) {
-    typeNote = "협업·소개·네트워크와 타이밍을 함께 보면 기회가 열리기 쉽습니다.";
-  } else if (classification.includes("투자")) {
-    typeNote = "변동을 전제로 손실 한도·분산·현금 비중을 정하는 것이 안전합니다.";
-  } else if (classification.includes("후반축적")) {
-    typeNote = "장기 저축·분산·지출 루틴으로 천천히 쌓는 전략이 잘 맞습니다.";
-  } else {
-    typeNote = "유형에 맞는 수입 루트를 한 가지 정한 뒤 나머지 두 축을 순서대로 보강하면 균형이 맞춰집니다.";
-  }
-
-  const cohortAction =
+  const hint = wealthSynthesisTypeHint(classification);
+  const prefix = useNow ? "현재는 " : "";
+  const paragraph1 = `${prefix}${triplet} ${naturalSummary}`;
+  const paragraph2 = `${meaning}${hint ? ` ${hint}` : ""}`;
+  const cohortLens =
     cohort === "lt30"
-      ? "같은 연령대에서는 성장 가능성을 보며 루트를 시험해 보기 좋습니다."
+      ? "같은 연령대에서는 시험과 성장을 허용하면서도 한 루트만 고정해 두면 좋습니다."
       : cohort === "30_50"
-        ? "같은 연령대에서는 실행과 확장으로 구조를 굳히기 좋습니다."
+        ? "같은 연령대에서는 실행·확장과 지출 통제를 같이 보는 것이 현실적입니다."
         : cohort === "50_70"
-          ? "같은 연령대에서는 안정 유지·자산 비중·지출 통제에 무게를 두면 좋습니다."
-          : "같은 연령대에서는 보존·현금·의료비 대비를 우선하는 편이 맞습니다.";
+          ? "같은 연령대에서는 유지·비중 조절·리스크 한도가 해석의 중심이 됩니다."
+          : "같은 연령대에서는 보존·현금·의료비 대비를 우선하는 시각이 맞습니다.";
+  const paragraph3 = `${strategy} ${cohortLens}`;
 
-  const paragraph1 = useNow ? `${triplet} 현재는 ${focus}` : `${triplet} ${focus}`;
-  const paragraph2 = `「${classification}」 패턴과 연결해 보면, ${typeNote} ${cohortAction}`;
-
-  return { paragraph1, paragraph2 };
+  return { paragraph1, paragraph2, paragraph3 };
 }
 
 function dayBranchStressPenalty(dayBranch: string, allBranches: string[]): number {
@@ -3454,6 +3516,66 @@ function spouseDayBranchRelationDigest(dayBranch: string, allBranches: string[])
   return `일지 인접 신호: ${[...types].join("·")}`;
 }
 
+function spouseBranchCarriesElement(branch: string, el: FiveElKey): boolean {
+  const surf = BRANCH_TO_ELEMENT[branch] as FiveElKey | undefined;
+  if (surf === el) return true;
+  for (const h of getHiddenStems(branch)) {
+    if ((STEM_TO_ELEMENT[h] as FiveElKey | undefined) === el) return true;
+  }
+  return false;
+}
+
+function spouseDayBranchHasHap(dayBranch: string, allBranches: string[]): boolean {
+  const uniq = [...new Set(allBranches.filter(Boolean))];
+  if (!dayBranch || uniq.length < 2) return false;
+  const rels = computeBranchRelations(uniq);
+  for (const r of rels) {
+    if (r.branch1 !== dayBranch && r.branch2 !== dayBranch) continue;
+    if (r.branch1 === r.branch2) continue;
+    if (
+      r.type === "지지육합" ||
+      r.type === "지지삼합" ||
+      r.type === "지지방합" ||
+      r.type === "합"
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function spouseDayBranchHasHyungEdge(dayBranch: string, allBranches: string[]): boolean {
+  const uniq = [...new Set(allBranches.filter(Boolean))];
+  if (!dayBranch || uniq.length < 2) return false;
+  const rels = computeBranchRelations(uniq);
+  for (const r of rels) {
+    if (r.branch1 === r.branch2) continue;
+    if (r.type !== "형") continue;
+    if (r.branch1 === dayBranch || r.branch2 === dayBranch) return true;
+  }
+  return false;
+}
+
+/** 일지가 관성 오행이 깔린 지지와 충이면 ‘관성 충’ 보정 */
+function spouseOfficerBranchChungsDayBranch(
+  dayBranch: string,
+  allBranches: string[],
+  officerEl: FiveElKey,
+): boolean {
+  const uniq = [...new Set(allBranches.filter(Boolean))];
+  if (!dayBranch || uniq.length < 2) return false;
+  const rels = computeBranchRelations(uniq);
+  for (const r of rels) {
+    if (r.type !== "지지충" && r.type !== "충") continue;
+    const a = r.branch1;
+    const b = r.branch2;
+    if (a !== dayBranch && b !== dayBranch) continue;
+    const other = a === dayBranch ? b : a;
+    if (other !== dayBranch && spouseBranchCarriesElement(other, officerEl)) return true;
+  }
+  return false;
+}
+
 type SpouseStructureAxisScores = {
   practical: number;
   emotional: number;
@@ -3483,10 +3605,10 @@ type SpouseStructureAxisDebug = {
 };
 
 /**
- * 배우자 구조 3축: 복합 요소 가중(재물 카드와 동일하게 점수+구간+해석).
- * - 현실 안정성: computeSpousePalaceStability(sPal)·관·재 작동·일지 긴장·명예/재물 엔진 연계
- * - 정서 궁합성: 배우자궁·인성/식상(천간·지지 분리 반영)·원진/귀문/형해파·관성 보조
- * - 매력·이미지: 식상·도화·홍염·금수/화목·배우자궁 오행·지지 힌트
+ * 배우자 구조 3축 (UI: 재력 / 성격 / 외모) — 원국 복합만 (대운 제외).
+ * 재력: 재·관·식상·합·재관 연동·일지 재·관성충 등
+ * 성격: 배우자궁 안정 가중·관·비겁·상관·합충·일지 형·관성충
+ * 외모·이미지: 도화·홍염·금·식상·일지·이미지 안정(긴장 완화)
  */
 function computeSpouseStructureAxisBundle(input: {
   dayStem: string;
@@ -3498,6 +3620,7 @@ function computeSpouseStructureAxisBundle(input: {
   evaluations: RelationshipWealthEvaluations | null | undefined;
   shinsalNames: Set<string>;
   spouseElement?: string;
+  tenGodGroups?: Record<string, number> | null;
 }): { scores: SpouseStructureAxisScores; axisDebug: SpouseStructureAxisDebug } {
   const ev = input.evaluations;
   const wAct = ev?.wealthActivation?.score ?? 52;
@@ -3509,27 +3632,40 @@ function computeSpouseStructureAxisBundle(input: {
   const stressPen = dayBranchStressPenalty(dayB, input.allBranches);
   const emotionalLoad = spouseDayBranchEmotionalLoad(dayB, input.allBranches);
   const ow = countOfficerWealthStemBranch(stem, input.allStems, input.allBranches);
+  const dm = STEM_TO_ELEMENT[stem] as FiveElKey | undefined;
+  const officerEl = dm ? getController(dm) : undefined;
+  const officerChung =
+    !!officerEl && spouseOfficerBranchChungsDayBranch(dayB, input.allBranches, officerEl);
+  const dayHap = spouseDayBranchHasHap(dayB, input.allBranches);
+  const dayHyungEdge = spouseDayBranchHasHyungEdge(dayB, input.allBranches);
 
   let jaeAdj = 0;
-  let dayJaeNote = "일지 재성: 없음";
   if (stem && dayB) {
     const tg = getTenGod(stem, dayB);
-    if (tg && JAE_SET.has(tg)) {
-      jaeAdj = 7;
-      dayJaeNote = `일지 재성: ${tg}`;
-    }
+    if (tg && JAE_SET.has(tg)) jaeAdj = 7;
   }
 
-  const honorWealthLink = Math.round((oAct + wAct) / 2 - 52);
-  const structureLinkBoost = Math.max(-6, Math.min(8, Math.round(honorWealthLink * 0.22)));
+  const jaeTotal = ow.jaeStem + ow.jaeBranchSurface + ow.jaeBranchHidden;
+  const gwanTotal = ow.gwanStem + ow.gwanBranchSurface + ow.gwanBranchHidden;
+  const sikAll = countTenGodsInChars(stem, input.allChars, SIK_SANG_SET);
+  const sikStem = countTenGodsOnStems(stem, input.allStems, SIK_SANG_SET);
+  const sikBranch = countTenGodsOnBranchesWithHidden(stem, input.allBranches, SIK_SANG_SET);
+  const shengCaiBonus = sikAll >= 1 && jaeTotal >= 1 ? 9 : sikAll >= 2 ? 4 : 0;
+  const caiGuanTogether = jaeTotal >= 1 && gwanTotal >= 1 && oAct >= 50 ? 6 : 0;
+  const hapBonus = dayHap ? 6 : 0;
 
   let practical =
-    0.36 * sPal +
-    0.22 * oAct +
-    0.2 * wAct +
-    0.12 * (100 - stressPen) +
+    32 +
+    0.24 * wAct +
+    0.2 * oAct +
+    0.11 * sPal +
+    Math.min(13, ow.jaeStem * 2.3 + ow.jaeBranchSurface * 0.95 + ow.jaeBranchHidden * 0.42) +
     jaeAdj +
-    structureLinkBoost;
+    shengCaiBonus +
+    caiGuanTogether +
+    hapBonus -
+    0.1 * stressPen;
+  if (officerChung) practical -= 5;
   practical = Math.max(0, Math.min(100, Math.round(practical)));
 
   const injAll = countTenGodsInChars(stem, input.allChars, IN_SET);
@@ -3539,32 +3675,44 @@ function computeSpouseStructureAxisBundle(input: {
   if (injAll >= 1 && injAll <= 3) injBlend = 11;
   else if (injAll === 0) injBlend = -7;
   else injBlend = 2;
-  const injStemBranchTilt = Math.round((injStem - injBranch) * 0.35);
-  injBlend += injStemBranchTilt;
+  injBlend += Math.round((injStem - injBranch) * 0.35);
 
-  const sikAll = countTenGodsInChars(stem, input.allChars, SIK_SANG_SET);
-  const sikStem = countTenGodsOnStems(stem, input.allStems, SIK_SANG_SET);
-  const sikBranch = countTenGodsOnBranchesWithHidden(stem, input.allBranches, SIK_SANG_SET);
-  const sikBlend = Math.min(15, Math.round(sikAll * 4 + sikStem * 0.6));
+  const sikBlend = Math.min(15, Math.round(sikAll * 4 + sikStem * 0.55));
+
+  const tGodSum =
+    input.tenGodGroups && dm
+      ? Object.values(input.tenGodGroups).reduce((a, b) => a + b, 0) || 1
+      : 0;
+  const bijobRatio =
+    tGodSum > 0 && input.tenGodGroups ? (input.tenGodGroups.비겁 ?? 0) / tGodSum : 0;
+  const sangOnly = countTenGodsInChars(stem, input.allChars, SANG_ONLY_SET);
 
   let emotional =
-    0.36 * sPal +
-    0.18 * (100 - stressPen) +
-    injBlend +
-    sikBlend +
-    0.07 * oAct -
-    emotionalLoad;
+    36 +
+    0.48 * sPal +
+    0.09 * oAct +
+    0.12 * (100 - stressPen) -
+    0.82 * emotionalLoad +
+    injBlend * 0.65 +
+    sikBlend * 0.28;
+  emotional -= bijobRatio >= 0.36 ? 14 : bijobRatio >= 0.28 ? 8 : bijobRatio >= 0.22 ? 4 : 0;
+  emotional -= sangOnly >= 2 ? 11 : sangOnly === 1 ? 5 : 0;
+  emotional -= officerChung ? 6 : 0;
+  if (dayHyungEdge) emotional -= 4;
   emotional = Math.max(0, Math.min(100, Math.round(emotional)));
 
   const total = Object.values(input.counts).reduce((a, b) => a + b, 0) || 1;
-  const metalWater = (input.counts.금 + input.counts.수) / total;
+  const metalRatio = input.counts.금 / total;
   const woodFire = (input.counts.목 + input.counts.화) / total;
+  const calmImage =
+    Math.round((100 - stressPen) * 0.05 + (32 - Math.min(32, emotionalLoad)) * 0.1);
 
   let image =
-    30 +
-    Math.min(22, Math.round(sikAll * 4.2 + sikBranch * 0.45)) +
-    metalWater * 28 +
-    woodFire * 15;
+    24 +
+    Math.min(20, Math.round(sikAll * 3.8 + sikBranch * 0.48)) +
+    metalRatio * 34 +
+    woodFire * 13 +
+    calmImage;
   if (input.shinsalNames.has("도화")) image += 14;
   if (input.shinsalNames.has("홍염")) image += 11;
   const spEl = input.spouseElement;
@@ -3573,6 +3721,7 @@ function computeSpouseStructureAxisBundle(input: {
   if (spEl === "토") image += 2;
   if (dayB && ["유", "신", "오", "묘"].includes(dayB)) image += 5;
   else if (dayB && ["자", "해", "미"].includes(dayB)) image += 3;
+  if (dayHap) image += 3;
 
   image = Math.max(0, Math.min(100, Math.round(image)));
 
@@ -3601,9 +3750,9 @@ function computeSpouseStructureAxisBundle(input: {
     sikStem,
     sikBranch,
     dayBranchDigest: digest,
-    practicalFormula: `현실안정≈0.36×배우자궁(${sPal})+0.22×관(${oAct})+0.2×재(${wAct})+0.12×(100-일지긴장${stressPen})+일지재보정${jaeAdj >= 1 ? `+${jaeAdj}` : "0"}+명예·재물연동${structureLinkBoost >= 0 ? `+${structureLinkBoost}` : `${structureLinkBoost}`}`,
-    emotionalFormula: `정서≈0.36×배우자궁+인성혼합(${injBlend})+식상혼합(${sikBlend})+0.07×관−정서부담(${emotionalLoad})`,
-    imageFormula: `매력≈기저30+식상·지지가산+금수·화목비율+신살·일지힌트`,
+    practicalFormula: `재력≈재·관·식상생재(${shengCaiBonus})·재관연동(${caiGuanTogether})·합(+${hapBonus})·일지재(${jaeAdj})−긴장−관성충(${officerChung ? "Y" : "N"})`,
+    emotionalFormula: `성격≈0.48×배우자궁(${sPal})+인·식 보조−정서부담−비겁과다(${bijobRatio.toFixed(2)})−상관(${sangOnly})−형·관충`,
+    imageFormula: `외모·이미지≈금비율·식상·신살·일지·이미지안정(${calmImage})`,
     evaluationDebugTail: evalDbg.slice(-6),
   };
 
@@ -3613,17 +3762,16 @@ function computeSpouseStructureAxisBundle(input: {
 type SpouseStructureAxisKey = "practical" | "emotional" | "image";
 
 const SPOUSE_STRUCTURE_AXIS_LABEL: Record<SpouseStructureAxisKey, string> = {
-  practical: "현실 안정성",
-  emotional: "정서 궁합성",
-  image: "매력·이미지",
+  practical: "재력",
+  emotional: "성격",
+  image: "외모",
 };
 
 const SPOUSE_STRUCTURE_AXIS_ONE_LINE: Record<SpouseStructureAxisKey, string> = {
-  practical:
-    "배우자궁 안정·관성/재성 작동·일지 긴장·용신 반영 지표를 합산한 생활·역할 기반입니다.",
+  practical: "재성·관·식상·합·재관 연동·일지 재·관성 충 등으로 배우자 측 경제·생활 가능성을 봅니다.",
   emotional:
-    "일지·오행 기질·인성/식상·원진·귀문·형해파·관성 보조를 합산한 정서·유지 신호입니다.",
-  image: "도화·홍염·금수·화목 비율·식상·배우자궁 지지를 합산한 외적 인상·매력입니다.",
+    "배우자궁 안정(가중)·관·비겁·상관·일지 합충형·관성 충·형을 합산한 관계·정서 구조입니다.",
+  image: "도화·홍염·금 기운·식상·일지·분위기 안정 신호로 사회적 인상·매력 축을 봅니다.",
 };
 
 function spouseStructureAxisBand(score: number): string {
@@ -3634,22 +3782,22 @@ function spousePracticalTypeLabel(band: string, wAct: number, oAct: number, sPal
   const top =
     wAct >= oAct && wAct >= sPal ? "재성" : oAct >= sPal ? "관성" : "배우자궁";
   if (band === "높음" || band === "중상") {
-    if (top === "재성") return "재성·생활 루트가 받쳐 주는 현실 안정형";
-    if (top === "관성") return "관성·책임 구조가 받쳐 주는 현실 안정형";
-    return "배우자궁 지표가 받쳐 주는 현실 안정형";
+    if (top === "재성") return "재성·생활 루트가 받쳐 주는 재력 신호형";
+    if (top === "관성") return "관성·책임이 받쳐 주는 재력 신호형";
+    return "배우자궁이 받쳐 주는 재력 신호형";
   }
-  if (band === "중") return "생활·역할 설계를 다듬으면 올라가기 쉬운 현실 조정형";
-  return "현실 기반을 먼저 잡아야 부담이 줄어드는 현실 보강형";
+  if (band === "중") return "조건·역할을 다듬으면 재력 신호가 따라오기 쉬운 조정형";
+  return "생활·조건 축을 먼저 다져야 재력 부담이 줄어드는 보강형";
 }
 
 function spouseEmotionalTypeLabel(band: string, inj: number, sik: number, emLoad: number): string {
   if (band === "높음" || band === "중상") {
-    if (emLoad <= 6 && sik >= 2) return "표현·완충이 살아 있는 정서 균형형";
-    if (inj >= 1 && inj <= 3) return "포용·위로가 받쳐 주는 정서 안정형";
-    return "관계 유지 신호가 비교적 고른 정서형";
+    if (emLoad <= 6 && sik >= 2) return "표현·완충이 살아 있는 관계 안정형";
+    if (inj >= 1 && inj <= 3) return "포용·위로가 받쳐 주는 관계 안정형";
+    return "관계 유지가 비교적 수월한 구조형";
   }
-  if (band === "중") return "속도·기대치를 맞추면 나아지기 쉬운 정서 조율형";
-  return "합충형파해·감정 변수가 부담으로 느껴질 수 있는 정서 주의형";
+  if (band === "중") return "속도·기대치를 맞추면 나아지기 쉬운 관계 조율형";
+  return "일지 긴장·감정 변수가 부담으로 느껴질 수 있는 관계 주의형";
 }
 
 function spouseImageTypeLabel(
@@ -3659,12 +3807,12 @@ function spouseImageTypeLabel(
   metalWaterRatio: number,
 ): string {
   if (band === "높음" || band === "중상") {
-    if (hasDohwa || hasHongyeom) return "도화·홍염 등 매력 시그널이 두드러지는 이미지형";
-    if (metalWaterRatio >= 0.38) return "금·수 기운이 받쳐 주는 세련·차분 이미지형";
-    return "표현·외형이 살아나기 쉬운 이미지형";
+    if (hasDohwa || hasHongyeom) return "도화·홍염 등 분위기 시그널이 살아 있는 인상형";
+    if (metalWaterRatio >= 0.38) return "금·수 기운이 받쳐 주는 차분·세련 인상형";
+    return "표현·분위기가 살아나기 쉬운 인상형";
   }
-  if (band === "중") return "스타일·표현만 정돈해도 살아나는 이미지 성장형";
-  return "첫인상보다 신뢰·안정 쪽이 앞서는 이미지 보완형";
+  if (band === "중") return "스타일·표현만 정돈해도 인상이 따라오는 성장형";
+  return "첫인상보다 신뢰·안정 쪽이 앞서는 인상 보완형";
 }
 
 function getSpouseStructureAxisDetail(
@@ -3690,33 +3838,33 @@ function getSpouseStructureAxisDetail(
         : "정서 변수 부담은 비교적 낮게 잡혔습니다.";
 
   if (axis === "practical") {
-    const head = `배우자궁 엔진(computeSpousePalaceStability) ${Math.round(ctx.sPal)}점·관성 작동 ${Math.round(ctx.oAct)}점·재성 작동 ${Math.round(ctx.wAct)}점·명예/재물 엔진 연동과 일지 스트레스를 함께 녹였습니다. ${stressNote}`;
+    const head = `재력 축에 재성 작동 ${Math.round(ctx.wAct)}점·관성 ${Math.round(ctx.oAct)}점·배우자궁 ${Math.round(ctx.sPal)}점과 일지 긴장을 함께 넣었습니다. ${stressNote}`;
     if (band === "높음" || band === "중상") {
-      return `${useNow ? "현재는 " : ""}${head}\n생활·역할·재정 루트가 맞물리기 쉬워 동거·협업 같은 현실 과제를 함께 밀기 좋은 편으로 읽힙니다.`;
+      return `${useNow ? "현재는 " : ""}${head}\n생활·조건·약속이 맞물리기 쉬운 재력 구조로 읽힙니다.`;
     }
     if (band === "중") {
-      return `${useNow ? "현재는 " : ""}${head}\n수입·역할·약속을 숫자와 규칙으로만 정리해도 체감 안정이 한 단계 오르기 쉽습니다.`;
+      return `${useNow ? "현재는 " : ""}${head}\n역할·조건을 숫자와 규칙으로만 정리해도 재력 체감이 한 단계 오르기 쉽습니다.`;
     }
-    return `${useNow ? "현재는 " : ""}${head}\n현금흐름·역할 분담·배우자궁 긴장을 순서대로 점검하는 것이 우선입니다.`;
+    return `${useNow ? "현재는 " : ""}${head}\n조건·역할·일지 긴장을 순서대로 점검하는 것이 우선입니다.`;
   }
   if (axis === "emotional") {
-    const head = `원국 인성 ${ctx.injCount}·식상 ${ctx.sikCount}·관성 작동 ${Math.round(ctx.oAct)}점을 함께 녹였습니다. ${emNote}`;
+    const head = `성격·관계 축에 배우자궁 ${Math.round(ctx.sPal)}점·인성 ${ctx.injCount}·식상 ${ctx.sikCount}·관 ${Math.round(ctx.oAct)}점을 넣었습니다. ${emNote}`;
     if (band === "높음" || band === "중상") {
-      return `${useNow ? "현재는 " : ""}${head}\n감정 소모 후 회복이나 대화로 풀기가 비교적 수월한 조합으로 읽힙니다.`;
+      return `${useNow ? "현재는 " : ""}${head}\n말과 감정의 속도를 맞추기 비교적 수월한 관계 구조로 읽힙니다.`;
     }
     if (band === "중") {
-      return `${useNow ? "현재는 " : ""}${head}\n주기 짧은 점검 대화와 기대치 조율이 정서 체감을 끌어올리기 쉽습니다.`;
+      return `${useNow ? "현재는 " : ""}${head}\n짧은 점검 대화와 기대치 조율이 관계 체감을 끌어올리기 쉽습니다.`;
     }
-    return `${useNow ? "현재는 " : ""}${head}\n갈등 시 속도·표현 방식을 먼저 맞추면 관계 부담이 줄기 쉽습니다.`;
+    return `${useNow ? "현재는 " : ""}${head}\n갈등 시 표현 방식과 리듬을 먼저 맞추면 부담이 줄기 쉽습니다.`;
   }
-  const head = `식상 ${ctx.sikCount}·도화/홍염·금수·화목 비율·배우자궁 지지를 함께 반영했습니다.`;
+  const head = `외모·이미지 축에 식상 ${ctx.sikCount}·도화/홍염·금·화목 비율·일지 힌트를 넣었습니다.`;
   if (band === "높음" || band === "중상") {
-    return `${useNow ? "현재는 " : ""}${head}\n첫인상·스타일·콘텐츠 매력이 살아나 만남 초반 시그널이 강한 편으로 읽힙니다.`;
+    return `${useNow ? "현재는 " : ""}${head}\n분위기·스타일·사회적 인상이 살아나는 구조로 읽힙니다.`;
   }
   if (band === "중") {
-    return `${useNow ? "현재는 " : ""}${head}\n말투·스타일·취향 표현을 조금만 정돈해도 인상이 따라오기 쉽습니다.`;
+    return `${useNow ? "현재는 " : ""}${head}\n말투·스타일·취향만 정돈해도 인상이 따라오기 쉽습니다.`;
   }
-  return `${useNow ? "현재는 " : ""}${head}\n시간이 지난 뒤 신뢰·안정 매력이 더 크게 느껴질 수 있습니다.`;
+  return `${useNow ? "현재는 " : ""}${head}\n시간이 지난 뒤 신뢰·안정 쪽 인상이 더 크게 느껴질 수 있습니다.`;
 }
 
 /**
@@ -3741,46 +3889,134 @@ function spouseUseNowNarrative(pb: string, eb: string, ib: string): boolean {
   return false;
 }
 
+function spouseWealthClause(band: string): string {
+  if (band === "높음" || band === "중상") return "재력·생활 축은 비교적 탄탄한 편";
+  if (band === "중") return "재력·생활 축은 중간대";
+  return "재력·생활 축에서는 합의와 규칙을 더 다져야 하는 편";
+}
+
+function spousePersonalityClause(band: string): string {
+  if (band === "높음" || band === "중상") return "성격·관계 안정 구조는 무난한 편";
+  if (band === "중") return "성격·관계 구조는 중간대로, 속도·기대치 조율이 포인트";
+  return "성격·관계 구조는 말과 감정이 엇박이 나기 쉬운 편";
+}
+
+function spouseImageClause(band: string): string {
+  if (band === "높음" || band === "중상") return "외모·분위기·사회적 인상은 평균 이상으로 읽히는 편";
+  if (band === "중") return "외모·분위기는 중간대";
+  return "첫인상·표현은 차분하거나 시간이 필요한 편";
+}
+
+/** 종합 배우자 구조: 3축 요약 → 의미 → 전략 + 연령대 렌즈 (유형 문장 반복 없음) */
 function buildSpouseStructureSynthesis(
   practicalBand: string,
   emotionalBand: string,
   imageBand: string,
-  useNow: boolean,
   cohort: SpouseAgeCohort,
-): { paragraph1: string; paragraph2: string } {
-  const triplet = `현실 안정성은 「${practicalBand}」, 정서 궁합성은 「${emotionalBand}」, 매력·이미지는 「${imageBand}」로 읽힙니다.`;
-
+): { paragraph1: string; paragraph2: string; paragraph3: string } {
   const pHi = practicalBand === "높음" || practicalBand === "중상";
+  const pLo = practicalBand === "낮음";
   const eHi = emotionalBand === "높음" || emotionalBand === "중상";
-  const iHi = imageBand === "높음" || imageBand === "중상";
   const eLo = emotionalBand === "낮음";
+  const iHi = imageBand === "높음" || imageBand === "중상";
   const iLo = imageBand === "낮음";
 
-  let focus: string;
+  const paragraph1 = `${spouseWealthClause(practicalBand)}이고, ${spousePersonalityClause(emotionalBand)}이며, ${spouseImageClause(imageBand)}입니다.`;
+
+  let meaning: string;
   if (pHi && eHi && iHi) {
-    focus = "세 축이 한꺼번에 무너지기 어려운 균형에 가깝습니다.";
-  } else if (pHi && eHi && iLo) {
-    focus = "살림·약속은 받쳐 주는데 첫인상·표현 매력은 여유가 있을 수 있습니다.";
+    meaning =
+      "즉, 생활 기반·말과 감정·대외 인상이 한꺼번에 무너지기 어려운 균형에 가깝습니다.";
   } else if (pHi && eLo) {
-    focus = "현실 기반은 있는 편인데 정서·감정 쪽에서 더 맞춤이 필요할 수 있습니다.";
+    meaning =
+      "즉, 생활·조건 축은 받쳐 주는데 정서·대화 방식에서 차이가 쌓이기 쉬운 구조로 읽힙니다.";
   } else if (eLo && iHi) {
-    focus = "호감·이미지 시그널은 살아 있으나 정서 유지에는 합의가 더 필요할 수 있습니다.";
-  } else if (practicalBand === "중" || emotionalBand === "중") {
-    focus = "한 축만 집중해 다듬어도 교차 체감이 빨리 나아질 수 있는 중간대입니다.";
+    meaning =
+      "즉, 분위기·인상은 살아 있으나 감정 리듬·기대치 맞추기에는 더 손볼 여지가 있습니다.";
+  } else if (pLo && (eHi || iHi)) {
+    meaning =
+      "즉, 관계·인상 쪽은 나아도 생활·조건 축에서 먼저 안정을 잡아야 체감이 따라오기 쉽습니다.";
+  } else if (practicalBand === "중" || emotionalBand === "중" || imageBand === "중") {
+    meaning = "즉, 한 축만 집중해 다듬어도 나머지 축의 체감이 빨리 따라올 수 있는 중간대입니다.";
   } else {
-    focus = "세 축을 함께 보며 가장 낮게 느껴지는 쪽을 먼저 다지면 전체가 따라오기 쉽습니다.";
+    meaning =
+      "즉, 세 축 가운데 가장 낮게 느껴지는 축을 먼저 다지면 전체 균형이 맞춰지기 쉽습니다.";
   }
 
-  const paragraph1 = useNow ? `${triplet} 현재는 ${focus}` : `${triplet} ${focus}`;
-  const cohortLine =
-    cohort === "lt30"
-      ? "같은 연령대에서는 연애 스타일·만남 방식을 우선 보는 해석이 자연스럽습니다."
-      : cohort === "30_49"
-        ? "같은 연령대에서는 결혼·가정 안정과 역할 조율을 함께 보는 해석이 맞습니다."
-        : "같은 연령대에서는 동반자 관계·생활 동행·신뢰를 중심으로 보는 해석이 맞습니다.";
-  const paragraph2 = `위 점수는 배우자궁·십성 분포·지지 관계·오행 비율·신살을 한 엔진에서 합산한 구조 지표이며, 실제 관계는 선택과 대화에 따라 달라질 수 있습니다. ${cohortLine}`;
+  let strategy: string;
+  if (pHi && eLo) {
+    strategy = "이 경우 관계 유지만큼이 아니라 말하는 방식·기대치를 맞추는 전략이 더 크게 작동합니다.";
+  } else if (eLo && iHi) {
+    strategy = "호감에만 기대기보다 짧은 주기의 대화 규칙을 정하는 쪽이 안전합니다.";
+  } else if (pLo) {
+    strategy = "감정보다 생활 규칙·역할·조건을 먼저 합의하는 순서가 우선입니다.";
+  } else if (pHi && eHi && iHi) {
+    strategy = "이미 균형이 있으므로 과도한 의심보다는 관계를 넓히되 약속은 명확히 하는 전략이 맞습니다.";
+  } else {
+    strategy = "가장 낮은 축 하나만 골라 한 달 단위로 점검해도 전체가 따라오기 쉽습니다.";
+  }
 
-  return { paragraph1, paragraph2 };
+  const cohortLens =
+    cohort === "lt30"
+      ? "같은 연령대에서는 만남·연애 스타일을 중심으로 읽는 것이 자연스럽습니다."
+      : cohort === "30_49"
+        ? "같은 연령대에서는 결혼·가정·역할 안정을 함께 보는 시각이 맞습니다."
+        : cohort === "50_69"
+          ? "같은 연령대에서는 관계 유지·생활 동행·신뢰를 중심으로 보는 해석이 맞습니다."
+          : "같은 연령대에서는 정서적 동반·일상 안정과 돌봄 균형이 해석의 중심이 됩니다.";
+
+  const paragraph3 = `${strategy} ${cohortLens}`;
+
+  return { paragraph1, paragraph2: meaning, paragraph3 };
+}
+
+/** 배우자 카드 실행 제안 — 종합 해석과 겹치지 않게 행동만 */
+function buildSpouseImprovementBullets(
+  practicalBand: string,
+  emotionalBand: string,
+  imageBand: string,
+  cohort: SpouseAgeCohort,
+): string[] {
+  const pLo = practicalBand === "낮음";
+  const eLo = emotionalBand === "낮음";
+  const iLo = imageBand === "낮음";
+  const pMid = practicalBand === "중";
+  const eMid = emotionalBand === "중";
+
+  if (cohort === "ge70") {
+    const b: string[] = [];
+    if (eLo || eMid) {
+      b.push("부담스러운 주제는 한 번에 하나만, 짧게 나누어 이야기해 보세요.");
+      b.push("생활 리듬(식사·수면·외출)을 함께 맞추는 약속을 가볍게 정해 보세요.");
+    }
+    if (pLo) b.push("의료·생활비 등 필요 경비를 숫자로만 한 번 정리해 보세요.");
+    if (b.length < 2) b.push("서로의 쉬는 시간을 존중하는 규칙을 짧게라도 정해 보세요.");
+    return b.slice(0, 4);
+  }
+
+  const out: string[] = [];
+  if (pLo || pMid) {
+    out.push("생활비·역할 분담을 월 단위로만이라도 숫자와 문장으로 정리해 보세요.");
+  }
+  if (eLo) {
+    out.push("갈등이 생기면 ‘사실—느낌—요청’ 순으로 한 번에 한 가지씩만 말해 보세요.");
+  } else if (eMid) {
+    out.push("두 달에 한 번, 관계 체크 질문 세 가지를 정해 대화해 보세요.");
+  }
+  if (iLo) {
+    out.push("약속 장소·복장·말투 중 한 가지만 통일해 보아도 인상이 정돈됩니다.");
+  }
+  if (cohort === "lt30" && !eLo) {
+    out.push("만남 방식(주 몇 회, 연락 리듬)을 가볍게라도 맞춰 보세요.");
+  }
+  if (out.length < 2) {
+    out.push("배우자궁·아래 3축 점수를 분기마다 다시 열어 변화를 확인해 보세요.");
+  }
+  const uniq: string[] = [];
+  for (const x of out) {
+    if (!uniq.includes(x)) uniq.push(x);
+  }
+  return uniq.slice(0, 4);
 }
 
 /** 관·재(천간·지지)·일지·합충형파해·강약·패턴·십성비를 묶은 배우자 성향 요약 */
@@ -3795,6 +4031,7 @@ function buildCompositeSpouseTendency(input: {
   strengthLevel: string | null | undefined;
   tenGodGroups?: Record<string, number> | null;
   branchRelationDigest: string;
+  cohort: SpouseAgeCohort;
 }): string {
   const {
     dayStem,
@@ -3807,8 +4044,10 @@ function buildCompositeSpouseTendency(input: {
     strengthLevel,
     tenGodGroups,
     branchRelationDigest,
+    cohort,
   } = input;
   const parts: string[] = [];
+  const senior = cohort === "ge70";
 
   const ow = countOfficerWealthStemBranch(dayStem, allStems, allBranches);
   const gwanTotal = ow.gwanStem + ow.gwanBranchSurface + ow.gwanBranchHidden;
@@ -3855,10 +4094,12 @@ function buildCompositeSpouseTendency(input: {
   } else if (injS + injB >= 2) {
     parts.push("인성이 받쳐 주어 정서 완충·배려 담론이 관계에 스며들기 쉽습니다.");
   }
-  if (sikS >= 2 || sikS + sikB >= 4) {
+  if (!senior && (sikS >= 2 || sikS + sikB >= 4)) {
     parts.push("식상이 살아 있어 표현·유머·취향이 만남과 이미지를 이끄는 축이 될 수 있습니다.");
-  } else if (sikB >= 2 && sikS === 0) {
+  } else if (!senior && sikB >= 2 && sikS === 0) {
     parts.push("식상이 지지에 깔려 속으로 표현 욕구·취향이 쌓이는 형태로 읽힐 수 있습니다.");
+  } else if (senior && sikS + sikB >= 2) {
+    parts.push("표현·취향이 관계의 온도를 조절하는 축으로 작동하기 쉽습니다.");
   }
 
   if (spouse) {
@@ -3876,7 +4117,7 @@ function buildCompositeSpouseTendency(input: {
     parts.push(rel.spouseStyle);
   }
 
-  if (tenGodGroups && dayStem) {
+  if (!senior && tenGodGroups && dayStem) {
     const dm = STEM_TO_ELEMENT[dayStem] as FiveElKey | undefined;
     if (dm) {
       const t = Object.values(tenGodGroups).reduce((a, b) => a + b, 0) || 1;
@@ -3897,7 +4138,9 @@ function buildCompositeSpouseTendency(input: {
 function cohortSpouseMeetSuffix(cohort: SpouseAgeCohort): string {
   if (cohort === "lt30") return " 20대 전후에는 연애 스타일·만남 심리가 먼저 드러나기 쉽습니다.";
   if (cohort === "30_49") return " 30~40대 흐름에서는 결혼·가정 안정과 역할 조율이 함께 읽히기 쉽습니다.";
-  return " 50대 이상에서는 동반 생활·신뢰·돌봄의 균형이 중심이 되기 쉽습니다.";
+  if (cohort === "50_69")
+    return " 50~60대 전후에는 관계 유지·생활 동행·신뢰가 중심이 되기 쉽습니다.";
+  return " 고령대에서는 정서적 동반·일상 안정이 해석의 중심이 됩니다.";
 }
 
 /** 1차·2차 유형: 일지 오행 단독 분류 대신 3축·배우자궁·관재·정서부담 복합 */
@@ -3913,6 +4156,7 @@ function deriveSpousePrimarySecondaryTypes(ctx: {
   wAct: number;
   emotionalLoad: number;
   injCount: number;
+  cohort?: SpouseAgeCohort;
 }): { primary: string; secondary: string; primaryBlurb: string } {
   const stabilityBlend = Math.round(ctx.sPal * 0.55 + ctx.practical * 0.45);
   const realityBlend = Math.round((ctx.oAct + ctx.wAct) / 2);
@@ -3944,7 +4188,7 @@ function deriveSpousePrimarySecondaryTypes(ctx: {
   else if (hi(ctx.eBand) && ctx.injCount >= 2) secondary = "포용·공유형";
   else if (hi(ctx.iBand) && ctx.image >= ctx.practical) secondary = "인상·표현 강조형";
 
-  const primaryBlurb =
+  let primaryBlurb =
     primary === "안정형 배우자"
       ? "배우자궁·현실 축이 함께 받쳐 줄 때 관계가 무너지기 어려운 틀로 읽힙니다."
       : primary === "변동·조율형 배우자"
@@ -3958,6 +4202,10 @@ function deriveSpousePrimarySecondaryTypes(ctx: {
               : primary === "규범·역할형 배우자"
                 ? "역할·규범·대외적 책임이 배우자 기대와 맞물리기 쉽습니다."
                 : "세 축을 한꺼번에 보지 않고 한쪽만 고집하기 어려운 중간 성격의 패턴입니다.";
+
+  if (ctx.cohort === "ge70" && primary === "매력·이미지형 배우자") {
+    primaryBlurb = "분위기·표현이 관계의 온도를 이끄는 비중이 큰 패턴으로 읽힙니다.";
+  }
 
   return { primary, secondary, primaryBlurb };
 }
@@ -4051,6 +4299,7 @@ function YuanSpouseStructureCard({
     evaluations,
     shinsalNames,
     spouseElement: spousePalace?.element,
+    tenGodGroups,
   });
   const compositeTendency = buildCompositeSpouseTendency({
     dayStem,
@@ -4063,6 +4312,7 @@ function YuanSpouseStructureCard({
     strengthLevel,
     tenGodGroups,
     branchRelationDigest: branchDigest,
+    cohort: spouseCohort,
   });
   const summary = buildYuanSpouseStructureContext(
     monthBranch,
@@ -4089,6 +4339,7 @@ function YuanSpouseStructureCard({
     wAct: scores.wAct,
     emotionalLoad: scores.emotionalLoad,
     injCount: scores.injCount,
+    cohort: spouseCohort,
   });
   const structureHeadline = Math.round((scores.practical + scores.emotional + scores.image) / 3);
 
@@ -4098,7 +4349,8 @@ function YuanSpouseStructureCard({
     { key: "image", label: SPOUSE_STRUCTURE_AXIS_LABEL.image, score: scores.image, band: iB },
   ];
   const useNow = spouseUseNowNarrative(pB, eB, iB);
-  const spouseSynth = buildSpouseStructureSynthesis(pB, eB, iB, useNow, spouseCohort);
+  const spouseSynth = buildSpouseStructureSynthesis(pB, eB, iB, spouseCohort);
+  const spouseImprovementBullets = buildSpouseImprovementBullets(pB, eB, iB, spouseCohort);
   const openBand = openAxis ? axisCells.find((c) => c.key === openAxis)?.band : null;
 
   const axisDetailCtx = {
@@ -4135,15 +4387,9 @@ function YuanSpouseStructureCard({
     <div className={tr.shell}>
       <div className="flex items-start justify-between gap-2">
         <div>
-          <p className={tr.kicker}>원국 기반 배우자 구조</p>
-          <p className={tr.sub}>원국 · 구조 요약 (재물 카드와 동일 순서)</p>
+          <p className={tr.kicker}>배우자 구조 요약</p>
+          <p className={tr.sub}>원국 · 구조 기반 (재물 카드와 동일 순서)</p>
         </div>
-      </div>
-      <div className="mt-2 flex flex-wrap items-baseline gap-x-1 gap-y-0">
-        <span className="text-[13px] font-semibold text-foreground">배우자 구조 점수</span>
-        <span className="text-2xl font-black tabular-nums leading-none text-rose-800">{structureHeadline}</span>
-        <span className="text-[12px] font-semibold text-rose-900/90">점</span>
-        <span className="text-[10px] text-muted-foreground">(3축 평균)</span>
       </div>
       <div className="mt-1.5 space-y-1">
         <p className={cn(tr.sectionEyebrow)}>1차 유형</p>
@@ -4152,11 +4398,18 @@ function YuanSpouseStructureCard({
         <p className={cn(tr.sectionEyebrow, "pt-1")}>2차 유형</p>
         <p className="text-[13px] font-semibold text-rose-900/95 leading-snug">{typePair.secondary}</p>
         <p className="text-[12px] leading-relaxed text-foreground/88">
-          관성·재성 작동, 정서 부담, 매력 축 가운데 어디에 무게가 실리는지 보조 라벨입니다.
+          3축·배우자궁·관재 작동을 묶은 보조 라벨입니다.
         </p>
       </div>
-      <p className="mt-1 text-[10px] leading-snug text-muted-foreground">
-        아래 3축은 배우자궁 엔진·관·재·지지 관계·인성/식상·신살을 합산했습니다. 칸을 누르면 유형과 세부 해석이 펼쳐집니다.
+      <div className="mt-2 flex flex-wrap items-baseline gap-x-1 gap-y-0">
+        <span className="text-[13px] font-semibold text-foreground">배우자운</span>
+        <span className="text-2xl font-black tabular-nums leading-none text-rose-800">{structureHeadline}</span>
+        <span className="text-[12px] font-semibold text-rose-900/90">점</span>
+        <span className="text-[10px] text-muted-foreground">(재력·성격·외모 평균)</span>
+      </div>
+      <p className={cn(tr.sectionEyebrow, "mt-2")}>구조 축</p>
+      <p className="mt-0.5 text-[10px] leading-snug text-muted-foreground">
+        재력·성격·외모(이미지)는 원국 십성·지지·신살을 복합 반영합니다. 칸을 누르면 유형과 축별 설명이 펼쳐집니다.
       </p>
       <div className="mt-2.5 grid grid-cols-3 gap-2">
         {axisCells.map(({ key, label, score, band }) => {
@@ -4220,6 +4473,26 @@ function YuanSpouseStructureCard({
         <p className={tr.synthTitle}>종합 배우자 구조 분석</p>
         <p className="mt-1.5 text-[12px] leading-relaxed text-foreground">{spouseSynth.paragraph1}</p>
         <p className="mt-1.5 text-[12px] leading-relaxed text-foreground">{spouseSynth.paragraph2}</p>
+        <p className="mt-1.5 text-[12px] leading-relaxed text-foreground">{spouseSynth.paragraph3}</p>
+      </div>
+      <div className={tr.improveBox}>
+        <p className={tr.synthTitle}>개선 방향 제안</p>
+        {spouseImprovementBullets.length >= 2 ? (
+          <ul
+            className={cn(
+              "mt-2 space-y-1 pl-4 text-[12px] leading-relaxed text-foreground list-disc",
+              tr.listDisc,
+            )}
+          >
+            {spouseImprovementBullets.map((b) => (
+              <li key={b}>{b}</li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mt-1.5 text-[12px] leading-relaxed text-foreground">
+            추가로 손볼 포인트가 크지 않습니다. 생활 환경이 바뀌면 3축을 다시 확인해 보세요.
+          </p>
+        )}
       </div>
       <details className="mt-2 rounded-md border border-rose-100/90 bg-rose-50/40 px-2 py-1.5 text-[10px] leading-snug text-muted-foreground">
         <summary className="cursor-pointer font-semibold text-rose-900/90">계산 근거 (디버그)</summary>
@@ -4386,6 +4659,7 @@ function StructureWealthBriefCard({
         <p className={te.synthTitle}>종합 재물 구조 분석</p>
         <p className="mt-1.5 text-[12px] leading-relaxed text-foreground">{synthesis.paragraph1}</p>
         <p className="mt-1.5 text-[12px] leading-relaxed text-foreground">{synthesis.paragraph2}</p>
+        <p className="mt-1.5 text-[12px] leading-relaxed text-foreground">{synthesis.paragraph3}</p>
       </div>
       <div className={te.improveBox}>
         <p className={te.synthTitle}>개선 제안</p>
