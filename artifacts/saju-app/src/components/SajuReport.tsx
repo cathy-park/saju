@@ -144,9 +144,7 @@ import {
   User,
   RotateCcw,
   AlertTriangle,
-  CircleHelp,
 } from "lucide-react";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
@@ -2748,11 +2746,15 @@ type WealthAxisKey = "channel" | "capacity" | "accumulation";
 
 const WEALTH_AXIS_INLINE: Record<WealthAxisKey, string> = {
   channel:
-    "돈과 연결되는 통로를 뜻합니다. 제안, 수익 기회, 일거리 흐름 등이 여기에 포함됩니다.",
-  capacity:
-    "들어온 돈을 실제로 운영하고 유지할 수 있는 힘입니다. 감당력이 낮으면 기회가 있어도 체감 수익이 줄 수 있습니다.",
-  accumulation:
-    "번 돈이 얼마나 남고 쌓이는지를 뜻합니다. 축적이 낮으면 벌어도 남는 느낌이 적을 수 있습니다.",
+    "돈과 연결되는 기회와 통로를 뜻해요. 제안, 일거리, 수익 흐름이 여기에 포함됩니다.",
+  capacity: "들어온 돈을 실제로 운영하고 유지할 수 있는 힘이에요.",
+  accumulation: "번 돈이 얼마나 남고 쌓이는지 보는 지표예요.",
+};
+
+const WEALTH_AXIS_LABEL: Record<WealthAxisKey, string> = {
+  channel: "채널",
+  capacity: "감당",
+  accumulation: "축적",
 };
 
 /** 원국 탭 — 최종/유형/채널·감당·축적 요약 */
@@ -2796,59 +2798,72 @@ function StructureWealthBriefCard({ wealth }: { wealth: DomainScoreResult }) {
       </div>
       {axesAreFallback ? (
         <p className="mt-1 text-[10px] text-amber-900/85 bg-amber-50/70 border border-amber-100/90 rounded-md px-2 py-1.5 leading-snug">
-          세 축이 같은 숫자로 보이면, 지금은 종합 점수만 반영된 상태예요. 각각의 의미는 아래 칸을 눌러 참고해 주세요.
+          세 축이 같은 숫자로 보이면, 지금은 종합 점수만 반영된 상태예요. 아래에서 채널·감당·축적을 누르면 하단에 설명이 나와요.
         </p>
       ) : null}
       <div className="mt-2 flex flex-wrap items-baseline gap-2">
         <span className="text-2xl font-black tabular-nums leading-none text-emerald-700">{wealth.score}</span>
         <span className="text-[12px] font-medium text-emerald-900/85">점 · 최종 재물운</span>
       </div>
-      <div className="mt-1.5 flex flex-wrap items-center gap-1">
+      <div className="mt-1.5">
         <p className="text-[13px] font-semibold text-foreground leading-snug">{wealth.classification}</p>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-emerald-200/80 bg-white/70 text-emerald-700/90 hover:bg-emerald-50/90 active:scale-95 transition-transform"
-              aria-label="재물 유형 안내"
-            >
-              <CircleHelp className="h-3 w-3" strokeWidth={2.2} />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="top" className="max-w-[240px] text-[11px] leading-snug px-2.5 py-2">
-            채널·감당·축적 점수를 함께 읽어 정리한 패턴 이름이에요. 아래 칸을 누르면 각 점수의 뜻을 볼 수 있어요.
-          </TooltipContent>
-        </Tooltip>
+        <p className="mt-1 text-[12px] leading-snug text-foreground/88">{typeLine}</p>
       </div>
-      <p className="mt-1 text-[11px] leading-snug text-muted-foreground">{typeLine}</p>
-      <div className="mt-2 grid grid-cols-3 gap-1.5">
+      <div className="mt-2.5 grid grid-cols-3 gap-2">
         {axisCells.map(({ key, label, score, band }) => {
-          const open = openAxis === key;
+          const sel = openAxis === key;
           return (
             <button
               key={key}
               type="button"
               onClick={() => toggleAxis(key)}
-              aria-expanded={open}
+              aria-expanded={sel}
+              aria-pressed={sel}
               className={cn(
-                "rounded-md border bg-white/55 px-1 py-2 transition-colors flex flex-col items-center min-h-[4.25rem]",
-                open
-                  ? "border-emerald-400/70 ring-1 ring-emerald-300/50 bg-emerald-50/40"
-                  : "border-emerald-100/70 active:bg-emerald-50/30",
+                "rounded-lg border-2 px-1.5 py-3 min-h-[5.25rem] transition-colors flex flex-col items-center justify-center gap-0.5 touch-manipulation",
+                sel
+                  ? "border-emerald-600 bg-emerald-100/65 shadow-sm"
+                  : "border-emerald-100/90 bg-white/70 active:bg-emerald-50/50",
               )}
             >
-              <span className="text-[10px] text-muted-foreground">{label}</span>
-              <span className="text-[12px] font-bold tabular-nums text-foreground">{score}</span>
-              <span className="text-[10px] font-semibold text-emerald-800">{band}</span>
-              {open ? (
-                <div className="mt-1.5 w-full rounded-md border border-emerald-100/80 bg-emerald-50/60 px-1.5 py-1.5 text-[10px] leading-snug text-foreground/90 text-left font-normal">
-                  {WEALTH_AXIS_INLINE[key]}
-                </div>
-              ) : null}
+              <span
+                className={cn(
+                  "text-[11px] font-medium",
+                  sel ? "text-emerald-950 font-semibold" : "text-muted-foreground",
+                )}
+              >
+                {label}
+              </span>
+              <span
+                className={cn(
+                  "text-[15px] font-black tabular-nums",
+                  sel ? "text-emerald-900" : "text-foreground",
+                )}
+              >
+                {score}
+              </span>
+              <span
+                className={cn(
+                  "text-[10px] font-bold",
+                  sel ? "text-emerald-900" : "text-emerald-800/90",
+                )}
+              >
+                {band}
+              </span>
             </button>
           );
         })}
       </div>
+      {openAxis != null ? (
+        <div
+          className="mt-2.5 rounded-lg border-2 border-emerald-300/80 bg-emerald-50/90 px-3 py-2.5 shadow-sm"
+          role="region"
+          aria-live="polite"
+        >
+          <p className="text-[11px] font-bold text-emerald-950 tracking-wide">{WEALTH_AXIS_LABEL[openAxis]}</p>
+          <p className="mt-1 text-[12px] leading-relaxed text-foreground">{WEALTH_AXIS_INLINE[openAxis]}</p>
+        </div>
+      ) : null}
       <p className="mt-2 border-t border-border/50 pt-2 text-[11px] leading-snug text-muted-foreground">
         돈의 기회가 많아도, 실제로 운영하고 남기는 힘에 따라 체감은 달라질 수 있어요.
       </p>
