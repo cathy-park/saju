@@ -2776,6 +2776,7 @@ const STRUCTURE_CARD = {
     expandTitle: "text-[11px] font-bold text-emerald-950 tracking-wide",
     expandBand: "font-semibold text-emerald-800/90",
     synthBox: "mt-2.5 rounded-lg border border-emerald-200/80 bg-emerald-50/50 px-3 py-2.5",
+    improveBox: "mt-2.5 rounded-lg border border-emerald-200/80 bg-emerald-50/50 px-3 py-2.5",
     synthTitle: "text-[11px] font-bold text-emerald-950 uppercase tracking-wide",
     foot: "mt-2 border-t border-border/50 pt-2 text-[11px] leading-snug text-muted-foreground",
     listDisc: "marker:text-emerald-700",
@@ -2937,7 +2938,15 @@ function computeWealthSubtypeInsight(
   return null;
 }
 
-/** ‘현재는’ 내러티브: 한 축은 강한데 다른 축이 약해 개선 여지가 읽힐 때만 */
+/**
+ * 종합/축 상세에만 ‘현재는’ 접두: 아래 모두 해당할 때만 (그 외에는 문장 톤 통일)
+ * - 축적이 낮음이면서 채널이 중간 이상, 또는
+ * - 채널이 높음·중상인데 유지가 낮음, 또는
+ * - 유지가 양호인데 축적만 낮고 채널이 낮지 않음, 또는
+ * - 채널 중 + 유지 양호 + 축적 낮음
+ * (채널·유지 모두 낮음: 구조적 빈곤 느낌 → 접두 없이 안내)
+ * (채널·유지·축적 모두 무난: 접두 없음)
+ */
 function wealthUseNowNarrative(channelBand: string, capacityBand: string, accumulationBand: string): boolean {
   const chHi = channelBand === "높음" || channelBand === "중상";
   const chMid = channelBand === "중";
@@ -2945,8 +2954,9 @@ function wealthUseNowNarrative(channelBand: string, capacityBand: string, accumu
   const capHi = capacityBand === "양호";
   const capLo = capacityBand === "낮음";
   const accLo = accumulationBand === "낮음";
+  const accOk = accumulationBand === "보통";
   if (chLo && capLo) return false;
-  if (chHi && capHi && accumulationBand === "보통") return false;
+  if (chHi && capHi && accOk) return false;
   if (accLo && (chHi || chMid)) return true;
   if (chHi && capLo) return true;
   if (capHi && accLo && !chLo) return true;
@@ -2977,7 +2987,7 @@ function getWealthAxisDetail(axis: WealthAxisKey, band: string, useNow: boolean)
     }
     if (band === "중상") {
       const a = useNow
-        ? "현재 수입 기회와 활동 기반은 충분히 안정적인 편입니다."
+        ? "현재는 수입 기회와 활동 기반은 충분히 안정적인 편입니다."
         : "수입 기회와 활동 기반은 충분히 안정적인 편입니다.";
       const b = "노동·사업·계약 기반 수입 구조가 잘 형성된 상태입니다.";
       return `${a}\n${b}`;
@@ -2996,7 +3006,7 @@ function getWealthAxisDetail(axis: WealthAxisKey, band: string, useNow: boolean)
   if (axis === "capacity") {
     if (band === "양호") {
       const a = useNow
-        ? "현재 들어온 돈을 무리 없이 관리하고 유지할 수 있는 안정성이 있습니다."
+        ? "현재는 들어온 돈을 무리 없이 관리하고 유지할 수 있는 안정성이 있습니다."
         : "들어온 돈을 무리 없이 관리하고 유지할 수 있는 안정성이 있습니다.";
       const b = "지출 통제와 리스크 관리 능력이 비교적 좋은 편입니다.";
       return `${a}\n${b}`;
@@ -3029,20 +3039,94 @@ function getWealthAxisDetail(axis: WealthAxisKey, band: string, useNow: boolean)
   return `${WEALTH_AXIS_LABEL[axis]} 항목은 「${band}」 구간으로 읽힙니다. 위 한 줄 설명과 함께 점수 추이를 참고해 주세요.`;
 }
 
-const WEALTH_SYNTHESIS_SUGGESTIONS = [
-  "콘텐츠 자산",
-  "멤버십 구조",
-  "지분 구조",
-  "자동화 수익 구조",
+const WEALTH_IMPROVEMENT_POOL = [
+  "멤버십·구독 등 정기 수익 루트를 하나 설계해 보세요.",
+  "콘텐츠·지식 자산이 반복 수익으로 이어지게 루틴을 붙여 보세요.",
+  "지분·파트너십으로 리스크를 나누며 자산이 붙는 구조를 검토해 보세요.",
+  "업무 자동화·템플릿화로 시간을 내어 저축·투자 습관을 붙여 보세요.",
+  "제안·계약이 명확한 수입 루트를 한 가지 고정해 보세요.",
+  "월별 예산과 비상금 규모를 숫자로 정해 유지 축을 다져 보세요.",
 ] as const;
 
+const WEALTH_IMPROVEMENT_PLACEHOLDER =
+  "추가 보완 포인트가 크지 않습니다. 생활·수입 환경이 바뀌면 채널·유지·축적을 다시 확인해 주세요.";
+
+/** 개선 제안 bullet을 쓸지: 한 축이라도 ‘보완 여지’가 클 때 */
+function wealthImprovementNeedHigh(
+  channelBand: string,
+  capacityBand: string,
+  accumulationBand: string,
+): boolean {
+  if (accumulationBand === "낮음") return true;
+  if (channelBand === "낮음") return true;
+  if (capacityBand === "낮음") return true;
+  if (channelBand === "중") return true;
+  if (capacityBand === "보통" && accumulationBand === "낮음") return true;
+  return false;
+}
+
+/** 항상 2~4개 또는 빈 배열(→플레이스홀더). 출력 형식 통일용 */
+function buildWealthImprovementBullets(
+  channelBand: string,
+  capacityBand: string,
+  accumulationBand: string,
+): string[] {
+  if (!wealthImprovementNeedHigh(channelBand, capacityBand, accumulationBand)) {
+    return [];
+  }
+  const chStrong = channelBand === "높음" || channelBand === "중상";
+  const chWeak = channelBand === "낮음";
+  const chMid = channelBand === "중";
+  const capStrong = capacityBand === "양호";
+  const capWeak = capacityBand === "낮음";
+  const capMid = capacityBand === "보통";
+  const accWeak = accumulationBand === "낮음";
+
+  const picked: string[] = [];
+  if (accWeak) {
+    picked.push(WEALTH_IMPROVEMENT_POOL[0], WEALTH_IMPROVEMENT_POOL[1], WEALTH_IMPROVEMENT_POOL[2], WEALTH_IMPROVEMENT_POOL[3]);
+  }
+  if (chWeak) {
+    picked.push(WEALTH_IMPROVEMENT_POOL[4]);
+  }
+  if (capWeak || (capMid && accWeak)) {
+    picked.push(WEALTH_IMPROVEMENT_POOL[5]);
+  }
+  if (chMid && !chWeak) {
+    picked.push("수입 루트를 한두 가지로 좁혀 집중해 보세요.");
+    picked.push("같은 카드를 분기마다 다시 열어 점수 변화를 확인해 보세요.");
+  }
+
+  const uniq: string[] = [];
+  for (const p of picked) {
+    if (!uniq.includes(p)) uniq.push(p);
+  }
+  if (uniq.length === 0) {
+    uniq.push(WEALTH_IMPROVEMENT_POOL[0], WEALTH_IMPROVEMENT_POOL[4]);
+  }
+  if (uniq.length >= 4) return uniq.slice(0, 4);
+  if (uniq.length >= 2) return uniq.slice(0, 4);
+  if (uniq.length === 1) {
+    const extra = WEALTH_IMPROVEMENT_POOL.find((x) => x !== uniq[0]);
+    if (extra) uniq.push(extra);
+  }
+  if (uniq.length === 1) {
+    uniq.push("세 축 중 가장 낮은 항목부터 한 가지씩만 다져 가도 체감이 나기 쉽습니다.");
+  }
+  return uniq.slice(0, 4);
+}
+
+/**
+ * 종합 재물 구조 분석: 항상 2문단(각 1문장), 동일 톤(평서·해요체 혼용 최소화 → 평서체 위주).
+ * 해석 문장 앞에만 `현재는`을 붙임 (wealthUseNowNarrative 참일 때, 플레이스홀더 문구에는 사용하지 않음).
+ */
 function buildWealthSynthesis(
   channelBand: string,
   capacityBand: string,
   accumulationBand: string,
   classification: string,
   useNow: boolean,
-): { paragraphs: string[]; bullets?: string[] } {
+): { paragraph1: string; paragraph2: string } {
   const chStrong = channelBand === "높음" || channelBand === "중상";
   const chWeak = channelBand === "낮음";
   const chMid = channelBand === "중";
@@ -3052,98 +3136,49 @@ function buildWealthSynthesis(
   const accStrong = accumulationBand === "보통";
   const accWeak = accumulationBand === "낮음";
 
-  const prod = classification.includes("생산");
-  const now = (s: string) => (useNow ? (s.startsWith("현재") ? s : `현재는 ${s}`) : s.replace(/^현재는\s+/, ""));
+  const triplet = `채널은 「${channelBand}」, 유지는 「${capacityBand}」, 축적은 「${accumulationBand}」로 읽힙니다.`;
 
-  if (chStrong && capStrong && accWeak) {
-    return {
-      paragraphs: [
-        now(
-          `수입 기회(채널)와 안정성(유지)은 좋은 편이며${
-            prod ? " 노동 기반 생산형 재물 구조가 잘 형성되어 있습니다." : ` 「${classification}」 패턴에 맞는 수입 기반이 갖춰져 있습니다.`
-          }`,
-        ),
-        useNow
-          ? "다만 자산으로 자동 전환되는 축적 구조는 약한 편이므로 아래 중 하나를 추가하면 재물 안정성이 크게 상승할 수 있습니다."
-          : "자산으로 자동 전환되는 축적 구조는 아직 여지가 있으므로, 아래 중 하나를 더하면 재물 안정성이 크게 상승할 수 있습니다.",
-      ],
-      bullets: [...WEALTH_SYNTHESIS_SUGGESTIONS],
-    };
-  }
-
+  let focus: string;
   if (chStrong && capStrong && accStrong) {
-    return {
-      paragraphs: [
-        "수입 경로와 유지력이 모두 무난한 편이라, 재물이 한 번에 크게 무너지기 어려운 구조에 가깝습니다.",
-        "축적도 버티고 있으니, 장기 자산(투자·지분 등) 설계까지 넓혀 보시면 좋습니다.",
-      ],
-    };
+    focus = "세 축이 동시에 무너지기 어려운 균형에 가깝습니다.";
+  } else if (accWeak && (chStrong || chMid) && capStrong) {
+    focus = "들어오고 지키는 힘은 있으나 남기는 축을 보강하면 체감이 좋아질 수 있습니다.";
+  } else if (chWeak && capStrong) {
+    focus = "지키는 힘은 있으나 들어오는 통로를 넓힐 여지가 있습니다.";
+  } else if (chStrong && capWeak) {
+    focus = "들어올 기회는 있으나 지출·리스크에 흔들리기 쉬운 구간으로 볼 수 있습니다.";
+  } else if (chWeak && capWeak) {
+    focus = "통로와 유지 모두 부담으로 느껴질 수 있어 작은 수입원 하나를 먼저 고정하는 편이 안전합니다.";
+  } else if (chMid) {
+    focus = "수입 루트가 중간대이므로 한두 가지로 좁히면 체감이 빨리 나아질 수 있습니다.";
+  } else if (capMid && accWeak) {
+    focus = "유지는 무난한 편이나 남기는 축이 상대적으로 약하게 보입니다.";
+  } else if (chStrong && capMid && accWeak) {
+    focus = "들어올 여지는 있으나 지키고 쌓는 데 손볼 포인트가 있습니다.";
+  } else {
+    focus = "세 축을 함께 보며 가장 낮게 느껴지는 축을 먼저 다지면 전체가 따라오기 쉽습니다.";
   }
 
-  if (chWeak && capStrong) {
-    return {
-      paragraphs: [
-        now("들어온 돈을 지키는 힘은 있는데, 수입 통로가 좁게 느껴질 수 있습니다."),
-        "활동·제안·계약 루트를 조금씩 넓히는 데 집중하면 체감 수입이 따라오기 쉽습니다.",
-      ],
-    };
+  const manage = classification.includes("관리");
+  const chance = classification.includes("기회");
+  const volatile = classification.includes("불안정");
+  let typeNote: string;
+  if (classification.includes("생산")) {
+    typeNote = "활동·프로젝트 기반 수입과 잘 맞으니 반복 가능한 루트를 고정하는 데 초점을 두면 좋습니다.";
+  } else if (manage) {
+    typeNote = "지출 통제와 운영 안정을 우선하면 이 유형의 장점이 잘 살아납니다.";
+  } else if (chance) {
+    typeNote = "시기와 환경 변화에 맞춰 수입 루트를 조정하는 유연함이 도움이 됩니다.";
+  } else if (volatile) {
+    typeNote = "변동 폭이 크므로 리스크 한도와 비상자금을 분명히 두는 것이 안전합니다.";
+  } else {
+    typeNote = "유형에 맞는 수입 루트를 한 가지 정한 뒤 나머지 두 축을 순서대로 보강하면 균형이 맞춰집니다.";
   }
 
-  if (chStrong && capWeak) {
-    return {
-      paragraphs: [
-        now("수입 기회는 있는 편인데, 지출·리스크에 흔들리기 쉬운 구간일 수 있습니다."),
-        "예산·현금흐름·비상금부터 정리하면 유지 점수가 같이 오르는 경우가 많습니다.",
-      ],
-    };
-  }
+  const paragraph1 = useNow ? `${triplet} 현재는 ${focus}` : `${triplet} ${focus}`;
+  const paragraph2 = `「${classification}」 패턴과 연결해 보면, ${typeNote}`;
 
-  if (chWeak && capWeak) {
-    return {
-      paragraphs: [
-        "수입 경로와 유지력이 모두 부담으로 느껴질 수 있습니다.",
-        "작은 수입원 하나를 고정하고, 지출 통제를 같이 가져가는 것부터가 가장 안전합니다.",
-      ],
-    };
-  }
-
-  if (chMid) {
-    return {
-      paragraphs: [
-        now("채널은 ‘중간’ 단계입니다. 한두 가지 수입 루트만 골라 집중하면 중상 이상으로 끌어올리기 좋습니다."),
-        capStrong
-          ? "유지는 받쳐주고 있어, 루트 정리만 해도 재물 체감이 빨리 나아질 수 있어요."
-          : "유지·축적과 맞물려 보시면, 어디를 먼저 올릴지 우선순위가 보입니다.",
-      ],
-    };
-  }
-
-  if (capMid && accWeak) {
-    return {
-      paragraphs: [
-        now("유지는 무난한데 축적이 약하게 보입니다. 벌기만큼 ‘남기는 구조’를 하나 붙이는 것이 핵심입니다."),
-        "멤버십·콘텐츠·소액 분산 투자처럼 반복 수익이 나는 축을 하나 만드는 것을 추천합니다.",
-      ],
-      bullets: [...WEALTH_SYNTHESIS_SUGGESTIONS],
-    };
-  }
-
-  if (chStrong && capMid && accWeak) {
-    return {
-      paragraphs: [
-        now("들어올 기회는 있는데, 지켜 내고 쌓는 데는 여지가 있습니다."),
-        "지출 설계와 자산 파이프라인을 한 번에 잡으면 균형이 맞춰지기 쉽습니다.",
-      ],
-      bullets: [...WEALTH_SYNTHESIS_SUGGESTIONS],
-    };
-  }
-
-  return {
-    paragraphs: [
-      `채널「${channelBand}」, 유지「${capacityBand}」, 축적「${accumulationBand}」 조합으로 읽힙니다.`,
-      `「${classification}」 특성 안에서 가장 낮게 느껴지는 축을 먼저 다지면, 전체 재물 체감이 좋아지기 쉽습니다.`,
-    ],
-  };
+  return { paragraph1, paragraph2 };
 }
 
 function dayBranchStressPenalty(dayBranch: string, allBranches: string[]): number {
@@ -3542,6 +3577,7 @@ function StructureWealthBriefCard({
   const typeParagraph = wealthTypeParagraph(wealth.classification);
   const subtype = computeWealthSubtypeInsight(wealth.classification, dayStem, allChars, counts);
   const synthesis = buildWealthSynthesis(ch, ca, ac, wealth.classification, useNow);
+  const improvementBullets = buildWealthImprovementBullets(ch, ca, ac);
 
   function toggleAxis(key: WealthAxisKey) {
     setOpenAxis((prev) => (prev === key ? null : key));
@@ -3584,13 +3620,20 @@ function StructureWealthBriefCard({
         <p className={cn(te.sectionEyebrow)}>1차 유형</p>
         <p className="text-[13px] font-semibold text-foreground leading-snug">{wealth.classification}</p>
         <p className="text-[12px] leading-relaxed text-foreground/90">{typeParagraph}</p>
+        <p className={cn(te.sectionEyebrow, "pt-1")}>2차 유형</p>
         {subtype ? (
           <>
-            <p className={cn(te.sectionEyebrow, "pt-1")}>2차 유형</p>
             <p className="text-[13px] font-semibold text-emerald-900/95 leading-snug">{subtype.label}</p>
             <p className="text-[12px] leading-relaxed text-foreground/88">{subtype.description}</p>
           </>
-        ) : null}
+        ) : (
+          <>
+            <p className="text-[13px] font-semibold text-muted-foreground leading-snug">세부 패턴 미분류</p>
+            <p className="text-[12px] leading-relaxed text-foreground/88">
+              1차 유형과 아래 채널·유지·축적 점수를 함께 보면 세부 성향을 가늠할 수 있습니다.
+            </p>
+          </>
+        )}
       </div>
       <div className="mt-2.5 grid grid-cols-3 gap-2">
         {axisCells.map(({ key, label, score, band }) => {
@@ -3634,23 +3677,25 @@ function StructureWealthBriefCard({
       ) : null}
       <div className={te.synthBox}>
         <p className={te.synthTitle}>종합 재물 구조 분석</p>
-        {synthesis.paragraphs.map((p, i) => (
-          <p key={i} className="mt-1.5 text-[12px] leading-relaxed text-foreground">
-            {p}
-          </p>
-        ))}
-        {synthesis.bullets && synthesis.bullets.length > 0 ? (
+        <p className="mt-1.5 text-[12px] leading-relaxed text-foreground">{synthesis.paragraph1}</p>
+        <p className="mt-1.5 text-[12px] leading-relaxed text-foreground">{synthesis.paragraph2}</p>
+      </div>
+      <div className={te.improveBox}>
+        <p className={te.synthTitle}>개선 제안</p>
+        {improvementBullets.length >= 2 ? (
           <ul
             className={cn(
               "mt-2 space-y-1 pl-4 text-[12px] leading-relaxed text-foreground list-disc",
               te.listDisc,
             )}
           >
-            {synthesis.bullets.map((b) => (
+            {improvementBullets.map((b) => (
               <li key={b}>{b}</li>
             ))}
           </ul>
-        ) : null}
+        ) : (
+          <p className="mt-1.5 text-[12px] leading-relaxed text-foreground">{WEALTH_IMPROVEMENT_PLACEHOLDER}</p>
+        )}
       </div>
       <p className={te.foot}>
         돈의 기회가 많아도, 실제로 운영하고 남기는 힘에 따라 체감은 달라질 수 있어요.
