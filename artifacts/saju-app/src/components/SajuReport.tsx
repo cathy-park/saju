@@ -5075,7 +5075,7 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
       dayStem: dayStemNow,
       monthBranch: effectivePillars.month?.hangul?.[1],
       dayBranch: effectivePillars.day?.hangul?.[1],
-      dayPillarHangul: effectivePillars.day?.hangul?.join("") || undefined,
+      dayPillarHangul: effectivePillars.day?.hangul || undefined,
       allStems: allStemsNow,
       allBranches: allBranchesNow,
       effectiveFiveElements,

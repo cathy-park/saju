@@ -582,7 +582,7 @@ function computeWealthActivation(ctx: {
   const negatives: string[] = [];
   let raw = 50;
 
-  const { wealthEl, outputEl, dayMasterEl } = ctx;
+  const { wealthEl, dayMasterEl } = ctx;
   const genWealth = getGenerator(wealthEl);
 
   const wStems = wealthStemCount(dayMasterEl, ctx.allStems);
