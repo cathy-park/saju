@@ -38,7 +38,10 @@ import {
   type GukgukResult,
   type StructurePattern,
 } from "./gukguk";
-import type { RelationshipWealthEvaluations } from "./evaluations/relationshipWealthEvaluation";
+import {
+  computeSpousePalaceStability,
+  type RelationshipWealthEvaluations,
+} from "./evaluations/relationshipWealthEvaluation";
 import {
   computeStructureDomainScores,
   deriveRelationshipWealthEvaluationsFromDomains,
@@ -114,6 +117,8 @@ export interface PipelineInput {
   timingDaewoonHangul?: string;
   /** 현재 세운 간지(한글 2글자). 없으면 timing 가중치 0 */
   timingSeunHangul?: string;
+  /** 일주 한글(예: 정미). 없으면 dayStem+dayBranch로 자동 구성 */
+  dayPillarHangul?: string;
 }
 
 // ── Layer 2: Base Structure Calculation ───────────────────────────
@@ -481,13 +486,38 @@ export function computeSajuPipeline(input: PipelineInput): SajuPipelineResult {
     adjusted,
     interpretation,
   });
-  const evaluations = deriveRelationshipWealthEvaluationsFromDomains(structureDomains);
+  const evaluationsBase = deriveRelationshipWealthEvaluationsFromDomains(structureDomains);
+  const romanceDomainSurrogateScore = evaluationsBase.spousePalaceStability.score;
+  const dayPillarHangul =
+    input.dayPillarHangul ??
+    (input.dayStem && input.dayBranch ? `${input.dayStem}${input.dayBranch}` : undefined);
+  const spousePalaceCanonical = computeSpousePalaceStability({
+    dayBranch: input.dayBranch,
+    allBranches: input.allBranches,
+    dayPillarHangul,
+    yongshinPrimary: adjusted.effectiveYongshin,
+    yongshinSecondary: adjusted.effectiveYongshinSecondary,
+  });
+  const deltaPalace = spousePalaceCanonical.score - romanceDomainSurrogateScore;
+  const deltaStr = deltaPalace >= 0 ? `+${deltaPalace}` : `${deltaPalace}`;
+  const evaluations: RelationshipWealthEvaluations = {
+    ...evaluationsBase,
+    spousePalaceStability: {
+      ...spousePalaceCanonical,
+      debug: [
+        ...spousePalaceCanonical.debug,
+        "표준 출처: computeSpousePalaceStability",
+        `비교: 연애 구조 도메인 점수(구 surrogate·scoreRomance 경로)=${romanceDomainSurrogateScore}점 (Δ ${deltaStr})`,
+      ],
+    },
+    spousePalaceRomanceDomainSurrogateScore: romanceDomainSurrogateScore,
+  };
 
   if (isDevRuntime()) {
     // eslint-disable-next-line no-console
     console.log("[structureDomains]", structureDomains);
     // eslint-disable-next-line no-console
-    console.log("[evaluations: derived from structureDomains]", evaluations);
+    console.log("[evaluations: wealth/honor from domains; spouse from palace engine]", evaluations);
   }
 
   const timingActivation = computeLuckTimingActivation(

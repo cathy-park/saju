@@ -46,6 +46,8 @@ import {
   elementHslAlpha,
   elementTextClass,
   getTenGodGroup,
+  STEM_TO_ELEMENT,
+  BRANCH_TO_ELEMENT,
   type ElementTone,
   type FiveElKey,
 } from "@/lib/element-color";
@@ -3355,6 +3357,103 @@ function spouseDayBranchEmotionalLoad(dayBranch: string, allBranches: string[]):
   return Math.min(32, pen);
 }
 
+/** 관·재 천간 / 지지(표면+지장간) 건수 */
+function countOfficerWealthStemBranch(
+  dayStem: string,
+  allStems: string[],
+  allBranches: string[],
+): {
+  gwanStem: number;
+  gwanBranchSurface: number;
+  gwanBranchHidden: number;
+  jaeStem: number;
+  jaeBranchSurface: number;
+  jaeBranchHidden: number;
+} {
+  const dm = STEM_TO_ELEMENT[dayStem] as FiveElKey | undefined;
+  const z = {
+    gwanStem: 0,
+    gwanBranchSurface: 0,
+    gwanBranchHidden: 0,
+    jaeStem: 0,
+    jaeBranchSurface: 0,
+    jaeBranchHidden: 0,
+  };
+  if (!dm) return z;
+  for (const s of allStems) {
+    const el = STEM_TO_ELEMENT[s] as FiveElKey | undefined;
+    if (!el) continue;
+    const g = getTenGodGroup(dm, el);
+    if (g === "관성") z.gwanStem++;
+    if (g === "재성") z.jaeStem++;
+  }
+  for (const b of allBranches) {
+    const surf = BRANCH_TO_ELEMENT[b] as FiveElKey | undefined;
+    if (surf) {
+      const g0 = getTenGodGroup(dm, surf);
+      if (g0 === "관성") z.gwanBranchSurface++;
+      if (g0 === "재성") z.jaeBranchSurface++;
+    }
+    for (const h of getHiddenStems(b)) {
+      const hel = STEM_TO_ELEMENT[h] as FiveElKey | undefined;
+      if (!hel) continue;
+      const g1 = getTenGodGroup(dm, hel);
+      if (g1 === "관성") z.gwanBranchHidden++;
+      if (g1 === "재성") z.jaeBranchHidden++;
+    }
+  }
+  return z;
+}
+
+function countTenGodsOnStems(dayStem: string, stems: string[], set: ReadonlySet<TenGod>): number {
+  let n = 0;
+  for (const s of stems) {
+    const t = getTenGod(dayStem, s);
+    if (t && set.has(t)) n++;
+  }
+  return n;
+}
+
+function countTenGodsOnBranchesWithHidden(
+  dayStem: string,
+  branches: string[],
+  set: ReadonlySet<TenGod>,
+): number {
+  let n = 0;
+  for (const b of branches) {
+    const t = getTenGod(dayStem, b);
+    if (t && set.has(t)) n++;
+    for (const h of getHiddenStems(b)) {
+      const t2 = getTenGod(dayStem, h);
+      if (t2 && set.has(t2)) n++;
+    }
+  }
+  return n;
+}
+
+/** 일지에 닿는 합·충·형·파·해·원진·귀문 요약 */
+function spouseDayBranchRelationDigest(dayBranch: string, allBranches: string[]): string {
+  const uniq = [...new Set(allBranches.filter(Boolean))];
+  if (!dayBranch || uniq.length < 2) return "일지 인접 관계: 정보 부족";
+  const rels = computeBranchRelations(uniq);
+  const types = new Set<string>();
+  for (const r of rels) {
+    if (r.branch1 !== dayBranch && r.branch2 !== dayBranch) continue;
+    if (r.branch1 === r.branch2) continue;
+    if (r.type === "지지충" || r.type === "충") types.add("충");
+    else if (r.type === "지지육합" || r.type === "지지삼합" || r.type === "지지방합" || r.type === "합")
+      types.add("합");
+    else if (r.type === "형") types.add("형");
+    else if (r.type === "파") types.add("파");
+    else if (r.type === "해") types.add("해");
+    else if (r.type === "원진") types.add("원진");
+  }
+  const gm = SPOUSE_GUIMOON_PAIR[dayBranch];
+  if (gm && uniq.some((b) => b !== dayBranch && b === gm)) types.add("귀문쌍");
+  if (types.size === 0) return "일지 인접: 합·충·형·파·해·원진·귀문이 두드러지지 않음";
+  return `일지 인접 신호: ${[...types].join("·")}`;
+}
+
 type SpouseStructureAxisScores = {
   practical: number;
   emotional: number;
@@ -3368,55 +3467,92 @@ type SpouseStructureAxisScores = {
   injCount: number;
 };
 
+type SpouseStructureAxisDebug = {
+  spouseStabilitySource: "computeSpousePalaceStability";
+  romanceDomainSurrogateScore: number | null;
+  officerWealthStemBranch: ReturnType<typeof countOfficerWealthStemBranch>;
+  injStem: number;
+  injBranch: number;
+  sikStem: number;
+  sikBranch: number;
+  dayBranchDigest: string;
+  practicalFormula: string;
+  emotionalFormula: string;
+  imageFormula: string;
+  evaluationDebugTail: string[];
+};
+
 /**
  * 배우자 구조 3축: 복합 요소 가중(재물 카드와 동일하게 점수+구간+해석).
- * - 현실 안정성: 배우자궁·관성·재성 작동 + 일지 합충형파해 스트레스 + 일간-일지 재성
- * - 정서 궁합성: 배우자궁·스트레스·인성/식상·관성 보조·원진/귀문/형해파
- * - 매력·이미지: 식상·도화·홍염·금수·화목 비율·배우자궁 지지·일지 이미지 힌트
+ * - 현실 안정성: computeSpousePalaceStability(sPal)·관·재 작동·일지 긴장·명예/재물 엔진 연계
+ * - 정서 궁합성: 배우자궁·인성/식상(천간·지지 분리 반영)·원진/귀문/형해파·관성 보조
+ * - 매력·이미지: 식상·도화·홍염·금수/화목·배우자궁 오행·지지 힌트
  */
-function computeSpouseStructureAxisScores(input: {
+function computeSpouseStructureAxisBundle(input: {
   dayStem: string;
   dayBranch: string;
   allChars: string[];
+  allStems: string[];
   allBranches: string[];
   counts: FiveElementCount;
   evaluations: RelationshipWealthEvaluations | null | undefined;
   shinsalNames: Set<string>;
   spouseElement?: string;
-}): SpouseStructureAxisScores {
+}): { scores: SpouseStructureAxisScores; axisDebug: SpouseStructureAxisDebug } {
   const ev = input.evaluations;
   const wAct = ev?.wealthActivation?.score ?? 52;
   const oAct = ev?.officerActivation?.score ?? 52;
   const sPal = ev?.spousePalaceStability?.score ?? 52;
+  const romanceSurrogate = ev?.spousePalaceRomanceDomainSurrogateScore ?? null;
   const stem = input.dayStem;
   const dayB = input.dayBranch;
   const stressPen = dayBranchStressPenalty(dayB, input.allBranches);
   const emotionalLoad = spouseDayBranchEmotionalLoad(dayB, input.allBranches);
+  const ow = countOfficerWealthStemBranch(stem, input.allStems, input.allBranches);
 
   let jaeAdj = 0;
+  let dayJaeNote = "일지 재성: 없음";
   if (stem && dayB) {
     const tg = getTenGod(stem, dayB);
-    if (tg && JAE_SET.has(tg)) jaeAdj = 7;
+    if (tg && JAE_SET.has(tg)) {
+      jaeAdj = 7;
+      dayJaeNote = `일지 재성: ${tg}`;
+    }
   }
 
-  let practical = 0.34 * sPal + 0.24 * oAct + 0.22 * wAct + 0.14 * (100 - stressPen) + jaeAdj;
+  const honorWealthLink = Math.round((oAct + wAct) / 2 - 52);
+  const structureLinkBoost = Math.max(-6, Math.min(8, Math.round(honorWealthLink * 0.22)));
+
+  let practical =
+    0.36 * sPal +
+    0.22 * oAct +
+    0.2 * wAct +
+    0.12 * (100 - stressPen) +
+    jaeAdj +
+    structureLinkBoost;
   practical = Math.max(0, Math.min(100, Math.round(practical)));
 
-  const inj = countTenGodsInChars(stem, input.allChars, IN_SET);
+  const injAll = countTenGodsInChars(stem, input.allChars, IN_SET);
+  const injStem = countTenGodsOnStems(stem, input.allStems, IN_SET);
+  const injBranch = countTenGodsOnBranchesWithHidden(stem, input.allBranches, IN_SET);
   let injBlend = 0;
-  if (inj >= 1 && inj <= 3) injBlend = 11;
-  else if (inj === 0) injBlend = -7;
+  if (injAll >= 1 && injAll <= 3) injBlend = 11;
+  else if (injAll === 0) injBlend = -7;
   else injBlend = 2;
+  const injStemBranchTilt = Math.round((injStem - injBranch) * 0.35);
+  injBlend += injStemBranchTilt;
 
-  const sik = countTenGodsInChars(stem, input.allChars, SIK_SANG_SET);
-  const sikBlend = Math.min(15, Math.round(sik * 4));
+  const sikAll = countTenGodsInChars(stem, input.allChars, SIK_SANG_SET);
+  const sikStem = countTenGodsOnStems(stem, input.allStems, SIK_SANG_SET);
+  const sikBranch = countTenGodsOnBranchesWithHidden(stem, input.allBranches, SIK_SANG_SET);
+  const sikBlend = Math.min(15, Math.round(sikAll * 4 + sikStem * 0.6));
 
   let emotional =
-    0.38 * sPal +
-    0.2 * (100 - stressPen) +
+    0.36 * sPal +
+    0.18 * (100 - stressPen) +
     injBlend +
     sikBlend +
-    0.06 * oAct -
+    0.07 * oAct -
     emotionalLoad;
   emotional = Math.max(0, Math.min(100, Math.round(emotional)));
 
@@ -3424,7 +3560,11 @@ function computeSpouseStructureAxisScores(input: {
   const metalWater = (input.counts.금 + input.counts.수) / total;
   const woodFire = (input.counts.목 + input.counts.화) / total;
 
-  let image = 32 + Math.min(24, Math.round(sik * 4.5)) + metalWater * 30 + woodFire * 14;
+  let image =
+    30 +
+    Math.min(22, Math.round(sikAll * 4.2 + sikBranch * 0.45)) +
+    metalWater * 28 +
+    woodFire * 15;
   if (input.shinsalNames.has("도화")) image += 14;
   if (input.shinsalNames.has("홍염")) image += 11;
   const spEl = input.spouseElement;
@@ -3436,7 +3576,7 @@ function computeSpouseStructureAxisScores(input: {
 
   image = Math.max(0, Math.min(100, Math.round(image)));
 
-  return {
+  const scores: SpouseStructureAxisScores = {
     practical,
     emotional,
     image,
@@ -3445,9 +3585,29 @@ function computeSpouseStructureAxisScores(input: {
     sPal,
     stressPen,
     emotionalLoad,
-    sikCount: sik,
-    injCount: inj,
+    sikCount: sikAll,
+    injCount: injAll,
   };
+
+  const digest = spouseDayBranchRelationDigest(dayB, input.allBranches);
+  const evalDbg = ev?.spousePalaceStability?.debug ?? [];
+
+  const axisDebug: SpouseStructureAxisDebug = {
+    spouseStabilitySource: "computeSpousePalaceStability",
+    romanceDomainSurrogateScore: romanceSurrogate,
+    officerWealthStemBranch: ow,
+    injStem,
+    injBranch,
+    sikStem,
+    sikBranch,
+    dayBranchDigest: digest,
+    practicalFormula: `현실안정≈0.36×배우자궁(${sPal})+0.22×관(${oAct})+0.2×재(${wAct})+0.12×(100-일지긴장${stressPen})+일지재보정${jaeAdj >= 1 ? `+${jaeAdj}` : "0"}+명예·재물연동${structureLinkBoost >= 0 ? `+${structureLinkBoost}` : `${structureLinkBoost}`}`,
+    emotionalFormula: `정서≈0.36×배우자궁+인성혼합(${injBlend})+식상혼합(${sikBlend})+0.07×관−정서부담(${emotionalLoad})`,
+    imageFormula: `매력≈기저30+식상·지지가산+금수·화목비율+신살·일지힌트`,
+    evaluationDebugTail: evalDbg.slice(-6),
+  };
+
+  return { scores, axisDebug };
 }
 
 type SpouseStructureAxisKey = "practical" | "emotional" | "image";
@@ -3530,7 +3690,7 @@ function getSpouseStructureAxisDetail(
         : "정서 변수 부담은 비교적 낮게 잡혔습니다.";
 
   if (axis === "practical") {
-    const head = `배우자궁 안정 ${Math.round(ctx.sPal)}점·관성 작동 ${Math.round(ctx.oAct)}점·재성 작동 ${Math.round(ctx.wAct)}점과 일지 스트레스를 함께 녹였습니다. ${stressNote}`;
+    const head = `배우자궁 엔진(computeSpousePalaceStability) ${Math.round(ctx.sPal)}점·관성 작동 ${Math.round(ctx.oAct)}점·재성 작동 ${Math.round(ctx.wAct)}점·명예/재물 엔진 연동과 일지 스트레스를 함께 녹였습니다. ${stressNote}`;
     if (band === "높음" || band === "중상") {
       return `${useNow ? "현재는 " : ""}${head}\n생활·역할·재정 루트가 맞물리기 쉬워 동거·협업 같은 현실 과제를 함께 밀기 좋은 편으로 읽힙니다.`;
     }
@@ -3623,52 +3783,82 @@ function buildSpouseStructureSynthesis(
   return { paragraph1, paragraph2 };
 }
 
-function spouseBranchHapChung(dayBranch: string, allBranches: string[]): { hap: boolean; chung: boolean } {
-  const u = [...new Set(allBranches.filter(Boolean))];
-  if (!dayBranch || u.length < 2) return { hap: false, chung: false };
-  const rels = computeBranchRelations(u);
-  let hap = false;
-  let chung = false;
-  for (const r of rels) {
-    if (r.branch1 !== dayBranch && r.branch2 !== dayBranch) continue;
-    if (r.type === "지지충" || r.type === "충") chung = true;
-    if (r.type === "지지육합" || r.type === "지지삼합" || r.type === "지지방합" || r.type === "합") hap = true;
-  }
-  return { hap, chung };
-}
-
-/** 관성·재성·일지 합충·일간 강약·배우자궁을 묶은 성향 문장 (단일 십성 키워드 지양) */
+/** 관·재(천간·지지)·일지·합충형파해·강약·패턴·십성비를 묶은 배우자 성향 요약 */
 function buildCompositeSpouseTendency(input: {
   dayStem: string;
   dayBranch: string;
   allChars: string[];
+  allStems: string[];
   allBranches: string[];
   spouse: SpousePalaceInfo | null;
   rel: RelationshipPattern | null;
   strengthLevel: string | null | undefined;
+  tenGodGroups?: Record<string, number> | null;
+  branchRelationDigest: string;
 }): string {
-  const { dayStem, dayBranch, allChars, allBranches, spouse, rel, strengthLevel } = input;
+  const {
+    dayStem,
+    dayBranch,
+    allChars,
+    allStems,
+    allBranches,
+    spouse,
+    rel,
+    strengthLevel,
+    tenGodGroups,
+    branchRelationDigest,
+  } = input;
   const parts: string[] = [];
 
-  const gwanN = countTenGodsInChars(dayStem, allChars, GWAN_SET);
-  if (gwanN >= 3) {
-    parts.push("관성이 여러 기둥에 퍼져 규범·역할 의식이 배우자 관계에서 뚜렷하게 드러날 수 있습니다.");
-  } else if (gwanN >= 1) {
-    parts.push("관성이 자리를 잡아 약속·책임감을 중시하는 흐름과 맞닿아 있습니다.");
+  const ow = countOfficerWealthStemBranch(dayStem, allStems, allBranches);
+  const gwanTotal = ow.gwanStem + ow.gwanBranchSurface + ow.gwanBranchHidden;
+  const jaeTotal = ow.jaeStem + ow.jaeBranchSurface + ow.jaeBranchHidden;
+
+  if (ow.gwanStem >= 2) {
+    parts.push(
+      `천간에 관성이 ${ow.gwanStem}회 투출되어 겉으로 드러나는 규범·역할 의식이 강할 수 있습니다.`,
+    );
+  } else if (ow.gwanStem === 1) {
+    parts.push("천간 관성이 한 줄기 있어 대외적 책임·약속이 배우자 관계와 연결되기 쉽습니다.");
+  }
+  if (ow.gwanBranchSurface + ow.gwanBranchHidden >= 2 && ow.gwanStem === 0) {
+    parts.push("관성이 지지·지장간 쪽에 깔려 속으로 규범과 기대가 쌓이는 형태로 읽힙니다.");
+  } else if (gwanTotal >= 3) {
+    parts.push("관성이 여러 축에 퍼져 규범·역할 의식이 관계 전반에 스며들 수 있습니다.");
+  } else if (gwanTotal >= 1) {
+    parts.push("관성이 일정 부분 작동해 약속·역할을 중시하는 흐름과 맞닿아 있습니다.");
   }
 
-  const jaeN = countTenGodsInChars(dayStem, allChars, JAE_SET);
   const dayTg = dayStem && dayBranch ? getTenGod(dayStem, dayBranch) : null;
   const dayJae = !!(dayTg && JAE_SET.has(dayTg));
-  if (jaeN >= 2 || dayJae) {
-    parts.push("재성 기운이 겹쳐 생활·물질 현실을 함께 따지는 성향이 섞여 읽힙니다.");
+  if (dayJae) {
+    parts.push(`일지가 재성(${dayTg})이라 배우자궁에서 생활·현실 조건이 관계 논의의 중심에 서기 쉽습니다.`);
+  }
+  if (ow.jaeStem >= 2) {
+    parts.push(`천간 재성 ${ow.jaeStem}회로 수입·생활 설계가 말과 행동에 자주 올라올 수 있습니다.`);
+  } else if (jaeTotal >= 2 && !dayJae) {
+    parts.push("재성이 지지 쪽에 두텁게 깔려 실속·조건을 먼저 확인하는 성향이 섞여 읽힙니다.");
+  } else if (jaeTotal >= 1) {
+    parts.push("재성이 일부 작동해 물질·생활 현실을 함께 따지는 흐름이 있습니다.");
   }
 
-  const { hap, chung } = spouseBranchHapChung(dayBranch, allBranches);
-  if (chung) {
-    parts.push("일지 충 후보가 있어 속도·기대치가 엇갈리기 쉬우니 합의 리듬이 중요합니다.");
-  } else if (hap) {
-    parts.push("일지 주변에 합 기운이 있어 인연·동행이 붙기 쉬운 편입니다.");
+  parts.push(branchRelationDigest + ".");
+
+  const injS = countTenGodsOnStems(dayStem, allStems, IN_SET);
+  const injB = countTenGodsOnBranchesWithHidden(dayStem, allBranches, IN_SET);
+  const sikS = countTenGodsOnStems(dayStem, allStems, SIK_SANG_SET);
+  const sikB = countTenGodsOnBranchesWithHidden(dayStem, allBranches, SIK_SANG_SET);
+  if (injS > injB && injS >= 1) {
+    parts.push("인성이 천간 쪽에 치우쳐 겉으로는 포용·도움 담론이, 속으로는 기대 축적이 생기기 쉽습니다.");
+  } else if (injB > injS && injB >= 2) {
+    parts.push("인성이 지지에 깊어 내면 안정·뿌리를 중시하는 배우자 기대가 깔릴 수 있습니다.");
+  } else if (injS + injB >= 2) {
+    parts.push("인성이 받쳐 주어 정서 완충·배려 담론이 관계에 스며들기 쉽습니다.");
+  }
+  if (sikS >= 2 || sikS + sikB >= 4) {
+    parts.push("식상이 살아 있어 표현·유머·취향이 만남과 이미지를 이끄는 축이 될 수 있습니다.");
+  } else if (sikB >= 2 && sikS === 0) {
+    parts.push("식상이 지지에 깔려 속으로 표현 욕구·취향이 쌓이는 형태로 읽힐 수 있습니다.");
   }
 
   if (spouse) {
@@ -3686,7 +3876,21 @@ function buildCompositeSpouseTendency(input: {
     parts.push(rel.spouseStyle);
   }
 
-  const text = parts.filter(Boolean).slice(0, 5).join(" ");
+  if (tenGodGroups && dayStem) {
+    const dm = STEM_TO_ELEMENT[dayStem] as FiveElKey | undefined;
+    if (dm) {
+      const t = Object.values(tenGodGroups).reduce((a, b) => a + b, 0) || 1;
+      const gwanPct = ((tenGodGroups.관성 ?? 0) / t) * 100;
+      const jaePct = ((tenGodGroups.재성 ?? 0) / t) * 100;
+      if (gwanPct >= 22 || jaePct >= 22) {
+        parts.push(
+          `오행→십성 그룹 비율상 관${gwanPct.toFixed(0)}%·재${jaePct.toFixed(0)}%대로, 역할·현실 축이 원국에서 묵직하게 잡히는 편입니다.`,
+        );
+      }
+    }
+  }
+
+  const text = parts.filter(Boolean).slice(0, 7).join(" ");
   return text.trim() || spouse?.strengths[0] || "서로의 장점을 존중하는 균형을 기대하기 쉽습니다.";
 }
 
@@ -3696,28 +3900,77 @@ function cohortSpouseMeetSuffix(cohort: SpouseAgeCohort): string {
   return " 50대 이상에서는 동반 생활·신뢰·돌봄의 균형이 중심이 되기 쉽습니다.";
 }
 
-function buildYuanSpouseStructureInsight(
+/** 1차·2차 유형: 일지 오행 단독 분류 대신 3축·배우자궁·관재·정서부담 복합 */
+function deriveSpousePrimarySecondaryTypes(ctx: {
+  practical: number;
+  emotional: number;
+  image: number;
+  pBand: string;
+  eBand: string;
+  iBand: string;
+  sPal: number;
+  oAct: number;
+  wAct: number;
+  emotionalLoad: number;
+  injCount: number;
+}): { primary: string; secondary: string; primaryBlurb: string } {
+  const stabilityBlend = Math.round(ctx.sPal * 0.55 + ctx.practical * 0.45);
+  const realityBlend = Math.round((ctx.oAct + ctx.wAct) / 2);
+  const emotionSignal = ctx.emotional;
+  const hi = (b: string) => b === "높음" || b === "중상";
+  const lo = (b: string) => b === "낮음";
+
+  let primary = "균형형 배우자";
+  if (stabilityBlend >= 62 && hi(ctx.pBand) && realityBlend >= 54) {
+    primary = "안정형 배우자";
+  } else if (stabilityBlend < 46 || lo(ctx.pBand) || ctx.sPal < 42) {
+    primary = "변동·조율형 배우자";
+  } else if (emotionSignal >= 58 && hi(ctx.eBand) && ctx.emotionalLoad <= 12) {
+    primary = "정서 궁합형 배우자";
+  } else if (ctx.image >= 60 && hi(ctx.iBand) && ctx.practical < 56) {
+    primary = "매력·이미지형 배우자";
+  } else if (realityBlend >= 58 && ctx.wAct >= ctx.oAct - 3) {
+    primary = "현실 기반형 배우자";
+  } else if (ctx.oAct >= 58) {
+    primary = "규범·역할형 배우자";
+  }
+
+  let secondary = "관계 조율형";
+  if (realityBlend >= 58 && ctx.wAct >= 52) secondary = "현실 책임형";
+  else if (ctx.emotionalLoad >= 14 || (lo(ctx.eBand) && ctx.emotionalLoad >= 8)) {
+    secondary = "정서 부담 완충형";
+  } else if (emotionSignal < 48 && stabilityBlend >= 52) secondary = "정서 억제형";
+  else if (Math.abs(ctx.oAct - ctx.wAct) <= 8 && realityBlend >= 50) secondary = "역할 균형형";
+  else if (hi(ctx.eBand) && ctx.injCount >= 2) secondary = "포용·공유형";
+  else if (hi(ctx.iBand) && ctx.image >= ctx.practical) secondary = "인상·표현 강조형";
+
+  const primaryBlurb =
+    primary === "안정형 배우자"
+      ? "배우자궁·현실 축이 함께 받쳐 줄 때 관계가 무너지기 어려운 틀로 읽힙니다."
+      : primary === "변동·조율형 배우자"
+        ? "환경·일지 긴장에 따라 리듬을 자주 맞춰야 하는 구조로 읽힙니다."
+        : primary === "정서 궁합형 배우자"
+          ? "감정 교류·공감이 관계 만족의 중심에 서기 쉬운 패턴입니다."
+          : primary === "매력·이미지형 배우자"
+            ? "첫인상·스타일·취향이 만남 초반을 이끄는 비중이 큽니다."
+            : primary === "현실 기반형 배우자"
+              ? "생활·조건·약속이 관계 논의에서 앞서기 쉽습니다."
+              : primary === "규범·역할형 배우자"
+                ? "역할·규범·대외적 책임이 배우자 기대와 맞물리기 쉽습니다."
+                : "세 축을 한꺼번에 보지 않고 한쪽만 고집하기 어려운 중간 성격의 패턴입니다.";
+
+  return { primary, secondary, primaryBlurb };
+}
+
+function buildYuanSpouseStructureContext(
   monthBranch: string | undefined,
   spouse: SpousePalaceInfo | null,
-  rel: RelationshipPattern | null,
   spouseStabilityGrade: string | null,
   cohort: SpouseAgeCohort,
   compositeTendency: string,
-): { spouseType: string; relationFeature: string; meetPath: string; spouseTendency: string } {
-  const el = spouse?.element ?? "";
-  const spouseType =
-    el === "토" || el === "금"
-      ? "안정·책임형 배우자"
-      : el === "화"
-        ? "열정·표현형 배우자"
-        : el === "목"
-          ? "성장·주도형 배우자"
-          : el === "수"
-            ? "감성·독립형 배우자"
-            : "균형형 배우자";
-
+): { relationFeature: string; meetPath: string; spouseTendency: string } {
   const relationFeature = spouse
-    ? `현실적이고 책임감 있는 관계 구조가 형성되기 쉽습니다. ${spouse.summary}`
+    ? `배우자궁(일지)와 월지·십성 구조를 함께 보면 ${spouse.summary}`
     : "일지(배우자궁)를 알 수 있을 때 관계 구조를 더 구체적으로 읽을 수 있습니다.";
 
   const fire = new Set(["인", "사", "오"]);
@@ -3748,7 +4001,7 @@ function buildYuanSpouseStructureInsight(
 
   meetPath += cohortSpouseMeetSuffix(cohort);
 
-  return { spouseType, relationFeature, meetPath, spouseTendency: compositeTendency };
+  return { relationFeature, meetPath, spouseTendency: compositeTendency };
 }
 
 function YuanSpouseStructureCard({
@@ -3759,12 +4012,14 @@ function YuanSpouseStructureCard({
   dayStem,
   dayBranch,
   allChars,
+  allStems,
   allBranches,
   counts,
   evaluations,
   shinsalNames,
   ageYears,
   strengthLevel,
+  tenGodGroups,
 }: {
   monthBranch?: string;
   spousePalace: SpousePalaceInfo | null;
@@ -3773,29 +4028,45 @@ function YuanSpouseStructureCard({
   dayStem: string;
   dayBranch: string;
   allChars: string[];
+  allStems: string[];
   allBranches: string[];
   counts: FiveElementCount;
   evaluations: RelationshipWealthEvaluations | null | undefined;
   shinsalNames: Set<string>;
   ageYears: number | null;
   strengthLevel: string | null | undefined;
+  tenGodGroups?: Record<string, number> | null;
 }) {
   const [openAxis, setOpenAxis] = useState<SpouseStructureAxisKey | null>(null);
   const tr = STRUCTURE_CARD.rose;
   const spouseCohort = spouseAgeCohortFromYears(ageYears);
+  const branchDigest = spouseDayBranchRelationDigest(dayBranch, allBranches);
+  const { scores, axisDebug } = computeSpouseStructureAxisBundle({
+    dayStem,
+    dayBranch,
+    allChars,
+    allStems,
+    allBranches,
+    counts,
+    evaluations,
+    shinsalNames,
+    spouseElement: spousePalace?.element,
+  });
   const compositeTendency = buildCompositeSpouseTendency({
     dayStem,
     dayBranch,
     allChars,
+    allStems,
     allBranches,
     spouse: spousePalace,
     rel: relationshipPattern,
     strengthLevel,
+    tenGodGroups,
+    branchRelationDigest: branchDigest,
   });
-  const summary = buildYuanSpouseStructureInsight(
+  const summary = buildYuanSpouseStructureContext(
     monthBranch,
     spousePalace,
-    relationshipPattern,
     spouseStabilityGrade,
     spouseCohort,
     compositeTendency,
@@ -3803,19 +4074,24 @@ function YuanSpouseStructureCard({
   const totalEl = Object.values(counts).reduce((a, b) => a + b, 0) || 1;
   const metalWaterRatio = (counts.금 + counts.수) / totalEl;
 
-  const scores = computeSpouseStructureAxisScores({
-    dayStem,
-    dayBranch,
-    allChars,
-    allBranches,
-    counts,
-    evaluations,
-    shinsalNames,
-    spouseElement: spousePalace?.element,
-  });
   const pB = spouseStructureAxisBand(scores.practical);
   const eB = spouseStructureAxisBand(scores.emotional);
   const iB = spouseStructureAxisBand(scores.image);
+  const typePair = deriveSpousePrimarySecondaryTypes({
+    practical: scores.practical,
+    emotional: scores.emotional,
+    image: scores.image,
+    pBand: pB,
+    eBand: eB,
+    iBand: iB,
+    sPal: scores.sPal,
+    oAct: scores.oAct,
+    wAct: scores.wAct,
+    emotionalLoad: scores.emotionalLoad,
+    injCount: scores.injCount,
+  });
+  const structureHeadline = Math.round((scores.practical + scores.emotional + scores.image) / 3);
+
   const axisCells: { key: SpouseStructureAxisKey; label: string; score: number; band: string }[] = [
     { key: "practical", label: SPOUSE_STRUCTURE_AXIS_LABEL.practical, score: scores.practical, band: pB },
     { key: "emotional", label: SPOUSE_STRUCTURE_AXIS_LABEL.emotional, score: scores.emotional, band: eB },
@@ -3853,40 +4129,34 @@ function YuanSpouseStructureCard({
     setOpenAxis((prev) => (prev === key ? null : key));
   }
 
+  const ow = axisDebug.officerWealthStemBranch;
+
   return (
     <div className={tr.shell}>
       <div className="flex items-start justify-between gap-2">
         <div>
           <p className={tr.kicker}>원국 기반 배우자 구조</p>
-          <p className={tr.sub}>일지·월지·관계 패턴 요약</p>
+          <p className={tr.sub}>원국 · 구조 요약 (재물 카드와 동일 순서)</p>
         </div>
       </div>
-      <div className="mt-2 rounded-lg border border-rose-200/70 bg-white/55 px-3 py-2.5">
-        <p className={cn(tr.sectionEyebrow, "mb-1.5")}>배우자 유형 요약</p>
-        <dl className="space-y-2 text-[12px] leading-relaxed">
-          <div>
-            <dt className={tr.summaryDt}>배우자 유형</dt>
-            <dd className="mt-0.5 text-foreground font-semibold">{summary.spouseType}</dd>
-          </div>
-          <div>
-            <dt className={tr.summaryDt}>관계 구조 특징</dt>
-            <dd className="mt-0.5 text-foreground/92">{summary.relationFeature}</dd>
-          </div>
-          <div>
-            <dt className={tr.summaryDt}>만남 경로 유형</dt>
-            <dd className="mt-0.5 text-foreground/92">{summary.meetPath}</dd>
-          </div>
-          <div>
-            <dt className={tr.summaryDt}>배우자 성향 특징</dt>
-            <dd className="mt-0.5 text-foreground/92">{summary.spouseTendency}</dd>
-          </div>
-        </dl>
-      </div>
       <div className="mt-2 flex flex-wrap items-baseline gap-x-1 gap-y-0">
-        <span className="text-[13px] font-semibold text-foreground">구조 축 점수</span>
+        <span className="text-[13px] font-semibold text-foreground">배우자 구조 점수</span>
+        <span className="text-2xl font-black tabular-nums leading-none text-rose-800">{structureHeadline}</span>
+        <span className="text-[12px] font-semibold text-rose-900/90">점</span>
+        <span className="text-[10px] text-muted-foreground">(3축 평균)</span>
+      </div>
+      <div className="mt-1.5 space-y-1">
+        <p className={cn(tr.sectionEyebrow)}>1차 유형</p>
+        <p className="text-[13px] font-semibold text-foreground leading-snug">{typePair.primary}</p>
+        <p className="text-[12px] leading-relaxed text-foreground/90">{typePair.primaryBlurb}</p>
+        <p className={cn(tr.sectionEyebrow, "pt-1")}>2차 유형</p>
+        <p className="text-[13px] font-semibold text-rose-900/95 leading-snug">{typePair.secondary}</p>
+        <p className="text-[12px] leading-relaxed text-foreground/88">
+          관성·재성 작동, 정서 부담, 매력 축 가운데 어디에 무게가 실리는지 보조 라벨입니다.
+        </p>
       </div>
       <p className="mt-1 text-[10px] leading-snug text-muted-foreground">
-        배우자궁·십성·지지 관계·오행·신살을 합산한 3축입니다. 칸을 누르면 유형과 세부 해석이 펼쳐집니다.
+        아래 3축은 배우자궁 엔진·관·재·지지 관계·인성/식상·신살을 합산했습니다. 칸을 누르면 유형과 세부 해석이 펼쳐집니다.
       </p>
       <div className="mt-2.5 grid grid-cols-3 gap-2">
         {axisCells.map(({ key, label, score, band }) => {
@@ -3929,11 +4199,54 @@ function YuanSpouseStructureCard({
           </p>
         </div>
       ) : null}
+      <div className="mt-2 rounded-lg border border-rose-200/70 bg-white/55 px-3 py-2.5">
+        <p className={cn(tr.sectionEyebrow, "mb-1.5")}>맥락·만남·성향</p>
+        <dl className="space-y-2 text-[12px] leading-relaxed">
+          <div>
+            <dt className={tr.summaryDt}>관계 구조</dt>
+            <dd className="mt-0.5 text-foreground/92">{summary.relationFeature}</dd>
+          </div>
+          <div>
+            <dt className={tr.summaryDt}>만남 경로</dt>
+            <dd className="mt-0.5 text-foreground/92">{summary.meetPath}</dd>
+          </div>
+          <div>
+            <dt className={tr.summaryDt}>종합 배우자 성향</dt>
+            <dd className="mt-0.5 text-foreground/92">{summary.spouseTendency}</dd>
+          </div>
+        </dl>
+      </div>
       <div className={tr.synthBox}>
         <p className={tr.synthTitle}>종합 배우자 구조 분석</p>
         <p className="mt-1.5 text-[12px] leading-relaxed text-foreground">{spouseSynth.paragraph1}</p>
         <p className="mt-1.5 text-[12px] leading-relaxed text-foreground">{spouseSynth.paragraph2}</p>
       </div>
+      <details className="mt-2 rounded-md border border-rose-100/90 bg-rose-50/40 px-2 py-1.5 text-[10px] leading-snug text-muted-foreground">
+        <summary className="cursor-pointer font-semibold text-rose-900/90">계산 근거 (디버그)</summary>
+        <ul className="mt-1.5 list-disc space-y-0.5 pl-4 text-foreground/85">
+          <li>
+            spouseStabilitySource: {axisDebug.spouseStabilitySource} · 배우자궁 점수 {scores.sPal}점
+            {axisDebug.romanceDomainSurrogateScore != null
+              ? ` · 연애도메인 surrogate ${axisDebug.romanceDomainSurrogateScore}점`
+              : ""}
+          </li>
+          <li>
+            관성 천간 {ow.gwanStem}·지지표면 {ow.gwanBranchSurface}·지장간 {ow.gwanBranchHidden} / 재성 천간 {ow.jaeStem}·지지표면{" "}
+            {ow.jaeBranchSurface}·지장간 {ow.jaeBranchHidden}
+          </li>
+          <li>
+            인성 천간 {axisDebug.injStem}·지지(표면+지장간) {axisDebug.injBranch} / 식상 천간 {axisDebug.sikStem}·지지{" "}
+            {axisDebug.sikBranch}
+          </li>
+          <li>{axisDebug.dayBranchDigest}</li>
+          <li>{axisDebug.practicalFormula}</li>
+          <li>{axisDebug.emotionalFormula}</li>
+          <li>{axisDebug.imageFormula}</li>
+          {axisDebug.evaluationDebugTail.map((line, i) => (
+            <li key={`${i}-${line.slice(0, 24)}`}>{line}</li>
+          ))}
+        </ul>
+      </details>
       <p className={tr.foot}>
         구조는 원국 경향이며, 실제 인연은 선택과 소통에 따라 달라질 수 있어요.
       </p>
@@ -4488,6 +4801,7 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
       dayStem: dayStemNow,
       monthBranch: effectivePillars.month?.hangul?.[1],
       dayBranch: effectivePillars.day?.hangul?.[1],
+      dayPillarHangul: effectivePillars.day?.hangul?.join("") || undefined,
       allStems: allStemsNow,
       allBranches: allBranchesNow,
       effectiveFiveElements,
@@ -5148,12 +5462,14 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
               dayStem={dayStem}
               dayBranch={dayBranch}
               allChars={allChars}
+              allStems={allStems}
               allBranches={allBranches}
               counts={effectiveFiveElements}
               evaluations={sajuPipelineResult?.evaluations}
               shinsalNames={yuanGuoFinalShinsalNames}
               ageYears={yuanReportAge}
               strengthLevel={sajuPipelineResult?.adjusted?.effectiveStrengthLevel}
+              tenGodGroups={sajuPipelineResult?.base?.tenGodGroups}
             />
           ) : null}
 

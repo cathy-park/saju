@@ -67,6 +67,11 @@ export interface RelationshipWealthEvaluations {
   officerActivation: ActivationEvaluation;
   spousePalaceStability: ActivationEvaluation;
   wealthActivation: ActivationEvaluation;
+  /**
+   * 구버전 surrogate: structureDomains.romance(연애 도메인)을 배우자궁에 매핑한 점수.
+   * 메인 배우자 안정성은 `spousePalaceStability`(computeSpousePalaceStability)가 표준.
+   */
+  spousePalaceRomanceDomainSurrogateScore?: number;
 }
 
 export interface RelationshipWealthEvaluationInput {
@@ -403,7 +408,7 @@ function summarizeOfficer(
   return `관성 작동은 ${score}점(${grade})으로, 구조상 약하거나 부담·설기가 커 보조 해석 시 보수적으로 보는 편이 좋습니다.`;
 }
 
-function computeSpousePalaceStability(ctx: {
+export function computeSpousePalaceStability(ctx: {
   dayBranch?: string;
   allBranches: string[];
   dayPillarHangul?: string;

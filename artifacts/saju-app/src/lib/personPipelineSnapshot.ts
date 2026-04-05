@@ -58,6 +58,7 @@ export function computePersonPipelineSnapshot(
     dayStem,
     monthBranch,
     dayBranch,
+    dayPillarHangul: pillars.day?.hangul?.join("") || undefined,
     allStems,
     allBranches,
     effectiveFiveElements: countFiveElements(pillars as ComputedPillars),
