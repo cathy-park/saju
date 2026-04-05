@@ -2729,6 +2729,30 @@ function wealthAccumulationBand(score: number): string {
   return "낮음";
 }
 
+/** 상태 배지: 배경·테두리·글자 대비 (채널·감당·축적 공통) */
+function wealthBandBadgeClass(band: string): string {
+  switch (band) {
+    case "매우 높음":
+      return "border border-violet-500/45 bg-violet-200 text-violet-950";
+    case "높음":
+      return "border border-emerald-600/45 bg-emerald-200 text-emerald-950";
+    case "양호":
+      return "border border-teal-500/45 bg-teal-200 text-teal-950";
+    case "중상":
+      return "border border-blue-600/45 bg-blue-200 text-blue-950";
+    case "보통":
+      return "border border-slate-500/40 bg-slate-200 text-slate-900";
+    case "중":
+      return "border border-sky-500/45 bg-sky-200 text-sky-950";
+    case "낮음":
+      return "border border-orange-500/45 bg-orange-200 text-orange-950";
+    case "매우 낮음":
+      return "border border-red-600/45 bg-red-200 text-red-950";
+    default:
+      return "border border-slate-500/40 bg-slate-200 text-slate-900";
+  }
+}
+
 function clampWealthAxisFallback(n: number): number {
   if (!Number.isFinite(n)) return 50;
   return Math.max(0, Math.min(100, Math.round(n)));
@@ -2801,9 +2825,10 @@ function StructureWealthBriefCard({ wealth }: { wealth: DomainScoreResult }) {
           세 축이 같은 숫자로 보이면, 지금은 종합 점수만 반영된 상태예요. 아래에서 채널·감당·축적을 누르면 하단에 설명이 나와요.
         </p>
       ) : null}
-      <div className="mt-2 flex flex-wrap items-baseline gap-2">
+      <div className="mt-2 flex flex-wrap items-baseline gap-x-1 gap-y-0">
+        <span className="text-[13px] font-semibold text-foreground">재물운</span>
         <span className="text-2xl font-black tabular-nums leading-none text-emerald-700">{wealth.score}</span>
-        <span className="text-[12px] font-medium text-emerald-900/85">점 · 최종 재물운</span>
+        <span className="text-[12px] font-semibold text-emerald-900/90">점</span>
       </div>
       <div className="mt-1.5">
         <p className="text-[13px] font-semibold text-foreground leading-snug">{wealth.classification}</p>
@@ -2844,8 +2869,8 @@ function StructureWealthBriefCard({ wealth }: { wealth: DomainScoreResult }) {
               </span>
               <span
                 className={cn(
-                  "text-[10px] font-bold",
-                  sel ? "text-emerald-900" : "text-emerald-800/90",
+                  "mt-0.5 inline-flex max-w-full items-center justify-center rounded-full px-2 py-0.5 text-[10px] font-bold leading-tight",
+                  wealthBandBadgeClass(band),
                 )}
               >
                 {band}
