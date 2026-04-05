@@ -93,6 +93,14 @@ import {
 } from "@/lib/branchRelations";
 import type { RelationshipWealthEvaluations } from "@/lib/evaluations/relationshipWealthEvaluation";
 import {
+  computeSpouseStructureAxisBundle,
+  countOfficerWealthStemBranch,
+  countTenGodsOnBranchesWithHidden,
+  countTenGodsOnStems,
+  spouseDayBranchRelationDigest,
+  type SpouseStructureAxisScores,
+} from "@/lib/evaluations/spouseStructureAxisBundle";
+import {
   getTwelveStage,
   TWELVE_STAGE_COLOR,
   TWELVE_STAGE_DESC,
@@ -3370,408 +3378,18 @@ function buildWealthSynthesis(
   return { paragraph1, paragraph2, paragraph3 };
 }
 
-function dayBranchStressPenalty(dayBranch: string, allBranches: string[]): number {
-  const uniq = [...new Set(allBranches.filter(Boolean))];
-  if (!dayBranch || uniq.length < 2) return 0;
-  const rels = computeBranchRelations(uniq);
-  let pen = 0;
-  for (const r of rels) {
-    if (r.branch1 !== dayBranch && r.branch2 !== dayBranch) continue;
-    if (r.type === "지지충" || r.type === "충") pen += 14;
-    if (r.type === "형") pen += 9;
-    if (r.type === "파" || r.type === "해") pen += 6;
-  }
-  return Math.min(34, pen);
-}
-
-/** 일지 귀문 쌍(배우자궁 정서 부담 보조) — relationshipWealthEvaluation과 동일 */
-const SPOUSE_GUIMOON_PAIR: Record<string, string> = {
-  자: "유",
-  유: "자",
-  축: "오",
-  오: "축",
-  인: "미",
-  미: "인",
-  묘: "신",
-  신: "묘",
-  진: "해",
-  해: "진",
-  사: "술",
-  술: "사",
-};
-
-/** 원진·해·형·파·귀문 등 정서 궁합 축에 반영할 일지 인접 부담(0~32) */
-function spouseDayBranchEmotionalLoad(dayBranch: string, allBranches: string[]): number {
-  const uniq = [...new Set(allBranches.filter(Boolean))];
-  if (!dayBranch || uniq.length < 2) return 0;
-  const rels = computeBranchRelations(uniq);
-  let pen = 0;
-  for (const r of rels) {
-    if (r.branch1 !== dayBranch && r.branch2 !== dayBranch) continue;
-    if (r.branch1 === r.branch2) continue;
-    if (r.type === "원진") pen += 9;
-    if (r.type === "해") pen += 6;
-    if (r.type === "형") pen += 5;
-    if (r.type === "파") pen += 4;
-  }
-  const gm = SPOUSE_GUIMOON_PAIR[dayBranch];
-  if (gm && uniq.some((b) => b !== dayBranch && b === gm)) pen += 5;
-  return Math.min(32, pen);
-}
-
-/** 관·재 천간 / 지지(표면+지장간) 건수 */
-function countOfficerWealthStemBranch(
-  dayStem: string,
-  allStems: string[],
-  allBranches: string[],
-): {
-  gwanStem: number;
-  gwanBranchSurface: number;
-  gwanBranchHidden: number;
-  jaeStem: number;
-  jaeBranchSurface: number;
-  jaeBranchHidden: number;
-} {
-  const dm = STEM_TO_ELEMENT[dayStem] as FiveElKey | undefined;
-  const z = {
-    gwanStem: 0,
-    gwanBranchSurface: 0,
-    gwanBranchHidden: 0,
-    jaeStem: 0,
-    jaeBranchSurface: 0,
-    jaeBranchHidden: 0,
-  };
-  if (!dm) return z;
-  for (const s of allStems) {
-    const el = STEM_TO_ELEMENT[s] as FiveElKey | undefined;
-    if (!el) continue;
-    const g = getTenGodGroup(dm, el);
-    if (g === "관성") z.gwanStem++;
-    if (g === "재성") z.jaeStem++;
-  }
-  for (const b of allBranches) {
-    const surf = BRANCH_TO_ELEMENT[b] as FiveElKey | undefined;
-    if (surf) {
-      const g0 = getTenGodGroup(dm, surf);
-      if (g0 === "관성") z.gwanBranchSurface++;
-      if (g0 === "재성") z.jaeBranchSurface++;
-    }
-    for (const h of getHiddenStems(b)) {
-      const hel = STEM_TO_ELEMENT[h] as FiveElKey | undefined;
-      if (!hel) continue;
-      const g1 = getTenGodGroup(dm, hel);
-      if (g1 === "관성") z.gwanBranchHidden++;
-      if (g1 === "재성") z.jaeBranchHidden++;
-    }
-  }
-  return z;
-}
-
-function countTenGodsOnStems(dayStem: string, stems: string[], set: ReadonlySet<TenGod>): number {
-  let n = 0;
-  for (const s of stems) {
-    const t = getTenGod(dayStem, s);
-    if (t && set.has(t)) n++;
-  }
-  return n;
-}
-
-function countTenGodsOnBranchesWithHidden(
-  dayStem: string,
-  branches: string[],
-  set: ReadonlySet<TenGod>,
-): number {
-  let n = 0;
-  for (const b of branches) {
-    const t = getTenGod(dayStem, b);
-    if (t && set.has(t)) n++;
-    for (const h of getHiddenStems(b)) {
-      const t2 = getTenGod(dayStem, h);
-      if (t2 && set.has(t2)) n++;
-    }
-  }
-  return n;
-}
-
-/** 일지에 닿는 합·충·형·파·해·원진·귀문 요약 */
-function spouseDayBranchRelationDigest(dayBranch: string, allBranches: string[]): string {
-  const uniq = [...new Set(allBranches.filter(Boolean))];
-  if (!dayBranch || uniq.length < 2) return "일지 인접 관계: 정보 부족";
-  const rels = computeBranchRelations(uniq);
-  const types = new Set<string>();
-  for (const r of rels) {
-    if (r.branch1 !== dayBranch && r.branch2 !== dayBranch) continue;
-    if (r.branch1 === r.branch2) continue;
-    if (r.type === "지지충" || r.type === "충") types.add("충");
-    else if (r.type === "지지육합" || r.type === "지지삼합" || r.type === "지지방합" || r.type === "합")
-      types.add("합");
-    else if (r.type === "형") types.add("형");
-    else if (r.type === "파") types.add("파");
-    else if (r.type === "해") types.add("해");
-    else if (r.type === "원진") types.add("원진");
-  }
-  const gm = SPOUSE_GUIMOON_PAIR[dayBranch];
-  if (gm && uniq.some((b) => b !== dayBranch && b === gm)) types.add("귀문쌍");
-  if (types.size === 0) return "일지 인접: 합·충·형·파·해·원진·귀문이 두드러지지 않음";
-  return `일지 인접 신호: ${[...types].join("·")}`;
-}
-
-function spouseBranchCarriesElement(branch: string, el: FiveElKey): boolean {
-  const surf = BRANCH_TO_ELEMENT[branch] as FiveElKey | undefined;
-  if (surf === el) return true;
-  for (const h of getHiddenStems(branch)) {
-    if ((STEM_TO_ELEMENT[h] as FiveElKey | undefined) === el) return true;
-  }
-  return false;
-}
-
-function spouseDayBranchHasHap(dayBranch: string, allBranches: string[]): boolean {
-  const uniq = [...new Set(allBranches.filter(Boolean))];
-  if (!dayBranch || uniq.length < 2) return false;
-  const rels = computeBranchRelations(uniq);
-  for (const r of rels) {
-    if (r.branch1 !== dayBranch && r.branch2 !== dayBranch) continue;
-    if (r.branch1 === r.branch2) continue;
-    if (
-      r.type === "지지육합" ||
-      r.type === "지지삼합" ||
-      r.type === "지지방합" ||
-      r.type === "합"
-    ) {
-      return true;
-    }
-  }
-  return false;
-}
-
-function spouseDayBranchHasHyungEdge(dayBranch: string, allBranches: string[]): boolean {
-  const uniq = [...new Set(allBranches.filter(Boolean))];
-  if (!dayBranch || uniq.length < 2) return false;
-  const rels = computeBranchRelations(uniq);
-  for (const r of rels) {
-    if (r.branch1 === r.branch2) continue;
-    if (r.type !== "형") continue;
-    if (r.branch1 === dayBranch || r.branch2 === dayBranch) return true;
-  }
-  return false;
-}
-
-/** 일지가 관성 오행이 깔린 지지와 충이면 ‘관성 충’ 보정 */
-function spouseOfficerBranchChungsDayBranch(
-  dayBranch: string,
-  allBranches: string[],
-  officerEl: FiveElKey,
-): boolean {
-  const uniq = [...new Set(allBranches.filter(Boolean))];
-  if (!dayBranch || uniq.length < 2) return false;
-  const rels = computeBranchRelations(uniq);
-  for (const r of rels) {
-    if (r.type !== "지지충" && r.type !== "충") continue;
-    const a = r.branch1;
-    const b = r.branch2;
-    if (a !== dayBranch && b !== dayBranch) continue;
-    const other = a === dayBranch ? b : a;
-    if (other !== dayBranch && spouseBranchCarriesElement(other, officerEl)) return true;
-  }
-  return false;
-}
-
-type SpouseStructureAxisScores = {
-  practical: number;
-  emotional: number;
-  image: number;
-  wAct: number;
-  oAct: number;
-  sPal: number;
-  stressPen: number;
-  emotionalLoad: number;
-  sikCount: number;
-  injCount: number;
-};
-
-type SpouseStructureAxisDebug = {
-  spouseStabilitySource: "computeSpousePalaceStability";
-  romanceDomainSurrogateScore: number | null;
-  officerWealthStemBranch: ReturnType<typeof countOfficerWealthStemBranch>;
-  injStem: number;
-  injBranch: number;
-  sikStem: number;
-  sikBranch: number;
-  dayBranchDigest: string;
-  practicalFormula: string;
-  emotionalFormula: string;
-  imageFormula: string;
-  evaluationDebugTail: string[];
-};
-
-/**
- * 배우자 구조 3축 (UI: 재력 / 성격 / 외모) — 원국 복합만 (대운 제외).
- * 재력: 재·관·식상·합·재관 연동·일지 재·관성충 등
- * 성격: 배우자궁 안정 가중·관·비겁·상관·합충·일지 형·관성충
- * 외모·이미지: 도화·홍염·금·식상·일지·이미지 안정(긴장 완화)
- */
-function computeSpouseStructureAxisBundle(input: {
-  dayStem: string;
-  dayBranch: string;
-  allChars: string[];
-  allStems: string[];
-  allBranches: string[];
-  counts: FiveElementCount;
-  evaluations: RelationshipWealthEvaluations | null | undefined;
-  shinsalNames: Set<string>;
-  spouseElement?: string;
-  tenGodGroups?: Record<string, number> | null;
-}): { scores: SpouseStructureAxisScores; axisDebug: SpouseStructureAxisDebug } {
-  const ev = input.evaluations;
-  const wAct = ev?.wealthActivation?.score ?? 52;
-  const oAct = ev?.officerActivation?.score ?? 52;
-  const sPal = ev?.spousePalaceStability?.score ?? 52;
-  const romanceSurrogate = ev?.spousePalaceRomanceDomainSurrogateScore ?? null;
-  const stem = input.dayStem;
-  const dayB = input.dayBranch;
-  const stressPen = dayBranchStressPenalty(dayB, input.allBranches);
-  const emotionalLoad = spouseDayBranchEmotionalLoad(dayB, input.allBranches);
-  const ow = countOfficerWealthStemBranch(stem, input.allStems, input.allBranches);
-  const dm = STEM_TO_ELEMENT[stem] as FiveElKey | undefined;
-  const officerEl = dm ? getController(dm) : undefined;
-  const officerChung =
-    !!officerEl && spouseOfficerBranchChungsDayBranch(dayB, input.allBranches, officerEl);
-  const dayHap = spouseDayBranchHasHap(dayB, input.allBranches);
-  const dayHyungEdge = spouseDayBranchHasHyungEdge(dayB, input.allBranches);
-
-  let jaeAdj = 0;
-  if (stem && dayB) {
-    const tg = getTenGod(stem, dayB);
-    if (tg && JAE_SET.has(tg)) jaeAdj = 7;
-  }
-
-  const jaeTotal = ow.jaeStem + ow.jaeBranchSurface + ow.jaeBranchHidden;
-  const gwanTotal = ow.gwanStem + ow.gwanBranchSurface + ow.gwanBranchHidden;
-  const sikAll = countTenGodsInChars(stem, input.allChars, SIK_SANG_SET);
-  const sikStem = countTenGodsOnStems(stem, input.allStems, SIK_SANG_SET);
-  const sikBranch = countTenGodsOnBranchesWithHidden(stem, input.allBranches, SIK_SANG_SET);
-  const shengCaiBonus = sikAll >= 1 && jaeTotal >= 1 ? 9 : sikAll >= 2 ? 4 : 0;
-  const caiGuanTogether = jaeTotal >= 1 && gwanTotal >= 1 && oAct >= 50 ? 6 : 0;
-  const hapBonus = dayHap ? 6 : 0;
-
-  let practical =
-    32 +
-    0.24 * wAct +
-    0.2 * oAct +
-    0.11 * sPal +
-    Math.min(13, ow.jaeStem * 2.3 + ow.jaeBranchSurface * 0.95 + ow.jaeBranchHidden * 0.42) +
-    jaeAdj +
-    shengCaiBonus +
-    caiGuanTogether +
-    hapBonus -
-    0.1 * stressPen;
-  if (officerChung) practical -= 5;
-  practical = Math.max(0, Math.min(100, Math.round(practical)));
-
-  const injAll = countTenGodsInChars(stem, input.allChars, IN_SET);
-  const injStem = countTenGodsOnStems(stem, input.allStems, IN_SET);
-  const injBranch = countTenGodsOnBranchesWithHidden(stem, input.allBranches, IN_SET);
-  let injBlend = 0;
-  if (injAll >= 1 && injAll <= 3) injBlend = 11;
-  else if (injAll === 0) injBlend = -7;
-  else injBlend = 2;
-  injBlend += Math.round((injStem - injBranch) * 0.35);
-
-  const sikBlend = Math.min(15, Math.round(sikAll * 4 + sikStem * 0.55));
-
-  const tGodSum =
-    input.tenGodGroups && dm
-      ? Object.values(input.tenGodGroups).reduce((a, b) => a + b, 0) || 1
-      : 0;
-  const bijobRatio =
-    tGodSum > 0 && input.tenGodGroups ? (input.tenGodGroups.비겁 ?? 0) / tGodSum : 0;
-  const sangOnly = countTenGodsInChars(stem, input.allChars, SANG_ONLY_SET);
-
-  let emotional =
-    36 +
-    0.48 * sPal +
-    0.09 * oAct +
-    0.12 * (100 - stressPen) -
-    0.82 * emotionalLoad +
-    injBlend * 0.65 +
-    sikBlend * 0.28;
-  emotional -= bijobRatio >= 0.36 ? 14 : bijobRatio >= 0.28 ? 8 : bijobRatio >= 0.22 ? 4 : 0;
-  emotional -= sangOnly >= 2 ? 11 : sangOnly === 1 ? 5 : 0;
-  emotional -= officerChung ? 6 : 0;
-  if (dayHyungEdge) emotional -= 4;
-  emotional = Math.max(0, Math.min(100, Math.round(emotional)));
-
-  const total = Object.values(input.counts).reduce((a, b) => a + b, 0) || 1;
-  const metalRatio = input.counts.금 / total;
-  const woodFire = (input.counts.목 + input.counts.화) / total;
-  const calmImage =
-    Math.round((100 - stressPen) * 0.05 + (32 - Math.min(32, emotionalLoad)) * 0.1);
-
-  let image =
-    24 +
-    Math.min(20, Math.round(sikAll * 3.8 + sikBranch * 0.48)) +
-    metalRatio * 34 +
-    woodFire * 13 +
-    calmImage;
-  if (input.shinsalNames.has("도화")) image += 14;
-  if (input.shinsalNames.has("홍염")) image += 11;
-  const spEl = input.spouseElement;
-  if (spEl === "금" || spEl === "수") image += 5;
-  if (spEl === "화" || spEl === "목") image += 4;
-  if (spEl === "토") image += 2;
-  if (dayB && ["유", "신", "오", "묘"].includes(dayB)) image += 5;
-  else if (dayB && ["자", "해", "미"].includes(dayB)) image += 3;
-  if (dayHap) image += 3;
-
-  image = Math.max(0, Math.min(100, Math.round(image)));
-
-  const scores: SpouseStructureAxisScores = {
-    practical,
-    emotional,
-    image,
-    wAct,
-    oAct,
-    sPal,
-    stressPen,
-    emotionalLoad,
-    sikCount: sikAll,
-    injCount: injAll,
-  };
-
-  const digest = spouseDayBranchRelationDigest(dayB, input.allBranches);
-  const evalDbg = ev?.spousePalaceStability?.debug ?? [];
-
-  const axisDebug: SpouseStructureAxisDebug = {
-    spouseStabilitySource: "computeSpousePalaceStability",
-    romanceDomainSurrogateScore: romanceSurrogate,
-    officerWealthStemBranch: ow,
-    injStem,
-    injBranch,
-    sikStem,
-    sikBranch,
-    dayBranchDigest: digest,
-    practicalFormula: `재력≈재·관·식상생재(${shengCaiBonus})·재관연동(${caiGuanTogether})·합(+${hapBonus})·일지재(${jaeAdj})−긴장−관성충(${officerChung ? "Y" : "N"})`,
-    emotionalFormula: `성격≈0.48×배우자궁(${sPal})+인·식 보조−정서부담−비겁과다(${bijobRatio.toFixed(2)})−상관(${sangOnly})−형·관충`,
-    imageFormula: `외모·이미지≈금비율·식상·신살·일지·이미지안정(${calmImage})`,
-    evaluationDebugTail: evalDbg.slice(-6),
-  };
-
-  return { scores, axisDebug };
-}
-
 type SpouseStructureAxisKey = "practical" | "emotional" | "image";
 
 const SPOUSE_STRUCTURE_AXIS_LABEL: Record<SpouseStructureAxisKey, string> = {
-  practical: "재력",
-  emotional: "성격",
-  image: "외모",
+  practical: "현실 궁합",
+  emotional: "정서 궁합",
+  image: "매력 궁합",
 };
 
 const SPOUSE_STRUCTURE_AXIS_ONE_LINE: Record<SpouseStructureAxisKey, string> = {
-  practical: "재성·관·식상·합·재관 연동·일지 재·관성 충 등으로 배우자 측 경제·생활 가능성을 봅니다.",
-  emotional:
-    "배우자궁 안정(가중)·관·비겁·상관·일지 합충형·관성 충·형을 합산한 관계·정서 구조입니다.",
-  image: "도화·홍염·금 기운·식상·일지·분위기 안정 신호로 사회적 인상·매력 축을 봅니다.",
+  practical: "생활 안정성과 책임 구조가 맞는 배우자를 만날 가능성",
+  emotional: "감정 소통과 관계 안정성이 맞는 배우자를 만날 가능성",
+  image: "끌림과 이미지 매력이 형성되는 관계 구조",
 };
 
 function spouseStructureAxisBand(score: number): string {
@@ -3782,12 +3400,12 @@ function spousePracticalTypeLabel(band: string, wAct: number, oAct: number, sPal
   const top =
     wAct >= oAct && wAct >= sPal ? "재성" : oAct >= sPal ? "관성" : "배우자궁";
   if (band === "높음" || band === "중상") {
-    if (top === "재성") return "재성·생활 루트가 받쳐 주는 재력 신호형";
-    if (top === "관성") return "관성·책임이 받쳐 주는 재력 신호형";
-    return "배우자궁이 받쳐 주는 재력 신호형";
+    if (top === "재성") return "재성·생활 루트가 받쳐 주는 현실 궁합 신호형";
+    if (top === "관성") return "관성·책임이 받쳐 주는 현실 궁합 신호형";
+    return "배우자궁이 받쳐 주는 현실 궁합 신호형";
   }
-  if (band === "중") return "조건·역할을 다듬으면 재력 신호가 따라오기 쉬운 조정형";
-  return "생활·조건 축을 먼저 다져야 재력 부담이 줄어드는 보강형";
+  if (band === "중") return "조건·역할을 다듬으면 현실 궁합 신호가 따라오기 쉬운 조정형";
+  return "생활·조건을 먼저 다져야 현실 궁합 부담이 줄어드는 보강형";
 }
 
 function spouseEmotionalTypeLabel(band: string, inj: number, sik: number, emLoad: number): string {
@@ -3838,17 +3456,17 @@ function getSpouseStructureAxisDetail(
         : "정서 변수 부담은 비교적 낮게 잡혔습니다.";
 
   if (axis === "practical") {
-    const head = `재력 축에 재성 작동 ${Math.round(ctx.wAct)}점·관성 ${Math.round(ctx.oAct)}점·배우자궁 ${Math.round(ctx.sPal)}점과 일지 긴장을 함께 넣었습니다. ${stressNote}`;
+    const head = `현실 궁합 축에 재성 작동 ${Math.round(ctx.wAct)}점·관성 ${Math.round(ctx.oAct)}점·배우자궁 ${Math.round(ctx.sPal)}점과 일지 긴장을 함께 넣었습니다. ${stressNote}`;
     if (band === "높음" || band === "중상") {
-      return `${useNow ? "현재는 " : ""}${head}\n생활·조건·약속이 맞물리기 쉬운 재력 구조로 읽힙니다.`;
+      return `${useNow ? "현재는 " : ""}${head}\n생활·조건·약속이 맞물리기 쉬운 현실 궁합 구조로 읽힙니다.`;
     }
     if (band === "중") {
-      return `${useNow ? "현재는 " : ""}${head}\n역할·조건을 숫자와 규칙으로만 정리해도 재력 체감이 한 단계 오르기 쉽습니다.`;
+      return `${useNow ? "현재는 " : ""}${head}\n역할·조건을 숫자와 규칙으로만 정리해도 현실 궁합 체감이 한 단계 오르기 쉽습니다.`;
     }
     return `${useNow ? "현재는 " : ""}${head}\n조건·역할·일지 긴장을 순서대로 점검하는 것이 우선입니다.`;
   }
   if (axis === "emotional") {
-    const head = `성격·관계 축에 배우자궁 ${Math.round(ctx.sPal)}점·인성 ${ctx.injCount}·식상 ${ctx.sikCount}·관 ${Math.round(ctx.oAct)}점을 넣었습니다. ${emNote}`;
+    const head = `정서 궁합 축에 배우자궁 ${Math.round(ctx.sPal)}점·인성 ${ctx.injCount}·식상 ${ctx.sikCount}·관 ${Math.round(ctx.oAct)}점을 넣었습니다. ${emNote}`;
     if (band === "높음" || band === "중상") {
       return `${useNow ? "현재는 " : ""}${head}\n말과 감정의 속도를 맞추기 비교적 수월한 관계 구조로 읽힙니다.`;
     }
@@ -3857,7 +3475,7 @@ function getSpouseStructureAxisDetail(
     }
     return `${useNow ? "현재는 " : ""}${head}\n갈등 시 표현 방식과 리듬을 먼저 맞추면 부담이 줄기 쉽습니다.`;
   }
-  const head = `외모·이미지 축에 식상 ${ctx.sikCount}·도화/홍염·금·화목 비율·일지 힌트를 넣었습니다.`;
+  const head = `매력 궁합 축에 식상 ${ctx.sikCount}·도화/홍염·금·화목 비율·일지 힌트를 넣었습니다.`;
   if (band === "높음" || band === "중상") {
     return `${useNow ? "현재는 " : ""}${head}\n분위기·스타일·사회적 인상이 살아나는 구조로 읽힙니다.`;
   }
@@ -3890,21 +3508,21 @@ function spouseUseNowNarrative(pb: string, eb: string, ib: string): boolean {
 }
 
 function spouseWealthClause(band: string): string {
-  if (band === "높음" || band === "중상") return "재력·생활 축은 비교적 탄탄한 편";
-  if (band === "중") return "재력·생활 축은 중간대";
-  return "재력·생활 축에서는 합의와 규칙을 더 다져야 하는 편";
+  if (band === "높음" || band === "중상") return "현실 궁합(생활·책임)은 비교적 탄탄한 편";
+  if (band === "중") return "현실 궁합은 중간대";
+  return "현실 궁합에서는 합의와 규칙을 더 다져야 하는 편";
 }
 
 function spousePersonalityClause(band: string): string {
-  if (band === "높음" || band === "중상") return "성격·관계 안정 구조는 무난한 편";
-  if (band === "중") return "성격·관계 구조는 중간대로, 속도·기대치 조율이 포인트";
-  return "성격·관계 구조는 말과 감정이 엇박이 나기 쉬운 편";
+  if (band === "높음" || band === "중상") return "정서 궁합은 무난한 편";
+  if (band === "중") return "정서 궁합은 중간대로, 속도·기대치 조율이 포인트";
+  return "정서 궁합은 말과 감정이 엇박이 나기 쉬운 편";
 }
 
 function spouseImageClause(band: string): string {
-  if (band === "높음" || band === "중상") return "외모·분위기·사회적 인상은 평균 이상으로 읽히는 편";
-  if (band === "중") return "외모·분위기는 중간대";
-  return "첫인상·표현은 차분하거나 시간이 필요한 편";
+  if (band === "높음" || band === "중상") return "매력 궁합(끌림·인상)은 평균 이상으로 읽히는 편";
+  if (band === "중") return "매력 궁합은 중간대";
+  return "매력 궁합은 첫인상·표현이 차분하거나 시간이 필요한 편";
 }
 
 /** 종합 배우자 구조: 3축 요약 → 의미 → 전략 + 연령대 렌즈 (유형 문장 반복 없음) */
@@ -4010,7 +3628,7 @@ function buildSpouseImprovementBullets(
     out.push("만남 방식(주 몇 회, 연락 리듬)을 가볍게라도 맞춰 보세요.");
   }
   if (out.length < 2) {
-    out.push("배우자궁·아래 3축 점수를 분기마다 다시 열어 변화를 확인해 보세요.");
+    out.push("배우자궁·아래 세 궁합 축 점수를 분기마다 다시 열어 변화를 확인해 보세요.");
   }
   const uniq: string[] = [];
   for (const x of out) {
@@ -4201,7 +3819,7 @@ function deriveSpousePrimarySecondaryTypes(ctx: {
               ? "생활·조건·약속이 관계 논의에서 앞서기 쉽습니다."
               : primary === "규범·역할형 배우자"
                 ? "역할·규범·대외적 책임이 배우자 기대와 맞물리기 쉽습니다."
-                : "세 축을 한꺼번에 보지 않고 한쪽만 고집하기 어려운 중간 성격의 패턴입니다.";
+                : "세 궁합 축을 한꺼번에 보지 않고 한쪽만 고집하기 어려운 중간대 패턴입니다.";
 
   if (ctx.cohort === "ge70" && primary === "매력·이미지형 배우자") {
     primaryBlurb = "분위기·표현이 관계의 온도를 이끄는 비중이 큰 패턴으로 읽힙니다.";
@@ -4398,18 +4016,18 @@ function YuanSpouseStructureCard({
         <p className={cn(tr.sectionEyebrow, "pt-1")}>2차 유형</p>
         <p className="text-[13px] font-semibold text-rose-900/95 leading-snug">{typePair.secondary}</p>
         <p className="text-[12px] leading-relaxed text-foreground/88">
-          3축·배우자궁·관재 작동을 묶은 보조 라벨입니다.
+          현실·정서·매력 궁합과 배우자궁·관재 작동을 묶은 보조 라벨입니다.
         </p>
       </div>
       <div className="mt-2 flex flex-wrap items-baseline gap-x-1 gap-y-0">
         <span className="text-[13px] font-semibold text-foreground">배우자운</span>
         <span className="text-2xl font-black tabular-nums leading-none text-rose-800">{structureHeadline}</span>
         <span className="text-[12px] font-semibold text-rose-900/90">점</span>
-        <span className="text-[10px] text-muted-foreground">(재력·성격·외모 평균)</span>
+        <span className="text-[10px] text-muted-foreground">(현실·정서·매력 궁합 평균)</span>
       </div>
-      <p className={cn(tr.sectionEyebrow, "mt-2")}>구조 축</p>
+      <p className={cn(tr.sectionEyebrow, "mt-2")}>세 궁합 축</p>
       <p className="mt-0.5 text-[10px] leading-snug text-muted-foreground">
-        재력·성격·외모(이미지)는 원국 십성·지지·신살을 복합 반영합니다. 칸을 누르면 유형과 축별 설명이 펼쳐집니다.
+        세 축은 배우자 본인의 재력·성격·얼굴이 아니라, 원국에서 읽히는 만남·관계 구조 가능성입니다. 십성·지지·신살을 복합 반영하며, 칸을 누르면 유형과 축별 설명이 펼쳐집니다.
       </p>
       <div className="mt-2.5 grid grid-cols-3 gap-2">
         {axisCells.map(({ key, label, score, band }) => {
@@ -4490,7 +4108,7 @@ function YuanSpouseStructureCard({
           </ul>
         ) : (
           <p className="mt-1.5 text-[12px] leading-relaxed text-foreground">
-            추가로 손볼 포인트가 크지 않습니다. 생활 환경이 바뀌면 3축을 다시 확인해 보세요.
+            추가로 손볼 포인트가 크지 않습니다. 생활 환경이 바뀌면 세 궁합 축을 다시 확인해 보세요.
           </p>
         )}
       </div>

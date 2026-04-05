@@ -713,3 +713,15 @@ export function calculateCompatibilityScore(
     },
   };
 }
+
+// ── 배우자 3축(단일 원국) — 궁합에서 A/B 각각 산출 후 교차 비교할 때 사용 ──
+export {
+  computeSpouseStructureAxisBundle,
+  toSpouseStructureAxisBundle,
+} from "./evaluations/spouseStructureAxisBundle";
+export type {
+  SpouseStructureAxisBundle,
+  SpouseStructureAxisScores,
+  ComputeSpouseStructureAxisBundleInput,
+  ComputeSpouseStructureAxisBundleResult,
+} from "./evaluations/spouseStructureAxisBundle";
