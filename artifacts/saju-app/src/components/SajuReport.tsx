@@ -3195,7 +3195,61 @@ function dayBranchStressPenalty(dayBranch: string, allBranches: string[]): numbe
   return Math.min(34, pen);
 }
 
-function computeSpouseAxisScores(input: {
+/** 일지 귀문 쌍(배우자궁 정서 부담 보조) — relationshipWealthEvaluation과 동일 */
+const SPOUSE_GUIMOON_PAIR: Record<string, string> = {
+  자: "유",
+  유: "자",
+  축: "오",
+  오: "축",
+  인: "미",
+  미: "인",
+  묘: "신",
+  신: "묘",
+  진: "해",
+  해: "진",
+  사: "술",
+  술: "사",
+};
+
+/** 원진·해·형·파·귀문 등 정서 궁합 축에 반영할 일지 인접 부담(0~32) */
+function spouseDayBranchEmotionalLoad(dayBranch: string, allBranches: string[]): number {
+  const uniq = [...new Set(allBranches.filter(Boolean))];
+  if (!dayBranch || uniq.length < 2) return 0;
+  const rels = computeBranchRelations(uniq);
+  let pen = 0;
+  for (const r of rels) {
+    if (r.branch1 !== dayBranch && r.branch2 !== dayBranch) continue;
+    if (r.branch1 === r.branch2) continue;
+    if (r.type === "원진") pen += 9;
+    if (r.type === "해") pen += 6;
+    if (r.type === "형") pen += 5;
+    if (r.type === "파") pen += 4;
+  }
+  const gm = SPOUSE_GUIMOON_PAIR[dayBranch];
+  if (gm && uniq.some((b) => b !== dayBranch && b === gm)) pen += 5;
+  return Math.min(32, pen);
+}
+
+type SpouseStructureAxisScores = {
+  practical: number;
+  emotional: number;
+  image: number;
+  wAct: number;
+  oAct: number;
+  sPal: number;
+  stressPen: number;
+  emotionalLoad: number;
+  sikCount: number;
+  injCount: number;
+};
+
+/**
+ * 배우자 구조 3축: 복합 요소 가중(재물 카드와 동일하게 점수+구간+해석).
+ * - 현실 안정성: 배우자궁·관성·재성 작동 + 일지 합충형파해 스트레스 + 일간-일지 재성
+ * - 정서 궁합성: 배우자궁·스트레스·인성/식상·관성 보조·원진/귀문/형해파
+ * - 매력·이미지: 식상·도화·홍염·금수·화목 비율·배우자궁 지지·일지 이미지 힌트
+ */
+function computeSpouseStructureAxisScores(input: {
   dayStem: string;
   dayBranch: string;
   allChars: string[];
@@ -3204,148 +3258,238 @@ function computeSpouseAxisScores(input: {
   evaluations: RelationshipWealthEvaluations | null | undefined;
   shinsalNames: Set<string>;
   spouseElement?: string;
-}): { wealthAttr: number; stability: number; charm: number } {
+}): SpouseStructureAxisScores {
   const ev = input.evaluations;
   const wAct = ev?.wealthActivation?.score ?? 52;
   const oAct = ev?.officerActivation?.score ?? 52;
   const sPal = ev?.spousePalaceStability?.score ?? 52;
   const stem = input.dayStem;
   const dayB = input.dayBranch;
-  let jaeBoost = 0;
+  const stressPen = dayBranchStressPenalty(dayB, input.allBranches);
+  const emotionalLoad = spouseDayBranchEmotionalLoad(dayB, input.allBranches);
+
+  let jaeAdj = 0;
   if (stem && dayB) {
     const tg = getTenGod(stem, dayB);
-    if (tg && JAE_SET.has(tg)) jaeBoost = 9;
+    if (tg && JAE_SET.has(tg)) jaeAdj = 7;
   }
-  let 재력 = 0.42 * wAct + 0.28 * oAct + 0.22 * sPal + jaeBoost;
-  재력 = Math.max(0, Math.min(100, Math.round(재력)));
 
-  const stress = dayBranchStressPenalty(dayB, input.allBranches);
+  let practical = 0.34 * sPal + 0.24 * oAct + 0.22 * wAct + 0.14 * (100 - stressPen) + jaeAdj;
+  practical = Math.max(0, Math.min(100, Math.round(practical)));
+
   const inj = countTenGodsInChars(stem, input.allChars, IN_SET);
-  let inAdj = 0;
-  if (inj >= 1 && inj <= 3) inAdj = 7;
-  else if (inj === 0) inAdj = -6;
-  else inAdj = -3;
-  let stability = 0.52 * sPal + 0.26 * oAct + 0.12 * (100 - stress) + inAdj;
-  stability = Math.max(0, Math.min(100, Math.round(stability)));
+  let injBlend = 0;
+  if (inj >= 1 && inj <= 3) injBlend = 11;
+  else if (inj === 0) injBlend = -7;
+  else injBlend = 2;
 
   const sik = countTenGodsInChars(stem, input.allChars, SIK_SANG_SET);
+  const sikBlend = Math.min(15, Math.round(sik * 4));
+
+  let emotional =
+    0.38 * sPal +
+    0.2 * (100 - stressPen) +
+    injBlend +
+    sikBlend +
+    0.06 * oAct -
+    emotionalLoad;
+  emotional = Math.max(0, Math.min(100, Math.round(emotional)));
+
   const total = Object.values(input.counts).reduce((a, b) => a + b, 0) || 1;
   const metalWater = (input.counts.금 + input.counts.수) / total;
-  let charm = 34 + Math.min(26, sik * 5) + metalWater * 32;
-  if (input.shinsalNames.has("도화")) charm += 15;
-  if (input.shinsalNames.has("홍염")) charm += 12;
-  const spEl = input.spouseElement;
-  if (spEl === "금" || spEl === "화") charm += 5;
-  charm = Math.max(0, Math.min(100, Math.round(charm)));
+  const woodFire = (input.counts.목 + input.counts.화) / total;
 
-  return { wealthAttr: 재력, stability, charm };
+  let image = 32 + Math.min(24, Math.round(sik * 4.5)) + metalWater * 30 + woodFire * 14;
+  if (input.shinsalNames.has("도화")) image += 14;
+  if (input.shinsalNames.has("홍염")) image += 11;
+  const spEl = input.spouseElement;
+  if (spEl === "금" || spEl === "수") image += 5;
+  if (spEl === "화" || spEl === "목") image += 4;
+  if (spEl === "토") image += 2;
+  if (dayB && ["유", "신", "오", "묘"].includes(dayB)) image += 5;
+  else if (dayB && ["자", "해", "미"].includes(dayB)) image += 3;
+
+  image = Math.max(0, Math.min(100, Math.round(image)));
+
+  return {
+    practical,
+    emotional,
+    image,
+    wAct,
+    oAct,
+    sPal,
+    stressPen,
+    emotionalLoad,
+    sikCount: sik,
+    injCount: inj,
+  };
 }
 
-type SpouseAxisKey = "wealthAttr" | "stability" | "charm";
+type SpouseStructureAxisKey = "practical" | "emotional" | "image";
 
-const SPOUSE_AXIS_LABEL: Record<SpouseAxisKey, string> = {
-  wealthAttr: "재력",
-  stability: "성격 안정성",
-  charm: "외모·이미지 매력",
+const SPOUSE_STRUCTURE_AXIS_LABEL: Record<SpouseStructureAxisKey, string> = {
+  practical: "현실 안정성",
+  emotional: "정서 궁합성",
+  image: "매력·이미지",
 };
 
-const SPOUSE_AXIS_ONE_LINE: Record<SpouseAxisKey, string> = {
-  wealthAttr: "배우자궁 재성·관성 안정도와 재성 위치·세기를 반영한 물질·생활 기반 지표입니다.",
-  stability: "관성·인성 균형, 충·형 부담, 배우자궁 안정도를 반영한 성향·유지 지표입니다.",
-  charm: "식상·도화·홍염·금·수 기운과 배우자궁 미감 힌트를 반영한 이미지 지표입니다.",
+const SPOUSE_STRUCTURE_AXIS_ONE_LINE: Record<SpouseStructureAxisKey, string> = {
+  practical:
+    "배우자궁 안정·관성/재성 작동·일지 긴장·용신 반영 지표를 합산한 생활·역할 기반입니다.",
+  emotional:
+    "일지·오행 기질·인성/식상·원진·귀문·형해파·관성 보조를 합산한 정서·유지 신호입니다.",
+  image: "도화·홍염·금수·화목 비율·식상·배우자궁 지지를 합산한 외적 인상·매력입니다.",
 };
 
-function spouseAxisBand(axis: SpouseAxisKey, score: number): string {
-  if (axis === "wealthAttr") return wealthCapacityBand(score);
+function spouseStructureAxisBand(score: number): string {
   return wealthChannelBand(score);
 }
 
-function getSpouseAxisDetail(axis: SpouseAxisKey, band: string, useNow: boolean): string {
-  if (axis === "wealthAttr") {
-    if (band === "양호") {
-      return `${useNow ? "현재는 " : ""}배우자궁과 재성 작동이 받쳐줘 현실적 재력·생활 기반이 잡히기 쉽습니다.\n관성 안정과 재성 위치가 맞물려 ‘같이 살림을 굴리기 좋은’ 흐름으로 읽힙니다.`;
-    }
-    if (band === "보통") {
-      return `${useNow ? "현재는 " : ""}재력 지표는 중간대입니다. 수입 구조·역할 분담을 명확히 하면 체감이 좋아질 수 있어요.\n재성이 약해 보이면 식상·용신 쪽 보완을 함께 보세요.`;
-    }
-    return `${useNow ? "현재는 " : ""}물질 기반이 들쭉날쭉하게 느껴질 수 있습니다.\n배우자궁 충·형과 재성 고립 여부를 점검하고, 현금흐름부터 잡는 것이 우선입니다.`;
+function spousePracticalTypeLabel(band: string, wAct: number, oAct: number, sPal: number): string {
+  const top =
+    wAct >= oAct && wAct >= sPal ? "재성" : oAct >= sPal ? "관성" : "배우자궁";
+  if (band === "높음" || band === "중상") {
+    if (top === "재성") return "재성·생활 루트가 받쳐 주는 현실 안정형";
+    if (top === "관성") return "관성·책임 구조가 받쳐 주는 현실 안정형";
+    return "배우자궁 지표가 받쳐 주는 현실 안정형";
   }
-  if (axis === "stability") {
-    if (band === "높음" || band === "중상") {
-      return `${useNow ? "현재는 " : ""}관성·인성 균형과 배우자궁 안정도가 좋아 정서적 균형과 유지력이 탄탄한 편입니다.\n갈등이 있어도 대화로 복구하기 쉬운 구조로 읽힙니다.`;
-    }
-    if (band === "중") {
-      return `${useNow ? "현재는 " : ""}성향 안정성은 중간입니다. 규칙·역할만 정리하면 한 단계 올라가기 좋습니다.\n일지 충·형이 있으면 속도 조절과 신뢰 쌓기가 중요합니다.`;
-    }
-    if (band === "낮음" || band === "매우 낮음") {
-      return `${useNow ? "현재는 " : ""}정서·관계 유지에 에너지가 많이 드는 구간일 수 있습니다.\n충·형·파·해 부담을 함께 보고, 짧은 주기의 점검 대화가 도움이 됩니다.`;
-    }
-    return `성격 안정성은 「${band}」 구간입니다. 관성·인성 분포와 배우자궁 긴장을 함께 참고하세요.`;
-  }
-  if (axis === "charm") {
-    if (band === "높음" || band === "중상") {
-      return `${useNow ? "현재는 " : ""}식상·도화·홍염·금·수 기운이 받쳐 첫인상·이미지 매력이 살아나기 쉽습니다.\n만남 초반 호감 형성에 유리한 편으로 읽힙니다.`;
-    }
-    if (band === "중") {
-      return `${useNow ? "현재는 " : ""}외모·이미지는 중간대입니다. 스타일·콘텐츠·말투만 정돈해도 인상이 올라가기 쉽습니다.\n시간이 지날수록 매력이 드러나는 타입일 수 있어요.`;
-    }
-    return `${useNow ? "현재는 " : ""}첫인상보다 안정·신뢰 쪽 매력이 더 큰 편으로 읽힐 수 있습니다.\n도화·홍염·식상 보강과 금·수 기운 균형을 보면 개선 여지가 보입니다.`;
-  }
-  return "축 설명을 불러오지 못했습니다.";
+  if (band === "중") return "생활·역할 설계를 다듬으면 올라가기 쉬운 현실 조정형";
+  return "현실 기반을 먼저 잡아야 부담이 줄어드는 현실 보강형";
 }
 
-function spouseUseNowNarrative(wb: string, sb: string, cb: string): boolean {
-  const stabHi = sb === "높음" || sb === "중상";
-  const stabMid = sb === "중";
-  const charmMid = cb === "중상" || cb === "중";
-  const charmLo = cb === "낮음" || cb === "매우 낮음";
-  if (stabHi && (charmMid || charmLo)) return true;
-  if (stabMid && charmLo) return true;
-  if (wb === "낮음" && (sb === "높음" || sb === "중상")) return true;
+function spouseEmotionalTypeLabel(band: string, inj: number, sik: number, emLoad: number): string {
+  if (band === "높음" || band === "중상") {
+    if (emLoad <= 6 && sik >= 2) return "표현·완충이 살아 있는 정서 균형형";
+    if (inj >= 1 && inj <= 3) return "포용·위로가 받쳐 주는 정서 안정형";
+    return "관계 유지 신호가 비교적 고른 정서형";
+  }
+  if (band === "중") return "속도·기대치를 맞추면 나아지기 쉬운 정서 조율형";
+  return "합충형파해·감정 변수가 부담으로 느껴질 수 있는 정서 주의형";
+}
+
+function spouseImageTypeLabel(
+  band: string,
+  hasDohwa: boolean,
+  hasHongyeom: boolean,
+  metalWaterRatio: number,
+): string {
+  if (band === "높음" || band === "중상") {
+    if (hasDohwa || hasHongyeom) return "도화·홍염 등 매력 시그널이 두드러지는 이미지형";
+    if (metalWaterRatio >= 0.38) return "금·수 기운이 받쳐 주는 세련·차분 이미지형";
+    return "표현·외형이 살아나기 쉬운 이미지형";
+  }
+  if (band === "중") return "스타일·표현만 정돈해도 살아나는 이미지 성장형";
+  return "첫인상보다 신뢰·안정 쪽이 앞서는 이미지 보완형";
+}
+
+function getSpouseStructureAxisDetail(
+  axis: SpouseStructureAxisKey,
+  band: string,
+  useNow: boolean,
+  ctx: Pick<
+    SpouseStructureAxisScores,
+    "wAct" | "oAct" | "sPal" | "stressPen" | "emotionalLoad" | "sikCount" | "injCount"
+  >,
+): string {
+  const stressNote =
+    ctx.stressPen >= 20
+      ? "일지 합·충·형·파·해 부담이 크게 반영된 상태입니다."
+      : ctx.stressPen >= 10
+        ? "일지 주변 긴장이 어느 정도 반영된 상태입니다."
+        : "일지 주변 긴장은 상대적으로 가벼운 편으로 반영했습니다.";
+  const emNote =
+    ctx.emotionalLoad >= 16
+      ? "원진·귀문·형·해·파 등 정서 변수가 두드러집니다."
+      : ctx.emotionalLoad >= 8
+        ? "정서 변수가 일부 섞여 있습니다."
+        : "정서 변수 부담은 비교적 낮게 잡혔습니다.";
+
+  if (axis === "practical") {
+    const head = `배우자궁 안정 ${Math.round(ctx.sPal)}점·관성 작동 ${Math.round(ctx.oAct)}점·재성 작동 ${Math.round(ctx.wAct)}점과 일지 스트레스를 함께 녹였습니다. ${stressNote}`;
+    if (band === "높음" || band === "중상") {
+      return `${useNow ? "현재는 " : ""}${head}\n생활·역할·재정 루트가 맞물리기 쉬워 동거·협업 같은 현실 과제를 함께 밀기 좋은 편으로 읽힙니다.`;
+    }
+    if (band === "중") {
+      return `${useNow ? "현재는 " : ""}${head}\n수입·역할·약속을 숫자와 규칙으로만 정리해도 체감 안정이 한 단계 오르기 쉽습니다.`;
+    }
+    return `${useNow ? "현재는 " : ""}${head}\n현금흐름·역할 분담·배우자궁 긴장을 순서대로 점검하는 것이 우선입니다.`;
+  }
+  if (axis === "emotional") {
+    const head = `원국 인성 ${ctx.injCount}·식상 ${ctx.sikCount}·관성 작동 ${Math.round(ctx.oAct)}점을 함께 녹였습니다. ${emNote}`;
+    if (band === "높음" || band === "중상") {
+      return `${useNow ? "현재는 " : ""}${head}\n감정 소모 후 회복이나 대화로 풀기가 비교적 수월한 조합으로 읽힙니다.`;
+    }
+    if (band === "중") {
+      return `${useNow ? "현재는 " : ""}${head}\n주기 짧은 점검 대화와 기대치 조율이 정서 체감을 끌어올리기 쉽습니다.`;
+    }
+    return `${useNow ? "현재는 " : ""}${head}\n갈등 시 속도·표현 방식을 먼저 맞추면 관계 부담이 줄기 쉽습니다.`;
+  }
+  const head = `식상 ${ctx.sikCount}·도화/홍염·금수·화목 비율·배우자궁 지지를 함께 반영했습니다.`;
+  if (band === "높음" || band === "중상") {
+    return `${useNow ? "현재는 " : ""}${head}\n첫인상·스타일·콘텐츠 매력이 살아나 만남 초반 시그널이 강한 편으로 읽힙니다.`;
+  }
+  if (band === "중") {
+    return `${useNow ? "현재는 " : ""}${head}\n말투·스타일·취향 표현을 조금만 정돈해도 인상이 따라오기 쉽습니다.`;
+  }
+  return `${useNow ? "현재는 " : ""}${head}\n시간이 지난 뒤 신뢰·안정 매력이 더 크게 느껴질 수 있습니다.`;
+}
+
+/**
+ * 재물 카드와 동일 철학: 세 축이 모두 높으면 접두 생략, 정서·매력 교차가 클 때만 `현재는`.
+ */
+function spouseUseNowNarrative(pb: string, eb: string, ib: string): boolean {
+  const pHi = pb === "높음" || pb === "중상";
+  const pMid = pb === "중";
+  const pLo = pb === "낮음";
+  const eHi = eb === "높음" || eb === "중상";
+  const eMid = eb === "중";
+  const eLo = eb === "낮음";
+  const iHi = ib === "높음" || ib === "중상";
+  const iMid = ib === "중";
+  const iLo = ib === "낮음";
+  if (pLo && eLo) return false;
+  if (pHi && eHi && iHi) return false;
+  if (eLo && (pHi || pMid)) return true;
+  if (pHi && iLo) return true;
+  if (eMid && iLo) return true;
+  if (pHi && eHi && iMid) return true;
   return false;
 }
 
-function buildSpouseSynthesis(
-  wealthBand: string,
-  stabilityBand: string,
-  charmBand: string,
+function buildSpouseStructureSynthesis(
+  practicalBand: string,
+  emotionalBand: string,
+  imageBand: string,
   useNow: boolean,
-): { paragraphs: string[] } {
-  const stabHi = stabilityBand === "높음" || stabilityBand === "중상";
-  const charmMid = charmBand === "중상" || charmBand === "중";
-  const charmLo = charmBand === "낮음" || charmBand === "매우 낮음";
-  const now = (s: string) => (useNow ? (s.startsWith("현재") ? s : `현재는 ${s}`) : s.replace(/^현재는\s+/, ""));
+): { paragraph1: string; paragraph2: string } {
+  const triplet = `현실 안정성은 「${practicalBand}」, 정서 궁합성은 「${emotionalBand}」, 매력·이미지는 「${imageBand}」로 읽힙니다.`;
 
-  if (stabHi && charmMid) {
-    return {
-      paragraphs: [
-        now("현실적이고 안정적인 배우자 구조가 형성되기 쉬우며, 정서적 균형과 관계 유지력이 좋은 편입니다."),
-        "다만 외모·이미지 매력 요소는 중간 수준이므로, 초기 호감 형성보다 관계 안정 이후 매력이 강화되는 유형입니다.",
-      ],
-    };
+  const pHi = practicalBand === "높음" || practicalBand === "중상";
+  const eHi = emotionalBand === "높음" || emotionalBand === "중상";
+  const iHi = imageBand === "높음" || imageBand === "중상";
+  const eLo = emotionalBand === "낮음";
+  const iLo = imageBand === "낮음";
+
+  let focus: string;
+  if (pHi && eHi && iHi) {
+    focus = "세 축이 한꺼번에 무너지기 어려운 균형에 가깝습니다.";
+  } else if (pHi && eHi && iLo) {
+    focus = "살림·약속은 받쳐 주는데 첫인상·표현 매력은 여유가 있을 수 있습니다.";
+  } else if (pHi && eLo) {
+    focus = "현실 기반은 있는 편인데 정서·감정 쪽에서 더 맞춤이 필요할 수 있습니다.";
+  } else if (eLo && iHi) {
+    focus = "호감·이미지 시그널은 살아 있으나 정서 유지에는 합의가 더 필요할 수 있습니다.";
+  } else if (practicalBand === "중" || emotionalBand === "중") {
+    focus = "한 축만 집중해 다듬어도 교차 체감이 빨리 나아질 수 있는 중간대입니다.";
+  } else {
+    focus = "세 축을 함께 보며 가장 낮게 느껴지는 쪽을 먼저 다지면 전체가 따라오기 쉽습니다.";
   }
-  if (stabHi && charmLo) {
-    return {
-      paragraphs: [
-        now("관계 유지력과 현실적 안정성은 강한 편입니다."),
-        "외모·이미지 매력은 상대적으로 여유가 있으니, 표현·스타일·취향 공유로 초반 호감을 보완하면 좋습니다.",
-      ],
-    };
-  }
-  if ((stabilityBand === "낮음" || stabilityBand === "매우 낮음") && (charmBand === "높음" || charmBand === "중상")) {
-    return {
-      paragraphs: [
-        now("첫인상·매력은 살아 있으나, 정서·관계 유지에는 더 많은 합의가 필요할 수 있습니다."),
-        "속도 조절과 기대치 정리가 안정적으로 가는 데 도움이 됩니다.",
-      ],
-    };
-  }
-  return {
-    paragraphs: [
-      now(`재력「${wealthBand}」, 성격 안정성「${stabilityBand}」, 외모·이미지「${charmBand}」 조합으로 읽힙니다.`),
-      "가장 낮게 보이는 축부터 다지면 전체 배우자 구조 체감이 좋아지기 쉽습니다.",
-    ],
-  };
+
+  const paragraph1 = useNow ? `${triplet} 현재는 ${focus}` : `${triplet} ${focus}`;
+  const paragraph2 =
+    "위 점수는 배우자궁·십성 분포·지지 관계·오행 비율·신살을 한 엔진에서 합산한 구조 지표이며, 실제 관계는 선택과 대화에 따라 달라질 수 있습니다.";
+
+  return { paragraph1, paragraph2 };
 }
 
 function buildYuanSpouseStructureInsight(
@@ -3429,7 +3573,7 @@ function YuanSpouseStructureCard({
   evaluations: RelationshipWealthEvaluations | null | undefined;
   shinsalNames: Set<string>;
 }) {
-  const [openAxis, setOpenAxis] = useState<SpouseAxisKey | null>(null);
+  const [openAxis, setOpenAxis] = useState<SpouseStructureAxisKey | null>(null);
   const tr = STRUCTURE_CARD.rose;
   const summary = buildYuanSpouseStructureInsight(
     monthBranch,
@@ -3437,7 +3581,10 @@ function YuanSpouseStructureCard({
     relationshipPattern,
     spouseStabilityGrade,
   );
-  const scores = computeSpouseAxisScores({
+  const totalEl = Object.values(counts).reduce((a, b) => a + b, 0) || 1;
+  const metalWaterRatio = (counts.금 + counts.수) / totalEl;
+
+  const scores = computeSpouseStructureAxisScores({
     dayStem,
     dayBranch,
     allChars,
@@ -3447,19 +3594,43 @@ function YuanSpouseStructureCard({
     shinsalNames,
     spouseElement: spousePalace?.element,
   });
-  const wB = spouseAxisBand("wealthAttr", scores.wealthAttr);
-  const sB = spouseAxisBand("stability", scores.stability);
-  const cB = spouseAxisBand("charm", scores.charm);
-  const axisCells: { key: SpouseAxisKey; label: string; score: number; band: string }[] = [
-    { key: "wealthAttr", label: SPOUSE_AXIS_LABEL.wealthAttr, score: scores.wealthAttr, band: wB },
-    { key: "stability", label: SPOUSE_AXIS_LABEL.stability, score: scores.stability, band: sB },
-    { key: "charm", label: SPOUSE_AXIS_LABEL.charm, score: scores.charm, band: cB },
+  const pB = spouseStructureAxisBand(scores.practical);
+  const eB = spouseStructureAxisBand(scores.emotional);
+  const iB = spouseStructureAxisBand(scores.image);
+  const axisCells: { key: SpouseStructureAxisKey; label: string; score: number; band: string }[] = [
+    { key: "practical", label: SPOUSE_STRUCTURE_AXIS_LABEL.practical, score: scores.practical, band: pB },
+    { key: "emotional", label: SPOUSE_STRUCTURE_AXIS_LABEL.emotional, score: scores.emotional, band: eB },
+    { key: "image", label: SPOUSE_STRUCTURE_AXIS_LABEL.image, score: scores.image, band: iB },
   ];
-  const useNow = spouseUseNowNarrative(wB, sB, cB);
-  const spouseSynth = buildSpouseSynthesis(wB, sB, cB, useNow);
+  const useNow = spouseUseNowNarrative(pB, eB, iB);
+  const spouseSynth = buildSpouseStructureSynthesis(pB, eB, iB, useNow);
   const openBand = openAxis ? axisCells.find((c) => c.key === openAxis)?.band : null;
 
-  function toggleAxis(key: SpouseAxisKey) {
+  const axisDetailCtx = {
+    wAct: scores.wAct,
+    oAct: scores.oAct,
+    sPal: scores.sPal,
+    stressPen: scores.stressPen,
+    emotionalLoad: scores.emotionalLoad,
+    sikCount: scores.sikCount,
+    injCount: scores.injCount,
+  };
+
+  const openTypeLabel =
+    openAxis && openBand
+      ? openAxis === "practical"
+        ? spousePracticalTypeLabel(openBand, scores.wAct, scores.oAct, scores.sPal)
+        : openAxis === "emotional"
+          ? spouseEmotionalTypeLabel(openBand, scores.injCount, scores.sikCount, scores.emotionalLoad)
+          : spouseImageTypeLabel(
+              openBand,
+              shinsalNames.has("도화"),
+              shinsalNames.has("홍염"),
+              metalWaterRatio,
+            )
+      : null;
+
+  function toggleAxis(key: SpouseStructureAxisKey) {
     setOpenAxis((prev) => (prev === key ? null : key));
   }
 
@@ -3493,8 +3664,11 @@ function YuanSpouseStructureCard({
         </dl>
       </div>
       <div className="mt-2 flex flex-wrap items-baseline gap-x-1 gap-y-0">
-        <span className="text-[13px] font-semibold text-foreground">배우자 구조 점수</span>
+        <span className="text-[13px] font-semibold text-foreground">구조 축 점수</span>
       </div>
+      <p className="mt-1 text-[10px] leading-snug text-muted-foreground">
+        배우자궁·십성·지지 관계·오행·신살을 합산한 3축입니다. 칸을 누르면 유형과 세부 해석이 펼쳐집니다.
+      </p>
       <div className="mt-2.5 grid grid-cols-3 gap-2">
         {axisCells.map(({ key, label, score, band }) => {
           const sel = openAxis === key;
@@ -3509,7 +3683,7 @@ function YuanSpouseStructureCard({
             >
               <span className={sel ? tr.labelOn : tr.labelOff}>{label}</span>
               <p className="text-[9px] leading-snug text-muted-foreground line-clamp-4 min-h-[2.5rem]">
-                {SPOUSE_AXIS_ONE_LINE[key]}
+                {SPOUSE_STRUCTURE_AXIS_ONE_LINE[key]}
               </p>
               <span className={sel ? tr.scoreOn : tr.scoreOff}>{score}</span>
               <span
@@ -3524,24 +3698,22 @@ function YuanSpouseStructureCard({
           );
         })}
       </div>
-      {openAxis != null && openBand != null ? (
+      {openAxis != null && openBand != null && openTypeLabel ? (
         <div className={tr.expandBox} role="region" aria-live="polite">
           <p className={tr.expandTitle}>
-            {SPOUSE_AXIS_LABEL[openAxis]}{" "}
+            {SPOUSE_STRUCTURE_AXIS_LABEL[openAxis]}{" "}
             <span className={tr.expandBand}>({openBand})</span>
           </p>
+          <p className="mt-1 text-[11px] font-semibold text-rose-900/90">유형: {openTypeLabel}</p>
           <p className="mt-1.5 text-[12px] leading-relaxed text-foreground whitespace-pre-line">
-            {getSpouseAxisDetail(openAxis, openBand, useNow)}
+            {getSpouseStructureAxisDetail(openAxis, openBand, useNow, axisDetailCtx)}
           </p>
         </div>
       ) : null}
       <div className={tr.synthBox}>
         <p className={tr.synthTitle}>종합 배우자 구조 분석</p>
-        {spouseSynth.paragraphs.map((p, i) => (
-          <p key={i} className="mt-1.5 text-[12px] leading-relaxed text-foreground">
-            {p}
-          </p>
-        ))}
+        <p className="mt-1.5 text-[12px] leading-relaxed text-foreground">{spouseSynth.paragraph1}</p>
+        <p className="mt-1.5 text-[12px] leading-relaxed text-foreground">{spouseSynth.paragraph2}</p>
       </div>
       <p className={tr.foot}>
         구조는 원국 경향이며, 실제 인연은 선택과 소통에 따라 달라질 수 있어요.
