@@ -327,6 +327,10 @@ export function buildPersonClipboardText(record: PersonRecord): string {
     if (p) lines.push(`  ${PILLAR_LABELS[key]}: ${p.hangul}`);
   }
   lines.push("");
+  if (!pipelineSnapshot) {
+    lines.push("[경고] 파이프라인 스냅샷을 만들지 못했습니다. 구조 재물·7영역 등 클립보드 블록이 생략될 수 있습니다.");
+    lines.push("");
+  }
 
   // 일간
   lines.push(`[일간]`);
@@ -360,7 +364,7 @@ export function buildPersonClipboardText(record: PersonRecord): string {
     const o = evaluations.officerActivation;
     const s = evaluations.spousePalaceStability;
     const w = evaluations.wealthActivation;
-    lines.push(`[관계·재물 작동 점수]`);
+    lines.push(`[관계·재물 구조 지표]`);
     lines.push("");
     lines.push(`관성 작동 점수:`);
     lines.push(`${fmt2(o.score)}`);
@@ -370,7 +374,7 @@ export function buildPersonClipboardText(record: PersonRecord): string {
     lines.push(`${fmt2(s.score)}`);
     lines.push(`(${s.grade})`);
     lines.push("");
-    lines.push(`재성 작동 점수:`);
+    lines.push(`재물운 종합 점수(채널·감당·축적 결합):`);
     lines.push(`${fmt2(w.score)}`);
     lines.push(`(${w.grade})`);
     lines.push("");
@@ -380,8 +384,28 @@ export function buildPersonClipboardText(record: PersonRecord): string {
     lines.push(`배우자궁 요약:`);
     lines.push(`${s.summary}`);
     lines.push("");
-    lines.push(`재성 요약:`);
+    lines.push(`재물운 요약:`);
     lines.push(`${w.summary}`);
+    lines.push("");
+  }
+
+  const wStruct = pipelineSnapshot?.structureDomains?.wealth;
+  if (wStruct) {
+    lines.push(`[구조 기반 재물운 (화면 요약과 동일)]`);
+    lines.push("");
+    lines.push(`최종 재물운: ${wStruct.score}점`);
+    lines.push(`유형: ${wStruct.classification}`);
+    if (wStruct.wealthAxes) {
+      lines.push(`보조·재물 채널: ${wStruct.wealthAxes.channelScore}점`);
+      lines.push(`재물 감당력: ${wStruct.wealthAxes.capacityScore}점`);
+      lines.push(`재물 축적력: ${wStruct.wealthAxes.accumulationScore}점`);
+    } else {
+      lines.push(`(세부 채널·감당·축적 필드 없음 — 앱/엔진 최신화 필요)`);
+    }
+    lines.push("");
+    lines.push(
+      "재물 채널이 강하더라도 실제 감당력과 축적력에 따라 체감은 달라질 수 있습니다.",
+    );
     lines.push("");
   }
 
@@ -393,7 +417,7 @@ export function buildPersonClipboardText(record: PersonRecord): string {
     lines.push(`${fmt2(timingActivation.officerActivationNow)}`);
     lines.push(`(${timingActivation.officerActivationTrend})`);
     lines.push("");
-    lines.push(`현재 재성 활성도:`);
+    lines.push(`현재 재물운 활성도(종합·timing):`);
     lines.push(`${fmt2(timingActivation.wealthActivationNow)}`);
     lines.push(`(${timingActivation.wealthActivationTrend})`);
     lines.push("");
@@ -401,6 +425,44 @@ export function buildPersonClipboardText(record: PersonRecord): string {
     lines.push(`${fmt2(timingActivation.spousePalaceStabilityNow)}`);
     lines.push(`(${timingActivation.spouseActivationTrend})`);
     lines.push("");
+  }
+
+  const structureDomains = pipelineSnapshot?.structureDomains;
+  if (structureDomains) {
+    lines.push(`[구조 기반 7영역 점수]`);
+    lines.push(
+      "각 영역은 단순 존재 가산이 아니라 작동력·감당력·안정성 등 구조 가중·결합(예: 재물운=세 축 기하평균)으로 산출됩니다.",
+    );
+    lines.push("");
+    const domainOrder = [
+      structureDomains.wealth,
+      structureDomains.career,
+      structureDomains.honor,
+      structureDomains.social,
+      structureDomains.romance,
+      structureDomains.health,
+      structureDomains.execution,
+    ] as const;
+    for (const d of domainOrder) {
+      if (d.domainKey === "wealth" && d.wealthAxes) {
+        lines.push(`${d.labelKo} — 최종(메인) ${d.score}점 · 기하평균(채널×감당×축적)`);
+        lines.push(`  재물 유형: ${d.classification}`);
+        lines.push(`  보조·재물 채널(작동 통로): ${d.wealthAxes.channelScore}점`);
+        lines.push(`  재물 감당력: ${d.wealthAxes.capacityScore}점`);
+        lines.push(`  재물 축적력: ${d.wealthAxes.accumulationScore}점`);
+      } else {
+        lines.push(`${d.labelKo} ${d.score}점`);
+        lines.push(`  구조 유형: ${d.classification}`);
+      }
+      lines.push(`  작동 요소:`);
+      if (d.workingFactors.length === 0) lines.push(`    · (해당 문구 없음)`);
+      else for (const x of d.workingFactors) lines.push(`    · ${x}`);
+      lines.push(`  감점 요소:`);
+      if (d.demeritFactors.length === 0) lines.push(`    · (해당 문구 없음)`);
+      else for (const x of d.demeritFactors) lines.push(`    · ${x}`);
+      lines.push(`  요약: ${d.summary}`);
+      lines.push("");
+    }
   }
 
   // 대표 요약 (화면 해석 핵심)
@@ -560,13 +622,14 @@ export function buildPersonClipboardText(record: PersonRecord): string {
   lines.push(`[엔진 계산 기준]`);
   lines.push("");
   lines.push("strengthDebug: enabled");
-  lines.push("relationshipWealthEvaluations: enabled");
+  lines.push("structureDomainScores: enabled (7 domains, structure-weighted)");
+  lines.push("relationshipWealthEvaluations: derived from structureDomains");
   lines.push("timingActivation: enabled");
   lines.push("");
-  lines.push("engineVersion: structure-v1.3-strength+evaluation+timing");
+  lines.push("engineVersion: structure-v1.5-wealth-ui+clipboard-summary");
   lines.push("");
   lines.push("본 분석에는 강약 보정(설기·음간 포함),");
-  lines.push("관계·재물 작동 점수,");
+  lines.push("관계·재물 구조 지표(재물운=종합),");
   lines.push("대운·세운 활성화 가중이 적용되었습니다.");
 
   // ── debug anchor (append-only: 기존 payload 순서·필드 유지) ─────────

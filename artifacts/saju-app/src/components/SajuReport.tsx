@@ -35,6 +35,7 @@ import type { SajuProfile } from "@/lib/sajuEngine";
 import { getFinalPillars, getMyProfile, getPeople, saveManualShinsal, saveExcludedAutoShinsal, saveMaritalStatus, updatePersonRecord } from "@/lib/storage";
 import { upsertMyProfile, upsertPartnerProfile } from "@/lib/db";
 import { useAuth } from "@/lib/authContext";
+import { computePersonPipelineSnapshot } from "@/lib/personPipelineSnapshot";
 import { computeSajuPipeline } from "@/lib/sajuPipeline";
 import {
   charToElement,
@@ -127,6 +128,7 @@ import {
   getMarriageTimingHint,
   getRelationshipPattern,
 } from "@/lib/relationshipReport";
+import type { DomainScoreResult } from "@/lib/evaluations/structureDomainScores";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Clock,
@@ -2707,6 +2709,110 @@ function ReportAtAGlanceCard({
   );
 }
 
+// ── 구조 기반 재물운(요약 카드) ─────────────────────────────────────
+
+function wealthChannelBand(score: number): string {
+  if (score >= 72) return "높음";
+  if (score >= 56) return "중상";
+  if (score >= 46) return "중";
+  return "낮음";
+}
+
+function wealthCapacityBand(score: number): string {
+  if (score >= 68) return "양호";
+  if (score >= 60) return "보통";
+  return "낮음";
+}
+
+function wealthAccumulationBand(score: number): string {
+  if (score >= 52) return "보통";
+  return "낮음";
+}
+
+function clampWealthAxisFallback(n: number): number {
+  if (!Number.isFinite(n)) return 50;
+  return Math.max(0, Math.min(100, Math.round(n)));
+}
+
+/** 원국·성격 탭 공통 — 최종/유형/채널·감당·축적 요약(검증·보조 노출) */
+function StructureWealthBriefCard({
+  wealth,
+  context,
+  hideDuplicateHeading = false,
+}: {
+  wealth: DomainScoreResult;
+  context: "yuan" | "personality";
+  /** 성격 탭 AccSection 제목과 겹치지 않게 내부 머리글 숨김 */
+  hideDuplicateHeading?: boolean;
+}) {
+  if (wealth.domainKey !== "wealth") return null;
+  /** wealthAxes 누락 시에도 카드가 사라지지 않도록(구버전 번들·예외 경로 대비) */
+  const ax = wealth.wealthAxes ?? {
+    channelScore: clampWealthAxisFallback(wealth.score),
+    capacityScore: clampWealthAxisFallback(wealth.score),
+    accumulationScore: clampWealthAxisFallback(wealth.score),
+  };
+  const axesAreFallback = !wealth.wealthAxes;
+  const ch = wealthChannelBand(ax.channelScore);
+  const ca = wealthCapacityBand(ax.capacityScore);
+  const ac = wealthAccumulationBand(ax.accumulationScore);
+  return (
+    <div
+      className={cn(
+        "rounded-xl border px-3 py-2.5 shadow-none",
+        context === "yuan"
+          ? "border-emerald-200/55 bg-emerald-50/20"
+          : hideDuplicateHeading
+            ? "border-emerald-100/60 bg-emerald-50/15"
+            : "border-emerald-200/45 bg-emerald-50/15",
+      )}
+    >
+      {!hideDuplicateHeading ? (
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-wide text-emerald-800/90">구조 기반 재물운</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">
+              {context === "yuan" ? "원국 · 구조 요약" : "검증용 · 최종 해석값"}
+            </p>
+          </div>
+        </div>
+      ) : (
+        <p className="text-[10px] text-muted-foreground mb-1">최종 점수·유형·채널/감당/축적 (클립보드와 동일 출처)</p>
+      )}
+      {axesAreFallback ? (
+        <p className="mt-1 text-[10px] text-amber-800/90 bg-amber-50/80 border border-amber-100 rounded px-2 py-1 leading-snug">
+          채널·감당·축적 세부치는 이 빌드에서 누락되어 최종 점수로 대체 표시했습니다. 앱을 최신으로 갱신해 주세요.
+        </p>
+      ) : null}
+      <div className="mt-2 flex flex-wrap items-baseline gap-2">
+        <span className="text-2xl font-black tabular-nums leading-none text-emerald-700">{wealth.score}</span>
+        <span className="text-[12px] font-medium text-emerald-900/85">점 · 최종 재물운</span>
+      </div>
+      <p className="mt-1.5 text-[13px] font-semibold text-foreground leading-snug">{wealth.classification}</p>
+      <div className="mt-2 grid grid-cols-3 gap-1.5 text-center">
+        <div className="rounded-md border border-emerald-100/70 bg-white/55 px-1 py-1.5">
+          <p className="text-[10px] text-muted-foreground">채널</p>
+          <p className="text-[12px] font-bold tabular-nums text-foreground">{ax.channelScore}</p>
+          <p className="text-[10px] font-semibold text-emerald-800">{ch}</p>
+        </div>
+        <div className="rounded-md border border-emerald-100/70 bg-white/55 px-1 py-1.5">
+          <p className="text-[10px] text-muted-foreground">감당</p>
+          <p className="text-[12px] font-bold tabular-nums text-foreground">{ax.capacityScore}</p>
+          <p className="text-[10px] font-semibold text-emerald-800">{ca}</p>
+        </div>
+        <div className="rounded-md border border-emerald-100/70 bg-white/55 px-1 py-1.5">
+          <p className="text-[10px] text-muted-foreground">축적</p>
+          <p className="text-[12px] font-bold tabular-nums text-foreground">{ax.accumulationScore}</p>
+          <p className="text-[10px] font-semibold text-emerald-800">{ac}</p>
+        </div>
+      </div>
+      <p className="mt-2 border-t border-border/50 pt-2 text-[11px] leading-snug text-muted-foreground">
+        재물 채널이 강하더라도 실제 감당력과 축적력에 따라 체감은 달라질 수 있습니다.
+      </p>
+    </div>
+  );
+}
+
 // ── Main Report ────────────────────────────────────────────────────
 
 const STEM_RELATION_TYPES = new Set(["천간합", "천간충"]);
@@ -3109,6 +3215,17 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
       timingSeunHangul: seunEntry?.ganZhi.hangul,
     });
   }, [effectiveFiveElements, effectivePillars, luckCycles, input.year, record.manualStrengthLevel, record.manualYongshinData, fortuneOpts?.seasonalAdjustmentOff]);
+
+  /** 화면·클립보드 정합: 메인 파이프라인에 structureDomains가 없을 때(구번들) 스냅샷으로 재시도 */
+  const structureWealthDomain = useMemo(() => {
+    const fromPipe = sajuPipelineResult?.structureDomains?.wealth;
+    if (fromPipe) return fromPipe;
+    try {
+      return computePersonPipelineSnapshot(record, { daewoonSuOpts })?.structureDomains?.wealth ?? null;
+    } catch {
+      return null;
+    }
+  }, [sajuPipelineResult, record, daewoonSuOpts]);
 
   const ruleInsights = sajuPipelineResult?.interpretation.ruleInsights ?? [];
   const structureType = sajuPipelineResult?.interpretation.structureType ?? "";
@@ -3722,6 +3839,10 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
             />
           )}
 
+          {structureWealthDomain ? (
+            <StructureWealthBriefCard wealth={structureWealthDomain} context="yuan" />
+          ) : null}
+
           <div className="rounded-lg border border-border/60 bg-muted/15 px-3 py-2.5 text-[12px] leading-relaxed text-muted-foreground">
             <span className="font-semibold text-foreground">원국</span>은 표와 오행·십성의{" "}
             <span className="font-semibold text-foreground">구조(숫자·배치)</span>를 보는 탭입니다. 문장으로 풀어 쓴 기질·행동 해석은{" "}
@@ -4246,11 +4367,19 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                   </p>
                 )}
                 {sajuPipelineResult?.evaluations && (
-                  <p className="mt-1.5 text-[12px] text-muted-foreground leading-relaxed">
-                    원국 구조 지표: 관성 {sajuPipelineResult.evaluations.officerActivation.grade} · 배우자궁{" "}
-                    {sajuPipelineResult.evaluations.spousePalaceStability.grade} · 재성{" "}
-                    {sajuPipelineResult.evaluations.wealthActivation.grade}
-                  </p>
+                  <div className="mt-2 space-y-1 border-t border-border/50 pt-2">
+                    <p className="text-[11px] text-muted-foreground leading-relaxed">
+                      파생 등급(타이밍·호환 레이어): 관성 {sajuPipelineResult.evaluations.officerActivation.grade} · 배우자궁{" "}
+                      {sajuPipelineResult.evaluations.spousePalaceStability.grade}
+                      <span className="text-muted-foreground/85">
+                        {" "}
+                        · 재물 관련 등급 {sajuPipelineResult.evaluations.wealthActivation.grade}
+                      </span>
+                    </p>
+                    <p className="text-[10px] leading-snug text-muted-foreground/90">
+                      재물의 대표값은 이 탭에서 십성 분포 아래·배우자궁 바로 위 「구조 기반 재물운」카드의 최종 점수·유형입니다. 위 등급만으로 ‘돈복’을 단정하지 않도록 보조 정보로 두었습니다.
+                    </p>
+                  </div>
                 )}
               </div>
             </div>
@@ -4397,6 +4526,29 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">일간 정보가 없습니다</p>
+            )}
+          </AccSection>
+
+          <AccSection
+            title="구조 기반 재물운"
+            defaultOpen
+            id="personality-structure-wealth"
+            titleExtra={
+              <span className="text-[9px] font-semibold text-emerald-800 bg-emerald-50/90 px-1.5 py-0.5 rounded-md border border-emerald-200/80 whitespace-nowrap shrink-0">
+                최종·3축
+              </span>
+            }
+          >
+            {structureWealthDomain ? (
+              <StructureWealthBriefCard
+                wealth={structureWealthDomain}
+                context="personality"
+                hideDuplicateHeading
+              />
+            ) : (
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                구조 재물 데이터를 불러오지 못했습니다. 앱·웹을 최신 빌드로 갱신하거나 저장 공간 캐시를 비운 뒤 다시 열어 주세요.
+              </p>
             )}
           </AccSection>
 
@@ -4549,6 +4701,17 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
               </div>
             </AccSection>
           )}
+
+          <div className="rounded-lg border border-dashed border-border/70 bg-muted/10 px-3 py-2">
+            <CopyButton
+              buildText={() => buildPersonClipboardText(record)}
+              label="사주 분석 전체 복사 (구조 재물·7영역 포함)"
+            />
+            <p className="mt-1.5 text-[10px] text-muted-foreground leading-snug">
+              원국 탭과 동일한 클립보드입니다. 복사본 하단 엔진 메타에{" "}
+              <span className="font-mono">structure-v1.5-wealth-ui+clipboard-summary</span>가 보이면 최신입니다.
+            </p>
+          </div>
         </div>
       )}
 
@@ -4592,13 +4755,16 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
                   </span>
                 </p>
                 <p>
-                  <span className="font-semibold text-foreground">재성(현실·재물)</span> 지금{" "}
+                  <span className="font-semibold text-foreground">재물운(종합·timing)</span> 지금{" "}
                   {sajuPipelineResult.timingActivation.wealthActivationNow}점 · 추세{" "}
                   {sajuPipelineResult.timingActivation.wealthActivationTrend}
                   <span className="text-muted-foreground">
                     {" "}
-                    (원국 {sajuPipelineResult.evaluations.wealthActivation.grade})
+                    (원국 종합 {sajuPipelineResult.evaluations.wealthActivation.grade})
                   </span>
+                </p>
+                <p className="text-[11px] text-muted-foreground pl-0.5">
+                  원국 종합은 재물 채널·감당·축적의 결합값이며, 재성 작동만을 뜻하지 않습니다. 세 축은 원국 탭 재물 카드를 참고하세요.
                 </p>
                 <p>
                   <span className="font-semibold text-foreground">배우자궁 안정</span> 지금{" "}

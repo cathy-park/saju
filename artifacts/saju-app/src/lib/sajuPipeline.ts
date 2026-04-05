@@ -38,10 +38,12 @@ import {
   type GukgukResult,
   type StructurePattern,
 } from "./gukguk";
+import type { RelationshipWealthEvaluations } from "./evaluations/relationshipWealthEvaluation";
 import {
-  computeRelationshipWealthEvaluations,
-  type RelationshipWealthEvaluations,
-} from "./evaluations/relationshipWealthEvaluation";
+  computeStructureDomainScores,
+  deriveRelationshipWealthEvaluationsFromDomains,
+  type StructureDomainScoreReport,
+} from "./evaluations/structureDomainScores";
 import {
   computeLuckTimingActivation,
   type TimingActivationResult,
@@ -443,8 +445,10 @@ export interface SajuPipelineResult {
   adjusted: AdjustedStructure; // Layer 3
   interpretation: InterpretationResult; // Layer 4
   diagnostics: EngineDiagnostics;
-  /** 원국 기반 보조 지표(관성·배우자궁·재성) — 강약/격국/용신과 분리 */
+  /** 원국 기반 보조 지표(관성·배우자궁·재성) — 구조 7영역에서 도출 */
   evaluations: RelationshipWealthEvaluations;
+  /** 구조 기반 7영역(재물·커리어·명예·인간관계·연애·건강·실행력) */
+  structureDomains: StructureDomainScoreReport;
   /** 대운·세운 가중 활성화(원국 evaluations는 변경하지 않음) */
   timingActivation: TimingActivationResult;
 }
@@ -471,23 +475,19 @@ export function computeSajuPipeline(input: PipelineInput): SajuPipelineResult {
   const interpretation = buildInterpretationResult(input, adjusted);
   const strength = adjusted.strengthResult;
 
-  const evaluations = computeRelationshipWealthEvaluations({
-    dayStem: input.dayStem,
-    dayBranch: input.dayBranch,
-    monthBranch: input.monthBranch,
-    allStems: input.allStems,
-    allBranches: input.allBranches,
-    effectiveFiveElements: input.effectiveFiveElements,
-    yongshinPrimary: adjusted.effectiveYongshin,
-    yongshinSecondary: adjusted.effectiveYongshinSecondary,
-    dayPillarHangul:
-      input.dayStem && input.dayBranch ? `${input.dayStem}${input.dayBranch}` : undefined,
-    tenGodGroups: base.tenGodGroups,
+  const structureDomains = computeStructureDomainScores({
+    input,
+    base,
+    adjusted,
+    interpretation,
   });
+  const evaluations = deriveRelationshipWealthEvaluationsFromDomains(structureDomains);
 
   if (isDevRuntime()) {
     // eslint-disable-next-line no-console
-    console.log("[evaluations: relationship-wealth]", evaluations);
+    console.log("[structureDomains]", structureDomains);
+    // eslint-disable-next-line no-console
+    console.log("[evaluations: derived from structureDomains]", evaluations);
   }
 
   const timingActivation = computeLuckTimingActivation(
@@ -539,5 +539,5 @@ export function computeSajuPipeline(input: PipelineInput): SajuPipelineResult {
       reason: interpretation.seasonalNote,
     },
   };
-  return { input, base, adjusted, interpretation, diagnostics, evaluations, timingActivation };
+  return { input, base, adjusted, interpretation, diagnostics, evaluations, structureDomains, timingActivation };
 }
