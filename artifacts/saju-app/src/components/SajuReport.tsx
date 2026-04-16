@@ -5842,7 +5842,7 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
             </div>
           )}
 
-          <CopyButton buildText={() => buildPersonClipboardText(record)} label="사주 분석 전체 복사" />
+          <CopyButton buildText={() => buildPersonClipboardText(record, hourMode)} label="사주 분석 전체 복사" />
         </div>
       )}
 
@@ -6193,7 +6193,7 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
             </AccSection>
           )}
 
-          <CopyButton buildText={() => buildPersonClipboardText(record)} label="사주 분석 전체 복사" />
+          <CopyButton buildText={() => buildPersonClipboardText(record, hourMode)} label="사주 분석 전체 복사" />
         </div>
       )}
 
