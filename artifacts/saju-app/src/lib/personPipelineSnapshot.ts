@@ -12,9 +12,12 @@ import { computeSajuPipeline, type SajuPipelineResult } from "./sajuPipeline";
 
 export function computePersonPipelineSnapshot(
   record: PersonRecord,
-  opts?: { daewoonSuOpts?: DaewoonSuOpts },
+  opts?: { daewoonSuOpts?: DaewoonSuOpts; hourMode?: "포함" | "제외" | "비교" },
 ): SajuPipelineResult | null {
-  const pillars = getFinalPillars(record);
+  const fullPillars = getFinalPillars(record);
+  const hourMode = opts?.hourMode ?? "포함";
+  const pillars =
+    hourMode === "제외" ? { ...fullPillars, hour: null as typeof fullPillars.hour } : fullPillars;
   const dayStem = pillars.day?.hangul?.[0] ?? "";
   if (!dayStem) return null;
 

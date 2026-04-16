@@ -5317,6 +5317,38 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
       {/* ── 탭 1: 원국 ── */}
       {reportTab === "원국" && (
         <div className="space-y-3">
+          {/* 사주팔자 — 항상 표시 (원국 탭 최상단으로 이동) */}
+          <PillarTable
+            pillars={pillarData}
+            dayStem={dayStem}
+            shinsalBranchItems={shinsalBranchItems}
+            shinsalPerColumn={dayStem && dayBranch ? shinsalPerColumn : undefined}
+            selectedShinsalId={yuanGuoInlineDetail?.kind === "shinsal" ? yuanGuoInlineDetail.id : null}
+            onShinsalSelect={
+              dayStem && dayBranch
+                ? (id) =>
+                    setYuanGuoInlineDetail((prev) =>
+                      prev?.kind === "shinsal" && prev.id === id ? null : { kind: "shinsal", id },
+                    )
+                : undefined
+            }
+          />
+
+          {yuanGuoInlineDetail?.kind === "shinsal" && selectedShinsalEntry ? (
+            <SelectedShinsalInlineCard
+              layout="panel"
+              entry={selectedShinsalEntry}
+              onClose={() => setYuanGuoInlineDetail(null)}
+              onMore={() =>
+                setInfoSheet({
+                  kind: "shinsal",
+                  name: selectedShinsalEntry.name,
+                  source: "auto",
+                  trigger: selectedShinsalEntry.triggerDetail || undefined,
+                })
+              }
+            />
+          ) : null}
           {dayStem && sajuPipelineResult && (
             <ReportAtAGlanceCard
               dayStem={dayStem}
@@ -5370,39 +5402,6 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
             <span className="font-semibold text-foreground">구조(숫자·배치)</span>를 보는 탭입니다. 문장으로 풀어 쓴 기질·행동 해석은{" "}
             <span className="font-semibold text-foreground">성격 해석</span> 탭을 이용하세요.
           </div>
-
-          {/* 사주팔자 — 항상 표시 */}
-          <PillarTable
-            pillars={pillarData}
-            dayStem={dayStem}
-            shinsalBranchItems={shinsalBranchItems}
-            shinsalPerColumn={dayStem && dayBranch ? shinsalPerColumn : undefined}
-            selectedShinsalId={yuanGuoInlineDetail?.kind === "shinsal" ? yuanGuoInlineDetail.id : null}
-            onShinsalSelect={
-              dayStem && dayBranch
-                ? (id) =>
-                    setYuanGuoInlineDetail((prev) =>
-                      prev?.kind === "shinsal" && prev.id === id ? null : { kind: "shinsal", id },
-                    )
-                : undefined
-            }
-          />
-
-          {yuanGuoInlineDetail?.kind === "shinsal" && selectedShinsalEntry ? (
-            <SelectedShinsalInlineCard
-              layout="panel"
-              entry={selectedShinsalEntry}
-              onClose={() => setYuanGuoInlineDetail(null)}
-              onMore={() =>
-                setInfoSheet({
-                  kind: "shinsal",
-                  name: selectedShinsalEntry.name,
-                  source: "auto",
-                  trigger: selectedShinsalEntry.triggerDetail || undefined,
-                })
-              }
-            />
-          ) : null}
 
           {dayStem && dayBranch && shinsalComboNotes.length > 0 ? (
             <div>

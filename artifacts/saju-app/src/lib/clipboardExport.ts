@@ -165,9 +165,16 @@ const STEM_EL: Record<string, string> = {
 
 // ── 개인 사주 전체 텍스트 빌드 ─────────────────────────────────────
 
-export function buildPersonClipboardText(record: PersonRecord): string {
+export function buildPersonClipboardText(
+  record: PersonRecord,
+  hourMode: "포함" | "제외" | "비교" = "포함",
+): string {
   const input = record.birthInput;
-  const pillars = getFinalPillars(record);
+  const fullPillars = getFinalPillars(record);
+  const excludeHour = hourMode === "제외";
+  const pillars = excludeHour
+    ? { ...fullPillars, hour: null as typeof fullPillars.hour }
+    : fullPillars;
 
   const dayStem   = pillars.day?.hangul?.[0] ?? "";
   const dayBranch = pillars.day?.hangul?.[1] ?? "";
@@ -191,7 +198,10 @@ export function buildPersonClipboardText(record: PersonRecord): string {
   const seunForCurrentYear =
     luckCycles.seun.find((e) => e.year === refYear) ?? luckCycles.seun[2];
 
-  const pipelineSnapshot = computePersonPipelineSnapshot(record, { daewoonSuOpts });
+  const pipelineSnapshot = computePersonPipelineSnapshot(record, {
+    daewoonSuOpts,
+    hourMode,
+  });
 
   const geokguk = pipelineSnapshot?.interpretation.gukguk?.name ?? "불명";
 
@@ -310,7 +320,7 @@ export function buildPersonClipboardText(record: PersonRecord): string {
   lines.push("본 데이터는 구조 중심 해석 기준(anchor)이 포함된 분석 payload입니다.");
   lines.push("일반적인 사주 설명 대신 구조 기준 유지 해석을 요청합니다.");
   lines.push(`생년월일: ${input.year}년 ${input.month}월 ${input.day}일 (${input.calendarType === "solar" ? "양력" : "음력"})`);
-  if (!input.timeUnknown && input.hour != null) {
+  if (!excludeHour && !input.timeUnknown && input.hour != null) {
     lines.push(`출생시: ${String(input.hour).padStart(2, "0")}:${String(input.minute ?? 0).padStart(2, "0")}`);
   } else {
     lines.push(`출생시: 미상`);
@@ -738,7 +748,7 @@ export function buildCompatibilityClipboardText(
 
   // 각 사람의 개인 사주 데이터 (간략)
   for (const person of [person1, person2]) {
-    lines.push(buildPersonClipboardText(person));
+    lines.push(buildPersonClipboardText(person, "포함")); // 궁합은 항상 포함 기준으로 간략 추가
     lines.push("");
   }
 
