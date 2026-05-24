@@ -52,3 +52,4 @@ attached_assets/*.zip
 # Backup Files
 *.bak
 
+.vercel
