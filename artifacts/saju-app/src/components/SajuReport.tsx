@@ -39,6 +39,7 @@ import { computePersonPipelineSnapshot } from "@/lib/personPipelineSnapshot";
 import { computeSajuPipeline } from "@/lib/sajuPipeline";
 import { charToElement, elementBgClass, elementBorderClass, elementChipColors, elementColorVar, elementHslAlpha, elementTextClass, getTenGodGroup, getController, STEM_TO_ELEMENT, BRANCH_TO_ELEMENT, type ElementTone, type FiveElKey } from "@/lib/element-color";
 import { buildPersonClipboardText } from "@/lib/clipboardExport";
+import { CopyButton } from "@/components/CopyButton";
 import { ShinsalCombinationsCard } from "@/components/ShinsalInterpretationSection";
 import { TodayFortuneCard } from "@/components/TodayFortuneCard";
 import {

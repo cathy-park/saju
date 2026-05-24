@@ -200,8 +200,8 @@ export async function fetchMyProfile(userId: string): Promise<PersonRecord | nul
 }
 
 export async function upsertMyProfile(userId: string, record: PersonRecord): Promise<void> {
-  const { error } = await supabase
-    .from("my_saju_profiles")
+  const { error } = await (supabase
+    .from("my_saju_profiles") as any)
     .upsert(toMyProfilePayload(userId, record), { onConflict: "id" });
   if (error) {
     console.error("[db] upsertMyProfile:", error);
@@ -237,8 +237,8 @@ export async function fetchPartnerProfiles(userId: string): Promise<PersonRecord
 }
 
 export async function upsertPartnerProfile(userId: string, record: PersonRecord): Promise<void> {
-  const { error } = await supabase
-    .from("partner_profiles")
+  const { error } = await (supabase
+    .from("partner_profiles") as any)
     .upsert(toPartnerPayload(userId, record), { onConflict: "id" });
   if (error) {
     console.error("[db] upsertPartnerProfile:", error);
@@ -261,7 +261,7 @@ export async function upsertUserProfile(user: {
   email?: string | null;
   user_metadata?: Record<string, unknown>;
 }): Promise<void> {
-  const { error } = await supabase.from("profiles").upsert({
+  const { error } = await (supabase.from("profiles") as any).upsert({
     id:         user.id,
     email:      user.email ?? null,
     full_name:  user.user_metadata?.full_name ?? null,

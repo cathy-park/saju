@@ -288,7 +288,7 @@ function checkOhaengVsEvaluations(input: EngineConsistencyInput): EngineConsiste
     reasons.push(`십성 분포상 관성 비중이 0에 가깝는데 officerActivation 점수는 ${o.score}입니다.`);
   }
   if (재 < 0.1 && w.score >= 58 && !w.negatives.some((n) => n.includes("재성") && (n.includes("약") || n.includes("부재")))) {
-    worst = worst === "논리 충돌" ? worst : "주의 필요";
+    worst = (worst as string) === "논리 충돌" ? worst : "주의 필요";
     reasons.push(`십성 분포상 재성 비중이 0에 가깝는데 wealthActivation 점수는 ${w.score}입니다.`);
   }
 
