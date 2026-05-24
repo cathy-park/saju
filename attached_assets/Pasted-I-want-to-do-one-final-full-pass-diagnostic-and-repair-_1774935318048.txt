@@ -1,0 +1,197 @@
+I want to do one final full-pass diagnostic and repair cycle for the core calculation engine.
+
+This is not a check-only task.
+I want a full workflow:
+
+diagnose
+→ identify mismatches
+→ trace root causes
+→ fix them
+→ retest
+→ report results
+
+My goal is:
+- about 90% automatic correctness by default
+- only minor optional manual correction
+- much closer alignment to standard manseoryeok results
+
+Right now major mismatches still remain in:
+- five elements
+- shinsal
+- shin-gang / shin-yak
+- Daewoon starting age / current Daewoon number
+- yongshin / secondary yongshin
+- and results become even less accurate when birth time is included
+
+This strongly suggests that some core correction layers are still missing, weak, or not properly connected.
+
+==================================================
+[1] Full diagnostic audit
+==================================================
+
+Please audit the full calculation pipeline and check whether the following are actually implemented and truly affecting final results:
+
+1. Exact solar-term boundary handling
+- precise 절입시각
+- correct month/day boundary logic
+- Korea timezone handling
+
+2. Hour pillar accuracy
+- hour branch boundary logic
+- Korea local time handling
+- birth location effect
+- 지역시 / 진태양시 / local solar time handling if applicable
+
+3. Daewoon calculation
+- Daewoon start age
+- current Daewoon number
+- forward/backward direction logic
+- exact solar-term based timing
+
+4. Combination-based element changes
+- 천간합
+- 지지합
+- 삼합
+- 방합
+- 충 / 형 / 파 / 해
+- whether they affect actual effective five-element values, not only text
+
+5. Hidden stems / rooting / support logic
+- 지장간
+- 통근
+- month command effects
+- stem support / branch support
+
+6. Seasonal adjustment
+- 조후 보정
+- whether it affects yongshin and interpretation
+
+7. Palace adjustment
+- 궁성 보정
+- whether it affects relationship / spouse / later-life interpretation
+
+8. Shin-gang / shin-yak logic
+- whether it is too simplified
+- whether month command, rooting, support, season, combinations are used
+
+9. Yongshin logic
+- whether it is based only on rough element shortage/excess
+- or on adjusted structure after shin-gang, 조후, combinations, palace logic
+
+10. Shinsal rules
+- whether current rules over-generate or miss important shinsal
+- whether rules differ too much from standard manseoryeok expectations
+
+==================================================
+[2] Find where the mismatch begins
+==================================================
+
+I do not want only a vague summary.
+
+Please identify the earliest stage where divergence from standard manseoryeok behavior most likely begins.
+
+For debugging, produce structured outputs for:
+
+- raw pillars
+- adjusted pillars
+- raw five elements
+- adjusted five elements
+- raw ten gods
+- adjusted ten gods
+- shin-gang reasoning factors
+- yongshin reasoning factors
+- applied combination rules
+- applied seasonal adjustment
+- applied palace adjustment
+- hour/time correction info
+- Daewoon calculation details
+
+==================================================
+[3] Auto-fix rule
+==================================================
+
+If any weak or missing correction layer is found,
+do NOT stop at reporting it.
+
+Automatically:
+1. identify the exact file and logic
+2. implement or strengthen the missing correction layer
+3. reconnect it to the actual effective calculation pipeline
+4. retest the result
+5. report whether mismatch was reduced
+
+This includes:
+- fixing stale/default calculation paths
+- fixing missing recalculation after hour inclusion
+- fixing any calculation layer that exists in text only but does not affect final values
+- fixing any simplified logic that is clearly causing major mismatch
+
+==================================================
+[4] Improve automatic accuracy first
+==================================================
+
+Do NOT focus on adding more manual editing first.
+Focus on making the default automatic calculation much closer to standard manseoryeok behavior.
+
+Manual correction should remain only as an exception layer.
+
+Recommended architecture:
+- auto_calculated_result
+- optional_user_override
+- final_effective_result
+
+==================================================
+[5] Optional advanced expert settings
+==================================================
+
+If not already present, add advanced calculation options that can improve compatibility with external manseoryeok standards.
+
+Examples:
+- use local solar time / true solar time
+- hour pillar include/exclude
+- seasonal adjustment on/off
+- palace adjustment on/off
+- conservative vs expanded shinsal rule set
+- Daewoon calculation mode
+- exact solar-term mode
+
+These should be expert options, not noisy default UI.
+
+==================================================
+[6] Verification checklist
+==================================================
+
+Please test and verify all of the following.
+If any item fails, automatically fix it and retest before reporting back.
+
+1. Five elements are closer to standard manseoryeok expectations
+2. Shinsal over-generation/mismatch is reduced
+3. Shin-gang / shin-yak logic is improved
+4. Yongshin / secondary yongshin logic is improved
+5. Daewoon start age is calculated correctly
+6. Current Daewoon number is calculated correctly
+7. Including birth time no longer makes results obviously worse
+8. Hour inclusion/exclusion triggers proper downstream recalculation
+9. Combination-based element changes affect final effective values
+10. Seasonal adjustment affects final logic where appropriate
+11. Palace adjustment affects final logic where appropriate
+12. No stale/default calculation path overrides the corrected result
+
+==================================================
+[7] Final report
+==================================================
+
+After diagnosis + fixes + retest, show me:
+
+1. which calculation layers were missing
+2. which layers existed but were not truly affecting results
+3. which files were changed
+4. where mismatch most likely began
+5. what was fixed first
+6. whether automatic accuracy improved
+7. what still remains imperfect, if anything
+8. whether the engine is now realistically moving toward the 90% automatic-correctness goal
+
+Important:
+Do NOT leave this as a diagnostic-only pass.
+If a problem is found, fix it in the same pass and verify it again before reporting back.

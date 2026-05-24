@@ -1,0 +1,46 @@
+There are two critical bugs in the saju app.
+
+[1] Some calculated saju fields are wrong
+Examples:
+- 천문성 should NOT appear in 살
+- 종용신 should NOT appear inside 용신
+
+This means the saju calculation result mapping is incorrect.
+Please inspect the calculation pipeline and the field mapping for derived saju result objects.
+
+Tasks:
+1. Find where 살/shinsal data is generated and mapped.
+2. Find where 용신 / 종용신 / 희신 / 기신 etc are assigned.
+3. Ensure 천문성 is only included when actually present by calculation logic.
+4. Ensure 종용신 is stored/displayed as a separate field and is NOT merged into 용신.
+5. Print the final normalized saju result object before save/render.
+
+[2] Manual edited saju data is not syncing and gets overwritten by auto-calculated data
+Current bug:
+- I manually edit my saju on PC
+- But on mobile, it syncs back to the old auto-calculated version
+- So user edits are being overwritten by automatic calculation or stale cache
+
+Please fix the data flow so manually edited data is the source of truth.
+
+Requirements:
+1. Distinguish clearly between:
+   - auto-calculated saju result
+   - manually edited saju result
+2. If a user edits and saves a profile, the saved edited result must be stored in Supabase.
+3. On app load/login/mobile open, fetch the saved profile from Supabase first.
+4. Do NOT automatically re-run saju calculation and overwrite saved edited values unless the user explicitly taps a recalculate button.
+5. Do NOT let local cache or old auto-generated payload overwrite newer saved edits from Supabase.
+6. If auto-calculation is needed only for first creation, run it only when there is no saved profile yet.
+7. After edit save, re-fetch the latest row from Supabase and update UI state.
+8. Ensure the same latest edited profile appears on both PC and mobile.
+
+Database/source-of-truth rule:
+- For logged-in users, Supabase saved profile must be the single source of truth.
+- Auto-calculation is only an initializer, not an always-on overwrite step.
+
+Please show me:
+- which file contains the auto-calculation overwrite bug
+- which file contains the save/edit sync logic
+- the final payload saved to Supabase
+- how you separated auto-generated data from user-edited data

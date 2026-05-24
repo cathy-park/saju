@@ -1,0 +1,151 @@
+The core calculation accuracy is still too far from standard manseoryeok results.
+
+Major mismatches still remain in:
+- five elements
+- shinsal
+- shin-gang / shin-yak
+- Daewoon starting age / current Daewoon number
+- yongshin / secondary yongshin
+
+And when birth time is included, results become even less accurate.
+This strongly suggests that key correction layers are still missing or not properly applied.
+
+I need a full calculation-engine audit and automatic accuracy improvement pass.
+
+==================================================
+[1] Audit missing or weak correction layers
+==================================================
+
+Please check whether the following are actually implemented and truly affecting calculations:
+
+1. stem/branch combination-based element changes
+   - 천간합
+   - 지지합
+   - 삼합
+   - 방합
+   - 충 / 형 / 파 / 해
+   - whether these affect the actual effective five-element result, not just interpretation text
+
+2. seasonal adjustment (조후 보정)
+   - whether seasonal climate balancing is applied
+   - whether it affects yongshin logic and interpretation
+
+3. palace adjustment (궁성 보정)
+   - whether palace-based interpretation adjustments are applied
+   - especially in relationship / spouse / later-life interpretation
+
+4. regional/local solar time correction
+   - whether 지역시 / 진태양시 / timezone-sensitive hour handling exists
+   - whether birth location actually affects hour pillar calculation
+
+5. exact solar-term boundary handling
+   - whether precise 절입시각 is used
+   - whether day/month boundaries are correct
+
+6. hidden stems weighting and root strength
+   - whether 지장간 and 통근 are properly used
+
+7. shin-gang calculation quality
+   - whether it uses only rough element totals
+   - or actually includes month command, rooting, stem support, seasonal environment, and combinations
+
+8. yongshin calculation quality
+   - whether it is based only on rough element shortage/excess
+   - or on adjusted structure after shin-gang, 조후, combinations, and palace considerations
+
+==================================================
+[2] Investigate why including birth time makes results worse
+==================================================
+
+Current symptom:
+When birth time is included, results become even more inaccurate.
+
+Please audit:
+- hour pillar calculation
+- timezone handling
+- Korea local time handling
+- local solar time / true solar time option
+- hour branch boundary logic
+- whether the hour pillar is being added without proper downstream recalculation
+
+If hour inclusion changes the pillar but does NOT correctly trigger recalculation of:
+- elements
+- ten gods
+- shinsal
+- shin-gang
+- yongshin
+then fix that too.
+
+==================================================
+[3] Improve automatic accuracy first
+==================================================
+
+My intended product direction is:
+- about 90% automatic correctness by default
+- only small optional manual correction for edge cases
+
+So do NOT focus on adding more manual edits first.
+Focus on making the automatic calculation much closer to standard manseoryeok behavior.
+
+==================================================
+[4] Add debug comparison outputs
+==================================================
+
+For testing/debugging, print or expose structured outputs showing:
+
+- raw pillars
+- adjusted pillars
+- raw five elements
+- adjusted five elements
+- raw ten gods
+- adjusted ten gods
+- shin-gang reasoning factors
+- yongshin reasoning factors
+- applied combination rules
+- applied seasonal adjustment
+- applied palace adjustment
+- hour/time correction info
+- daewoon start age calculation details
+
+This should help identify where divergence begins.
+
+==================================================
+[5] Add optional advanced calculation settings
+==================================================
+
+If not already present, add advanced calculation options so the engine can better match external manseoryeok standards.
+
+Examples:
+- use local solar time / true solar time
+- hour pillar include/exclude
+- seasonal adjustment on/off
+- palace adjustment on/off
+- extended shinsal on/off
+- conservative vs expanded shinsal rule set
+- daewoon calculation mode
+- exact solar-term mode
+
+These should be optional expert settings, not the main default UI.
+
+==================================================
+[6] Auto-fix and retest
+==================================================
+
+Please do not only report findings.
+If any weak or missing calculation layer is found:
+1. implement or strengthen it
+2. reconnect it to the actual effective calculation pipeline
+3. retest the output
+4. confirm whether mismatch is reduced
+
+==================================================
+[7] Developer report
+==================================================
+
+After the audit and fixes, show me:
+- which correction layers were missing
+- which ones existed but were not truly affecting final results
+- which files were changed
+- where divergence most likely starts
+- what was improved first
+- how the engine is being moved toward 90% automatic accuracy

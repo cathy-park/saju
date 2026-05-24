@@ -1,0 +1,137 @@
+Revise the product direction of the current Korean Saju app.
+
+IMPORTANT:
+The app should be a hybrid of:
+
+1. a premium personal saju interpretation report app
+2. a compatibility-focused comparison app
+
+This means:
+
+- personal saju report depth must be strong
+- compatibility must be a major second layer
+- the product should not feel like only a chart viewer
+- the product should not feel like only a shallow compatibility toy
+
+==================================================
+1. PRODUCT IDENTITY
+==================================================
+
+Set the product direction clearly as:
+
+“사주 해석 리포트 앱 + 궁합 중심 비교 앱”
+
+Primary value:
+deep personal saju reading
+
+Secondary value:
+compatibility comparison based on the saved personal reports
+
+==================================================
+2. REORGANIZE MAIN NAVIGATION
+==================================================
+
+Use bottom navigation with these tabs:
+
+- 홈
+- 내 사주
+- 상대
+- 궁합
+
+Each tab should feel meaningful.
+
+홈:
+entry summary / today flow / shortcuts
+
+내 사주:
+full personal report
+
+상대:
+saved people and their personal reports
+
+궁합:
+comparison-focused reports and saved compatibility results
+
+==================================================
+3. MAKE PERSONAL REPORT THE FOUNDATION
+==================================================
+
+The personal report page should feel complete and valuable on its own.
+
+Required major sections:
+
+- 사주 요약
+- 오행 분포
+- 십성 분포
+- 지장간
+- 신살
+- 12운성
+- 대운 / 세운 / 월운 / 일운
+- 오늘의 전체 흐름
+- 관계운 / 재물운 / 건강운 / 직업운
+- 배우자궁 해석
+- 관계 패턴 요약
+
+This page should feel like a premium report, not a simple chart dump.
+
+==================================================
+4. MAKE COMPATIBILITY THE SECOND CORE LAYER
+==================================================
+
+The compatibility page should be strong and interpretation-based.
+
+Required major sections:
+
+- 궁합 총평
+- 궁합 점수
+- 일간 관계
+- 일지 / 배우자궁 비교
+- 오행 보완 관계
+- 지지 관계
+- 천간 관계
+- 갈등 포인트
+- 잘 맞는 포인트
+- 관계 유지 팁
+- 흐름 시기 해석
+
+Compatibility should feel like:
+“two personal reports being meaningfully compared”
+
+==================================================
+5. VISUAL HIERARCHY
+==================================================
+
+Use a clean layered report design inspired by Korean premium apps.
+
+The personal report and compatibility report must both feel structured.
+
+Recommended hierarchy:
+
+1. top summary card
+2. core indicator cards
+3. technical chart section
+4. interpretation cards
+5. detailed expandable sections
+
+==================================================
+6. UX GOAL
+==================================================
+
+The app should satisfy both use cases:
+
+A. “I want to deeply understand my own saju”
+B. “I want to compare myself with someone else”
+
+Neither should feel secondary or incomplete.
+
+==================================================
+7. FINAL GOAL
+==================================================
+
+After this revision,
+the app should feel like:
+
+a serious personal saju report app
+with a strong compatibility comparison layer
+
+This is the main product identity going forward.

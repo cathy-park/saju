@@ -1,0 +1,184 @@
+Please fix and improve the fortune, interpretation, and compatibility screens.
+
+This is NOT just a UI patch.
+Please audit the real data logic and fix any incomplete behavior automatically.
+
+==================================================
+[1] Fix yearly fortune (세운) list
+==================================================
+
+Current problem:
+In the 세운 tab, only 3 yearly fortunes are shown.
+That is incorrect.
+
+Expected behavior:
+The current applicable yearly fortunes should all be available, not only 3 items.
+
+Requirements:
+1. In the 세운 tab, show the full relevant yearly fortune list for the available/current range.
+2. Do not artificially limit the list to 3 cards.
+3. Make the list horizontally scrollable if needed, but all relevant years must exist.
+4. Keep the current selected year highlighted.
+5. When a year is selected, only the explanation card below should change.
+
+Please audit whether the current 3-item behavior is caused by:
+- hardcoded slicing
+- mock data
+- limited array rendering
+- pagination logic
+- UI-only placeholder data
+
+If found, fix it automatically.
+
+==================================================
+[2] Remove bottom sheets and use card replacement only
+==================================================
+
+Current problem:
+The app uses bottom sheets for fortune detail display.
+
+I want all bottom sheets removed.
+
+Expected behavior:
+When a user selects a 대운 / 세운 / 월운 / 일운 item,
+do NOT open a bottom sheet.
+Instead, update the explanation card/content area already shown below the selection area.
+
+Requirements:
+1. Remove bottom sheet behavior entirely from fortune screens.
+2. Use the already visible explanation card area to show the selected item's content.
+3. Keep this behavior consistent for:
+   - 대운
+   - 세운
+   - 월운
+   - 일운
+4. The selected item should update:
+   - title
+   - stem/branch display
+   - ten-god label
+   - combined interpretation section
+   - summary text
+
+In short:
+Selection changes card content inline, not via modal/bottom sheet.
+
+==================================================
+[3] Calendar tab should use the same card format as the daily fortune card
+==================================================
+
+Current problem:
+The 달력 tab output format is inconsistent.
+
+Expected behavior:
+The selected day in 달력 should show its result using the exact same visual card style and content structure as the 일운 card screen.
+
+Requirements:
+1. When a user selects a date in the 달력 tab, show the result below using the same format as the 일운 card.
+2. Reuse the same component if possible.
+3. Keep:
+   - stem/branch display
+   - ten-god label
+   - summary text
+   - combined interpretation block
+4. Ensure visual consistency between:
+   - 월/일운 > 일운 card
+   - 달력 > selected date card
+
+Please unify the UI component instead of maintaining two separate inconsistent layouts.
+
+==================================================
+[4] Add deeper interpretation differences for hour-pillar include/exclude
+==================================================
+
+Current problem:
+The difference between 시주 포함 / 시주 제외 is still too weak or unclear in interpretation.
+I want more detailed interpretation differences.
+
+Requirements:
+1. In 해석 screens, when switching:
+   - 시주 포함
+   - 시주 제외
+   - 비교
+   the interpretation text must change meaningfully if the hour pillar affects the structure.
+
+2. The interpretation should reflect differences in:
+   - five elements
+   - detailed elements
+   - ten gods
+   - detailed ten gods
+   - shinsal
+   - yongshin / secondary yongshin
+   - spouse/relationship tendency if affected
+   - fortune interpretation if affected
+
+3. In comparison mode, do NOT only show labels.
+Show detailed difference summaries such as:
+- what changed
+- what stayed the same
+- which traits became stronger/weaker
+- which interpretation shifts are caused by removing the hour pillar
+
+4. If the hour pillar truly has no effect for a specific case, explicitly say so.
+But if there is an effect, explain it concretely.
+
+Example style:
+- 시주 포함 시: 말년운/관계 해석에서 감정 반응성과 세부 성향이 더 강조됩니다.
+- 시주 제외 시: 핵심 골격 중심으로 단순화된 해석이 됩니다.
+- 변화 요약: 관성 감소, 수 기운 약화, 특정 신살 제거
+
+==================================================
+[5] Compatibility screen must also reflect hour-pillar differences in detail
+==================================================
+
+Current problem:
+Compatibility also needs true include/exclude hour-pillar impact, not shallow UI-only changes.
+
+Requirements:
+1. Compatibility must support:
+   - 시주 포함
+   - 시주 제외
+   - 비교
+2. Since compatibility has two people, keep separate hour-pillar handling for each person.
+3. Interpretation must actually change depending on hour-pillar choices.
+4. In compatibility comparison mode, show detailed differences in:
+   - compatibility score
+   - spouse tendency
+   - relationship layer
+   - communication tendency
+   - emotional timing
+   - dynamic relationship flow
+5. If a difference is caused specifically by one person’s hour pillar, say that clearly.
+
+==================================================
+[6] Auto-check and auto-fix workflow
+==================================================
+
+Please do not just implement the UI.
+
+Audit and verify all of the following.
+If any item fails, automatically fix it and retest before reporting back.
+
+Checklist:
+1. 세운 list is no longer limited to only 3 items
+2. selecting a yearly fortune changes the inline card content only
+3. bottom sheets are removed from fortune screens
+4. selecting 대운/세운/월운/일운 updates the same inline explanation card
+5. 달력 selected-date card matches 일운 card format
+6. 해석 screen shows meaningful hour-pillar include/exclude differences
+7. comparison mode shows real changed interpretation content
+8. compatibility screen also shows meaningful include/exclude/comparison differences
+9. compatibility differences reflect per-person hour-pillar settings
+10. no stale default interpretation path is overriding the selected mode
+
+==================================================
+[7] Developer report
+==================================================
+
+After fixing, show me:
+- which file caused the 3-item yearly fortune limitation
+- which files had bottom sheet logic removed
+- which shared card component is now used for fortune and calendar
+- which files were updated for deeper hour-pillar interpretation
+- which files were updated for compatibility hour-pillar interpretation
+- which checklist items initially failed
+- confirmation that all checklist items now pass

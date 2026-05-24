@@ -1,0 +1,113 @@
+Please make the following UX and UI refinements to the app.
+
+Do not redesign the whole app.
+Keep the current emotional tone, mascot style, and overall visual language.
+Focus only on the requested behavior updates.
+
+--------------------------------------------------
+1. Home mascot state should change depending on actual content state
+
+Current issue:
+The Home screen always shows the same mascot state.
+
+Please update mascot behavior so that each section reflects the real data state.
+
+Requirements:
+
+A. Today's record section
+- If there is NO record for today:
+  show the "empty / waiting" mascot state for 모아
+- If there IS at least one record for today:
+  show the "active / collected" mascot state for 모아
+
+B. Past letter section
+- If there is NO available past letter to receive today:
+  show the "empty / waiting" mascot state for 포스트
+- If there IS at least one letter available today:
+  show the appropriate "delivery / arrived letter" mascot state for 포스트
+
+Important:
+The mascot should visually communicate state:
+empty state vs available/active state
+
+Do not use the same mascot pose for both cases.
+
+--------------------------------------------------
+2. Home should show all of today’s emotions, not only one
+
+Current issue:
+If multiple emotion records exist for today, the Home screen only shows one.
+
+Requirements:
+- Show all emotion records for today on the Home screen
+- If there are multiple entries today, display them as a small list or stacked summary
+- Keep it visually clean and compact
+- Do not show only the latest one unless there is only one record
+- Make it easy for the user to understand:
+  "오늘 남긴 감정들"
+
+Suggested behavior:
+- 1 record → show single summary
+- 2 or more records → show a short list/cards for all of them
+
+--------------------------------------------------
+3. Calendar year/month bottom sheet should move immediately on selection
+
+Current issue:
+In the Calendar screen, when the user taps the year area and opens the bottom sheet, they currently need to press a separate "이동하기" button.
+
+Requirements:
+- Remove the "이동하기" button completely
+- As soon as the user selects a month/year, navigate immediately to that selected calendar view
+- Make the interaction feel direct and lightweight
+- Reduce unnecessary extra taps
+
+--------------------------------------------------
+4. Fix emotion statistics bar graph fill behavior
+
+Current issue:
+The monthly emotion distribution graph appears as horizontal bars, but the bars are not filling correctly.
+
+Requirements:
+- The graph should behave like a real proportional distribution bar chart
+- Each emotion bar should be filled according to its percentage of this month’s total records
+
+Examples:
+- If there is only 1 emotion record this month:
+  that emotion should show 100%
+  and its bar should be fully filled
+- If later there are 2 total records:
+  each emotion should recalculate based on the new total
+- If one emotion has 3 out of 5 records:
+  it should display 60% and fill 60% of the bar
+- Every emotion bar should visually match the actual percentage
+
+Important:
+- The visual bar fill must always reflect the calculated ratio
+- Do not leave the bar empty when data exists
+- Keep the graph soft and emotional in style, but mathematically correct
+
+--------------------------------------------------
+5. Keep calculations based on real user data only
+
+All of the above should use only the current user’s real saved records.
+
+This applies to:
+- Home mascot state
+- Today emotion list
+- Available past letters
+- Calendar movement behavior
+- Emotion statistics graph
+
+--------------------------------------------------
+6. Preserve current tone and structure
+
+Please do not rebuild the app or change the overall design system.
+
+Only improve:
+- state-based mascot behavior
+- today list display
+- calendar month/year selection flow
+- emotion statistics graph fill accuracy
+
+Keep the app warm, soft, emotional, and polished.

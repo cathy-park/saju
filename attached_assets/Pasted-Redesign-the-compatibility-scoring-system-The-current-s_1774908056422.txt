@@ -1,0 +1,88 @@
+Redesign the compatibility scoring system.
+
+The current scoring model is too harsh and causes almost all pairs to fall into the 40s, which makes the result distribution unrealistic.
+
+Use a new scoring system with a neutral base score and weighted additions/subtractions.
+
+NEW MODEL:
+
+Start from base score = 50.
+
+Then apply weighted adjustments:
+
+1. Day Master relationship: -12 to +15
+- supportive generating relation: +15
+- same element / similar relation: +8
+- weak support: +10 to +12
+- destructive relation: -10
+- strong destructive relation: -12
+
+2. Spouse palace relationship: -18 to +18
+- six harmony: +18
+- supportive / favorable relation: +12
+- neutral: +6
+- punishment: -8
+- break: -6
+- harm: -7
+- wonjin: -9
+- clash: -18
+
+3. Month branch relationship: -12 to +12
+- harmony/support: +12
+- neutral: +4
+- punishment/harm: -6
+- clash: -12
+
+4. All branch interactions combined: capped -15 to +15
+- each harmony: +4
+- each valid half-harmony or triad support: +5
+- each clash: -5
+- each punishment: -4
+- each break: -3
+- each harm: -3
+- each wonjin: -4
+
+Cap this branch total to:
+min -15 / max +15
+
+5. Five-element complementarity: capped -8 to +12
+- if partner fills my deficient element: +4 each
+- if I fill partner’s deficient element: +3 each
+- if both share the same deficiency: -3 each
+- if both over-amplify the same excessive element: -2 each
+
+6. Ten-God compatibility: -8 to +12
+- stable/supportive Ten-God interaction: +8 to +12
+- neutral: +2
+- tension-heavy interaction: -4 to -8
+
+7. Yongshin support: -5 to +10
+- partner directly supports my Yongshin: +10
+- partner supports my Heeshin: +6
+- partner amplifies my Gishin strongly: -5
+- unrelated: 0
+
+FINAL SCORE:
+final_score = 50 + all adjustments
+Clamp result between 0 and 100
+
+GRADE RANGES:
+80–100 = 이상적 궁합
+68–79 = 좋은 궁합
+55–67 = 노력형 궁합
+40–54 = 긴장형 궁합
+0–39 = 주의 궁합
+
+STRUCTURAL GRADE ADJUSTMENT:
+- supportive Day Master + non-negative spouse palace: upgrade 1 level
+- spouse palace clash: downgrade 1 level
+- spouse palace has multiple tension relations (wonjin/harm/punishment): downgrade 1 level
+- 2 or more branch clashes: downgrade 1 level
+- month branch clash: downgrade 1 level
+
+Cap total grade adjustment to ±2 levels
+
+IMPORTANT:
+- Use final_type as single source of truth everywhere
+- top card, detail card, popup, and copied export must always show the same final type
+- color must map to final_type only

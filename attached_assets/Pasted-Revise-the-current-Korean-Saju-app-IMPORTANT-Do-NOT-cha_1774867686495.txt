@@ -1,0 +1,120 @@
+Revise the current Korean Saju app.
+
+IMPORTANT:
+Do NOT change the working Four Pillars calculation engine.
+This revision should focus only on:
+
+1. changing the display order of pillars
+2. fixing incomplete shinsal rendering structure
+
+==================================================
+1. CHANGE PILLAR DISPLAY ORDER
+==================================================
+
+Currently the app displays pillars in the order:
+
+년 / 월 / 일 / 시
+
+This is not the preferred Korean manseoryeok reading order.
+
+Change all report screens so that pillars are displayed in this order:
+
+시 / 일 / 월 / 년
+
+This applies to:
+- my profile report
+- other person profile report
+- compatibility input summary
+- any four-pillar table in the app
+
+In table headers, use:
+생시 / 생일 / 생월 / 생년
+
+Do not change the actual underlying calculation.
+Only change the display order consistently across the UI.
+
+==================================================
+2. FIX SHINSAL DISPLAY STRUCTURE
+==================================================
+
+The current shinsal section looks incomplete because it only shows some results.
+
+Fix this by making shinsal display fully structured.
+
+Requirements:
+
+A. Always render all pillar positions.
+
+Show shinsal sections for:
+- 시주
+- 일주
+- 월주
+- 연주
+
+If the engine supports more detailed mapping, split into:
+- 시천간 / 시지
+- 일천간 / 일지
+- 월천간 / 월지
+- 연천간 / 연지
+
+B. Never hide a position section just because there are no matched shinsal.
+If a position has no shinsal, display:
+“없음”
+
+C. Do not show only a single combined list.
+Render a structured grid or card layout by position.
+
+Example structure:
+
+시주
+- 시천간: 없음
+- 시지: 도화, 역마
+
+일주
+- 일천간: 없음
+- 일지: 홍염
+
+월주
+- 월천간: 천을귀인
+- 월지: 화개
+
+연주
+- 연천간: 없음
+- 연지: 없음
+
+D. Keep current supported shinsal rules if they already exist,
+but change the UI so it no longer looks partial or unfinished.
+
+==================================================
+3. ADD SHINSAL EMPTY STATE UI
+==================================================
+
+If only some shinsal rules are currently implemented,
+the UI must still feel complete.
+
+For every position:
+- show matched shinsal badges if any
+- otherwise show a muted “없음” badge
+
+This is important so the report does not look broken.
+
+==================================================
+4. DO NOT BREAK EXISTING DATA
+==================================================
+
+- do NOT modify saved profile structure unnecessarily
+- do NOT change the working pillar engine
+- do NOT remove current report sections
+- do NOT break compatibility screen
+
+==================================================
+5. FINAL GOAL
+==================================================
+
+After this revision:
+
+1. all four-pillar tables must read in Korean manseoryeok order:
+   시 / 일 / 월 / 년
+
+2. the shinsal report must no longer look partial.
+   Every pillar position must appear clearly, even when empty.

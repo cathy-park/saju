@@ -1,0 +1,147 @@
+We need to replace the Daewoon start age (대운수) calculation logic with the standard Four Pillars rule-based algorithm.
+
+Do NOT patch individual cases.
+Do NOT adjust values per profile.
+Implement the correct universal formula.
+
+==================================================
+[1] Standard Daewoon start age formula
+==================================================
+
+Use the following official rule:
+
+Step 1
+Determine direction based on gender + year heavenly stem polarity.
+
+Rules:
+
+Male + Yang year stem → forward
+Male + Yin year stem → backward
+Female + Yang year stem → backward
+Female + Yin year stem → forward
+
+Example:
+Female + Yang year stem (庚) → backward direction
+
+==================================================
+[2] Select correct solar term depending on direction
+==================================================
+
+If forward:
+use NEXT solar term
+
+If backward:
+use PREVIOUS solar term
+
+Important:
+
+Solar term must be the nearest adjacent solar term,
+not a fixed seasonal anchor,
+not always next,
+not always previous.
+
+Direction determines the reference solar term.
+
+==================================================
+[3] Only use 12 major solar terms (절, not 중기)
+==================================================
+
+Allowed solar terms:
+
+입춘
+경칩
+청명
+입하
+망종
+소서
+입추
+백로
+한로
+입동
+대설
+소한
+
+Do NOT use minor terms (중기).
+
+==================================================
+[4] Time difference calculation
+==================================================
+
+Compute exact time difference between:
+
+birth datetime (KST)
+selected solar term datetime (KST)
+
+Convert difference into days:
+
+difference_days = absolute difference in days
+
+==================================================
+[5] Final Daewoon start age formula
+==================================================
+
+Use:
+
+Daewoon_start_age = ceil(difference_days / 3)
+
+Important:
+
+Use ceil()
+
+Do NOT use:
+
+round()
+floor()
+custom thresholds
+caps like max 10
+
+==================================================
+[6] Example validation case (must match)
+==================================================
+
+Example:
+
+birth = 1990-01-23 19:29 KST
+gender = female
+year stem = 庚 (yang)
+
+direction = backward
+
+previous solar term = 소한
+
+difference ≈ 17.83 days
+
+Daewoon start age = ceil(17.83 / 3) = 6
+
+System must return:
+
+6
+
+==================================================
+[7] Replace existing implementation entirely
+==================================================
+
+If the current implementation:
+
+uses equinox-based approximation
+uses fixed seasonal offsets
+uses partial solar term lists
+or mixes minor solar terms
+
+remove it.
+
+Replace with this exact algorithm.
+
+==================================================
+[8] Debug verification output required
+==================================================
+
+After implementation, print debug output:
+
+direction
+selected solar term
+solar term datetime
+difference in days
+final Daewoon start age
+
+so we can confirm correctness.

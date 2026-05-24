@@ -1,0 +1,198 @@
+Revise the current Korean Saju compatibility app.
+
+IMPORTANT:
+The current UI states exist, but they are not actually affecting interpretation output.
+
+Problems:
+1. changing marital status (미혼 / 연애중 / 기혼 / 기타 / 응답안함) does not change the report text
+2. adding/removing/excluding shinsal does not change the report text
+3. interpretation cards look static even when the user changes input state
+
+Fix the interpretation engine wiring properly.
+
+==================================================
+1. MAKE MARITAL STATUS ACTUALLY AFFECT INTERPRETATION
+==================================================
+
+Currently marital status selection appears in the UI,
+but report content does not change.
+
+Fix this so that maritalStatus is used as an actual interpretation input.
+
+Marital status options:
+- 미혼
+- 연애중
+- 기혼
+- 기타
+- 응답안함
+
+Use maritalStatus in these sections:
+
+- 오늘의 전체 흐름
+- 관계운
+- 배우자궁 해석
+- 관계 흐름 변화 시기
+- 인연운 활성 시기
+- 결혼/관계 관련 카드
+
+Expected behavior:
+
+If 미혼:
+- use language about 인연운 / 새로운 연결 / 관계 안정 시기
+
+If 연애중:
+- use language about 관계 발전 / 조율 / 감정 흐름 / 갈등 관리
+
+If 기혼:
+- use language about 배우자 관계 / 가정 안정 / 관계 유지 / 생활 균형
+
+If 기타 or 응답안함:
+- use neutral relationship wording
+
+The wording must actually change based on selection.
+Do not keep identical text.
+
+==================================================
+2. MAKE SHINSAL STATE ACTUALLY AFFECT INTERPRETATION
+==================================================
+
+Currently manual shinsal add/remove/exclude does not change interpretation.
+
+Fix this so that all report and interpretation logic uses:
+
+finalShinsal =
+(all auto shinsal except excludedAutoShinsalIds)
++
+(all manualShinsal)
+
+Interpretation functions must use finalShinsal,
+not just the original auto-detected shinsal.
+
+When finalShinsal changes:
+- immediately recompute interpretation
+- update UI without page reload
+
+==================================================
+3. RECOMPUTE REPORTS REACTIVELY
+==================================================
+
+Interpretation must recompute when any of these change:
+
+- maritalStatus
+- manualShinsal
+- excludedAutoShinsalIds
+- top interpretation filter state
+- final corrected pillars
+
+Use React reactive state / memo / derived state properly.
+
+Do NOT require refresh.
+
+==================================================
+4. CENTRALIZE INTERPRETATION INPUTS
+==================================================
+
+Create a single interpretation input object, for example:
+
+{
+  finalPillars,
+  fiveElementDistribution,
+  tenGodDistribution,
+  finalShinsal,
+  luckFlow,
+  maritalStatus
+}
+
+Then pass this object into all interpretation generators.
+
+This should prevent stale/static output.
+
+==================================================
+5. UPDATE THESE INTERPRETATION GENERATORS
+==================================================
+
+Ensure the following sections regenerate from live state:
+
+- 오늘의 전체 흐름
+- 관계운
+- 재물운
+- 건강운
+- 일/성과운
+- 배우자궁 해석
+- 관계 흐름 변화 시기
+- 인연운 활성 시기
+- 궁합 요약 카드
+- 갈등 포인트 카드
+- 잘 맞는 포인트 카드
+- 관계 유지 팁 카드
+
+Do not leave any of these as static placeholder text.
+
+==================================================
+6. SHINSAL INTERPRETATION RULE
+==================================================
+
+If finalShinsal includes important stars like:
+- 도화
+- 홍염
+- 역마
+- 화개
+- 천을귀인
+
+then interpretation text should change accordingly.
+
+Examples:
+
+If 도화 exists:
+- increase relationship attraction / attention wording
+
+If 역마 exists:
+- increase movement / instability / change wording
+
+If 화개 exists:
+- increase introspection / emotional distance wording
+
+If 천을귀인 exists:
+- increase support / protection / helper wording
+
+This does not need to be overly mystical,
+but must be clearly reflected in interpretation.
+
+==================================================
+7. DEBUG VISIBILITY
+==================================================
+
+Add a temporary small debug block in development mode only:
+
+- maritalStatus
+- finalShinsal count
+- finalShinsal names
+
+This helps verify that interpretation is using updated state.
+
+Do not show this in production mode if avoidable.
+
+==================================================
+8. DO NOT BREAK EXISTING APP
+==================================================
+
+Do NOT change:
+- Four Pillars engine
+- pillar display order
+- luck calculations
+- saved profiles
+- shinsal editing UI
+- top filter chips
+
+Only fix state-to-interpretation wiring.
+
+==================================================
+9. FINAL GOAL
+==================================================
+
+After this revision:
+
+- changing marital status must visibly change interpretation wording
+- adding/removing/excluding shinsal must visibly change interpretation wording
+- reports must feel reactive, not static
+- user edits must actually matter

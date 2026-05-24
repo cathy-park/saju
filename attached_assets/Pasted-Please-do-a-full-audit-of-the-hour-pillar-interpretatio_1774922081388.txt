@@ -1,0 +1,109 @@
+Please do a full audit of the hour-pillar interpretation mode propagation across the app and automatically fix any failures you find.
+
+I do NOT want a check-only pass.
+I want a check -> detect failures -> fix -> retest workflow.
+
+Goal:
+The interpretation mode selected in the 원국 tab must propagate consistently and correctly to:
+- tab 2
+- tab 3
+- tab 4
+- compatibility screen
+
+Supported modes:
+- 시주 포함
+- 시주 제외
+- 비교
+
+Requirements:
+
+[1] Audit all downstream tabs and compatibility
+Check whether the selected mode in 원국 actually changes the real calculation results used by:
+- tab 2
+- tab 3
+- tab 4
+- compatibility
+
+Do not just check whether matching buttons exist.
+Check whether the underlying data and interpretation outputs actually change.
+
+[2] Checklist to verify
+Please test and verify all of these:
+
+A. When changing 원국 mode from 시주 포함 to 시주 제외:
+- does tab 2 update?
+- does tab 3 update?
+- does tab 4 update?
+- does compatibility update?
+
+B. If hour-pillar inclusion/exclusion should change calculated data:
+- do five-element ratios change where appropriate?
+- do detailed element values change where appropriate?
+- do ten-god totals change where appropriate?
+- do detailed ten-god values change where appropriate?
+- do shinsal results change where appropriate?
+- do yongshin / secondary yongshin change where appropriate?
+- do interpretation summaries change where appropriate?
+
+C. In comparison mode:
+- are differences actually shown?
+- are changed fields highlighted?
+- are unchanged fields not over-repeated?
+
+D. In compatibility:
+- does hour-pillar mode exist and work?
+- does it affect compatibility score and interpretation?
+- does it affect spouse tendency / relationship layer / current flow?
+
+[3] Auto-fix rule
+If any checklist item fails,
+do NOT stop at reporting the issue.
+Automatically trace the cause and fix it.
+
+Possible root causes to check and fix:
+- local state only, not shared global state
+- stale cached data
+- separate outdated calculation pipeline in later tabs
+- compatibility using default calculation instead of effective mode-specific result
+- UI toggle not connected to real calculation engine
+- compare mode generating labels only, not real diff data
+- downstream screens reading old Supabase/local payload instead of current effective result
+
+[4] Recovery behavior
+For every failed item:
+1. identify the exact file and logic causing the failure
+2. fix the data flow
+3. re-run the checklist
+4. confirm the issue is resolved
+
+[5] Compatibility support
+Add and verify hour-pillar mode support in compatibility too.
+
+Compatibility must not ignore the mode.
+It must use effective calculation results based on the selected hour-pillar mode.
+
+At minimum support:
+- 시주 포함
+- 시주 제외
+- 비교
+
+If separate modes per person are too complex right now,
+implement a clean shared mode first,
+but ensure compatibility is actually recalculated.
+
+[6] Single source of truth
+Make sure the app uses one shared effective calculation result per mode:
+- withHour
+- withoutHour
+- diff
+
+Later tabs and compatibility must consume those results,
+not recalculate from stale/default values.
+
+[7] Developer report
+After fixing, show me:
+- which checklist items initially failed
+- what caused each failure
+- which files were changed
+- what was fixed
+- confirmation that the checklist now passes

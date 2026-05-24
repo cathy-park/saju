@@ -1,0 +1,271 @@
+Design a mobile-first UI for a Korean Saju (Four Pillars of Destiny) insight app.
+
+This app is NOT a traditional fortune-telling app.
+It should feel like a modern personal insight companion app.
+
+Design direction:
+
+Combine these three elements:
+
+1. Toss app-style clean information hierarchy
+2. Warm emotional character-based hero section
+3. Structured personal analytics report layout
+
+The UI should feel:
+
+clean
+modern
+calm
+friendly
+emotionally warm
+trustworthy
+premium but not mystical
+
+Avoid:
+
+dark fortune-telling aesthetics
+traditional zodiac ornament style
+too beige / too muted neutral tone
+too much decorative mysticism
+
+---
+
+COLOR SYSTEM
+
+Base background:
+
+warm cream or soft ivory
+
+Accent palette:
+
+coral
+apricot
+soft gold
+sage green
+lavender
+
+Use accent colors meaningfully, not decoratively.
+
+Important:
+
+Avoid grey-heavy UI
+Avoid flat beige-only palette
+
+---
+
+CHARACTER SYSTEM (IMPORTANT BRAND ELEMENT)
+
+The app already has 8 emotional characters prepared.
+
+Use them as daily insight companions.
+
+On the Home screen:
+
+Place a large character illustration in the hero area.
+
+The character changes based on:
+
+today's energy
+day stem
+five-element balance
+daily keyword interpretation
+
+The character should feel like:
+
+"today’s guide"
+
+---
+
+HOME SCREEN STRUCTURE
+
+Top hero section:
+
+date
+user name
+today’s main message
+large emotional character illustration
+today's keyword chips
+
+Example keywords:
+
+growth
+focus
+rest
+relationship
+expression
+protection
+balance
+planning
+
+Below hero:
+
+today's day stem (Iljin)
+
+Daewoon / Sewoon / Wolwoon summary cards
+
+today’s energy score bars:
+
+emotional stability
+decision ability
+relationship flow
+
+Quick action cards:
+
+View my Saju
+Check compatibility
+
+Bottom:
+
+today’s reflection quote card
+
+---
+
+MY SAJU SCREEN STRUCTURE
+
+Top summary card:
+
+name
+birth date
+day master element
+1-line personality summary
+
+Below:
+
+keyword chips representing personality traits
+
+Example:
+
+independent
+analytical
+creative
+steady
+empathetic
+
+Five elements balance visualization
+
+Use Toss-style clean progress bars
+
+Then structured sections:
+
+Strengths
+Growth areas
+Best direction in life
+
+Each section collapsible
+
+Use tab layout:
+
+Chart
+Personality
+Luck Flow
+Interpretation
+
+---
+
+COMPATIBILITY LIST SCREEN
+
+Very clean list layout
+
+Search bar at top
+
+Add compatibility button
+
+Saved compatibility cards:
+
+partner name
+relationship type tag
+compatibility score
+3 keyword chips
+
+Example:
+
+trust
+growth
+communication
+
+Tap card → open compatibility report
+
+---
+
+COMPATIBILITY REPORT SCREEN
+
+Top:
+
+large compatibility score
+
+1-line summary
+
+3 keyword chips
+
+Then:
+
+domain-level compatibility bars:
+
+emotional connection
+communication
+values
+problem solving
+
+Then:
+
+relationship strengths
+
+growth opportunities
+
+relationship advice
+
+Detailed traditional interpretation should be collapsible
+
+---
+
+LAYOUT STYLE (TOSS-INSPIRED STRUCTURE)
+
+Use:
+
+large spacing rhythm
+clear card separation
+simple typography hierarchy
+soft rounded cards
+minimal shadows
+consistent padding system
+
+Avoid:
+
+nested cards inside cards
+too many badge styles
+visual clutter
+
+Hierarchy rule:
+
+summary first
+details second
+deep analysis collapsible
+
+---
+
+TYPOGRAPHY SYSTEM
+
+Use 4 levels only:
+
+page title
+section title
+body text
+caption text
+
+Readable Korean-friendly mobile typography
+
+---
+
+UX PRINCIPLE
+
+This app should feel like:
+
+a daily insight companion
+a personal life dashboard
+a reflective emotional guide
+
+NOT a mystical prediction engine
+
+Users should feel:
+
+“I understand myself better today.”

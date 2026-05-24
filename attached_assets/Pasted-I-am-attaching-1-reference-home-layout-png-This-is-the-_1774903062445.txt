@@ -1,0 +1,150 @@
+I am attaching:
+
+1) reference-home-layout.png
+→ This is the exact home screen layout structure I want.
+
+2) bg.png
+→ Use this as the hero background image.
+
+Please rebuild the Home screen to match the attached reference-home-layout.png as closely as possible.
+
+IMPORTANT:
+- Do NOT reinterpret the layout.
+- Do NOT redesign the structure.
+- Replicate the layout hierarchy and section order exactly.
+- Only adjust spacing slightly if needed for mobile responsiveness.
+
+================================
+HOME SCREEN STRUCTURE
+================================
+
+[1. Hero section]
+Use bg.png as the full background-image of the hero section container.
+
+The hero section must include, from top to bottom:
+
+A. Small date/fortune label at top
+Example:
+✨ 오늘의 운세 — 2026년 3월 31일
+
+B. Main title
+사용자님의 오늘 흐름
+
+C. Speech bubble card
+Centered white rounded speech bubble
+Text inside:
+배움과 계획에 집중하면 에너지가 잘 흐릅니다.
+
+D. Mascot illustration
+Centered below the speech bubble
+The mascot must visually overlap the section and feel like it is floating in front of the background.
+
+E. Stem-branch summary row
+A rounded white row below the mascot
+
+This row must include:
+- 오늘의 일진
+- 갑진
+- 甲辰
+- keyword chips on the right:
+  학문운 / 보호 / 안정
+
+The chips must be placed inside the same white row area on the right side, as shown in the reference.
+Do not place the chips inside the speech bubble.
+
+[2. Four mini status cards]
+Directly below the hero section, add 4 small cards in one row / responsive 2x2 layout if needed.
+
+Cards:
+- 건강 / ▲양호
+- 일 / ▲상승
+- 관계 / ▲안정
+- 재물 / –보통
+
+Each card should be compact and minimal like the reference image.
+Do not make these large explanation cards.
+
+[3. Flow structure card]
+Below the mini status cards, add one bordered container with 2x2 grid cards inside.
+
+This container must include:
+- 대운
+- 세운
+- 월운
+- 일운
+
+Each small card should show:
+- label
+- stem-branch
+- small supporting chips underneath
+
+Example:
+대운 / 경오 / 천:정재 / 지:비견 / 건록
+
+This whole section should visually match the reference:
+soft border, rounded corners, compact spacing, clean layout.
+
+[4. Short interpretation strip]
+Below the 2x2 flow cards, inside the same bordered section or directly under it,
+add a slim interpretation strip like the reference.
+
+Example:
+배움과 계획에 집중하면 에너지가 잘 흐릅니다.
+
+[5. CTA buttons]
+At the bottom, place two large side-by-side rounded CTA buttons:
+
+Left:
+🔍 사주 리포트
+
+Right:
+💞 궁합 보기
+
+They must be equal width, horizontally aligned, and visually soft like the reference.
+
+================================
+DESIGN RULES
+================================
+
+1. Use bg.png as CSS background-image for the hero container.
+Do NOT place bg.png as a separate image element.
+
+2. Hero visual layering must be:
+
+background
+→ speech bubble
+→ mascot
+→ stem-branch summary row
+
+3. Keep the mascot centered.
+
+4. Keep the overall tone:
+- soft cream / peach / lavender
+- rounded cards
+- gentle shadows
+- warm and calm mood
+- cute but clean
+
+5. The current home screen should be replaced by this structure.
+Remove duplicated daily fortune blocks or repeated explanation sections.
+
+6. Avoid large generic cards like the current version.
+Follow the exact compact, layered structure shown in the reference image.
+
+7. Preserve mobile-first responsiveness, but keep the visual hierarchy very close to the reference.
+
+================================
+IMPLEMENTATION NOTE
+================================
+
+Use the attached reference-home-layout.png as a blueprint, not just inspiration.
+
+Replicate:
+- section order
+- vertical rhythm
+- mascot placement
+- speech bubble placement
+- stem-branch row placement
+- CTA placement
+
+Do not improvise a new layout.

@@ -1,0 +1,247 @@
+Revise the current Korean Saju compatibility app.
+
+Add a structured fortune insight system that expands beyond compatibility-only interpretation.
+
+IMPORTANT:
+
+This app is a compatibility-centered saju app.
+Do NOT make it feel like a generic fortune-telling app.
+Instead, add relationship-aware life-flow insights.
+
+Avoid hard-coded “marriage prediction year” output unless explicitly enabled by user settings.
+
+==================================================
+1. ADD DAILY FORTUNE SUMMARY CARD (TOP SECTION)
+==================================================
+
+At the top of the saju detail page:
+
+Add a new card:
+
+오늘의 전체 흐름
+
+This should summarize:
+
+- emotional tone
+- decision timing quality
+- relationship interaction tendency
+- general activity flow
+
+Example output style:
+
+오늘은 관계 중심의 흐름이 강화되는 날입니다.
+대화와 협업에는 유리하지만 중요한 결정은 신중하게 접근하는 것이 좋습니다.
+
+Use:
+
+일운 + 세운 + 월운 context together.
+
+==================================================
+2. ADD FOUR CORE LIFE FLOW CATEGORIES
+==================================================
+
+Below the summary card:
+
+Add four fortune insight cards:
+
+관계운
+재물운
+건강운
+일/성과운
+
+Each card must:
+
+- reflect current luck cycle context
+- use Daewoon + Seun + Wolun + Ilun
+- adjust interpretation tone dynamically
+
+Example:
+
+관계운:
+
+감정 교류가 자연스럽게 이어질 가능성이 높은 흐름입니다.
+기존 관계 정리에 유리한 시기입니다.
+
+재물운:
+
+지출보다 구조 정리에 유리한 흐름입니다.
+큰 투자보다는 안정적인 관리가 적합합니다.
+
+건강운:
+
+에너지 소모가 커질 수 있어 휴식 균형이 중요합니다.
+
+일/성과운:
+
+성과보다 기반 정리에 유리한 흐름입니다.
+
+==================================================
+3. ADD SPOUSE PALACE INTERPRETATION SECTION
+==================================================
+
+Add new section:
+
+배우자궁 해석
+
+Analyze:
+
+- 배우자궁 안정 여부
+- 충 여부
+- 합 여부
+- 활성 시기 여부
+
+Example output:
+
+배우자궁이 안정된 구조에 가까운 편입니다.
+현재 운 흐름에서는 관계 유지보다 관계 방향 설정에 더 의미가 있습니다.
+
+This section must work for:
+
+- single users
+- dating users
+- married users
+
+Avoid “marriage timing prediction language”.
+
+==================================================
+4. ADD RELATIONSHIP FLOW TIMING SECTION
+==================================================
+
+Add new section:
+
+관계 흐름 변화 시기
+
+Detect:
+
+- relationship activation periods
+- emotional transition timing
+- connection-strengthening cycles
+
+Example output:
+
+현재 대운 흐름에서는 관계 확장보다는 관계 구조 정리가 강조됩니다.
+다가오는 월운에서는 새로운 인연 흐름이 활성화될 가능성이 있습니다.
+
+==================================================
+5. ADD CONNECTION ACTIVATION PERIOD SECTION
+==================================================
+
+Add:
+
+인연운 활성 시기
+
+Detect:
+
+- social connection expansion periods
+- emotional openness timing
+- attraction energy increase timing
+
+Example output:
+
+다가오는 몇 달 동안 새로운 사람과의 연결 가능성이 높아지는 흐름입니다.
+
+Avoid deterministic prediction tone.
+
+==================================================
+6. MAKE MARRIAGE TIMING OPTIONAL FEATURE
+==================================================
+
+Add new settings toggle:
+
+설정 화면:
+
+배우자운 표시
+
+OFF (default)
+
+When OFF:
+
+Do NOT show marriage timing predictions.
+
+When ON:
+
+Allow showing:
+
+관계 안정 시기
+배우자 인연 강화 시기
+
+But avoid explicit:
+
+“결혼은 2027년에 합니다”
+
+Instead show:
+
+결혼 가능성이 높아지는 흐름입니다
+
+==================================================
+7. USE LUCK FLOW ENGINE FOR INTERPRETATION
+==================================================
+
+All new insight cards must be generated using:
+
+대운
+세운
+월운
+일운
+
+combined interpretation logic.
+
+Avoid static text blocks.
+
+Make interpretation dynamic per user chart.
+
+==================================================
+8. KEEP COMPATIBILITY CORE STRUCTURE UNCHANGED
+==================================================
+
+Do NOT modify:
+
+Four Pillars calculation engine
+ten-god distribution
+five-element distribution
+shinsal detection system
+compatibility scoring engine
+manual shinsal override system
+
+Only extend interpretation layer.
+
+==================================================
+9. VISUAL STRUCTURE
+==================================================
+
+Each insight category should render as:
+
+card-based layout
+
+Example:
+
+[ 오늘의 전체 흐름 ]
+
+[ 관계운 ]
+[ 재물운 ]
+[ 건강운 ]
+[ 일/성과운 ]
+
+[ 배우자궁 해석 ]
+
+[ 관계 흐름 변화 시기 ]
+
+[ 인연운 활성 시기 ]
+
+==================================================
+10. FINAL GOAL
+==================================================
+
+After this revision:
+
+The app should feel like:
+
+a compatibility-centered interactive saju life-flow analysis system
+
+not a generic fortune-telling prediction app
+
+and should support:
+
+single users
+dating users
+married users

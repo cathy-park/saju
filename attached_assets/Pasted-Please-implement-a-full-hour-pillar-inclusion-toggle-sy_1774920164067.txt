@@ -1,0 +1,235 @@
+Please implement a full hour-pillar inclusion toggle system in the saju app.
+
+Currently users need to compare interpretations with and without the hour pillar (시주),
+because birth time is often uncertain.
+
+This feature must support:
+
+1) include hour pillar
+2) exclude hour pillar
+3) compare both versions side-by-side
+
+This applies to:
+- saju interpretation
+- five elements
+- ten gods
+- shinsal
+- yongshin / secondary yongshin
+- compatibility interpretation
+- fortune flow interpretation (daewoon / sewoon / month / day)
+
+--------------------------------------------------
+
+[1] Add hour-branch label next to birth time everywhere
+
+Example:
+
+19:29 (戌시)
+11:28 (午시)
+
+Apply consistently in:
+
+- my saju profile
+- partner profile
+- compatibility summary cards
+- detail screens
+
+If birth time missing:
+
+show:
+
+시주 제외 해석 중
+
+--------------------------------------------------
+
+[2] Add hour-pillar interpretation toggle
+
+Add toggle:
+
+시주 반영 ON / OFF
+
+Behavior:
+
+ON:
+include hour pillar in all calculations
+
+OFF:
+exclude hour pillar completely and recalculate interpretation using only year/month/day
+
+Recalculate:
+
+- four pillars structure
+- five elements distribution
+- detailed elements (갑을병정무기경신임계)
+- ten gods distribution
+- detailed ten gods
+- shinsal
+- yongshin
+- secondary yongshin
+- compatibility results
+- interpretation summaries
+
+--------------------------------------------------
+
+[3] Add comparison mode
+
+Add a third toggle state:
+
+시주 비교 모드
+
+So interpretation mode becomes:
+
+시주 포함
+시주 제외
+비교
+
+Comparison mode should show:
+
+difference between:
+
+include_hour_pillar = true
+include_hour_pillar = false
+
+--------------------------------------------------
+
+[4] Highlight changed interpretation results in comparison mode
+
+When comparison mode is active:
+
+highlight changes in:
+
+five elements
+
+example:
+
+수 +6%
+화 -4%
+
+ten gods
+
+example:
+
+관성 증가
+인성 감소
+
+shinsal
+
+example:
+
+천을귀인 추가됨
+천문성 제거됨
+
+yongshin
+
+example:
+
+용신 unchanged
+secondary yongshin changed
+
+compatibility
+
+example:
+
+relationship stability increased
+communication harmony decreased
+
+--------------------------------------------------
+
+[5] Save toggle setting per profile
+
+Each profile must store its own setting:
+
+interpretation_options:
+
+{
+  include_hour_pillar: true
+}
+
+Compatibility screen must respect:
+
+my profile setting
+partner profile setting
+
+independently
+
+--------------------------------------------------
+
+[6] Add comparison UI section
+
+When comparison mode enabled:
+
+show:
+
+시주 포함 해석
+시주 제외 해석
+
+and below that:
+
+변화 요약
+
+example:
+
+오행 변화 요약
+십성 변화 요약
+신살 변화 요약
+용신 변화 요약
+궁합 변화 요약
+
+--------------------------------------------------
+
+[7] Add helper calculation layer
+
+Create two calculation pipelines:
+
+pipeline A:
+
+with hour pillar
+
+pipeline B:
+
+without hour pillar
+
+Then generate:
+
+diff_result = compare(pipelineA, pipelineB)
+
+--------------------------------------------------
+
+[8] UI requirements
+
+toggle must appear in:
+
+saju detail screen
+compatibility screen
+
+comparison results must be:
+
+mobile-friendly
+collapsible sections allowed
+highlight changes using color
+
+example:
+
+green = added
+red = removed
+yellow = changed
+
+--------------------------------------------------
+
+[9] Developer output request
+
+Show:
+
+which file controls hour pillar toggle UI
+
+which file controls saju calculation pipeline
+
+which file recalculates five elements
+
+which file recalculates ten gods
+
+which file recalculates shinsal
+
+which file generates interpretation summary
+
+where comparison diff logic is implemented

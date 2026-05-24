@@ -1,0 +1,156 @@
+Revise the current Korean Saju compatibility app.
+
+IMPORTANT:
+Do NOT add more new features first.
+Fix the current broken interaction logic.
+
+Current problems:
+1. manual shinsal delete does not work
+2. manual shinsal add still does not support position selection properly
+3. 배우자운 표시 toggle changes nothing
+4. the interpretation area is too long and should be controlled by top filters
+
+==================================================
+1. FIX MANUAL SHINSAL DELETE
+==================================================
+
+The current delete UI for manual shinsal is visible but does not actually remove the item.
+
+Fix this properly.
+
+Requirements:
+
+- each manual shinsal item must have a unique identity
+- deletion must use:
+  position + name + source + index/id if needed
+- after delete:
+  update state immediately
+  update localStorage immediately
+  re-render UI immediately
+  re-run interpretation immediately
+
+Do not require page reload.
+
+==================================================
+2. FIX POSITION-AWARE MANUAL SHINSAL ADD
+==================================================
+
+The current manual shinsal add still behaves like one global list.
+
+Fix it so that add flow is strictly:
+
+Step 1: select position
+- 시천간
+- 시지
+- 일천간
+- 일지
+- 월천간
+- 월지
+- 연천간
+- 연지
+
+Step 2: select shinsal name
+
+Only after both are selected, save the item.
+
+Saved format must include:
+- position
+- name
+- source: manual
+
+Render the added shinsal under the correct position section.
+
+==================================================
+3. FIX 배우자운 표시 TOGGLE
+==================================================
+
+Currently the spouse-luck toggle changes nothing.
+
+Fix it so that this toggle actually controls rendering.
+
+If OFF:
+- hide 배우자궁 해석
+- hide 관계 흐름 변화 시기
+- hide 인연운 활성 시기
+- hide 배우자운 관련 문구/cards
+
+If ON:
+- show those sections
+
+This must update immediately without reload.
+
+The toggle state must also persist in localStorage.
+
+==================================================
+4. ADD TOP INTERPRETATION FILTER TOGGLES
+==================================================
+
+The interpretation section is too long.
+
+Add a top filter toggle bar above interpretation cards.
+
+Use compact chips or pill toggles:
+
+- 사랑
+- 재물
+- 건강
+- 일/성과
+- 배우자운
+
+Users can turn each on/off.
+
+Only render enabled interpretation sections.
+
+Example:
+If only 사랑 + 재물 are ON,
+show only those cards.
+
+Keep:
+오늘의 전체 흐름
+always visible at top.
+
+==================================================
+5. PERSIST FILTER STATE
+==================================================
+
+Save interpretation filter toggle state per user/session in localStorage.
+
+So after refresh, the same selected filters remain.
+
+==================================================
+6. MAKE INTERPRETATION AREA CLEANER
+==================================================
+
+Instead of rendering every insight block in one long column,
+render:
+
+- 오늘의 전체 흐름 (always)
+- selected category cards only
+
+This should make the report cleaner and less overwhelming.
+
+==================================================
+7. DO NOT BREAK CURRENT REPORT SYSTEM
+==================================================
+
+Do NOT change:
+- Four Pillars engine
+- pillar display order (시 / 일 / 월 / 년)
+- five-element calculation
+- ten-god calculation
+- luck cards
+- compatibility logic
+
+Only fix interaction logic and filter rendering.
+
+==================================================
+8. FINAL GOAL
+==================================================
+
+After this revision:
+
+- manual shinsal can be added by position
+- manual shinsal can actually be deleted
+- spouse-luck toggle actually changes visible content
+- top interpretation toggles control which sections are shown
+- the report becomes much cleaner and easier to scan

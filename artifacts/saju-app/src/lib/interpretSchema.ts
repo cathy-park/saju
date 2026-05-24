@@ -1,0 +1,662 @@
+import type { FiveElementCount } from "./sajuEngine";
+import {
+  type FiveElKey,
+  GENERATES,
+  CONTROLS,
+  getGenerator,
+  getController,
+  ELEMENT_KO,
+} from "./element-color";
+
+// ── Re-export for backward compat ─────────────────────────────────
+export { ELEMENT_KO };
+
+// ── Ten-stem → element lookup (for weighted scoring) ─────────────
+const STEM_ELEMENT: Record<string, FiveElKey> = {
+  갑: "목", 을: "목",
+  병: "화", 정: "화",
+  무: "토", 기: "토",
+  경: "금", 신: "금",
+  임: "수", 계: "수",
+  인: "목", 묘: "목",
+  사: "화", 오: "화",
+  진: "토", 술: "토", 축: "토", 미: "토",
+  유: "금",
+  해: "수", 자: "수",
+};
+
+// ── 지장간 (地藏干) — hidden stems per branch ─────────────────────
+// Order: [여기(餘氣), 중기(中氣), 본기(本氣)]  (본기 = last element)
+// Used for: strength overlay, yongshin augmentation
+const JIJANGGAN: Record<string, string[]> = {
+  자: ["임", "계"],           // 壬(여기) 癸(본기)
+  축: ["계", "신", "기"],     // 癸(여기) 辛(중기) 己(본기)
+  인: ["무", "병", "갑"],     // 戊(여기) 丙(중기) 甲(본기)
+  묘: ["갑", "을"],           // 甲(여기) 乙(본기)
+  진: ["을", "계", "무"],     // 乙(여기) 癸(중기) 戊(본기)
+  사: ["무", "경", "병"],     // 戊(여기) 庚(중기) 丙(본기)
+  오: ["병", "기", "정"],     // 丙(여기) 己(중기) 丁(본기)
+  미: ["정", "을", "기"],     // 丁(여기) 乙(중기) 己(본기)
+  신: ["무", "임", "경"],     // 戊(여기) 壬(중기) 庚(본기)
+  유: ["경", "신"],           // 庚(여기) 辛(본기)
+  술: ["신", "정", "무"],     // 辛(여기) 丁(중기) 戊(본기)
+  해: ["무", "갑", "임"],     // 戊(여기) 甲(중기) 壬(본기)
+};
+// Weights per jijanggan position: [여기 w, 중기 w, 본기 w]
+// 본기 is the same as the branch's main element (already scored in step 1/2),
+// so we use SMALL weights here — this is purely an ADDITIVE CORRECTION for
+// the non-본기 stems that the surface scoring misses.
+const JZG_W = [0.05, 0.12, 0.00] as const; // 본기=0 (not double-counted; main branch already captures it)
+
+/** 음간 일간: 동일 score 대비 과대 강 판정 완화용 보정 */
+const YIN_DAY_STEMS = new Set(["을", "정", "기", "신", "계"]);
+const YIN_STEM_SCORE_ADJ = 0.6;
+
+/** 설기(洩氣): 식상·재성을 독립 항으로 차감 (천간/지지/지장간 여·중기) */
+const LEAK_STEM_SIK = 0.6;
+const LEAK_STEM_JAE = 0.4;
+const LEAK_BRANCH_SIK = 0.5;
+const LEAK_BRANCH_JAE = 0.3;
+const LEAK_HIDDEN_SIK = 0.15;
+const LEAK_HIDDEN_JAE = 0.08;
+
+function isYinDayStem(stem: string): boolean {
+  return YIN_DAY_STEMS.has(stem);
+}
+
+// ── Strength level (7-level for graph visualization) ─────────────
+
+export type StrengthLevel =
+  | "극신약" | "태약" | "신약" | "중화" | "신강" | "태강" | "극신강";
+
+export const STRENGTH_LEVELS: StrengthLevel[] = [
+  "극신약", "태약", "신약", "중화", "신강", "태강", "극신강",
+];
+
+export const STRENGTH_LEVEL_INDEX: Record<StrengthLevel, number> = {
+  극신약: 0, 태약: 1, 신약: 2, 중화: 3, 신강: 4, 태강: 5, 극신강: 6,
+};
+
+export const STRENGTH_DISPLAY_LABEL: Record<StrengthLevel, string> = {
+  극신약: "극신약",
+  태약:   "태약",
+  신약:   "신약",
+  중화:   "중화",
+  신강:   "신강",
+  태강:   "태강",
+  극신강: "극신강",
+};
+
+export const STRENGTH_SHORT_DESC: Record<StrengthLevel, string> = {
+  극신약: "일간 기운이 매우 부족합니다",
+  태약:   "일간 기운이 약합니다",
+  신약:   "일간이 다소 약한 편입니다",
+  중화:   "일간이 균형 잡혀 있습니다",
+  신강:   "일간 기운이 강합니다",
+  태강:   "일간 기운이 매우 강합니다",
+  극신강: "일간 기운이 극도로 강합니다",
+};
+
+export type DayMasterState = "weak" | "balanced" | "strong";
+
+export interface StrengthReason {
+  deukryeong: { score: number; note: string };
+  deukji: { score: number; note: string };
+  deukse: { score: number; note: string };
+  adjustments: string[];
+}
+
+/** 검증·개발용 강약 내부 점수 (UI 기본 노출 금지; dev 로그 또는 전용 리포트용) */
+export interface StrengthDebug {
+  dayStem: string;
+  deukryeong: number;
+  branchContrib: number;
+  stemContrib: number;
+  leakagePenalty: number;
+  yinAdjustment: number;
+  finalScore: number;
+  finalLevel: StrengthLevel;
+}
+
+export interface StrengthResult {
+  score: number;
+  level: StrengthLevel;
+  dayMasterState: DayMasterState;
+  reason: StrengthReason;
+  description: string;
+  explanation: string[];
+  strengthDebug: StrengthDebug;
+}
+
+function isDevRuntime(): boolean {
+  try {
+    // Vite/Browser
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const im = (import.meta as any);
+    if (im?.env?.DEV === true) return true;
+  } catch { /* ignore */ }
+  try {
+    // Node/scripts
+    // eslint-disable-next-line no-undef
+    return typeof process !== "undefined" && process.env.NODE_ENV !== "production";
+  } catch { /* ignore */ }
+  return false;
+}
+
+function warnStrengthFallback(context: Record<string, unknown>) {
+  if (!isDevRuntime()) return;
+  // eslint-disable-next-line no-console
+  console.warn("[strength-fallback]", context);
+}
+
+function toDayMasterState(level: StrengthLevel): DayMasterState {
+  if (level === "중화") return "balanced";
+  if (level === "신강" || level === "태강" || level === "극신강") return "strong";
+  return "weak";
+}
+
+function levelFromScore(score: number): StrengthLevel {
+  if (score < -5)   return "극신약";
+  if (score < -3)   return "태약";
+  if (score < -1.5) return "신약";
+  if (score < 1)    return "중화";
+  if (score < 3)    return "신강";
+  if (score < 5)    return "태강";
+  return "극신강";
+}
+
+/**
+ * Single source of truth for strength:
+ * score + level + explanations are computed once here.
+ *
+ * 득령/득지/득세는 아래와 같이 매핑합니다:
+ * - 득령: 월령(월지) 기여 + 월령충 조정
+ * - 득지: 지지(통근) 기여 + 일반 지지충 조정 + 지장간 보정
+ * - 득세: 천간(비겁/인성 등) 기여
+ *
+ * 최종 score = 득령 + 득지 + 득세 − 설기(leakagePenalty) − 음간보정(음간 일간만).
+ * 설기: 식상·재성을 천간/표면 지지/지장간(여기·중기)에서 별도 합산해 차감.
+ */
+export function computeStrengthResult(
+  dayStem: string,
+  monthBranch: string | undefined,
+  allStems: string[],
+  allBranches: string[],
+): StrengthResult | null {
+  const dmEl = STEM_ELEMENT[dayStem] as FiveElKey | undefined;
+  if (!dmEl) return null;
+
+  const genEl  = getGenerator(dmEl);  // 인성 element
+  const sikEl  = GENERATES[dmEl];     // 식상 element (dm generates this)
+  const jaeEl  = CONTROLS[dmEl];      // 재성 element (dm controls this)
+  const gwaEl  = getController(dmEl); // 관성 element (controls dm)
+
+  const adjustments: string[] = [];
+
+  // 1) 득령: 월령 기여
+  let deukryeong = 0;
+  let monthContribRaw = 0;
+  if (monthBranch) {
+    const mEl = STEM_ELEMENT[monthBranch] as FiveElKey | undefined;
+    if (mEl) {
+      monthContribRaw =
+        mEl === dmEl  ? 3
+        : mEl === genEl ? 2.5
+        : mEl === gwaEl ? -2.5
+        : mEl === sikEl ? -1.5
+        : mEl === jaeEl ? -1
+        : 0;
+      deukryeong += monthContribRaw;
+    }
+  }
+
+  // 2) 득지: 지지 기여(본기)
+  let branchContrib = 0;
+  for (const b of allBranches) {
+    const bEl = STEM_ELEMENT[b] as FiveElKey | undefined;
+    if (!bEl) continue;
+    branchContrib +=
+      bEl === dmEl  ? 1.5
+      : bEl === genEl ? 1.5
+      : bEl === gwaEl ? -1.5
+      : bEl === sikEl ? -0.8
+      : bEl === jaeEl ? -0.5
+      : 0;
+  }
+
+  // 3) 득세: 천간 기여 (일간 자체 1회 제외)
+  let stemContrib = 0;
+  for (const s of allStems) {
+    if (s === dayStem) continue;
+    const sEl = STEM_ELEMENT[s] as FiveElKey | undefined;
+    if (!sEl) continue;
+    stemContrib +=
+      sEl === dmEl  ? 1
+      : sEl === genEl ? 1
+      : sEl === gwaEl ? -1
+      : sEl === sikEl ? -0.5
+      : sEl === jaeEl ? -0.3
+      : 0;
+  }
+
+  // 4) 충(沖) 보정: 득령/득지 약화
+  const CHUNG_OPPOSITE: Record<string, string> = {
+    자: "오", 오: "자", 축: "미", 미: "축",
+    인: "신", 신: "인", 묘: "유", 유: "묘",
+    진: "술", 술: "진", 사: "해", 해: "사",
+  };
+
+  // 4a) 월령충: 득령에 반영
+  if (monthBranch) {
+    const mChungPartner = CHUNG_OPPOSITE[monthBranch];
+    const mOtherBranches = allBranches.filter(b => b !== monthBranch);
+    if (mChungPartner && mOtherBranches.includes(mChungPartner) && monthContribRaw !== 0) {
+      const delta = monthContribRaw * 0.4;
+      deukryeong -= delta;
+      adjustments.push(`월령충(${monthBranch}↔${mChungPartner})로 득령 영향 약화`);
+    }
+  }
+
+  // 4b) 일반 지지충: 득지에 반영
+  let nonMonthChungUndo = 0;
+  for (const b of allBranches) {
+    if (b === monthBranch) continue;
+    const partner = CHUNG_OPPOSITE[b];
+    if (!partner || !allBranches.includes(partner)) continue;
+    const bEl = STEM_ELEMENT[b] as FiveElKey | undefined;
+    if (!bEl) continue;
+    const contrib =
+      bEl === dmEl  ? 1.5
+      : bEl === genEl ? 1.5
+      : bEl === gwaEl ? -1.5
+      : bEl === sikEl ? -0.8
+      : bEl === jaeEl ? -0.5
+      : 0;
+    nonMonthChungUndo += contrib * 0.4;
+  }
+  if (nonMonthChungUndo !== 0) {
+    branchContrib -= nonMonthChungUndo;
+    adjustments.push("지지충으로 통근/지지 영향 일부 약화");
+  }
+
+  // 5) 지장간 통근 보정: 득지에 반영
+  let hiddenOverlay = 0;
+  for (const b of allBranches) {
+    const mainEl = STEM_ELEMENT[b] as FiveElKey | undefined;
+    const hiddens = JIJANGGAN[b] ?? [];
+    for (let j = 0; j < hiddens.length; j++) {
+      const w = JZG_W[Math.min(j, JZG_W.length - 1)];
+      if (w === 0) continue;
+      const hEl = STEM_ELEMENT[hiddens[j]] as FiveElKey | undefined;
+      if (!hEl || hEl === mainEl) continue;
+      hiddenOverlay +=
+        hEl === dmEl ? w * 1.5
+        : hEl === genEl ? w * 1.0
+        : hEl === gwaEl ? -w * 1.0
+        : hEl === sikEl ? -w * 0.5
+        : hEl === jaeEl ? -w * 0.3
+        : 0;
+    }
+  }
+  branchContrib += hiddenOverlay;
+
+  // 6) 설기(洩氣): 식상·재성 독립 차감 (기존 득지/득세 가중과 별도)
+  let leakagePenalty = 0;
+  for (const s of allStems) {
+    if (s === dayStem) continue;
+    const sEl = STEM_ELEMENT[s] as FiveElKey | undefined;
+    if (!sEl) continue;
+    if (sEl === sikEl) leakagePenalty += LEAK_STEM_SIK;
+    else if (sEl === jaeEl) leakagePenalty += LEAK_STEM_JAE;
+  }
+  for (const b of allBranches) {
+    const bEl = STEM_ELEMENT[b] as FiveElKey | undefined;
+    if (!bEl) continue;
+    if (bEl === sikEl) leakagePenalty += LEAK_BRANCH_SIK;
+    else if (bEl === jaeEl) leakagePenalty += LEAK_BRANCH_JAE;
+  }
+  for (const b of allBranches) {
+    const hiddens = JIJANGGAN[b] ?? [];
+    for (let j = 0; j < hiddens.length - 1; j++) {
+      const hEl = STEM_ELEMENT[hiddens[j]] as FiveElKey | undefined;
+      if (!hEl) continue;
+      if (hEl === sikEl) leakagePenalty += LEAK_HIDDEN_SIK;
+      else if (hEl === jaeEl) leakagePenalty += LEAK_HIDDEN_JAE;
+    }
+  }
+
+  const yinAdjustment = isYinDayStem(dayStem) ? YIN_STEM_SCORE_ADJ : 0;
+  let score = deukryeong + branchContrib + stemContrib - leakagePenalty;
+  if (leakagePenalty > 0) {
+    adjustments.push(`설기(洩氣·식상·재성): −${Number(leakagePenalty.toFixed(2))}`);
+  }
+  if (yinAdjustment > 0) {
+    score -= yinAdjustment;
+    adjustments.push(`음간 일간 보정: −${YIN_STEM_SCORE_ADJ}`);
+  }
+
+  const finalScore = Number(score.toFixed(2));
+  if (!Number.isFinite(finalScore)) return null;
+
+  const finalLevel = levelFromScore(finalScore);
+  const dayMasterState = toDayMasterState(finalLevel);
+
+  const strengthDebug: StrengthDebug = {
+    dayStem,
+    deukryeong: Number(deukryeong.toFixed(2)),
+    branchContrib: Number(branchContrib.toFixed(2)),
+    stemContrib: Number(stemContrib.toFixed(2)),
+    leakagePenalty: Number(leakagePenalty.toFixed(2)),
+    yinAdjustment,
+    finalScore,
+    finalLevel,
+  };
+
+  if (isDevRuntime()) {
+    // eslint-disable-next-line no-console
+    console.log("[strength-debug]", strengthDebug);
+  }
+
+  const explanation: string[] = [];
+  if (monthBranch) {
+    if (deukryeong > 0.2) explanation.push(`득령: 월지(${monthBranch}) 기운이 일간(${dmEl})을 돕습니다`);
+    else if (deukryeong < -0.2) explanation.push(`득령: 월지(${monthBranch}) 기운이 일간(${dmEl})에 부담으로 작용합니다`);
+    else explanation.push(`득령: 월지(${monthBranch}) 영향이 크지 않습니다`);
+  }
+  if (branchContrib > 0.3) explanation.push("득지: 지지 통근/지장간 보정으로 일간을 지지합니다");
+  else if (branchContrib < -0.3) explanation.push("득지: 지지 구성에서 소모/제어 기운이 상대적으로 큽니다");
+  else explanation.push("득지: 지지 통근 영향이 크지 않습니다");
+  if (stemContrib > 0.2) explanation.push("득세: 천간에서 비겁·인성의 지지가 있습니다");
+  else if (stemContrib < -0.2) explanation.push("득세: 천간에서 관성·식상·재성의 부담이 있습니다");
+  else explanation.push("득세: 천간 영향이 크지 않습니다");
+  if (leakagePenalty > 0.05) {
+    explanation.push(`설기: 식상·재성 구조로 일간 기운이 일부 소모·유출됩니다(−${Number(leakagePenalty.toFixed(2))})`);
+  }
+  if (yinAdjustment > 0) {
+    explanation.push(`음간 일간: 환경 민감도 보정으로 강도 판정을 약간 보수적으로 조정합니다(−${YIN_STEM_SCORE_ADJ})`);
+  }
+
+  const description = STRENGTH_SHORT_DESC[finalLevel] ?? "";
+
+  return {
+    score: finalScore,
+    level: finalLevel,
+    dayMasterState,
+    reason: {
+      deukryeong: { score: Number(deukryeong.toFixed(2)), note: monthBranch ? `월지 ${monthBranch}` : "월지 미상" },
+      deukji: { score: Number(branchContrib.toFixed(2)), note: "지지(통근/지장간/충 보정 포함)" },
+      deukse: { score: Number(stemContrib.toFixed(2)), note: "천간(일간 제외)" },
+      adjustments,
+    },
+    description,
+    explanation,
+    strengthDebug,
+  };
+}
+
+// ── Weighted strength scoring ─────────────────────────────────────
+//
+// Model priority (highest → lowest):
+//   1. 월령 (month branch seasonal power)
+//   2. 통근 (branch root support)
+//   3. 인성/비겁 stem support
+//   4. 식상/재성/관성 drain/control
+//   5. 설기(洩氣): 식상·재성 독립 차감(천간/지지/지장간 여·중기)
+//   6. 음간 일간 보정(을·정·기·신·계)
+
+export function computeStrengthScore(
+  dayStem: string,
+  monthBranch: string | undefined,
+  allStems: string[],
+  allBranches: string[],
+): number {
+  const r = computeStrengthResult(dayStem, monthBranch, allStems, allBranches);
+  if (!r) {
+    warnStrengthFallback({
+      kind: "score",
+      reason: "computeStrengthResult returned null (invalid DM element or non-finite score)",
+      dayStem,
+      monthBranch,
+      allStems,
+      allBranches,
+    });
+  }
+  return r?.score ?? 0;
+}
+
+export function computeStrengthLevel(
+  dayStem: string,
+  _counts: FiveElementCount,
+  monthBranch?: string,
+  allStems?: string[],
+  allBranches?: string[],
+): StrengthLevel {
+  // Use weighted model when detailed data is provided
+  if (allStems && allBranches) {
+    const r = computeStrengthResult(dayStem, monthBranch, allStems, allBranches);
+    if (!r) {
+      warnStrengthFallback({
+        kind: "level",
+        reason: "computeStrengthResult returned null (invalid DM element or non-finite score)",
+        dayStem,
+        monthBranch,
+        allStems,
+        allBranches,
+      });
+    }
+    return r?.level ?? "중화";
+  }
+
+  // Fallback: simple ratio model (backward compat)
+  const el = STEM_ELEMENT[dayStem] as FiveElKey | undefined;
+  if (!el) return "중화";
+  const gen = getGenerator(el);
+  const total = (Object.values(_counts) as number[]).reduce((a, b) => a + b, 0) || 1;
+  const supporting = (_counts[el] ?? 0) + (_counts[gen] ?? 0);
+  const ratio = supporting / total;
+  if (ratio <= 0.12) return "극신약";
+  if (ratio <= 0.22) return "태약";
+  if (ratio <= 0.32) return "신약";
+  if (ratio <= 0.48) return "중화";
+  if (ratio <= 0.60) return "신강";
+  if (ratio <= 0.72) return "태강";
+  return "극신강";
+}
+
+// Kept for backward compat
+export function computeSupportRatio(dayStem: string, counts: FiveElementCount): number {
+  const el = STEM_ELEMENT[dayStem] as FiveElKey | undefined;
+  if (!el) return 0.33;
+  const generator = getGenerator(el);
+  const total = (Object.values(counts) as number[]).reduce((a, b) => a + b, 0) || 1;
+  const supporting = (counts[el] ?? 0) + (counts[generator] ?? 0);
+  return supporting / total;
+}
+
+// ── Yongshin (용신/用神) — 억부용신 model ────────────────────────
+//
+// Ten-God ↔ Element mapping is always RELATIVE to the Day Master:
+//   인성 (Resource)  = element that generates DM    = getGenerator(dmEl)
+//   비겁 (Companion) = same element as DM            = dmEl
+//   식상 (Output)    = element DM generates          = GENERATES[dmEl]
+//   재성 (Wealth)    = element DM controls           = CONTROLS[dmEl]
+//   관성 (Officer)   = element that controls DM      = getController(dmEl)
+//
+// Strength → Yongshin rule (억부용신):
+//   신약 (weak)   → 인성, 비겁 (resource/companion)
+//   중화 (balanced) → 식상 lean (low confidence)
+//   신강 (strong)  → 식상, 재성 (output/wealth)
+//   극신강 (very strong) → 관성 (officer is last resort)
+
+export interface YongshinResult {
+  primary: FiveElKey;
+  secondary?: FiveElKey;
+  confidence: "high" | "medium" | "low";
+  tenGodGroup: string;
+}
+
+export function computeYongshinFull(
+  dayStem: string,
+  level: StrengthLevel,
+  counts: FiveElementCount,
+): YongshinResult {
+  const dmEl = STEM_ELEMENT[dayStem] as FiveElKey | undefined;
+  if (!dmEl) return { primary: "토", confidence: "low", tenGodGroup: "?" };
+
+  const resourceEl  = getGenerator(dmEl);    // 인성
+  const companionEl = dmEl;                   // 비겁
+  const outputEl    = GENERATES[dmEl];       // 식상
+  const wealthEl    = CONTROLS[dmEl];        // 재성
+  const officerEl   = getController(dmEl);   // 관성
+
+  const idx = STRENGTH_LEVEL_INDEX[level];
+
+  if (idx === 0) {
+    // 극신약 — 인성 needed most urgently
+    return { primary: resourceEl, secondary: companionEl, confidence: "high", tenGodGroup: "인성" };
+  }
+  if (idx === 1) {
+    // 태약 — 인성 primary
+    return { primary: resourceEl, secondary: companionEl, confidence: "high", tenGodGroup: "인성" };
+  }
+  if (idx === 2) {
+    // 신약 — 인성 or 비겁 depending on chart composition
+    const rc = counts[resourceEl] ?? 0;
+    const cc = counts[companionEl] ?? 0;
+    if (rc > 0 && cc > 0) {
+      return { primary: resourceEl, secondary: companionEl, confidence: "high", tenGodGroup: "인성/비겁" };
+    }
+    if (rc >= cc) {
+      return { primary: resourceEl, secondary: companionEl, confidence: "medium", tenGodGroup: "인성" };
+    }
+    return { primary: companionEl, secondary: resourceEl, confidence: "medium", tenGodGroup: "비겁" };
+  }
+  if (idx === 3) {
+    // 중화 — balanced; slight 식상 lean but confidence is low
+    return { primary: outputEl, secondary: resourceEl, confidence: "low", tenGodGroup: "식상" };
+  }
+  if (idx === 4) {
+    // 신강 — 식상 primary, 재성 secondary
+    return { primary: outputEl, secondary: wealthEl, confidence: "high", tenGodGroup: "식상" };
+  }
+  if (idx === 5) {
+    // 태강 — 재성 or 식상 (whichever is scarcer)
+    const oc = counts[outputEl] ?? 0;
+    const wc = counts[wealthEl] ?? 0;
+    if (wc >= oc) {
+      return { primary: wealthEl, secondary: outputEl, confidence: "high", tenGodGroup: "재성" };
+    }
+    return { primary: outputEl, secondary: wealthEl, confidence: "high", tenGodGroup: "식상" };
+  }
+  // 극신강 — 관성 as last resort (strongest control)
+  return { primary: officerEl, secondary: wealthEl, confidence: "high", tenGodGroup: "관성" };
+}
+
+export function computeYongshin(
+  dayStem: string,
+  level: StrengthLevel,
+  counts: FiveElementCount,
+): FiveElKey {
+  return computeYongshinFull(dayStem, level, counts).primary;
+}
+
+export function computeYongshinLabel(
+  dayStem: string,
+  level: StrengthLevel,
+  counts: FiveElementCount,
+): string {
+  return computeYongshin(dayStem, level, counts);
+}
+
+// ── 대표 오행 (오행도·십성 분포·구조 요약 공통) ─────────────────────
+// 최다 count → 동률 시 득령(월지) > 득지(일지) > 지지 다수 > 천간 다수
+
+export function computePrimaryElement(args: {
+  counts: FiveElementCount;
+  monthBranch?: string;
+  dayBranch?: string;
+  allStems?: string[];
+  allBranches?: string[];
+}): FiveElKey {
+  const elements: FiveElKey[] = ["목", "화", "토", "금", "수"];
+  const max = Math.max(...elements.map((e) => args.counts[e] ?? 0));
+  const tied = elements.filter((e) => (args.counts[e] ?? 0) === max);
+  if (tied.length <= 1) return tied[0] ?? "토";
+
+  const monthEl = args.monthBranch ? (STEM_ELEMENT[args.monthBranch] as FiveElKey | undefined) : undefined;
+  const dayEl = args.dayBranch ? (STEM_ELEMENT[args.dayBranch] as FiveElKey | undefined) : undefined;
+  const stemCounts: Partial<Record<FiveElKey, number>> = {};
+  const branchCounts: Partial<Record<FiveElKey, number>> = {};
+  for (const s of args.allStems ?? []) {
+    const el = STEM_ELEMENT[s] as FiveElKey | undefined;
+    if (el) stemCounts[el] = (stemCounts[el] ?? 0) + 1;
+  }
+  for (const b of args.allBranches ?? []) {
+    const el = STEM_ELEMENT[b] as FiveElKey | undefined;
+    if (el) branchCounts[el] = (branchCounts[el] ?? 0) + 1;
+  }
+
+  return tied.sort((a, b) => {
+    const ar = monthEl && a === monthEl ? 1 : 0;
+    const br = monthEl && b === monthEl ? 1 : 0;
+    if (ar !== br) return br - ar;
+    const ad = dayEl && a === dayEl ? 1 : 0;
+    const bd = dayEl && b === dayEl ? 1 : 0;
+    if (ad !== bd) return bd - ad;
+    const aj = branchCounts[a] ?? 0;
+    const bj = branchCounts[b] ?? 0;
+    if (aj !== bj) return bj - aj;
+    const as = stemCounts[a] ?? 0;
+    const bs = stemCounts[b] ?? 0;
+    if (as !== bs) return bs - as;
+    return 0;
+  })[0];
+}
+
+/** @deprecated computePrimaryElement 사용 */
+export function computeDominantElement(
+  monthBranch: string | undefined,
+  dayBranch: string | undefined,
+  counts: FiveElementCount,
+): FiveElKey {
+  return computePrimaryElement({ counts, monthBranch, dayBranch });
+}
+
+// ── Full interpretation schema ────────────────────────────────────
+
+export interface SajuInterpretSchema {
+  strengthLevel: StrengthLevel;
+  strengthDisplayLabel: string;
+  strengthDesc: string;
+  yongshin: FiveElKey;
+  yongshinLabel: string;
+  yongshinSecondary?: FiveElKey;
+  yongshinConfidence: "high" | "medium" | "low";
+  yongshinTenGodGroup: string;
+  dominantElement: FiveElKey;
+  supportRatio: number;
+}
+
+export function buildInterpretSchema(
+  dayStem: string,
+  counts: FiveElementCount,
+  monthBranch?: string,
+  dayBranch?: string,
+  allStems?: string[],
+  allBranches?: string[],
+): SajuInterpretSchema {
+  const strengthLevel = computeStrengthLevel(dayStem, counts, monthBranch, allStems, allBranches);
+  const yr = computeYongshinFull(dayStem, strengthLevel, counts);
+  return {
+    strengthLevel,
+    strengthDisplayLabel: STRENGTH_DISPLAY_LABEL[strengthLevel],
+    strengthDesc: STRENGTH_SHORT_DESC[strengthLevel],
+    yongshin: yr.primary,
+    yongshinLabel: yr.primary,
+    yongshinSecondary: yr.secondary,
+    yongshinConfidence: yr.confidence,
+    yongshinTenGodGroup: yr.tenGodGroup,
+    dominantElement: computePrimaryElement({ counts, monthBranch, dayBranch, allStems, allBranches }),
+    supportRatio: computeSupportRatio(dayStem, counts),
+  };
+}

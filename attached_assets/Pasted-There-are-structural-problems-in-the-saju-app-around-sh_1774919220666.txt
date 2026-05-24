@@ -1,0 +1,79 @@
+There are structural problems in the saju app around shinsal, five elements editing, and ten-god recalculation.
+
+I want to fix this properly.
+
+[1] Shinsal mismatch vs external manseoryeok
+The app is showing some shinsal that differ from the manseoryeok I trust.
+Those additional shinsal may or may not be real, depending on rule set differences.
+For now, I want a safer structure:
+
+- separate shinsal into:
+  1. verified/core shinsal
+  2. extended/experimental shinsal
+- show only verified/core shinsal by default
+- extended shinsal should be hidden by default or shown in an expandable section
+
+Please audit the current shinsal logic and identify:
+- which rule tables are being used
+- which shinsal are core vs extended
+- where the app may be over-generating shinsal
+
+[2] Five elements need editable detailed composition
+Right now the app only allows rough total element editing, and that causes unstable ten-god distribution changes.
+
+I want the app to support a more accurate structure:
+- total elements:
+  - 목 화 토 금 수
+- detailed elemental composition:
+  - 갑 / 을 / 병 / 정 / 무 / 기 / 경 / 신 / 임 / 계
+
+Please redesign the data model so:
+- auto-calculated original values are preserved
+- user-edited overrides are stored separately
+- final effective values are derived from original + edits
+
+Suggested payload structure:
+{
+  auto_calculated: {
+    elements_total: {},
+    elements_detailed: {},
+    ten_gods_total: {},
+    ten_gods_detailed: {}
+  },
+  user_overrides: {
+    elements_total: {},
+    elements_detailed: {}
+  },
+  effective_values: {
+    elements_total: {},
+    elements_detailed: {},
+    ten_gods_total: {},
+    ten_gods_detailed: {}
+  }
+}
+
+[3] Ten Gods should not change arbitrarily
+Currently when I manually edit 오행, the 십성 distribution seems to change in an unstable/arbitrary way.
+Please fix this so ten-god recalculation is based on proper detailed element mapping, not just rough percentages.
+
+Requirements:
+1. Editing only the top-level five elements should either:
+   - proportionally adjust detailed values safely, or
+   - warn that detailed values are needed for high-accuracy recalculation
+2. Editing detailed values (갑/을/병/정/무/기/경/신/임/계) should drive accurate ten-god recalculation
+3. Ten gods must be recalculated from the effective detailed elemental composition based on day master logic
+4. Separate total ten gods and detailed ten gods:
+   - 비겁 / 식상 / 재성 / 관성 / 인성
+   - 비견 / 겁재 / 식신 / 상관 / 정재 / 편재 / 정관 / 편관 / 정인 / 편인
+
+[4] Sync and save rules
+- user edits must sync across devices
+- saved overrides must not be overwritten by old auto-calculated values
+- Supabase must be the source of truth for logged-in users
+
+Please show me:
+- the shinsal classification logic
+- the canonical payload schema
+- how detailed element editing was added
+- how ten-god recalculation now works
+- how verified vs extended shinsal are separated

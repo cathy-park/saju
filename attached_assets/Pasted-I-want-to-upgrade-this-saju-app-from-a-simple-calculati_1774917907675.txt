@@ -1,0 +1,154 @@
+I want to upgrade this saju app from a simple calculation app into a rule-based compositional interpretation engine.
+
+The app currently calculates:
+- five elements distribution
+- ten gods distribution
+- shinsal
+- yongshin
+
+But I want a layered interpretation engine.
+
+Please redesign the saju calculation architecture into 4 layers:
+
+Layer 1:
+raw input
+birth_date
+birth_time
+calendar_type
+gender
+
+Layer 2:
+base structure calculation
+- heavenly stems
+- earthly branches
+- five elements
+- ten gods
+- day master strength
+
+Layer 3:
+structure adjustment engine
+apply corrections from:
+- stem combinations (천간합)
+- branch combinations (지지합)
+- 삼합
+- 방합
+- 충
+- 형
+- 파
+- 해
+- seasonal adjustment (조후 보정)
+- palace interpretation (궁성)
+- structure classification (격국 판단)
+
+Layer 4:
+rule-based interpretation engine
+
+Examples:
+
+IF 관성 strong AND 인성 weak AND day master weak
+THEN interpret 관성 as pressure-type authority
+
+IF 재성 strong AND 식상 weak
+THEN interpret wealth tendency as planning-oriented rather than execution-oriented
+
+IF winter structure AND water strong
+THEN increase fire importance in yongshin calculation
+
+Implementation goals:
+
+1.
+Create a normalized calculation pipeline
+
+raw_input
+→ base_structure
+→ adjusted_structure
+→ interpretation_result
+
+2.
+Store intermediate results in saju_payload JSON
+
+Example structure:
+
+{
+  base_structure:{},
+  adjusted_structure:{},
+  interpretation_rules_applied:[]
+}
+
+3.
+Make interpretation engine rule-based (not random text)
+
+4.
+Allow future extension for compatibility analysis logic
+
+5.
+Show me:
+
+which files contain calculation logic
+which files generate interpretation text
+where to insert adjustment logic
+where to insert rule engine logic
+
+-----
+
+현재 사주 수정 기능에서 오행과 십성이 수정되면 DB에는 저장되지만
+해석 결과(용신, 십성 비율 해석, 궁성 해석 등)가 자동으로 다시 계산되지 않고 있습니다.
+
+다음 구조로 수정해주세요.
+
+[목표]
+사주 데이터가 수정되면 즉시:
+
+1️⃣ 오행 비율 재계산
+2️⃣ 십성 비율 재계산
+3️⃣ 합충형파 변화 반영
+4️⃣ 조후 보정값 반영
+5️⃣ 궁성 보정값 반영
+6️⃣ 용신 재판정
+7️⃣ 전체 해석 텍스트 자동 재생성
+
+까지 한 번에 실행되도록 합니다.
+
+[동작 구조]
+
+사주 수정 발생 시:
+
+updateSajuProfile()
+
+실행 후 자동으로
+
+recalculateFiveElements()
+recalculateTenGods()
+applyCombinationRules()
+applySeasonAdjustment()
+applyPalaceAdjustment()
+recalculateYongshin()
+generateInterpretation()
+
+순서로 실행되게 연결해주세요.
+
+[추가 요구]
+
+모바일 / PC 어디서 수정하든
+
+Supabase 저장 즉시
+
+useEffect 또는 realtime listener 통해
+
+profile 변경 감지 후
+
+자동으로
+
+generateInterpretation()
+
+다시 실행되게 만들어주세요.
+
+즉
+
+"사주 수정 = 해석 자동 업데이트"
+
+되도록 구조를 연결해주세요.
+
+-----
+
+홈에서 회색 가로 슬라이더가 탭에서 드레그할때 안보이게해주세요,

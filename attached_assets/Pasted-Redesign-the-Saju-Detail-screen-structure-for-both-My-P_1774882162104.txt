@@ -1,0 +1,101 @@
+Redesign the Saju Detail screen structure for both My Profile and Other People profiles.
+
+IMPORTANT:
+
+This screen contains the most information in the app.
+It must feel structured, readable, and premium.
+It must NOT look like a long unorganized scroll page.
+
+Use mobile-first layout only.
+
+==================================================
+SECTION ORDER
+==================================================
+
+Use this exact section order:
+
+1. Profile summary header
+2. Four Pillars structure (시일월년)
+3. Core insight chips
+4. Five-element distribution
+5. Ten-gods distribution
+6. Spouse palace summary
+7. Luck flow (대운 / 세운 / 월운 / 일운 tabs)
+8. Shin-sal (grouped by pillar)
+9. Hidden stems + 12운성 (accordion)
+10. 합 / 충 / 형 / 파 / 해 relationships
+11. Interpretation filters
+12. Detailed interpretation cards
+13. Today fortune summary
+
+==================================================
+ACCORDION RULE
+==================================================
+
+Keep expanded by default:
+
+- Four pillars
+- Five-element distribution
+- Spousal palace summary
+
+Everything else must be collapsible.
+
+==================================================
+SHINSAL STRUCTURE
+==================================================
+
+Do NOT show shin-sal as a flat list.
+
+Group them like:
+
+시주 신살
+일주 신살
+월주 신살
+년주 신살
+
+Each shin-sal must support:
+
+add
+remove
+tap to open explanation bottom sheet
+
+==================================================
+LUCK FLOW STRUCTURE
+==================================================
+
+Use tabs:
+
+대운
+세운
+월운
+일운
+
+Switch card content dynamically when tab changes.
+
+==================================================
+INTERPRETATION FILTER STRUCTURE
+==================================================
+
+Add filter chips:
+
+사랑
+재물
+건강
+일/성과
+성격
+
+Show only selected interpretation cards.
+
+==================================================
+FINAL RESULT
+==================================================
+
+The Saju detail screen should feel:
+
+structured
+layered
+mobile-friendly
+clean
+premium
+Posteller-level readable
+not crowded

@@ -1,0 +1,187 @@
+Redesign the information architecture and visual hierarchy of the Korean Saju app.
+
+IMPORTANT:
+Do NOT focus on adding more features.
+Do NOT just place mascots into the current messy layout.
+This revision must simplify and clean up the app.
+
+Current problem:
+The app feels cluttered, visually messy, and overstuffed.
+Home and My Saju screens contain too much information at once.
+Bottom navigation still includes 궁합, which should not be a main tab.
+
+==================================================
+1. CHANGE BOTTOM NAVIGATION TO 3 TABS ONLY
+==================================================
+
+Remove 궁합 from the bottom navigation.
+
+Use only:
+
+- 홈
+- 내 사주
+- 상대
+
+Compatibility must not be a main tab.
+
+Compatibility should be accessed through:
+상대 목록 → 상대 상세 → 나와 궁합 보기
+
+==================================================
+2. REDESIGN HOME AS A CLEAN DAILY DASHBOARD
+==================================================
+
+Home should become a simple daily dashboard.
+
+Keep only these sections:
+
+A. Hero mascot card with 결이
+- today emotional summary
+- technical one-line interpretation
+
+B. 오늘의 운세 4-card grid
+- 관계운
+- 재물운
+- 건강운
+- 일/성과운
+
+C. 현재 대운 card
+
+D. 올해 세운 card
+
+E. 오늘 일진 card
+
+F. Quick action buttons
+- 내 사주 보기
+- 상대 추가하기
+
+Do NOT show detailed chart sections on Home.
+
+==================================================
+3. REDESIGN MY SAJU SCREEN AS A REPORT PAGE
+==================================================
+
+The My Saju screen should be a structured premium report page,
+not a long unorganized stack.
+
+At top show:
+
+- profile summary card
+- 대표 일주
+- 오늘의 전체 흐름
+
+Then use collapsible accordion sections for details:
+
+- 사주 4주
+- 오행 / 십성
+- 지장간 / 12운성
+- 신살
+- 대운 / 세운 / 월운 / 일운
+- 관계운 / 재물운 / 건강운 / 직업운
+- 배우자궁 해석
+
+Only keep the most important summary visible by default.
+Everything else should be expandable.
+
+==================================================
+4. REDESIGN PEOPLE SCREEN
+==================================================
+
+The 상대 screen should focus on people management.
+
+Structure:
+
+- search bar
+- relationship tag filter
+- saved people list
+- floating add button
+
+Each person card should be compact:
+
+- name
+- relationship tag
+- day pillar
+- short summary
+- button or tap to open detail
+
+Do NOT overload this screen with report data.
+
+==================================================
+5. VISUAL HIERARCHY RULES
+==================================================
+
+Use only 3 visual levels:
+
+Level 1:
+hero / summary cards
+
+Level 2:
+small status cards and flow cards
+
+Level 3:
+detail cards inside accordion sections
+
+Do NOT make every card look equally important.
+
+==================================================
+6. MAKE THE UI FEEL CLEANER
+==================================================
+
+Reduce clutter by:
+
+- more whitespace between major sections
+- fewer always-open sections
+- more accordions
+- clearer headings
+- fewer repeated labels
+- shorter visible text blocks
+- rely on bottom sheets for extra explanation
+
+==================================================
+7. POSTELLER + TOSS INSPIRED LAYOUT DIRECTION
+==================================================
+
+Design style target:
+
+- Posteller-like emotional calmness
+- Toss-like spacing clarity
+- premium mobile report structure
+- soft, readable, calm hierarchy
+
+Use:
+- rounded cards
+- warm ivory background
+- muted brown typography
+- clean section headers
+- compact summary chips
+
+Avoid:
+- giant long pages with all sections open
+- repeated mascot placement
+- crowded stacked cards with equal emphasis
+
+==================================================
+8. MASCOT USAGE RULE
+==================================================
+
+Use 결이 sparingly.
+
+Allowed:
+- Home hero
+- empty states
+- key interpretation header
+
+Do NOT place mascot on too many section headers.
+That makes the design feel busy.
+
+==================================================
+9. FINAL GOAL
+==================================================
+
+After this revision:
+
+- bottom nav has only 3 tabs
+- home feels like a clean daily dashboard
+- my saju feels like a premium structured report
+- people tab feels like a clear management screen
+- the app feels calmer, cleaner, and more intentional

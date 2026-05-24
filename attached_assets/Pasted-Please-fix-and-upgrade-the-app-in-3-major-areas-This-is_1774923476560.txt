@@ -1,0 +1,234 @@
+Please fix and upgrade the app in 3 major areas.
+
+This is NOT a UI-only task.
+Please audit the actual calculation/data flow, fix any failures, and verify that the logic truly works.
+
+==================================================
+[1] Fix the hour-pillar mode propagation bug
+==================================================
+
+Current problem:
+The hour-pillar mode (시주 포함 / 시주 제외 / 비교) only affects the 원국 tab.
+When moving to 성향, 운세, 해석 tabs, nothing changes even if the hour-pillar mode changes.
+
+This is incorrect.
+
+Please fix it so that the selected hour-pillar mode from 원국 propagates to all downstream tabs and actually changes the real calculations and interpretations.
+
+Affected tabs/screens:
+- 원국
+- 성향
+- 운세
+- 해석
+
+Requirements:
+1. The selected mode in 원국 must become a shared/global interpretation mode.
+2. This mode must affect the actual data used in 성향, 운세, 해석.
+3. If the mode is changed from 시주 포함 to 시주 제외:
+   - five elements should change if hour pillar affects them
+   - detailed elements should change if hour pillar affects them
+   - ten-god totals should change if hour pillar affects them
+   - detailed ten gods should change if hour pillar affects them
+   - shinsal should change if hour pillar affects them
+   - yongshin / secondary yongshin should change if hour pillar affects them
+   - interpretation text should also change if applicable
+4. Comparison mode must show actual differences, not just labels.
+5. Do NOT let downstream tabs use stale/default calculations.
+6. Use shared effective calculation results:
+   - withHour
+   - withoutHour
+   - diff
+
+Auto-fix rule:
+- Audit each downstream tab
+- If any tab is still using stale/default calculation paths, fix it automatically
+- Re-test after fixing
+- Do not stop at reporting the issue
+
+Developer report required:
+- which files controlled only local/original tab state before
+- which files were updated to use shared mode-specific results
+- confirmation that 성향/운세/해석 now truly change when 시주 mode changes
+
+==================================================
+[2] Upgrade the fortune tab structure and interpretation flow
+==================================================
+
+Please change the current fortune tab labels and structure.
+
+Current:
+- 대운
+- 세운
+- 월운
+- 일운
+
+Change to:
+- 대운
+- 세운
+- 월/일운
+- 달력
+
+Requirements:
+
+[A] Main tab labels
+Rename the main fortune tabs to:
+- 대운
+- 세운
+- 월/일운
+- 달력
+
+[B] 대운 tab
+In the 대운 tab, display:
+- current daewoon name
+- daewoon number (대운수)
+- age range if available
+- core interpretation
+
+[C] 세운 tab
+In the 세운 tab, add an additional interpretation section that combines:
+- current 대운
+- selected 세운
+
+This section should explicitly explain:
+“How the selected yearly fortune is acting together with the current major fortune.”
+
+Use clear section labels, for example:
+- 세운 해석
+- 대운과 결합 해석
+
+[D] 월/일운 tab
+Merge 월운 and 일운 into one main tab called:
+- 월/일운
+
+Inside it, use sub-tabs:
+- 월운
+- 일운
+
+For 월운:
+Add a combined interpretation section that uses:
+- current 대운
+- current 세운
+- selected 월운
+
+This should explain:
+“How the selected monthly fortune is acting together with the current major fortune and yearly fortune.”
+
+For 일운:
+Add a combined interpretation section that uses:
+- current 대운
+- current 세운
+- current 월운
+- selected 일운
+
+This should explain:
+“How the selected daily fortune is acting together with the current major fortune, yearly fortune, and monthly fortune.”
+
+[E] 달력 tab
+Create or refine a dedicated 달력 tab for browsing/selecting monthly/daily fortune dates more naturally.
+
+[F] Important logic requirement
+Do not treat 대운/세운/월운/일운 as isolated independent values only.
+Add a combined interpretation layer:
+- daewoon only
+- sewoon + current daewoon
+- month fortune + current daewoon + current sewoon
+- day fortune + current daewoon + current sewoon + current month fortune
+
+Developer report required:
+- which files control fortune tab UI
+- which files generate combined fortune interpretation logic
+- where daewoon number is calculated/displayed
+- proof that combined interpretation sections were added and are using prior fortune layers correctly
+
+==================================================
+[3] Add full hour-pillar mode support to compatibility
+==================================================
+
+Current concern:
+The hour-pillar mode exists in 원국, but compatibility may still ignore it or use a separate stale/default calculation path.
+
+Please add and fully support the same mode UI in the compatibility page:
+
+- 시주 포함
+- 시주 제외
+- 비교
+
+But compatibility involves two people, so each person must have separate hour-pillar inclusion controls.
+
+Requirements:
+
+[A] Separate hour-pillar control per person
+In compatibility, allow separate mode selection for:
+- Person A (me)
+- Person B (partner)
+
+Each person should be able to independently choose:
+- 시주 포함
+- 시주 제외
+- 비교
+
+If full per-person comparison mode is too complex, design the cleanest workable UI, but the important point is:
+each person’s hour-pillar handling must be selectable independently.
+
+[B] Compatibility must truly recalculate
+Changing either person’s hour-pillar mode must actually affect compatibility calculations and interpretation, including:
+- compatibility score
+- spouse tendency
+- relationship layer
+- dynamic relationship flow
+- current timing interpretation
+- any hour-sensitive derived fields
+
+[C] Comparison mode in compatibility
+When comparison mode is used, show actual changed results, not only labels.
+Highlight differences in:
+- score
+- spouse tendency
+- relationship layer
+- current flow
+- interpretation summary
+
+[D] Shared effective calculation rule
+Compatibility must consume the effective mode-specific calculations for each person.
+It must not ignore the selected hour-pillar options or fall back to old auto/default values.
+
+Auto-fix rule:
+- Audit the compatibility calculation path
+- If compatibility is not using person-specific mode-aware results, fix it automatically
+- Re-test after fixing
+
+Developer report required:
+- which compatibility files were updated
+- how per-person hour-pillar mode is stored
+- how compatibility recalculation now works
+- proof that compatibility interpretation changes when either person’s hour-pillar setting changes
+
+==================================================
+[4] Verification checklist (must pass)
+==================================================
+
+Please test and verify all of the following.
+If any item fails, automatically fix it and re-test before reporting back.
+
+Hour-pillar propagation:
+1. Changing 원국 mode from 시주 포함 to 시주 제외 changes 성향 tab if applicable
+2. Changing 원국 mode from 시주 포함 to 시주 제외 changes 운세 tab if applicable
+3. Changing 원국 mode from 시주 포함 to 시주 제외 changes 해석 tab if applicable
+4. Comparison mode shows actual differences, not just a label
+
+Fortune tab UX/logic:
+5. Main labels are now 대운 / 세운 / 월/일운 / 달력
+6. 대운 tab shows 대운수
+7. 세운 tab includes 대운과 결합 해석
+8. 월운 includes 대운+세운 결합 해석
+9. 일운 includes 대운+세운+월운 결합 해석
+
+Compatibility:
+10. Compatibility page has hour-pillar mode UI
+11. Each person can control hour-pillar handling separately
+12. Changing one person’s hour-pillar mode changes compatibility results if applicable
+13. Comparison mode in compatibility shows actual changed outputs
+
+Important final rule:
+Do NOT leave any checklist item unresolved.
+If a failure is found, fix it in the same pass and verify it again before reporting back.

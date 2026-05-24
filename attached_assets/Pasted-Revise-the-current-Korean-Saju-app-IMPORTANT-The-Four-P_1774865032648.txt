@@ -1,0 +1,211 @@
+Revise the current Korean Saju app.
+
+IMPORTANT:
+
+The Four Pillars calculation engine is already working correctly.
+Do NOT modify or replace the calculation engine.
+
+This revision focuses on expanding the report layer.
+
+==================================================
+1. APPLY FULL REPORT TO OTHER PEOPLE PROFILES
+==================================================
+
+Currently:
+
+My profile shows extended report sections.
+
+Other saved people only show Four Pillars.
+
+Fix this.
+
+All profiles must show the same report sections:
+
+- Four pillars table
+- five element distribution
+- ten-god summary
+- hidden stems
+- branch relationships
+- interpretation cards
+
+Do NOT limit extended report to only my profile.
+
+Apply the same report renderer to all profiles.
+
+==================================================
+2. ADD 12 UNSEONG (십이운성)
+==================================================
+
+Add 12운성 calculation relative to the day master.
+
+Show 12운성 for:
+
+- year branch
+- month branch
+- day branch
+- hour branch
+
+Display them as small labeled badges inside the report.
+
+Example format:
+
+연지: 장생
+월지: 제왕
+일지: 건록
+시지: 쇠
+
+If hour pillar is unknown:
+hide hour branch 12운성.
+
+==================================================
+3. EXPAND BRANCH RELATIONSHIP DETECTION
+==================================================
+
+Currently only partial relationships appear.
+
+Add full detection logic for:
+
+합
+충
+형
+파
+해
+
+Check relationships across:
+
+year ↔ month
+month ↔ day
+day ↔ hour
+year ↔ day
+year ↔ hour
+month ↔ hour
+
+Display results inside a “지지 관계” section card.
+
+==================================================
+4. ADD FULL TEN-GOD TABLE
+==================================================
+
+Currently only partial ten-god summary exists.
+
+Add full ten-god mapping:
+
+for each pillar:
+
+year stem
+month stem
+day stem
+hour stem
+
+display relationship relative to day master.
+
+Also show branch hidden stem ten-gods if available.
+
+==================================================
+5. ADD BASIC DAEUN (대운)
+==================================================
+
+Generate simplified Daewoon list.
+
+Display as:
+
+10-year cycles
+
+Example layout:
+
+age 7 ~ 16
+age 17 ~ 26
+age 27 ~ 36
+age 37 ~ 46
+
+Each cycle should include:
+
+stem + branch
+
+Example:
+
+경오
+신미
+임신
+계유
+
+Do not implement advanced direction logic if unavailable.
+
+Use forward direction as default fallback.
+
+==================================================
+6. ADD SEUN (세운)
+==================================================
+
+Add yearly luck cycle.
+
+Show:
+
+current year stem branch
+next year stem branch
+
+Example:
+
+2026년: 병오
+2027년: 정미
+
+Display inside a “세운” card.
+
+==================================================
+7. ADD MONTHLY LUCK (월운)
+==================================================
+
+Add current month stem branch.
+
+Example:
+
+현재 월운: 경진월
+
+Display below 세운 section.
+
+==================================================
+8. ADD SIMPLE SHINSAL SUPPORT (OPTIONAL SAFE MODE)
+==================================================
+
+If engine supports rule-based extension:
+
+Add basic widely-used shinsal:
+
+도화
+홍염
+역마
+천을귀인
+
+If unavailable:
+
+skip gracefully without breaking UI.
+
+==================================================
+9. IMPORTANT RULES
+==================================================
+
+Do NOT change:
+
+Four pillars calculation
+five element calculation
+existing saved profiles
+
+Only extend report logic.
+
+==================================================
+10. FINAL GOAL
+==================================================
+
+After this revision:
+
+All profiles (my profile + other people)
+
+must show:
+
+12운성
+full ten-god table
+branch relationships
+Daewoon
+Seun
+Wolun
+basic Shinsal if possible

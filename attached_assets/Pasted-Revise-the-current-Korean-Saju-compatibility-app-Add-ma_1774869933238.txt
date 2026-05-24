@@ -1,0 +1,152 @@
+Revise the current Korean Saju compatibility app.
+
+Add manual shinsal editing support that dynamically updates interpretation results.
+
+IMPORTANT:
+Manual shinsal must affect interpretation immediately without page reload.
+
+==================================================
+1. ADD MANUAL SHINSAL STATE SYSTEM
+==================================================
+
+Create a manualShinsal state array.
+
+Example:
+
+autoShinsal = ["도화", "역마"]
+manualShinsal = ["천을귀인"]
+
+finalShinsal = autoShinsal + manualShinsal
+
+All interpretation logic must use finalShinsal.
+
+==================================================
+2. ADD SHINSAL ADD BUTTON
+==================================================
+
+In the shinsal section UI:
+
+Add:
+
++ 신살 추가
+
+When tapped:
+
+open selectable shinsal list modal
+
+Example list:
+
+도화
+역마
+화개
+천을귀인
+홍염
+문창귀인
+문곡귀인
+백호
+괴강
+양인
+현침
+귀문관살
+망신살
+
+User selects items to add manually.
+
+==================================================
+3. MARK MANUAL SHINSAL VISUALLY
+==================================================
+
+Manual shinsal badges must show:
+
+(수동)
+
+Example:
+
+천을귀인 ✨ (수동)
+
+Auto-detected shinsal:
+
+도화 🌸 (자동)
+
+==================================================
+4. ENABLE DELETE MANUAL SHINSAL
+==================================================
+
+Manual shinsal must support removal.
+
+Example:
+
+천을귀인 ✨ (수동)
+[삭제]
+
+When removed:
+
+remove from manualShinsal state
+
+then recalculate interpretation
+
+==================================================
+5. LIVE INTERPRETATION UPDATE
+==================================================
+
+After manual shinsal add/remove:
+
+do NOT reload page
+
+Instead:
+
+re-run interpretation engine using finalShinsal
+
+Example:
+
+generateReport(finalShinsal)
+
+Update UI instantly
+
+==================================================
+6. SAVE MANUAL SHINSAL PER PROFILE
+==================================================
+
+Manual shinsal must be stored per profile
+
+Save inside:
+
+localStorage.profile.manualShinsal
+
+So each saved chart remembers manual edits
+
+==================================================
+7. UPDATE SHINSAL BOTTOM SHEET LABEL
+==================================================
+
+Each shinsal bottom sheet must show:
+
+자동 판별됨
+or
+수동 추가됨
+
+==================================================
+8. DO NOT BREAK EXISTING STRUCTURE
+==================================================
+
+Do NOT modify:
+
+Four pillars engine
+five elements logic
+ten-god logic
+luck flow system
+compatibility scoring system
+
+Only extend shinsal editing capability
+
+==================================================
+FINAL GOAL
+==================================================
+
+User can:
+
+add shinsal manually
+remove shinsal manually
+see label (자동 / 수동)
+see interpretation update instantly
+save manual edits per profile

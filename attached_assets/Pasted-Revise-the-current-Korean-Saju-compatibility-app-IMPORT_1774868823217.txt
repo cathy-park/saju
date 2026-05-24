@@ -1,0 +1,209 @@
+Revise the current Korean Saju compatibility app.
+
+IMPORTANT:
+Do NOT replace or rewrite the working Four Pillars engine.
+This revision must focus on fixing luck-cycle detail issues,
+expanding star/ten-god interpretation depth,
+and improving the report UX with bottom sheets.
+
+==================================================
+1. FIX DAILY LUCK STEM-BRANCH BUG
+==================================================
+
+Current issue:
+Today's daily luck is showing the wrong stem-branch.
+
+Example:
+It should display 계묘, but the app shows 기묘.
+
+This suggests a stem index / sexagenary cycle offset bug.
+
+Check and fix:
+
+- daily luck 60-cycle anchor date
+- heavenly stem index offset
+- daily luck generation mapping
+- any mismatch between stem and branch cycle logic
+
+Important:
+Do not leave branch correct but stem wrong.
+The full daily pillar must match correctly.
+
+Also verify yearly / monthly / daily luck mapping consistency.
+
+==================================================
+2. ADD TEN-GOD DISTRIBUTION SUMMARY
+==================================================
+
+Currently the report shows 오행 distribution only.
+
+Add 십성 distribution summary as well.
+
+Display counts or percentages for:
+
+- 비겁
+- 식상
+- 재성
+- 관성
+- 인성
+
+Use the existing chart data and day master relation logic.
+
+Display as:
+- cards
+- bars
+- labeled chips
+- compact visual summary
+
+This section should appear near 오행 분포.
+
+==================================================
+3. EXPAND SHINSAL RULE COVERAGE
+==================================================
+
+The current shinsal display is still incomplete.
+
+Expand actual supported rule coverage, not just UI layout.
+
+Add or improve support for as many common shinsal as possible, including:
+
+도화
+홍염
+역마
+화개
+천을귀인
+문창귀인
+문곡귀인
+천덕귀인
+월덕귀인
+천복귀인
+백호
+괴강
+양인
+금여
+현침
+장성
+반안
+천의성
+태극귀인
+천관귀인
+천주귀인
+천형
+천살
+지살
+겁살
+재살
+망신살
+고신살
+과숙살
+귀문관살
+상문살
+조객살
+백호대살
+
+Requirements:
+
+- keep structured position-based rendering
+- improve underlying detection rules
+- do not leave only a partial subset if rules can be added
+- if a specific shinsal cannot be computed reliably, fail gracefully
+
+==================================================
+4. ADD BOTTOM SHEET EXPLANATION UX
+==================================================
+
+Add a reusable bottom sheet component.
+
+This bottom sheet should open when the user taps:
+
+- a 신살 badge
+- a 대운 item
+- a 세운 item
+- a 월운 item
+- a 일운 item
+- a 십성 distribution item
+
+==================================================
+5. SHINSAL BOTTOM SHEET CONTENT
+==================================================
+
+When user taps a shinsal badge,
+open bottom sheet with:
+
+- 신살 이름
+- 기본 의미
+- 관계 / 성향 관점 해석
+- 주의할 점 or 장점
+
+Tone:
+clear
+structured
+modern Korean saju style
+not over-mystical
+
+==================================================
+6. DAEUN / SEUN / WOLUN / ILUN BOTTOM SHEETS
+==================================================
+
+When user taps a luck item,
+open bottom sheet with:
+
+- 해당 운 이름 (예: 임진대운, 계묘일진)
+- 기간 / 적용 시점
+- 기본 의미
+- 관계운 / 일운 / 흐름 해석
+- 현재 프로필 기준 요약
+
+Example:
+This Daewoon tends to strengthen relationship stability.
+This Monthly Luck may increase emotional friction.
+This Daily Luck is better for observation than action.
+
+==================================================
+7. TEN-GOD BOTTOM SHEET
+==================================================
+
+When user taps:
+비겁 / 식상 / 재성 / 관성 / 인성
+
+open bottom sheet with:
+
+- 이름
+- 기본 의미
+- 이 차트에서의 해석 포인트
+- 관계 / 일 / 감정 측면 의미
+
+==================================================
+8. MAKE REPORT FEEL INTERACTIVE
+==================================================
+
+The report should not feel like static text only.
+
+Use tap targets, chips, and cards so the user can explore:
+- 신살
+- 십성
+- 운 흐름
+
+==================================================
+9. PRESERVE CURRENT APP STRUCTURE
+==================================================
+
+Do NOT break:
+- saved profiles
+- compatibility screens
+- current report sections
+- localStorage
+- pillar display order (시 / 일 / 월 / 년)
+
+==================================================
+10. FINAL GOAL
+==================================================
+
+After this revision:
+
+- daily luck must display the correct stem-branch
+- ten-god distribution must appear alongside five elements
+- shinsal coverage must be much broader
+- shinsal and luck items must be tappable
+- bottom sheets must explain what those items mean
+- the app should feel more like a premium Korean interactive saju report app

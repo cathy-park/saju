@@ -1,0 +1,221 @@
+Revise the current Korean Saju compatibility app.
+
+IMPORTANT:
+The current shinsal editing UX is still broken.
+
+Problems:
+1. spouse-luck uses unnecessary double toggle logic
+2. marital status is not considered
+3. shinsal add/delete still does not work correctly
+4. auto-detected wrong shinsal cannot be removed
+5. shinsal must be edited separately by position
+
+Fix the architecture properly.
+
+==================================================
+1. REMOVE DOUBLE TOGGLE LOGIC FOR 배우자운
+==================================================
+
+Currently spouse-luck uses both:
+- settings toggle
+- top filter toggle
+
+This is unnecessary and confusing.
+
+Remove the separate settings-based spouse-luck toggle.
+
+Keep only the top interpretation filter chips:
+
+- 사랑
+- 재물
+- 건강
+- 일/성과
+- 배우자운
+
+If 배우자운 chip is ON:
+show spouse-related sections
+
+If OFF:
+hide spouse-related sections
+
+Use the same logic as other interpretation categories.
+
+==================================================
+2. ADD MARITAL STATUS INPUT
+==================================================
+
+Add a new profile field:
+
+관계 상태
+
+Options:
+- 미혼
+- 연애중
+- 기혼
+- 기타
+- 응답안함
+
+Use this field to adjust wording in relationship/spouse interpretation.
+
+Examples:
+
+If 미혼:
+show 인연운 / 관계 안정 시기 중심 wording
+
+If 연애중:
+show 관계 발전 / 조율 / 갈등 흐름 wording
+
+If 기혼:
+show 배우자 관계 / 가정 안정 / 유지 흐름 wording
+
+Do not use the same spouse interpretation text for everyone.
+
+==================================================
+3. REBUILD SHINSAL DATA STRUCTURE WITH IDs
+==================================================
+
+Each shinsal item must be stored as an object:
+
+- id
+- position
+- name
+- source
+
+Example:
+{
+  id: "uuid-1",
+  position: "일지",
+  name: "도화",
+  source: "auto"
+}
+
+or
+
+{
+  id: "uuid-2",
+  position: "월지",
+  name: "천을귀인",
+  source: "manual"
+}
+
+Supported positions:
+- 시천간
+- 시지
+- 일천간
+- 일지
+- 월천간
+- 월지
+- 연천간
+- 연지
+
+==================================================
+4. SEPARATE AUTO AND MANUAL SHINSAL BEHAVIOR
+==================================================
+
+Manual shinsal:
+- can be added
+- can be deleted permanently
+
+Auto-detected shinsal:
+- cannot be permanently deleted from engine
+- but user must be able to hide/exclude them from this profile
+
+Create hidden/excluded state for auto shinsal.
+
+Example:
+excludedAutoShinsalIds = ["uuid-1", "uuid-5"]
+
+If excluded:
+- do not render in UI
+- do not use in interpretation
+
+==================================================
+5. POSITION-BASED SHINSAL EDITING UI
+==================================================
+
+For each position section
+(시천간 / 시지 / 일천간 / 일지 / 월천간 / 월지 / 연천간 / 연지)
+
+show:
+
+A. existing shinsal list
+B. add button for that position only
+
+Example:
+
+일지
+- 도화 (자동) [제외]
+- 홍염 (수동) [삭제]
+- + 신살 추가
+
+When + 신살 추가 is tapped from a position section:
+that position should already be fixed.
+User should only choose the shinsal name.
+
+Do not use one global add flow anymore.
+
+==================================================
+6. FIX DELETE / EXCLUDE INTERACTION
+==================================================
+
+Manual shinsal:
+[삭제]
+→ remove item from state
+→ update localStorage
+→ update interpretation immediately
+
+Auto shinsal:
+[제외]
+→ add item id to excludedAutoShinsalIds
+→ update localStorage
+→ update interpretation immediately
+
+No page reload required.
+
+==================================================
+7. UPDATE INTERPRETATION ENGINE
+==================================================
+
+Interpretation must use:
+
+finalShinsal =
+(all auto shinsal except excluded ones)
++
+(all manual shinsal)
+
+This must update immediately after add/delete/exclude.
+
+==================================================
+8. SAVE PER PROFILE
+==================================================
+
+Per profile, save:
+- manualShinsal
+- excludedAutoShinsalIds
+- maritalStatus
+
+Persist all in localStorage.
+
+==================================================
+9. CLEAN UX REQUIREMENTS
+==================================================
+
+- no double toggle for spouse luck
+- top chips only
+- marital status aware wording
+- shinsal editing must be per-position
+- wrong auto shinsal must be excludable
+- manual shinsal must be deletable
+
+==================================================
+10. FINAL GOAL
+==================================================
+
+After this revision:
+
+- 배우자운 uses the same top-chip logic as other categories
+- marital status affects wording
+- shinsal can be edited separately for each position
+- wrong auto shinsal can be excluded
+- manual shinsal can be deleted
+- interpretation updates correctly and immediately
