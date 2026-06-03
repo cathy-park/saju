@@ -1046,9 +1046,9 @@ export default function Compatibility() {
                   <div className="ds-inline-detail-nested p-4 text-center">
                     <p className="text-[12px] font-semibold text-muted-foreground">배우자궁</p>
                     <p className="mt-2 text-[15px] font-extrabold leading-snug text-foreground">
-                      <span style={getBranchColor((fullReport as any).branchComp.myBranch)}>{(fullReport as any).branchComp.myBranch}</span>{" "}
+                      <span style={getBranchColor((fullReport as any).branchComp?.myBranch)}>{(fullReport as any).branchComp?.myBranch}</span>{" "}
                       ↔{" "}
-                      <span style={getBranchColor((fullReport as any).branchComp.otherBranch)}>{(fullReport as any).branchComp.otherBranch}</span>
+                      <span style={getBranchColor((fullReport as any).branchComp?.otherBranch)}>{(fullReport as any).branchComp?.otherBranch}</span>
                     </p>
                   </div>
                 ) : (
@@ -1115,11 +1115,11 @@ export default function Compatibility() {
                     <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">지지 관계</p>
                     <div className="ds-inline-detail-nested space-y-2">
                       <p className="ds-body">{fullReport.crossBranch.overallDesc}</p>
-                      {(fullReport as any).branchComp.relations.length > 0 && (
+                      {(fullReport as any).branchComp?.relations.length > 0 && (
                       <div className="space-y-2">
                           <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">일지 관계 태그</p>
                           <div className="flex flex-wrap gap-1.5">
-                            {(fullReport as any).branchComp.relations
+                            {(fullReport as any).branchComp?.relations
                               .map((raw: string) => ({ raw, type: normalizeRelationType(raw) }))
                               .filter((x: any): x is { raw: string; type: RelationType } => !!x.type)
                               .map(({ raw, type }: { raw: string; type: RelationType }, i: number) => (
@@ -1472,7 +1472,7 @@ export default function Compatibility() {
                           <GenderSymbol gender={myGender} />{myName}
                         </p>
                         <div className="ds-inline-detail-nested mt-2 py-2">
-                          <p className="text-sm font-bold text-foreground">{deRomance((fullReport as any).styleComp.person1Style)}</p>
+                          <p className="text-sm font-bold text-foreground">{deRomance((fullReport as any).styleComp?.person1Style)}</p>
                         </div>
                       </div>
                       <div className={cn("rounded-xl border p-3 text-center", otherGender === "여" ? "border-rose-200 bg-rose-50/60" : "border-sky-200 bg-sky-50/60")}>
@@ -1480,12 +1480,12 @@ export default function Compatibility() {
                           <GenderSymbol gender={otherGender} />{otherName}
                         </p>
                         <div className="ds-inline-detail-nested mt-2 py-2">
-                          <p className="text-sm font-bold text-foreground">{deRomance((fullReport as any).styleComp.person2Style)}</p>
+                          <p className="text-sm font-bold text-foreground">{deRomance((fullReport as any).styleComp?.person2Style)}</p>
                         </div>
                       </div>
                     </div>
                     <div className="ds-inline-detail-nested">
-                      <p className="ds-body">{deRomance((fullReport as any).styleComp.dynamicsDesc)}</p>
+                      <p className="ds-body">{deRomance((fullReport as any).styleComp?.dynamicsDesc)}</p>
                     </div>
                   </div>
                 </div>
@@ -1517,10 +1517,10 @@ export default function Compatibility() {
                                 color: palette.badgeText,
                               }}
                             >
-                              {(fullReport as any).marriageView.type}
+                              {(fullReport as any).marriageView?.type}
                             </span>
                           </div>
-                          <p className="mt-2 text-[13px] leading-relaxed text-foreground">{(fullReport as any).marriageView.desc}</p>
+                          <p className="mt-2 text-[13px] leading-relaxed text-foreground">{(fullReport as any).marriageView?.desc}</p>
                         </div>
                       </div>
                     </div>
@@ -1532,10 +1532,10 @@ export default function Compatibility() {
                 const s = result.score;
                 const baseType = s >= 85 ? "이상적 궁합" : s >= 70 ? "좋은 궁합" : s >= 55 ? "노력형 궁합" : s >= 40 ? "긴장형 궁합" : "주의 궁합";
                 const adj: string[] = [];
-                if ((fullReport as any).structural.dayMasterSupportive)  adj.push("일간상생 −1");
-                if ((fullReport as any).structural.spousePalaceClash)    adj.push("배우자궁충 +1");
-                if ((fullReport as any).structural.branchClashCount >= 2) adj.push(`지지충${(fullReport as any).structural.branchClashCount}개 +1`);
-                if ((fullReport as any).structural.monthBranchClash)     adj.push("월지충 +1");
+                if ((fullReport as any).structural?.dayMasterSupportive)  adj.push("일간상생 −1");
+                if ((fullReport as any).structural?.spousePalaceClash)    adj.push("배우자궁충 +1");
+                if ((fullReport as any).structural?.branchClashCount >= 2) adj.push(`지지충${(fullReport as any).structural?.branchClashCount}개 +1`);
+                if ((fullReport as any).structural?.monthBranchClash)     adj.push("월지충 +1");
                 return (
                   <div className="rounded-xl border border-yellow-300 bg-yellow-50 px-3 py-2 text-[11px] font-mono text-yellow-800">
                     [DEV] 기본점수 {s}점 ({baseType}) → 조정: [{adj.join(", ") || "없음"}] → 최종: {fullReport.tone}
@@ -1581,37 +1581,37 @@ export default function Compatibility() {
                   <div>
                     <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-2">배우자궁 비교</p>
                     <div className="mb-2 flex items-center gap-3">
-                      <div className="flex-1 rounded-xl border px-3 py-3 text-center" style={getElCardStyleLite(charToElement((fullReport as any).branchComp.myBranch))}>
+                      <div className="flex-1 rounded-xl border px-3 py-3 text-center" style={getElCardStyleLite(charToElement((fullReport as any).branchComp?.myBranch))}>
                           <p className="inline-flex w-full items-center justify-center gap-0.5 text-[13px] text-muted-foreground">
                             <GenderSymbol gender={myGender} />
                             {myName} 일지
                           </p>
-                          <span className="text-2xl font-bold" style={getBranchColor((fullReport as any).branchComp.myBranch)}>
-                            {(fullReport as any).branchComp.myBranch}{charToElement((fullReport as any).branchComp.myBranch) ?? ""}
+                          <span className="text-2xl font-bold" style={getBranchColor((fullReport as any).branchComp?.myBranch)}>
+                            {(fullReport as any).branchComp?.myBranch}{charToElement((fullReport as any).branchComp?.myBranch) ?? ""}
                           </span>
                       </div>
                       <div className="text-center">
                         <span className="text-lg text-muted-foreground">↔</span>
                       </div>
-                      <div className="flex-1 rounded-xl border px-3 py-3 text-center" style={getElCardStyleLite(charToElement((fullReport as any).branchComp.otherBranch))}>
+                      <div className="flex-1 rounded-xl border px-3 py-3 text-center" style={getElCardStyleLite(charToElement((fullReport as any).branchComp?.otherBranch))}>
                           <p className="inline-flex w-full items-center justify-center gap-0.5 text-[13px] text-muted-foreground">
                             <GenderSymbol gender={otherGender} />
                             {otherName} 일지
                           </p>
-                          <span className="text-2xl font-bold" style={getBranchColor((fullReport as any).branchComp.otherBranch)}>
-                            {(fullReport as any).branchComp.otherBranch}{charToElement((fullReport as any).branchComp.otherBranch) ?? ""}
+                          <span className="text-2xl font-bold" style={getBranchColor((fullReport as any).branchComp?.otherBranch)}>
+                            {(fullReport as any).branchComp?.otherBranch}{charToElement((fullReport as any).branchComp?.otherBranch) ?? ""}
                           </span>
                       </div>
                     </div>
                     <div className="ds-inline-detail-nested space-y-1">
-                      <p className={cn("text-[13px] font-semibold", REL_TONE_COLOR[(fullReport as any).branchComp.tone] ?? "text-foreground")}>
-                        {(fullReport as any).branchComp.tone}
+                      <p className={cn("text-[13px] font-semibold", REL_TONE_COLOR[(fullReport as any).branchComp?.tone] ?? "text-foreground")}>
+                        {(fullReport as any).branchComp?.tone}
                       </p>
-                      <p className="text-sm text-foreground">{(fullReport as any).branchComp.desc}</p>
+                      <p className="text-sm text-foreground">{(fullReport as any).branchComp?.desc}</p>
                     </div>
                     <div className="ds-inline-detail-nested mt-2 space-y-1">
                       <p className="text-[13px] font-semibold text-muted-foreground">관계 안정도</p>
-                      <p className="text-sm text-foreground">{(fullReport as any).branchComp.stability}</p>
+                      <p className="text-sm text-foreground">{(fullReport as any).branchComp?.stability}</p>
                     </div>
                   </div>
                 )}
