@@ -33,7 +33,7 @@ const EL_CONTROLS: Record<keyof FiveElementCount, keyof FiveElementCount> = {
 
 type StemElRel = "비화" | "생" | "피생" | "극" | "피극";
 
-function getStemElRel(stem1: string, stem2: string): StemElRel {
+export function getStemElRel(stem1: string, stem2: string): StemElRel {
   const e1 = STEM_EL[stem1];
   const e2 = STEM_EL[stem2];
   if (!e1 || !e2) return "비화";
@@ -55,13 +55,13 @@ const STEM_CLASH: [string, string][] = [
   ["갑", "경"], ["을", "신"], ["병", "임"], ["정", "계"],
 ];
 
-function checkStemCombine(s1: string, s2: string): string | null {
+export function checkStemCombine(s1: string, s2: string): string | null {
   for (const [a, b, label] of STEM_COMBINE) {
     if ((s1 === a && s2 === b) || (s1 === b && s2 === a)) return label;
   }
   return null;
 }
-function checkStemClash(s1: string, s2: string): boolean {
+export function checkStemClash(s1: string, s2: string): boolean {
   return STEM_CLASH.some(([a, b]) => (s1 === a && s2 === b) || (s1 === b && s2 === a));
 }
 
@@ -89,7 +89,7 @@ const BRANCH_WONJIN: [string, string][] = [
   ["자", "미"], ["축", "오"], ["인", "유"], ["묘", "신"], ["진", "해"], ["사", "술"],
 ];
 
-function branchRel(b1: string, b2: string): string[] {
+export function branchRel(b1: string, b2: string): string[] {
   const rels: string[] = [];
   if (BRANCH_HAP_6.some(([a, b]) => (b1 === a && b2 === b) || (b1 === b && b2 === a))) rels.push("합");
   if (BRANCH_CHUNG.some(([a, b]) => (b1 === a && b2 === b) || (b1 === b && b2 === a))) rels.push("충");
@@ -158,7 +158,7 @@ const REL_TYPE_TONE_DESC: Partial<Record<RelationshipType, Record<CompatibilityT
   },
 };
 
-function getToneDesc(tone: CompatibilityTone, relType?: RelationshipType): string {
+export function getToneDesc(tone: CompatibilityTone, relType?: RelationshipType): string {
   return relType
     ? (REL_TYPE_TONE_DESC[relType]?.[tone] ?? DEFAULT_TONE_DESC[tone])
     : DEFAULT_TONE_DESC[tone];
@@ -166,7 +166,7 @@ function getToneDesc(tone: CompatibilityTone, relType?: RelationshipType): strin
 
 // ── Stem relationship interpretation ──────────────────────────────
 
-const STEM_REL_DESC: Record<StemElRel, { label: string; desc: string }> = {
+export const STEM_REL_DESC: Record<StemElRel, { label: string; desc: string }> = {
   비화: {
     label: "비화(比和) — 같은 기운",
     desc: "두 분의 일간 오행이 같거나 비슷한 기운입니다. 서로를 잘 이해하고 공감대가 높지만, 같은 약점을 공유하거나 경쟁이 생길 수 있습니다. 서로 다른 분야에서 각자의 강점을 발휘할 때 가장 빛납니다.",
@@ -189,7 +189,7 @@ const STEM_REL_DESC: Record<StemElRel, { label: string; desc: string }> = {
   },
 };
 
-const TEN_GOD_COMPAT_DESC: Record<string, string> = {
+export const TEN_GOD_COMPAT_DESC: Record<string, string> = {
   비견: "동등한 경쟁자처럼 느껴집니다. 공감은 높지만 양보가 부족할 수 있습니다.",
   겁재: "강한 경쟁의식과 동지적 유대가 공존합니다. 서로 자극을 주는 관계입니다.",
   식신: "자연스럽게 상대에게 마음을 표현하고 돌봐주고 싶은 기운입니다. 따뜻하고 헌신적입니다.",
@@ -204,7 +204,7 @@ const TEN_GOD_COMPAT_DESC: Record<string, string> = {
 
 // ── Day branch comparison interpretation ─────────────────────────
 
-const BRANCH_REL_COMPAT: Record<string, { tone: string; desc: string; stability: string }> = {
+export const BRANCH_REL_COMPAT: Record<string, { tone: string; desc: string; stability: string }> = {
   합: {
     tone: "매우 좋음",
     desc: "두 배우자궁이 합(合)을 이루어 강한 결합력과 정서적 유대감이 있습니다. 자연스럽게 끌리고 함께 있을 때 편안함을 느낍니다.",
@@ -239,7 +239,7 @@ const BRANCH_REL_COMPAT: Record<string, { tone: string; desc: string; stability:
 
 // ── Element complement ────────────────────────────────────────────
 
-function getElementComplement(el1: FiveElementCount, el2: FiveElementCount): {
+export function getElementComplement(el1: FiveElementCount, el2: FiveElementCount): {
   p1Lacks: string[]; p2Lacks: string[];
   p1Comps: string[]; p2Comps: string[];
   desc: string;
@@ -267,7 +267,7 @@ function getElementComplement(el1: FiveElementCount, el2: FiveElementCount): {
 
 // ── Marriage viewpoint ────────────────────────────────────────────
 
-function getMarriageView(score: number, elRel: StemElRel, dayBranchRel: string): {
+export function getMarriageView(score: number, elRel: StemElRel, dayBranchRel: string): {
   type: string; typeColor: string; desc: string;
 } {
   if (score >= 78 && (dayBranchRel === "합" || elRel === "생" || elRel === "피생")) {
@@ -340,7 +340,7 @@ const STYLE_COMPAT_DESC: Record<string, Record<string, string>> = {
   },
 };
 
-function getStyleCompatDesc(style1: string, style2: string): string {
+export function getStyleCompatDesc(style1: string, style2: string): string {
   return STYLE_COMPAT_DESC[style1]?.[style2]
     ?? STYLE_COMPAT_DESC[style2]?.[style1]
     ?? `${style1} 유형과 ${style2} 유형의 만남으로, 서로의 차이를 강점으로 활용하면 좋은 관계가 됩니다.`;
@@ -348,7 +348,7 @@ function getStyleCompatDesc(style1: string, style2: string): string {
 
 // ── Conflict / Harmony / Tips ────────────────────────────────────
 
-function getConflictPoints(
+export function getConflictPoints(
   elRel: StemElRel, dayBranchRel: string, el1: FiveElementCount, el2: FiveElementCount
 ): string[] {
   const points: string[] = [];
@@ -381,7 +381,7 @@ function getConflictPoints(
   return points.slice(0, 3);
 }
 
-function getHarmonyPoints(
+export function getHarmonyPoints(
   elRel: StemElRel, dayBranchRel: string, el1: FiveElementCount, el2: FiveElementCount
 ): string[] {
   const points: string[] = [];
@@ -411,7 +411,7 @@ function getHarmonyPoints(
   return points.slice(0, 3);
 }
 
-function getRelationshipTips(style1: string, style2: string, tone: string): string[] {
+export function getRelationshipTips(style1: string, style2: string, tone: string): string[] {
   const general = [
     "서로의 차이를 판단하지 말고 '다름'으로 이해하세요. 상대방의 방식에서 배울 점을 찾는 습관이 관계를 깊게 합니다.",
     "정기적으로 두 사람만의 시간을 만들고, 일상의 작은 관심과 표현으로 관계를 유지하세요.",
@@ -436,7 +436,7 @@ function getRelationshipTips(style1: string, style2: string, tone: string): stri
 
 // ── Cross-chart branch analysis ───────────────────────────────────
 
-function getCrossBranchAnalysis(
+export function getCrossBranchAnalysis(
   p1Branches: string[], p2Branches: string[]
 ): { positive: { desc: string }[]; negative: { desc: string }[] } {
   const positive: { desc: string }[] = [];
