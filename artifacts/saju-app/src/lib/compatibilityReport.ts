@@ -557,7 +557,7 @@ export function buildFullCompatibilityReport(
   const dayBranchRelLabel = dayBranchRels[0] ?? "없음";
 
   // ── Single source of truth: compute score once ──────────────────
-  const scoreResult = calculateCompatibilityScore(p1, p2);
+  const scoreResult = calculateCompatibilityScore(p1, p2, relType);
   const score = scoreResult.baseScore;
   const tone = scoreResult.finalType;
   const toneColor = scoreResult.finalColor;

@@ -8,7 +8,7 @@
 // - spouseStructureAxisComparison: 스냅샷 evaluations·십성그룹·동일 기둥/신살 입력으로 보조 3축만
 //   (메인 점수 미가산). sPal·emotionalLoad·관재/재성 작동은 3축에만 반영되고 7조정에는 직접 미포함.
 
-import type { PersonRecord } from "./storage";
+import type { PersonRecord, RelationshipType } from "./storage";
 import { getFinalPillars } from "./storage";
 import type { FiveElementCount } from "./sajuEngine";
 import { computeBranchRelations } from "./branchRelations";
@@ -402,22 +402,34 @@ export function buildSpouseAxisComparisonNarrative(
 // ═══════════════════════════════════════════════════════════════════════
 //  1. 일간 관계 delta  (−12 ~ +15)
 // ═══════════════════════════════════════════════════════════════════════
-function scoreDayMasterDelta(s1: string, s2: string): { delta: number; note: string } {
+function scoreDayMasterDelta(s1: string, s2: string, relType?: RelationshipType): { delta: number; note: string } {
   if (!s1 || !s2) return { delta: 0, note: "일간 정보 없음" };
   const e1 = STEM_ELEMENT[s1];
   const e2 = STEM_ELEMENT[s2];
   if (!e1 || !e2) return { delta: 0, note: "오행 미상" };
 
-  if (GENERATING.some(([a, b]) => a === e1 && b === e2))
-    return { delta: +15, note: `${s1}(${e1}) → ${s2}(${e2}) 상생` };
-  if (GENERATING.some(([a, b]) => a === e2 && b === e1))
-    return { delta: +12, note: `${s2}(${e2}) → ${s1}(${e1}) 상생 (피생)` };
-  if (e1 === e2)
-    return { delta: +8, note: `${s1}·${s2} 동일 오행 (비화)` };
-  if (CONTROLLING.some(([a, b]) => a === e1 && b === e2))
-    return { delta: -10, note: `${s1}(${e1}) → ${s2}(${e2}) 상극` };
-  if (CONTROLLING.some(([a, b]) => a === e2 && b === e1))
-    return { delta: -12, note: `${s2}(${e2}) → ${s1}(${e1}) 상극 (피극)` };
+  const isWorkOrFriend = relType === "friend" || relType === "coworker";
+
+  if (GENERATING.some(([a, b]) => a === e1 && b === e2)) {
+    const delta = isWorkOrFriend ? +18 : +15;
+    return { delta, note: `${s1}(${e1}) → ${s2}(${e2}) 상생` };
+  }
+  if (GENERATING.some(([a, b]) => a === e2 && b === e1)) {
+    const delta = isWorkOrFriend ? +14 : +12;
+    return { delta, note: `${s2}(${e2}) → ${s1}(${e1}) 상생 (피생)` };
+  }
+  if (e1 === e2) {
+    const delta = isWorkOrFriend ? +10 : +8;
+    return { delta, note: `${s1}·${s2} 동일 오행 (비화)` };
+  }
+  if (CONTROLLING.some(([a, b]) => a === e1 && b === e2)) {
+    const delta = isWorkOrFriend ? -14 : -10;
+    return { delta, note: `${s1}(${e1}) → ${s2}(${e2}) 상극` };
+  }
+  if (CONTROLLING.some(([a, b]) => a === e2 && b === e1)) {
+    const delta = isWorkOrFriend ? -16 : -12;
+    return { delta, note: `${s2}(${e2}) → ${s1}(${e1}) 상극 (피극)` };
+  }
 
   return { delta: +4, note: `${s1}·${s2} 간접 관계` };
 }
@@ -425,45 +437,96 @@ function scoreDayMasterDelta(s1: string, s2: string): { delta: number; note: str
 // ═══════════════════════════════════════════════════════════════════════
 //  2. 배우자궁(일지) delta  (−18 ~ +18)
 // ═══════════════════════════════════════════════════════════════════════
-function scoreSpousePalaceDelta(b1: string, b2: string): { delta: number; note: string; spousePalaceClash: boolean; spousePalaceTensions: string[] } {
+function scoreSpousePalaceDelta(b1: string, b2: string, relType?: RelationshipType): { delta: number; note: string; spousePalaceClash: boolean; spousePalaceTensions: string[] } {
   if (!b1 || !b2) return { delta: 0, note: "일지 정보 없음", spousePalaceClash: false, spousePalaceTensions: [] };
   const rels = getBranchRels(b1, b2);
   const tensions: string[] = rels.filter(r => ["형","해","원진"].includes(r));
   const hasClash = rels.includes("충");
 
-  if (rels.includes("합"))
-    return { delta: +18, note: `${b1}·${b2} 지지합`, spousePalaceClash: false, spousePalaceTensions: tensions };
-  if (rels.includes("반합"))
-    return { delta: +12, note: `${b1}·${b2} 반합`, spousePalaceClash: false, spousePalaceTensions: tensions };
-  if (hasClash)
-    return { delta: -18, note: `${b1}·${b2} 충`, spousePalaceClash: true, spousePalaceTensions: tensions };
-  if (rels.includes("원진"))
-    return { delta: -9, note: `${b1}·${b2} 원진`, spousePalaceClash: false, spousePalaceTensions: tensions };
-  if (rels.includes("형"))
-    return { delta: -8, note: `${b1}·${b2} 형`, spousePalaceClash: false, spousePalaceTensions: tensions };
-  if (rels.includes("해"))
-    return { delta: -7, note: `${b1}·${b2} 해`, spousePalaceClash: false, spousePalaceTensions: tensions };
-  if (rels.includes("파"))
-    return { delta: -6, note: `${b1}·${b2} 파`, spousePalaceClash: false, spousePalaceTensions: tensions };
+  let rawDelta = 0;
+  let noteSuffix = "";
 
-  return { delta: +6, note: `${b1}·${b2} 무관`, spousePalaceClash: false, spousePalaceTensions: [] };
+  if (rels.includes("합")) {
+    rawDelta = +18;
+    noteSuffix = " 지지합";
+  } else if (rels.includes("반합")) {
+    rawDelta = +12;
+    noteSuffix = " 반합";
+  } else if (hasClash) {
+    rawDelta = -18;
+    noteSuffix = " 충";
+  } else if (rels.includes("원진")) {
+    rawDelta = -9;
+    noteSuffix = " 원진";
+  } else if (rels.includes("형")) {
+    rawDelta = -8;
+    noteSuffix = " 형";
+  } else if (rels.includes("해")) {
+    rawDelta = -7;
+    noteSuffix = " 해";
+  } else if (rels.includes("파")) {
+    rawDelta = -6;
+    noteSuffix = " 파";
+  } else {
+    rawDelta = +6;
+    noteSuffix = " 무관";
+  }
+
+  let finalDelta = rawDelta;
+  if (relType === "friend" || relType === "coworker") {
+    finalDelta = Math.round(rawDelta * 0.3);
+  } else if (relType === "family") {
+    finalDelta = Math.round(rawDelta * 0.5);
+  }
+
+  const note = `${b1}·${b2}${noteSuffix}${finalDelta !== rawDelta ? ` (가중치 조정: ${finalDelta > 0 ? "+" : ""}${finalDelta}점)` : ""}`;
+
+  return {
+    delta: finalDelta,
+    note,
+    spousePalaceClash: hasClash,
+    spousePalaceTensions: tensions
+  };
 }
 
 // ═══════════════════════════════════════════════════════════════════════
 //  3. 월지 교차 delta  (−12 ~ +12)
 // ═══════════════════════════════════════════════════════════════════════
-function scoreMonthBranchDelta(m1: string, m2: string): { delta: number; note: string; monthClash: boolean } {
+function scoreMonthBranchDelta(m1: string, m2: string, relType?: RelationshipType): { delta: number; note: string; monthClash: boolean } {
   if (!m1 || !m2) return { delta: 0, note: "월지 정보 없음", monthClash: false };
   const rels = getBranchRels(m1, m2);
+  const isWorkOrFriend = relType === "friend" || relType === "coworker";
 
-  if (rels.includes("합"))   return { delta: +12, note: `월지 ${m1}·${m2} 합`, monthClash: false };
-  if (rels.includes("반합")) return { delta: +8,  note: `월지 ${m1}·${m2} 반합`, monthClash: false };
-  if (rels.includes("충"))   return { delta: -12, note: `월지 ${m1}·${m2} 충`, monthClash: true };
-  if (rels.some(r => ["형","해","원진"].includes(r)))
-    return { delta: -6, note: `월지 ${m1}·${m2} ${rels.filter(r => ["형","해","원진"].includes(r)).join("·")}`, monthClash: false };
-  if (rels.includes("파"))   return { delta: -4, note: `월지 ${m1}·${m2} 파`, monthClash: false };
+  let rawDelta = 0;
+  let hasClash = false;
+  let noteSuffix = "";
 
-  return { delta: +4, note: `월지 ${m1}·${m2} 무관`, monthClash: false };
+  if (rels.includes("합")) {
+    rawDelta = isWorkOrFriend ? +18 : +12;
+    noteSuffix = "합";
+  } else if (rels.includes("반합")) {
+    rawDelta = isWorkOrFriend ? +12 : +8;
+    noteSuffix = "반합";
+  } else if (rels.includes("충")) {
+    rawDelta = isWorkOrFriend ? -18 : -12;
+    hasClash = true;
+    noteSuffix = "충";
+  } else if (rels.some(r => ["형","해","원진"].includes(r))) {
+    rawDelta = isWorkOrFriend ? -10 : -6;
+    noteSuffix = rels.filter(r => ["형","해","원진"].includes(r)).join("·");
+  } else if (rels.includes("파")) {
+    rawDelta = isWorkOrFriend ? -6 : -4;
+    noteSuffix = "파";
+  } else {
+    rawDelta = isWorkOrFriend ? +6 : +4;
+    noteSuffix = "무관";
+  }
+
+  return {
+    delta: rawDelta,
+    note: `월지 ${m1}·${m2} ${noteSuffix}`,
+    monthClash: hasClash
+  };
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -674,9 +737,12 @@ interface StructuralFlags {
 function computeStructuralSteps(
   flags: StructuralFlags,
   spouseDelta: number,
+  relType?: RelationshipType,
 ): { steps: StructuralTierStep[]; netDelta: number } {
   const steps: StructuralTierStep[] = [];
   let net = 0;
+
+  const isPersonalLove = relType === "lover" || relType === "spouse" || !relType || relType === "other";
 
   // +1 up: dayMasterSupportive + spouse palace is not negative
   if (flags.dayMasterSupportive && spouseDelta >= 0) {
@@ -684,12 +750,12 @@ function computeStructuralSteps(
     net += 1;
   }
   // −1: spouse palace clash
-  if (flags.spousePalaceClash) {
+  if (flags.spousePalaceClash && isPersonalLove) {
     steps.push({ label: "배우자궁 충", direction: "down" });
     net -= 1;
   }
   // −1: spouse palace has multiple tension relations (원진/해/형 ≥2)
-  if (flags.spousePalaceMultiTension) {
+  if (flags.spousePalaceMultiTension && isPersonalLove) {
     steps.push({ label: "배우자궁 복합 긴장(원진·해·형 중복)", direction: "down" });
     net -= 1;
   }
@@ -817,6 +883,7 @@ function buildKeywords(
 export function calculateCompatibilityScore(
   person1: PersonRecord,
   person2: PersonRecord,
+  relType?: RelationshipType,
 ): CompatibilityResult {
   const p1 = getFinalPillars(person1);
   const p2 = getFinalPillars(person2);
@@ -855,9 +922,9 @@ export function calculateCompatibilityScore(
   const pipe2 = computePersonPipelineSnapshot(person2);
 
   // ── Compute 7 adjustment deltas ──
-  const dm   = scoreDayMasterDelta(s1, s2);
-  const sp   = scoreSpousePalaceDelta(b1, b2);
-  const mb   = scoreMonthBranchDelta(m1, m2);
+  const dm   = scoreDayMasterDelta(s1, s2, relType);
+  const sp   = scoreSpousePalaceDelta(b1, b2, relType);
+  const mb   = scoreMonthBranchDelta(m1, m2, relType);
   const bi   = scoreBranchInteractionDelta(br1, br2);
   const ec   = scoreElementComplementarityDelta(el1, el2);
   const tg   = scoreTenGodDelta(s1, s2);
@@ -889,7 +956,7 @@ export function calculateCompatibilityScore(
   };
 
   const baseType = gradeFromScore(baseScore);
-  const { steps: structuralSteps, netDelta } = computeStructuralSteps(flags, sp.delta);
+  const { steps: structuralSteps, netDelta } = computeStructuralSteps(flags, sp.delta, relType);
   const finalType = shiftTier(baseType, netDelta);
   const finalColor = COMPAT_TONE_COLOR[finalType];
 

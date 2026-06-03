@@ -765,15 +765,20 @@ export default function Compatibility() {
   const ep1 = p1 && hourModeA === "제외" ? withHourRemoved(p1) : p1;
   const ep2 = p2 && hourModeB === "제외" ? withHourRemoved(p2) : p2;
 
+  const relType: RelationshipType | undefined =
+    (p2 as (PersonRecord & { relationshipType?: RelationshipType }) | null)?.relationshipType;
+
+  const isPersonalLove = relType === "lover" || relType === "spouse";
+
   const fullReport = (ep1 && ep2)
-    ? buildFullCompatibilityReport(ep1, ep2, mode === "me_other" ? (p2 as PersonRecord & { relationshipType?: RelationshipType }).relationshipType : undefined)
+    ? buildFullCompatibilityReport(ep1, ep2, relType)
     : null;
   const result: CompatibilityResult | null = fullReport?.scoreResult ?? null;
 
   // ── 시주 포함 기준 점수 (비교용) ──────────────────────────────
   const hasHourExcluded = hourModeA === "제외" || hourModeB === "제외";
   const fullReportBase = hasHourExcluded && p1 && p2
-    ? buildFullCompatibilityReport(p1, p2, mode === "me_other" ? (p2 as PersonRecord & { relationshipType?: RelationshipType }).relationshipType : undefined)
+    ? buildFullCompatibilityReport(p1, p2, relType)
     : null;
   const resultBase: CompatibilityResult | null = fullReportBase?.scoreResult ?? null;
   // Derive all colors from result.finalType — single source of truth
@@ -782,10 +787,6 @@ export default function Compatibility() {
   const otherName = p2?.birthInput.name ?? "";
   const myGender = p1?.birthInput.gender ?? "";
   const otherGender = p2?.birthInput.gender ?? "";
-  const relType: RelationshipType | undefined =
-    mode === "me_other"
-      ? (p2 as (PersonRecord & { relationshipType?: RelationshipType }) | null)?.relationshipType
-      : undefined;
 
   function adaptTextForRelType(text: string): string {
     if (!text) return text;
@@ -1031,7 +1032,7 @@ export default function Compatibility() {
                   </div>
                 </div>
 
-              {/* 요약 타일 (일간 관계 / 배우자궁) — 궁합 한눈에보기 카드 아래로 이동 */}
+              {/* 요약 타일 (일간 관계 / 배우자궁 혹은 월지) — 궁합 한눈에보기 카드 아래로 이동 */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="ds-inline-detail-nested p-4 text-center">
                   <p className="text-[12px] font-semibold text-muted-foreground">일간 관계</p>
@@ -1039,14 +1040,25 @@ export default function Compatibility() {
                     {fullReport.stemRel.label}
                   </p>
                 </div>
-                <div className="ds-inline-detail-nested p-4 text-center">
-                  <p className="text-[12px] font-semibold text-muted-foreground">배우자궁</p>
-                  <p className="mt-2 text-[15px] font-extrabold leading-snug text-foreground">
-                    <span style={getBranchColor(fullReport.branchComp.myBranch)}>{fullReport.branchComp.myBranch}</span>{" "}
-                    ↔{" "}
-                    <span style={getBranchColor(fullReport.branchComp.otherBranch)}>{fullReport.branchComp.otherBranch}</span>
-                  </p>
-                </div>
+                {isPersonalLove ? (
+                  <div className="ds-inline-detail-nested p-4 text-center">
+                    <p className="text-[12px] font-semibold text-muted-foreground">배우자궁</p>
+                    <p className="mt-2 text-[15px] font-extrabold leading-snug text-foreground">
+                      <span style={getBranchColor(fullReport.branchComp.myBranch)}>{fullReport.branchComp.myBranch}</span>{" "}
+                      ↔{" "}
+                      <span style={getBranchColor(fullReport.branchComp.otherBranch)}>{fullReport.branchComp.otherBranch}</span>
+                    </p>
+                  </div>
+                ) : (
+                  <div className="ds-inline-detail-nested p-4 text-center">
+                    <p className="text-[12px] font-semibold text-muted-foreground">월지(사회성/가치관) 관계</p>
+                    <p className="mt-2 text-[15px] font-extrabold leading-snug text-foreground">
+                      <span style={getBranchColor(myPillarsFull?.month?.hangul?.[1] ?? "")}>{myPillarsFull?.month?.hangul?.[1] ?? ""}</span>{" "}
+                      ↔{" "}
+                      <span style={getBranchColor(otherPillarsFull?.month?.hangul?.[1] ?? "")}>{otherPillarsFull?.month?.hangul?.[1] ?? ""}</span>
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* ── 2. 관계 구조 분석: 섹션 pastel → 카드/네스티드 white ── */}
@@ -1229,7 +1241,7 @@ export default function Compatibility() {
                 </div>
 
               {/* ── 배우자 구조 비교: 스냅샷 3축 교차 해석(보조·메인 점수 미반영) ── */}
-              {result.spouseStructureAxisComparison && (() => {
+              {isPersonalLove && result.spouseStructureAxisComparison && (() => {
                 const spouseBlock = result.spouseStructureAxisComparison!;
                 const higherLabel = (
                   h: "person1" | "person2" | "tie",
@@ -1563,42 +1575,44 @@ export default function Compatibility() {
                 </div>
 
                 {/* 배우자궁 비교 */}
-                <div>
-                  <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-2">배우자궁 비교</p>
-                  <div className="mb-2 flex items-center gap-3">
-                    <div className="flex-1 rounded-xl border px-3 py-3 text-center" style={getElCardStyleLite(charToElement(fullReport.branchComp.myBranch))}>
-                        <p className="inline-flex w-full items-center justify-center gap-0.5 text-[13px] text-muted-foreground">
-                          <GenderSymbol gender={myGender} />
-                          {myName} 일지
-                        </p>
-                        <span className="text-2xl font-bold" style={getBranchColor(fullReport.branchComp.myBranch)}>
-                          {fullReport.branchComp.myBranch}{charToElement(fullReport.branchComp.myBranch) ?? ""}
-                        </span>
+                {isPersonalLove && (
+                  <div>
+                    <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-2">배우자궁 비교</p>
+                    <div className="mb-2 flex items-center gap-3">
+                      <div className="flex-1 rounded-xl border px-3 py-3 text-center" style={getElCardStyleLite(charToElement(fullReport.branchComp.myBranch))}>
+                          <p className="inline-flex w-full items-center justify-center gap-0.5 text-[13px] text-muted-foreground">
+                            <GenderSymbol gender={myGender} />
+                            {myName} 일지
+                          </p>
+                          <span className="text-2xl font-bold" style={getBranchColor(fullReport.branchComp.myBranch)}>
+                            {fullReport.branchComp.myBranch}{charToElement(fullReport.branchComp.myBranch) ?? ""}
+                          </span>
+                      </div>
+                      <div className="text-center">
+                        <span className="text-lg text-muted-foreground">↔</span>
+                      </div>
+                      <div className="flex-1 rounded-xl border px-3 py-3 text-center" style={getElCardStyleLite(charToElement(fullReport.branchComp.otherBranch))}>
+                          <p className="inline-flex w-full items-center justify-center gap-0.5 text-[13px] text-muted-foreground">
+                            <GenderSymbol gender={otherGender} />
+                            {otherName} 일지
+                          </p>
+                          <span className="text-2xl font-bold" style={getBranchColor(fullReport.branchComp.otherBranch)}>
+                            {fullReport.branchComp.otherBranch}{charToElement(fullReport.branchComp.otherBranch) ?? ""}
+                          </span>
+                      </div>
                     </div>
-                    <div className="text-center">
-                      <span className="text-lg text-muted-foreground">↔</span>
+                    <div className="ds-inline-detail-nested space-y-1">
+                      <p className={cn("text-[13px] font-semibold", REL_TONE_COLOR[fullReport.branchComp.tone] ?? "text-foreground")}>
+                        {fullReport.branchComp.tone}
+                      </p>
+                      <p className="text-sm text-foreground">{fullReport.branchComp.desc}</p>
                     </div>
-                    <div className="flex-1 rounded-xl border px-3 py-3 text-center" style={getElCardStyleLite(charToElement(fullReport.branchComp.otherBranch))}>
-                        <p className="inline-flex w-full items-center justify-center gap-0.5 text-[13px] text-muted-foreground">
-                          <GenderSymbol gender={otherGender} />
-                          {otherName} 일지
-                        </p>
-                        <span className="text-2xl font-bold" style={getBranchColor(fullReport.branchComp.otherBranch)}>
-                          {fullReport.branchComp.otherBranch}{charToElement(fullReport.branchComp.otherBranch) ?? ""}
-                        </span>
+                    <div className="ds-inline-detail-nested mt-2 space-y-1">
+                      <p className="text-[13px] font-semibold text-muted-foreground">관계 안정도</p>
+                      <p className="text-sm text-foreground">{fullReport.branchComp.stability}</p>
                     </div>
                   </div>
-                  <div className="ds-inline-detail-nested space-y-1">
-                    <p className={cn("text-[13px] font-semibold", REL_TONE_COLOR[fullReport.branchComp.tone] ?? "text-foreground")}>
-                      {fullReport.branchComp.tone}
-                    </p>
-                    <p className="text-sm text-foreground">{fullReport.branchComp.desc}</p>
-                  </div>
-                  <div className="ds-inline-detail-nested mt-2 space-y-1">
-                    <p className="text-[13px] font-semibold text-muted-foreground">관계 안정도</p>
-                    <p className="text-sm text-foreground">{fullReport.branchComp.stability}</p>
-                  </div>
-                </div>
+                )}
 
                 {/* 세부 분석 */}
                 {result.details.length > 0 && (
@@ -1608,6 +1622,8 @@ export default function Compatibility() {
                       {result.details
                         // avoid repeating already-expanded sections (구조 분석/비교 카드에서 다룬 항목)
                         .filter((d) => !["일간 분석", "배우자궁", "지지 교차", "오행 보완", "십성 관계"].includes(d.title))
+                        // 비애정 관계 시 배우자/애정성 항목 필터링
+                        .filter((d) => isPersonalLove || !["배우자궁 안정(원국)", "관성 작동(원국)", "재성 작동(원국)", "올해 운 가중(타이밍)"].includes(d.title))
                         .map((d, i) => (
                         d.isPositive ? (
                           <div
@@ -1740,72 +1756,74 @@ export default function Compatibility() {
                 </CardAccordion>
               )}
 
-              <CardAccordion title="배우자 성향 · 관계운 레이어" defaultOpen={false}>
-                <p className="-mt-1 text-[12px] leading-relaxed text-muted-foreground">
-                  궁합 점수와는 <span className="font-semibold text-foreground">따로 놓고</span> 읽어 주세요. 각자 원국에 스며 있는 배우자 성향과 관계운의 흐름만 담았습니다.
-                </p>
+              {isPersonalLove && (
+                <CardAccordion title="배우자 성향 · 관계운 레이어" defaultOpen={false}>
+                  <p className="-mt-1 text-[12px] leading-relaxed text-muted-foreground">
+                    궁합 점수와는 <span className="font-semibold text-foreground">따로 놓고</span> 읽어 주세요. 각자 원국에 스며 있는 배우자 성향과 관계운의 흐름만 담았습니다.
+                  </p>
 
-                <div>
-                  <p className="mb-2 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">① 원국 배우자 성향</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    {[
-                      { name: myName, gender: myGender, branch: myDayBranch2, palace: mySpousePalace },
-                      { name: otherName, gender: otherGender, branch: otherDayBranch2, palace: otherSpousePalace },
-                    ].map(({ name, gender, branch, palace }) => (
-                      <div key={name} className="ds-inline-detail-nested space-y-1.5 p-3">
-                        <div className="mb-1.5 flex items-center gap-1.5">
-                          <span className="inline-flex items-center gap-0.5 text-[12px] font-semibold text-muted-foreground">
-                            <GenderSymbol gender={gender} />
-                            {name}
-                          </span>
-                          {branch && (
-                            <span className="rounded bg-muted px-1.5 py-0.5 text-sm font-bold" style={getBranchColor(branch)}>
-                              {branch}
-                            </span>
-                          )}
-                        </div>
-                        {palace ? (
-                          <>
-                            <p className="mb-1 text-[12px] font-bold leading-snug text-foreground">
-                              {palace.title.split("—")[1]?.trim() ?? palace.element}
-                            </p>
-                            <p className="text-[12px] leading-relaxed text-muted-foreground">{palace.summary}</p>
-                          </>
-                        ) : (
-                          <p className="text-[12px] text-muted-foreground">정보 없음</p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {(myMarriageTiming || otherMarriageTiming) && (
                   <div>
-                    <p className="mb-2 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">② 결혼 적합 시기 힌트</p>
-                    <div className="space-y-2">
+                    <p className="mb-2 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">① 원국 배우자 성향</p>
+                    <div className="grid grid-cols-2 gap-2">
                       {[
-                        { name: myName, gender: myGender, timing: myMarriageTiming },
-                        { name: otherName, gender: otherGender, timing: otherMarriageTiming },
-                      ]
-                        .filter(({ timing }) => timing)
-                        .map(({ name, gender, timing }) => (
-                          <div key={name} className="ds-inline-detail-nested space-y-1 px-3 py-2.5">
-                            <p className="mb-1 inline-flex items-center gap-0.5 text-[12px] font-semibold text-foreground">
+                        { name: myName, gender: myGender, branch: myDayBranch2, palace: mySpousePalace },
+                        { name: otherName, gender: otherGender, branch: otherDayBranch2, palace: otherSpousePalace },
+                      ].map(({ name, gender, branch, palace }) => (
+                        <div key={name} className="ds-inline-detail-nested space-y-1.5 p-3">
+                          <div className="mb-1.5 flex items-center gap-1.5">
+                            <span className="inline-flex items-center gap-0.5 text-[12px] font-semibold text-muted-foreground">
                               <GenderSymbol gender={gender} />
                               {name}
-                            </p>
-                            <p className="text-[12px] leading-relaxed text-muted-foreground">{timing!.daewoonHint}</p>
-                            <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground/70">{timing!.general}</p>
+                            </span>
+                            {branch && (
+                              <span className="rounded bg-muted px-1.5 py-0.5 text-sm font-bold" style={getBranchColor(branch)}>
+                                {branch}
+                              </span>
+                            )}
                           </div>
-                        ))}
+                          {palace ? (
+                            <>
+                              <p className="mb-1 text-[12px] font-bold leading-snug text-foreground">
+                                {palace.title.split("—")[1]?.trim() ?? palace.element}
+                              </p>
+                              <p className="text-[12px] leading-relaxed text-muted-foreground">{palace.summary}</p>
+                            </>
+                          ) : (
+                            <p className="text-[12px] text-muted-foreground">정보 없음</p>
+                          )}
+                        </div>
+                      ))}
                     </div>
                   </div>
-                )}
 
-                <p className="border-t border-border pt-2.5 text-[11px] leading-relaxed text-muted-foreground/60">
-                  * 궁합은 운명이 아닙니다. 두 원국 구조가 어떻게 상호작용하는 경향이 있는지를 보여주는 참고 정보입니다.
-                </p>
-              </CardAccordion>
+                  {(myMarriageTiming || otherMarriageTiming) && (
+                    <div>
+                      <p className="mb-2 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">② 결혼 적합 시기 힌트</p>
+                      <div className="space-y-2">
+                        {[
+                          { name: myName, gender: myGender, timing: myMarriageTiming },
+                          { name: otherName, gender: otherGender, timing: otherMarriageTiming },
+                        ]
+                          .filter(({ timing }) => timing)
+                          .map(({ name, gender, timing }) => (
+                            <div key={name} className="ds-inline-detail-nested space-y-1 px-3 py-2.5">
+                              <p className="mb-1 inline-flex items-center gap-0.5 text-[12px] font-semibold text-foreground">
+                                <GenderSymbol gender={gender} />
+                                {name}
+                              </p>
+                              <p className="text-[12px] leading-relaxed text-muted-foreground">{timing!.daewoonHint}</p>
+                              <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground/70">{timing!.general}</p>
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <p className="border-t border-border pt-2.5 text-[11px] leading-relaxed text-muted-foreground/60">
+                    * 궁합은 운명이 아닙니다. 두 원국 구조가 어떻게 상호작용하는 경향이 있는지를 보여주는 참고 정보입니다.
+                  </p>
+                </CardAccordion>
+              )}
               </div>
 
               {/* ── 행동 가이드 ── */}
