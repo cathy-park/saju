@@ -13,10 +13,12 @@ import {
   getConflictPoints,
   getHarmonyPoints,
   getRelationshipTips,
+  getStyleCompatDesc,
   branchRel,
 } from "../compatibilityReport";
 import { calculateCompatibilityScore } from "../compatibilityScore";
 import { getTenGod } from "../tenGods";
+import { getRelationshipPattern } from "../relationshipReport";
 
 export function generateCoworkerReport(
   p1: PersonRecord,
@@ -80,6 +82,9 @@ export function generateCoworkerReport(
   const elemComp = getElementComplement(el1, el2);
   
   // 동료/업무 관계의 경우 지지(배우자궁) 대신 월지(사회궁)를 메인으로 분석
+
+  const styleInfo1 = getRelationshipPattern(s1, pillars1.day?.hangul?.[1] ?? "", el1);
+  const styleInfo2 = getRelationshipPattern(s2, pillars2.day?.hangul?.[1] ?? "", el2);
   let monthDesc = "";
   if (monthBranchRels.includes("합")) monthDesc = "사회궁(월지)이 합을 이루어, 같은 목표를 향해 시너지를 내기 매우 좋은 파트너입니다.";
   else if (monthBranchRels.includes("충")) monthDesc = "업무를 추진하는 방식이나 사회적 가치관이 정반대일 수 있습니다. 서로의 역할을 명확히 나누는 것이 좋습니다.";
@@ -108,9 +113,9 @@ export function generateCoworkerReport(
       desc: monthDesc,
     },
     workStyleComp: {
-      person1Style: "보완 필요 (임시)", // TODO: 격국/관성 기반 스타일 추출 추가 가능
-      person2Style: "보완 필요 (임시)",
-      synergyDesc: "서로 다른 역량을 활용해 업무 시너지를 낼 수 있습니다."
+      person1Style: styleInfo1.style,
+      person2Style: styleInfo2.style,
+      synergyDesc: getStyleCompatDesc(styleInfo1.style, styleInfo2.style).replace(/연애|이성|사랑/g, "업무")
     },
     stemHarmony: { combines, clashes, overallDesc: stemOverallDesc },
     crossBranch: {
@@ -125,6 +130,6 @@ export function generateCoworkerReport(
     elementComp: { p1Lacks: elemComp.p1Lacks, p2Lacks: elemComp.p2Lacks, p1Comps: elemComp.p1Comps, p2Comps: elemComp.p2Comps, desc: elemComp.desc.replace(/인연/g, "파트너") },
     conflictPoints: getConflictPoints(elRel, monthBranchRels[0] ?? "없음", el1, el2).map((s: string) => s.replace(/배우자궁/g, "사회궁(월지)")),
     harmonyPoints: getHarmonyPoints(elRel, monthBranchRels[0] ?? "없음", el1, el2).map((s: string) => s.replace(/배우자궁/g, "사회궁(월지)")),
-    tips: getRelationshipTips("A", "B", tone).map((s: string) => s.replace(/사랑/g, "협력")), // reusing logic
+    tips: getRelationshipTips(styleInfo1.style, styleInfo2.style, tone).map((s: string) => s.replace(/사랑/g, "협력")), // reusing logic
   };
 }

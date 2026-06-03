@@ -13,6 +13,7 @@ import {
   getConflictPoints,
   getHarmonyPoints,
   getRelationshipTips,
+  getStyleCompatDesc,
   branchRel,
 } from "../compatibilityReport";
 import { calculateCompatibilityScore } from "../compatibilityScore";
@@ -104,7 +105,7 @@ export function generateFamilyFriendReport(
     dynamicsComp: {
       person1Style: styleInfo1.style,
       person2Style: styleInfo2.style,
-      desc: `${relNoun} 관계에서 두 사람의 성향 차이와 공통점을 보여줍니다.`
+      desc: getStyleCompatDesc(styleInfo1.style, styleInfo2.style).replace(/연애|이성/g, "관계").replace(/사랑/g, "애정")
     },
     stemHarmony: { combines, clashes, overallDesc: stemOverallDesc },
     crossBranch: {
