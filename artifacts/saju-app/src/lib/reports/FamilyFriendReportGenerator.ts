@@ -15,6 +15,7 @@ import {
   getRelationshipTips,
   getStyleCompatDesc,
   branchRel,
+  BRANCH_REL_COMPAT,
 } from "../compatibilityReport";
 import { calculateCompatibilityScore } from "../compatibilityScore";
 import { getTenGod } from "../tenGods";
@@ -81,6 +82,10 @@ export function generateFamilyFriendReport(
     ? `잘 맞을 때는 아주 잘 맞고 부딪힐 때는 크게 부딪히는 역동적인 ${relNoun} 관계입니다.`
     : `천간에 큰 충돌 없이 편안하고 무난하게 지낼 수 있는 자연스러운 관계입니다.`;
 
+
+  const dayBranchRelLabel = dayBranchRels.length > 0 ? dayBranchRels[0] : "없음";
+  const branchComp = BRANCH_REL_COMPAT[dayBranchRelLabel] ?? BRANCH_REL_COMPAT["없음"];
+
   const crossBranch = getCrossBranchAnalysis(branches1, branches2);
   const elemComp = getElementComplement(el1, el2);
   const styleInfo1 = getRelationshipPattern(s1, b1, el1);
@@ -101,6 +106,15 @@ export function generateFamilyFriendReport(
       me2otherDesc: me2other ? (TEN_GOD_COMPAT_DESC[me2other] ?? "") : "관계 없음",
       other2meDesc: other2me ? (TEN_GOD_COMPAT_DESC[other2me] ?? "") : "관계 없음",
       elRel,
+    },
+
+    branchComp: {
+      myBranch: b1,
+      otherBranch: b2,
+      relations: dayBranchRels,
+      tone: branchComp.tone,
+      desc: branchComp.desc.replace(/연인|결혼|배우자/g, relNoun).replace(/사랑/g, "애정"),
+      stability: branchComp.stability.replace(/연인|결혼|배우자/g, relNoun).replace(/사랑/g, "애정"),
     },
     dynamicsComp: {
       person1Style: styleInfo1.style,

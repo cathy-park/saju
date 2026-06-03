@@ -1494,7 +1494,7 @@ export default function Compatibility() {
 
                 {mode === "me_other" && (() => {
                   const rel = (p2 as (PersonRecord & { relationshipType?: RelationshipType }) | null)?.relationshipType;
-                  const show = rel === "lover" || rel === "spouse" || rel === "other";
+                  const show = rel === "lover" || rel === "spouse";
                   if (!show) return null;
                   return (
                     <div className="ds-card overflow-hidden shadow-none">
@@ -1577,9 +1577,9 @@ export default function Compatibility() {
                 </div>
 
                 {/* 배우자궁 비교 */}
-                {isPersonalLove && (
+                {(isPersonalLove || (!isPersonalLove && (fullReport as any).branchComp)) && (
                   <div>
-                    <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-2">배우자궁 비교</p>
+                    <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-2">{isPersonalLove ? "배우자궁 비교" : "내면(일지) 비교"}</p>
                     <div className="mb-2 flex items-center gap-3">
                       <div className="flex-1 rounded-xl border px-3 py-3 text-center" style={getElCardStyleLite(charToElement((fullReport as any).branchComp?.myBranch))}>
                           <p className="inline-flex w-full items-center justify-center gap-0.5 text-[13px] text-muted-foreground">
@@ -1615,6 +1615,47 @@ export default function Compatibility() {
                     </div>
                   </div>
                 )}
+
+                {/* 사회궁(월지) 비교 (동료) */}
+                {!isPersonalLove && (fullReport as any).monthBranchComp && (
+                  <div>
+                    <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-2">사회궁(월지) 비교</p>
+                    <div className="mb-2 flex items-center gap-3">
+                      <div className="flex-1 rounded-xl border px-3 py-3 text-center" style={getElCardStyleLite(charToElement((fullReport as any).monthBranchComp?.myMonth))}>
+                          <p className="inline-flex w-full items-center justify-center gap-0.5 text-[13px] text-muted-foreground">
+                            <GenderSymbol gender={myGender} />
+                            {myName} 월지
+                          </p>
+                          <span className="text-2xl font-bold" style={getBranchColor((fullReport as any).monthBranchComp?.myMonth)}>
+                            {(fullReport as any).monthBranchComp?.myMonth}{charToElement((fullReport as any).monthBranchComp?.myMonth) ?? ""}
+                          </span>
+                      </div>
+                      <div className="text-center">
+                        <span className="text-lg text-muted-foreground">↔</span>
+                      </div>
+                      <div className="flex-1 rounded-xl border px-3 py-3 text-center" style={getElCardStyleLite(charToElement((fullReport as any).monthBranchComp?.otherMonth))}>
+                          <p className="inline-flex w-full items-center justify-center gap-0.5 text-[13px] text-muted-foreground">
+                            <GenderSymbol gender={otherGender} />
+                            {otherName} 월지
+                          </p>
+                          <span className="text-2xl font-bold" style={getBranchColor((fullReport as any).monthBranchComp?.otherMonth)}>
+                            {(fullReport as any).monthBranchComp?.otherMonth}{charToElement((fullReport as any).monthBranchComp?.otherMonth) ?? ""}
+                          </span>
+                      </div>
+                    </div>
+                    <div className="ds-inline-detail-nested space-y-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        {(fullReport as any).monthBranchComp?.relations?.map((r: string, i: number) => (
+                          <span key={i} className="ds-badge font-bold shadow-none border-border">
+                            {r}
+                          </span>
+                        ))}
+                      </div>
+                      <p className="text-sm text-foreground">{(fullReport as any).monthBranchComp?.desc}</p>
+                    </div>
+                  </div>
+                )}
+
 
                 {/* 세부 분석 */}
                 {result.details.length > 0 && (
@@ -1758,7 +1799,7 @@ export default function Compatibility() {
                 </CardAccordion>
               )}
 
-              {isPersonalLove && (
+              {(isPersonalLove || (!isPersonalLove && (fullReport as any).branchComp)) && (
                 <CardAccordion title="배우자 성향 · 관계운 레이어" defaultOpen={false}>
                   <p className="-mt-1 text-[12px] leading-relaxed text-muted-foreground">
                     궁합 점수와는 <span className="font-semibold text-foreground">따로 놓고</span> 읽어 주세요. 각자 원국에 스며 있는 배우자 성향과 관계운의 흐름만 담았습니다.

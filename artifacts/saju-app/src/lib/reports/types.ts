@@ -91,6 +91,15 @@ export interface CoworkerCompatibilityReport extends BaseCompatibilityReport {
 export interface FamilyFriendCompatibilityReport extends BaseCompatibilityReport {
   type: "family" | "friend" | "other";
   
+  branchComp: {
+    myBranch: string;
+    otherBranch: string;
+    relations: string[];
+    tone: string;
+    desc: string;
+    stability: string;
+  };
+  
   dynamicsComp: {
     person1Style: string;
     person2Style: string;
