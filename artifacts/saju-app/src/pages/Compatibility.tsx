@@ -21,7 +21,6 @@ import { CheckCircle, XCircle, AlertTriangle, ChevronDown, ArrowLeftRight } from
 import { GenderSymbol } from "@/components/GenderSymbol";
 import { CopyButton } from "@/components/CopyButton";
 import { buildCompatibilityClipboardText } from "@/lib/clipboardExport";
-import { translateToFriendlyTone } from "@/lib/friendlyInterpreter";
 import { Link } from "wouter";
 import { Mascot } from "@/components/Mascot";
 import type { MascotExpression } from "@/components/Mascot";
@@ -718,7 +717,6 @@ export default function Compatibility() {
   const [showInfoSheet, setShowInfoSheet] = useState(false);
   const [hourModeA, setHourModeA] = useState<"포함" | "제외">("포함");
   const [hourModeB, setHourModeB] = useState<"포함" | "제외">("포함");
-  const [interpretMode, setInterpretMode] = useState<"expert" | "friendly">("expert");
   const [activeRelation, setActiveRelation] = useState<{
     scope: "stem" | "dayBranch";
     type: RelationType;
@@ -950,31 +948,12 @@ export default function Compatibility() {
               {/* ── 1. 궁합 한눈에보기 (내 사주 Hero 카드 톤) ── */}
               <div className="ds-card border-primary/15 bg-gradient-to-br from-primary/[0.06] via-card to-card shadow-none">
                   <div className="ds-card-pad space-y-4">
-                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-                    <div>
-                      <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">궁합 요약</p>
-                      <h2 className="ds-title mt-1">궁합 한눈에보기</h2>
-                      <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">
-                        점수와 관계 유형을 먼저 확인한 뒤, 아래에서 구조·해석·가이드를 순서대로 살펴보시면 됩니다.
-                      </p>
-                    </div>
-                    {/* 토글러 컨트롤 배치 */}
-                    <div className="ds-segment self-start shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => setInterpretMode("expert")}
-                        className={interpretMode === "expert" ? "ds-segment-item-active text-[11px] py-1 px-2.5" : "ds-segment-item-inactive text-[11px] py-1 px-2.5"}
-                      >
-                        전문 정밀 분석
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setInterpretMode("friendly")}
-                        className={interpretMode === "friendly" ? "ds-segment-item-active text-[11px] py-1 px-2.5" : "ds-segment-item-inactive text-[11px] py-1 px-2.5"}
-                      >
-                        쉽고 친근한 코칭
-                      </button>
-                    </div>
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">궁합 요약</p>
+                    <h2 className="ds-title mt-1">궁합 한눈에보기</h2>
+                    <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">
+                      점수와 관계 유형을 먼저 확인한 뒤, 아래에서 구조·해석·가이드를 순서대로 살펴보시면 됩니다.
+                    </p>
                   </div>
                   {/* 상단: 두 사람 카드 (스샷 구조) — 별도 배경 박스 제거 */}
                   <div className="flex items-center gap-2">
@@ -1029,7 +1008,7 @@ export default function Compatibility() {
                           </button>
                         </div>
                         <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">
-                          {interpretMode === "friendly" ? translateToFriendlyTone(result.summary, myName, otherName) : result.summary}
+                          {result.summary}
                         </p>
                       </div>
                     </div>
@@ -1399,43 +1378,35 @@ export default function Compatibility() {
                     <div>
                       <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">관계 특징 요약</p>
                       <div className="ds-inline-detail-nested">
-                        <p className="ds-body">
-                          {interpretMode === "friendly" ? translateToFriendlyTone(fullReport.toneDesc, myName, otherName) : fullReport.toneDesc}
-                        </p>
+                        <p className="ds-body">{fullReport.toneDesc}</p>
                       </div>
                     </div>
                     <div>
                       <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">관계 장점</p>
                       <div className="space-y-2">
-                        {result.strengths.map((t, i) => {
-                          const originalText = adaptTextForRelType(t);
-                          return (
-                            <div
-                              key={i}
-                              className="flex items-start gap-2 rounded-xl border border-emerald-100 bg-emerald-50/70 px-3 py-2 text-[13px] leading-relaxed text-foreground"
-                            >
-                              <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
-                              <span>{interpretMode === "friendly" ? translateToFriendlyTone(originalText, myName, otherName) : originalText}</span>
-                            </div>
-                          );
-                        })}
+                        {result.strengths.map((t, i) => (
+                          <div
+                            key={i}
+                            className="flex items-start gap-2 rounded-xl border border-emerald-100 bg-emerald-50/70 px-3 py-2 text-[13px] leading-relaxed text-foreground"
+                          >
+                            <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+                            <span>{adaptTextForRelType(t)}</span>
+                          </div>
+                        ))}
                       </div>
                     </div>
                     <div>
                       <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">관계 주의점</p>
                       <div className="space-y-2">
-                        {result.cautions.map((t, i) => {
-                          const originalText = adaptTextForRelType(t);
-                          return (
-                            <div
-                              key={i}
-                              className="flex items-start gap-2 rounded-xl border border-amber-100 bg-amber-50/60 px-3 py-2 text-[13px] leading-relaxed text-foreground"
-                            >
-                              <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
-                              <span>{interpretMode === "friendly" ? translateToFriendlyTone(originalText, myName, otherName) : originalText}</span>
-                            </div>
-                          );
-                        })}
+                        {result.cautions.map((t, i) => (
+                          <div
+                            key={i}
+                            className="flex items-start gap-2 rounded-xl border border-amber-100 bg-amber-50/60 px-3 py-2 text-[13px] leading-relaxed text-foreground"
+                          >
+                            <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
+                            <span>{adaptTextForRelType(t)}</span>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   </div>
@@ -1535,9 +1506,7 @@ export default function Compatibility() {
                               {fullReport.marriageView.type}
                             </span>
                           </div>
-                          <p className="mt-2 text-[13px] leading-relaxed text-foreground">
-                            {interpretMode === "friendly" ? translateToFriendlyTone(fullReport.marriageView.desc, myName, otherName) : fullReport.marriageView.desc}
-                          </p>
+                          <p className="mt-2 text-[13px] leading-relaxed text-foreground">{fullReport.marriageView.desc}</p>
                         </div>
                       </div>
                     </div>
@@ -1756,7 +1725,7 @@ export default function Compatibility() {
                                 </span>
                               </div>
                               <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
-                                {interpretMode === "friendly" ? translateToFriendlyTone(tp.desc, myName, otherName) : tp.desc}
+                                {tp.desc}
                               </p>
                             </div>
                           );
@@ -1851,18 +1820,15 @@ export default function Compatibility() {
                     <div>
                       <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">추천 행동</p>
                       <div className="space-y-2">
-                        {result.advice.map((t, i) => {
-                          const originalText = adaptTextForRelType(t);
-                          return (
-                            <div
-                              key={i}
-                              className="flex items-start gap-2 rounded-xl border border-emerald-100 bg-emerald-50/70 px-3 py-2 text-[13px] leading-relaxed text-foreground"
-                            >
-                              <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
-                              <span>{interpretMode === "friendly" ? translateToFriendlyTone(originalText, myName, otherName) : originalText}</span>
-                            </div>
-                          );
-                        })}
+                        {result.advice.map((t, i) => (
+                          <div
+                            key={i}
+                            className="flex items-start gap-2 rounded-xl border border-emerald-100 bg-emerald-50/70 px-3 py-2 text-[13px] leading-relaxed text-foreground"
+                          >
+                            <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+                            <span>{adaptTextForRelType(t)}</span>
+                          </div>
+                        ))}
                       </div>
                     </div>
                     <div>
@@ -1870,18 +1836,15 @@ export default function Compatibility() {
                       <div className="space-y-2">
                         {(fullReport.conflictPoints.length > 0
                           ? fullReport.conflictPoints.slice(0, 3)
-                          : ["반복되는 갈등 패턴을 미리 짚고, 감정이 격해질 때 잠시 거리를 두는 연습을 해보세요."]).map((item, i) => {
-                          const originalText = adaptTextForRelType(item);
-                          return (
-                            <div
-                              key={i}
-                              className="flex items-start gap-2 rounded-xl border border-amber-100 bg-amber-50/60 px-3 py-2 text-[13px] leading-relaxed text-foreground"
-                            >
-                              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
-                              <span>{interpretMode === "friendly" ? translateToFriendlyTone(originalText, myName, otherName) : originalText}</span>
-                            </div>
-                          );
-                        })}
+                          : ["반복되는 갈등 패턴을 미리 짚고, 감정이 격해질 때 잠시 거리를 두는 연습을 해보세요."]).map((item, i) => (
+                          <div
+                            key={i}
+                            className="flex items-start gap-2 rounded-xl border border-amber-100 bg-amber-50/60 px-3 py-2 text-[13px] leading-relaxed text-foreground"
+                          >
+                            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+                            <span>{adaptTextForRelType(item)}</span>
+                          </div>
+                        ))}
                       </div>
                     </div>
                     {fullReport.tips.length > 0 && (
@@ -1893,15 +1856,12 @@ export default function Compatibility() {
                             <p className="text-sm font-bold text-foreground">오늘부터 써먹기</p>
                           </div>
                           <ul className="space-y-2">
-                            {fullReport.tips.slice(0, 5).map((tip, i) => {
-                              const originalText = adaptTextForRelType(tip);
-                              return (
-                                <li key={i} className="flex items-start gap-2 text-[13px] leading-relaxed text-muted-foreground">
-                                  <span className="mt-0.5 shrink-0">•</span>
-                                  <span>{interpretMode === "friendly" ? translateToFriendlyTone(originalText, myName, otherName) : originalText}</span>
-                                </li>
-                              );
-                            })}
+                            {fullReport.tips.slice(0, 5).map((tip, i) => (
+                              <li key={i} className="flex items-start gap-2 text-[13px] leading-relaxed text-muted-foreground">
+                                <span className="mt-0.5 shrink-0">•</span>
+                                <span>{adaptTextForRelType(tip)}</span>
+                              </li>
+                            ))}
                           </ul>
                         </div>
                       </div>

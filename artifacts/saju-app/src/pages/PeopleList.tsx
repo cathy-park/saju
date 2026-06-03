@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,7 +23,7 @@ import {
 } from "@/lib/storage";
 import { getZodiacFromDayPillar } from "@/lib/zodiacAnimal";
 import { GenderSymbol } from "@/components/GenderSymbol";
-import { Search, UserPlus, Trash2, Pencil, Heart, Check } from "lucide-react";
+import { Search, UserPlus, Trash2, Pencil, Heart, Check, Pin } from "lucide-react";
 import { Mascot } from "@/components/Mascot";
 import { useAuth } from "@/lib/authContext";
 import { deletePartnerProfile } from "@/lib/db";
@@ -47,12 +47,16 @@ function PersonCard({
   selectionMode,
   selected,
   onToggleSelect,
+  pinned,
+  onTogglePin,
 }: {
   record: PersonRecord;
   onDelete: () => void;
   selectionMode: boolean;
   selected: boolean;
   onToggleSelect: (id: string) => void;
+  pinned: boolean;
+  onTogglePin: () => void;
 }) {
   const pillars = getFinalPillars(record);
   const input = record.birthInput;
@@ -109,6 +113,18 @@ function PersonCard({
 
         {!selectionMode && (
           <div className="flex items-center gap-0 shrink-0">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onTogglePin();
+              }}
+              className={`h-8 w-8 flex items-center justify-center rounded-lg transition-colors hover:bg-muted/50 ${
+                pinned ? "text-amber-500" : "text-muted-foreground/30 hover:text-muted-foreground/70"
+              }`}
+            >
+              <Pin className={`h-3.5 w-3.5 ${pinned ? "fill-amber-500" : ""}`} />
+            </button>
             <Link href={`/people/${record.id}/edit`}>
               <button className="h-8 w-8 flex items-center justify-center rounded-lg text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted/50 transition-colors">
                 <Pencil className="h-3.5 w-3.5" />
@@ -184,6 +200,13 @@ export default function PeopleList() {
   const [activeTab, setActiveTab] = useState<TabKey>("전체");
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [pinnedIds, setPinnedIds] = useState<string[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem("pinnedPersonIds") ?? "[]");
+    } catch {
+      return [];
+    }
+  });
   const { user, dbSynced } = useAuth();
   const [, navigate] = useLocation();
 
@@ -193,6 +216,21 @@ export default function PeopleList() {
       setPeople(getPeople());
     }
   }, [dbSynced]);
+
+  // Save pinned status to localStorage
+  useEffect(() => {
+    localStorage.setItem("pinnedPersonIds", JSON.stringify(pinnedIds));
+  }, [pinnedIds]);
+
+  function handleTogglePin(id: string) {
+    setPinnedIds((prev) => {
+      if (prev.includes(id)) {
+        return prev.filter((x) => x !== id);
+      } else {
+        return [...prev, id];
+      }
+    });
+  }
 
   async function handleDelete(id: string) {
     deletePerson(id);
@@ -238,6 +276,16 @@ export default function PeopleList() {
     activeTab === "전체"
       ? searchFiltered
       : searchFiltered.filter((p) => p.relationshipType === activeTab);
+
+  const sortedTabFiltered = useMemo(() => {
+    return [...tabFiltered].sort((a, b) => {
+      const aPinned = pinnedIds.includes(a.id);
+      const bPinned = pinnedIds.includes(b.id);
+      if (aPinned && !bPinned) return -1;
+      if (!aPinned && bPinned) return 1;
+      return 0;
+    });
+  }, [tabFiltered, pinnedIds]);
 
   return (
     <div className="max-w-lg mx-auto px-4 pt-6 pb-32">
@@ -320,7 +368,7 @@ export default function PeopleList() {
           </div>
 
           {/* Person list */}
-          {tabFiltered.length === 0 ? (
+          {sortedTabFiltered.length === 0 ? (
             <div className="text-center py-12">
               {search ? (
                 <>
@@ -333,7 +381,7 @@ export default function PeopleList() {
             </div>
           ) : (
             <div className="space-y-2.5">
-              {tabFiltered.map((p) => (
+              {sortedTabFiltered.map((p) => (
                 <PersonCard
                   key={p.id}
                   record={p}
@@ -341,6 +389,8 @@ export default function PeopleList() {
                   selectionMode={selectionMode}
                   selected={selectedIds.includes(p.id)}
                   onToggleSelect={handleToggleSelect}
+                  pinned={pinnedIds.includes(p.id)}
+                  onTogglePin={() => handleTogglePin(p.id)}
                 />
               ))}
             </div>
