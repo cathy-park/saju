@@ -594,49 +594,6 @@ export function buildPersonClipboardText(
       `  세운 (${seunForCurrentYear.year}): ${seunForCurrentYear.ganZhi.stem}${seunForCurrentYear.ganZhi.branch}`,
     );
   }
-  lines.push(
-    `  월운: ${luckCycles.wolun.ganZhi.stem}${luckCycles.wolun.ganZhi.branch}` +
-    ` (${luckCycles.wolun.year}년 ${luckCycles.wolun.month}월)`,
-  );
-  lines.push(
-    `  일운: ${luckCycles.ilun.ganZhi.stem}${luckCycles.ilun.ganZhi.branch}` +
-    ` (${luckCycles.ilun.year}년 ${luckCycles.ilun.month}월 ${luckCycles.ilun.day}일)`,
-  );
-  lines.push("");
-
-  lines.push("---");
-  lines.push("[해석 기준]");
-  lines.push("");
-  lines.push("이 분석은 다음 기준을 따릅니다:");
-  lines.push("");
-  lines.push("- 십성 기준: 일간 기준");
-  lines.push("- 일간 강약 중심 구조 해석");
-  lines.push("- 파이프라인 격국(determineGukguk) 참고");
-  lines.push("- 자동 계산된 용신 체계 사용");
-  lines.push("- 오행 균형 중심 해석");
-  lines.push("- 신살은 보조 해석으로만 사용");
-  lines.push("");
-  lines.push("대표 구조 우선순위:");
-  lines.push("");
-  lines.push("1순위: 일간 강약");
-  lines.push("2순위: 격국 흐름");
-  lines.push("3순위: 용신 판단");
-  lines.push("4순위: 오행 균형");
-  lines.push("5순위: 신살 보조 해석");
-  lines.push("");
-  lines.push("일반적인 사주 설명이 아니라");
-  lines.push("위 구조 기준을 유지한 해석을 요청합니다.");
-  lines.push("");
-  lines.push("본 분석은 자동 계산된 구조 해석 결과이며 전통 명리학 유파별 해석 차이가 있을 수 있습니다.");
-  lines.push("");
-  lines.push(`[엔진 계산 기준]`);
-  lines.push("");
-  lines.push("strengthDebug: enabled");
-  lines.push("structureDomainScores: enabled (7 domains, structure-weighted)");
-  lines.push("relationshipWealthEvaluations: derived from structureDomains");
-  lines.push("timingActivation: enabled");
-  lines.push("");
-  lines.push("engineVersion: structure-v1.5-wealth-ui+clipboard-summary");
   lines.push("");
   lines.push("본 분석에는 강약 보정(설기·음간 포함),");
   lines.push("관계·재물 구조 지표(재물운=종합),");
@@ -707,6 +664,8 @@ export function buildCompatibilityClipboardText(
   person1: PersonRecord,
   person2: PersonRecord,
   result: CompatibilityResult,
+  hourMode1: "포함" | "제외" | "비교" = "포함",
+  hourMode2: "포함" | "제외" | "비교" = "포함",
 ): string {
   const lines: string[] = [];
   const n1 = person1.birthInput.name;
@@ -761,10 +720,10 @@ export function buildCompatibilityClipboardText(
   lines.push("");
 
   // 각 사람의 개인 사주 데이터 (간략)
-  for (const person of [person1, person2]) {
-    lines.push(buildPersonClipboardText(person, "포함")); // 궁합은 항상 포함 기준으로 간략 추가
-    lines.push("");
-  }
+  lines.push(buildPersonClipboardText(person1, hourMode1));
+  lines.push("");
+  lines.push(buildPersonClipboardText(person2, hourMode2));
+  lines.push("");
 
   lines.push("---");
   lines.push("[AI 해석 요청 프롬프트]");

@@ -30,6 +30,7 @@ export default function MyProfile() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [record, setRecord] = useState<PersonRecord | null>(() => getMyProfile());
   const [formMarital, setFormMarital] = useState<MaritalStatus | undefined>(() => getMyProfile()?.maritalStatus);
+  const [hourMode, setHourMode] = useState<"포함" | "제외" | "비교">("포함");
   const { user, dbSynced } = useAuth();
 
   useEffect(() => {
@@ -254,13 +255,17 @@ export default function MyProfile() {
 
         <div className="mt-4 border-t border-border pt-4">
           <CopyButton 
-            buildText={() => buildPersonClipboardText(record, "포함")} 
+            buildText={() => buildPersonClipboardText(record, hourMode)} 
             label="AI 해석 프롬프트 전체 복사" 
           />
         </div>
       </div>
 
-      <SajuReport record={record} />
+      <SajuReport 
+        record={record} 
+        hourMode={hourMode} 
+        onHourModeChange={setHourMode} 
+      />
     </div>
   );
 }

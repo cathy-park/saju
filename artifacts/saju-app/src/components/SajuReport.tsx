@@ -4296,6 +4296,8 @@ const STEM_RELATION_TYPES = new Set(["천간합", "천간충"]);
 interface SajuReportProps {
   record: PersonRecord;
   showSaveStatus?: boolean;
+  hourMode?: "포함" | "제외" | "비교";
+  onHourModeChange?: (mode: "포함" | "제외" | "비교") => void;
 }
 
 type ReportMainTab = "원국" | "성격해석" | "운세" | "오늘운세";
@@ -4323,7 +4325,7 @@ type YuanGuoInlineDetail =
   | { kind: "twelveStage"; label: string; branch: string; stage: string }
   | { kind: "branchRelation"; relation: BranchRelation };
 
-export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) {
+export function SajuReport({ record, showSaveStatus = false, hourMode: parentHourMode, onHourModeChange }: SajuReportProps) {
   const { user } = useAuth();
   const [infoSheet, setInfoSheet] = useState<InfoSheetType | null>(null);
   const [manualShinsal, setManualShinsal] = useState<ManualShinsalItem[]>(record.manualShinsal ?? []);
@@ -4357,7 +4359,15 @@ export function SajuReport({ record, showSaveStatus = false }: SajuReportProps) 
     if (saved === "성향" || saved === "성격해석") { sessionStorage.removeItem("openReportTab"); return "성격해석"; }
     return "원국";
   });
-  const [hourMode, setHourMode] = useState<"포함" | "제외" | "비교">("포함");
+  const [localHourMode, setLocalHourMode] = useState<"포함" | "제외" | "비교">("포함");
+  const hourMode = parentHourMode !== undefined ? parentHourMode : localHourMode;
+  const setHourMode = (mode: "포함" | "제외" | "비교") => {
+    if (onHourModeChange) {
+      onHourModeChange(mode);
+    } else {
+      setLocalHourMode(mode);
+    }
+  };
   const [yuanGuoInlineDetail, setYuanGuoInlineDetail] = useState<YuanGuoInlineDetail | null>(null);
   const [selectedTgGroupInline, setSelectedTgGroupInline] = useState<{ group: string; pct: number } | null>(null);
   const [personalityTengodUserPicked, setPersonalityTengodUserPicked] = useState(false);

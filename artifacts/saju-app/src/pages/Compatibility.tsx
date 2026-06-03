@@ -21,6 +21,7 @@ import { CheckCircle, XCircle, AlertTriangle, ChevronDown, ArrowLeftRight } from
 import { GenderSymbol } from "@/components/GenderSymbol";
 import { CopyButton } from "@/components/CopyButton";
 import { buildCompatibilityClipboardText } from "@/lib/clipboardExport";
+import { translateToFriendlyTone } from "@/lib/friendlyInterpreter";
 import { Link } from "wouter";
 import { Mascot } from "@/components/Mascot";
 import type { MascotExpression } from "@/components/Mascot";
@@ -631,6 +632,69 @@ function PairSelector({
   );
 }
 
+// ── LoveThermometer & HeartBattery ────────────────────────────────
+
+function LoveThermometer({ score }: { score: number }) {
+  const temp = (36.5 + score * 0.635).toFixed(1);
+  const fillWidth = `${score}%`;
+
+  return (
+    <div className="rounded-xl border border-border bg-card p-3 shadow-none transition-all hover:border-primary/20">
+      <div className="flex items-center justify-between mb-1.5">
+        <span className="text-[11px] font-bold text-muted-foreground">궁합 온도계 🌡️</span>
+        <span className="text-[13px] font-extrabold text-rose-500 tracking-tight">{temp}°C</span>
+      </div>
+      <div className="relative h-3 w-full rounded-full bg-muted overflow-hidden">
+        <div
+          className="absolute left-0 top-0 h-full rounded-full bg-gradient-to-r from-orange-400 via-rose-500 to-pink-600 transition-all duration-1000 ease-out"
+          style={{ width: fillWidth }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-white/15 to-transparent pointer-events-none" />
+      </div>
+      <p className="mt-1.5 text-[10px] text-muted-foreground leading-normal">
+        두 사람의 궁합 에너지가 따뜻하게 교감하는 활성 온도를 나타냅니다.
+      </p>
+    </div>
+  );
+}
+
+function HeartBattery({ score }: { score: number }) {
+  const fillHeight = `${100 - score}%`;
+
+  return (
+    <div className="rounded-xl border border-border bg-card p-3 shadow-none transition-all hover:border-primary/20">
+      <div className="flex items-center justify-between mb-1.5">
+        <span className="text-[11px] font-bold text-muted-foreground">하트 충전 게이지 🔋</span>
+        <span className="text-[13px] font-extrabold text-pink-600 tracking-tight">{score}%</span>
+      </div>
+      <div className="flex items-center gap-2">
+        <div className="relative h-9 w-9 shrink-0">
+          <svg viewBox="0 0 24 24" className="absolute inset-0 h-full w-full fill-muted stroke-border stroke-[1.5]">
+            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+          </svg>
+          <div
+            className="absolute inset-0 overflow-hidden transition-all duration-1000 ease-out"
+            style={{ clipPath: `inset(${fillHeight} 0 0 0)` }}
+          >
+            <svg viewBox="0 0 24 24" className="h-full w-full">
+              <defs>
+                <linearGradient id="heartGrad" x1="0%" y1="100%" x2="0%" y2="0%">
+                  <stop offset="0%" stopColor="#EC4899" />
+                  <stop offset="100%" stopColor="#F43F5E" />
+                </linearGradient>
+              </defs>
+              <path fill="url(#heartGrad)" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+            </svg>
+          </div>
+        </div>
+        <p className="text-[10px] text-muted-foreground leading-tight">
+          서로를 향한 애정 기운과 긍정 지수가 충전된 상태를 나타냅니다.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 // ── Main Page ─────────────────────────────────────────────────────
 
 export default function Compatibility() {
@@ -654,6 +718,7 @@ export default function Compatibility() {
   const [showInfoSheet, setShowInfoSheet] = useState(false);
   const [hourModeA, setHourModeA] = useState<"포함" | "제외">("포함");
   const [hourModeB, setHourModeB] = useState<"포함" | "제외">("포함");
+  const [interpretMode, setInterpretMode] = useState<"expert" | "friendly">("expert");
   const [activeRelation, setActiveRelation] = useState<{
     scope: "stem" | "dayBranch";
     type: RelationType;
@@ -885,12 +950,31 @@ export default function Compatibility() {
               {/* ── 1. 궁합 한눈에보기 (내 사주 Hero 카드 톤) ── */}
               <div className="ds-card border-primary/15 bg-gradient-to-br from-primary/[0.06] via-card to-card shadow-none">
                   <div className="ds-card-pad space-y-4">
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">궁합 요약</p>
-                    <h2 className="ds-title mt-1">궁합 한눈에보기</h2>
-                    <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">
-                      점수와 관계 유형을 먼저 확인한 뒤, 아래에서 구조·해석·가이드를 순서대로 살펴보시면 됩니다.
-                    </p>
+                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">궁합 요약</p>
+                      <h2 className="ds-title mt-1">궁합 한눈에보기</h2>
+                      <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">
+                        점수와 관계 유형을 먼저 확인한 뒤, 아래에서 구조·해석·가이드를 순서대로 살펴보시면 됩니다.
+                      </p>
+                    </div>
+                    {/* 토글러 컨트롤 배치 */}
+                    <div className="ds-segment self-start shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => setInterpretMode("expert")}
+                        className={interpretMode === "expert" ? "ds-segment-item-active text-[11px] py-1 px-2.5" : "ds-segment-item-inactive text-[11px] py-1 px-2.5"}
+                      >
+                        전문 정밀 분석
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setInterpretMode("friendly")}
+                        className={interpretMode === "friendly" ? "ds-segment-item-active text-[11px] py-1 px-2.5" : "ds-segment-item-inactive text-[11px] py-1 px-2.5"}
+                      >
+                        쉽고 친근한 코칭
+                      </button>
+                    </div>
                   </div>
                   {/* 상단: 두 사람 카드 (스샷 구조) — 별도 배경 박스 제거 */}
                   <div className="flex items-center gap-2">
@@ -945,11 +1029,26 @@ export default function Compatibility() {
                           </button>
                         </div>
                         <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">
-                          {result.summary}
+                          {interpretMode === "friendly" ? translateToFriendlyTone(result.summary, myName, otherName) : result.summary}
                         </p>
                       </div>
                     </div>
                   </div>
+
+                  {/* 온도계 및 하트 게이지 UI */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4 pt-4 border-t border-border/40">
+                    <LoveThermometer score={result.score} />
+                    <HeartBattery score={result.score} />
+                  </div>
+
+                  {/* 복사 버튼 상단 이동 */}
+                  <div className="mt-4 border-t border-border/40 pt-4">
+                    <CopyButton
+                      buildText={() => buildCompatibilityClipboardText(p1!, p2!, result, hourModeA, hourModeB)}
+                      label="AI 해석 프롬프트 복사"
+                    />
+                  </div>
+
                   </div>
                 </div>
 
@@ -1300,35 +1399,43 @@ export default function Compatibility() {
                     <div>
                       <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">관계 특징 요약</p>
                       <div className="ds-inline-detail-nested">
-                        <p className="ds-body">{fullReport.toneDesc}</p>
+                        <p className="ds-body">
+                          {interpretMode === "friendly" ? translateToFriendlyTone(fullReport.toneDesc, myName, otherName) : fullReport.toneDesc}
+                        </p>
                       </div>
                     </div>
                     <div>
                       <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">관계 장점</p>
                       <div className="space-y-2">
-                        {result.strengths.map((t, i) => (
-                          <div
-                            key={i}
-                            className="flex items-start gap-2 rounded-xl border border-emerald-100 bg-emerald-50/70 px-3 py-2 text-[13px] leading-relaxed text-foreground"
-                          >
-                            <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
-                            <span>{adaptTextForRelType(t)}</span>
-                          </div>
-                        ))}
+                        {result.strengths.map((t, i) => {
+                          const originalText = adaptTextForRelType(t);
+                          return (
+                            <div
+                              key={i}
+                              className="flex items-start gap-2 rounded-xl border border-emerald-100 bg-emerald-50/70 px-3 py-2 text-[13px] leading-relaxed text-foreground"
+                            >
+                              <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+                              <span>{interpretMode === "friendly" ? translateToFriendlyTone(originalText, myName, otherName) : originalText}</span>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                     <div>
                       <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">관계 주의점</p>
                       <div className="space-y-2">
-                        {result.cautions.map((t, i) => (
-                          <div
-                            key={i}
-                            className="flex items-start gap-2 rounded-xl border border-amber-100 bg-amber-50/60 px-3 py-2 text-[13px] leading-relaxed text-foreground"
-                          >
-                            <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
-                            <span>{adaptTextForRelType(t)}</span>
-                          </div>
-                        ))}
+                        {result.cautions.map((t, i) => {
+                          const originalText = adaptTextForRelType(t);
+                          return (
+                            <div
+                              key={i}
+                              className="flex items-start gap-2 rounded-xl border border-amber-100 bg-amber-50/60 px-3 py-2 text-[13px] leading-relaxed text-foreground"
+                            >
+                              <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
+                              <span>{interpretMode === "friendly" ? translateToFriendlyTone(originalText, myName, otherName) : originalText}</span>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   </div>
@@ -1428,7 +1535,9 @@ export default function Compatibility() {
                               {fullReport.marriageView.type}
                             </span>
                           </div>
-                          <p className="mt-2 text-[13px] leading-relaxed text-foreground">{fullReport.marriageView.desc}</p>
+                          <p className="mt-2 text-[13px] leading-relaxed text-foreground">
+                            {interpretMode === "friendly" ? translateToFriendlyTone(fullReport.marriageView.desc, myName, otherName) : fullReport.marriageView.desc}
+                          </p>
                         </div>
                       </div>
                     </div>
@@ -1627,6 +1736,35 @@ export default function Compatibility() {
                     </p>
                   </div>
 
+                  {/* 동적 궁합 시기 분석 (터닝 포인트) 추가 */}
+                  {combinedFlow.timingTurningPoints && combinedFlow.timingTurningPoints.length > 0 && (
+                    <div className="ds-inline-detail-nested space-y-3 p-3">
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">다가오는 터닝포인트 타이밍 📅</p>
+                      <div className="space-y-2">
+                        {combinedFlow.timingTurningPoints.map((tp, idx) => {
+                          let badgeBg = "bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700";
+                          if (tp.type === "union") badgeBg = "bg-rose-50 text-rose-700 border-rose-100 dark:bg-rose-950/20 dark:text-rose-400 dark:border-rose-900/30";
+                          else if (tp.type === "adjustment") badgeBg = "bg-sky-50 text-sky-700 border-sky-100 dark:bg-sky-950/20 dark:text-sky-400 dark:border-sky-900/30";
+                          else if (tp.type === "caution") badgeBg = "bg-amber-50 text-amber-700 border-amber-100 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/30";
+
+                          return (
+                            <div key={idx} className="rounded-lg border border-border p-3 bg-white dark:bg-neutral-900">
+                              <div className="flex items-center justify-between gap-2">
+                                <h4 className="text-[13px] font-bold text-foreground">{tp.title}</h4>
+                                <span className={cn("text-[10px] font-semibold px-2 py-0.5 rounded-full border", badgeBg)}>
+                                  {tp.type === "union" ? "결합/결실" : tp.type === "adjustment" ? "변화/조율" : tp.type === "caution" ? "주의/조율" : "일반"}
+                                </span>
+                              </div>
+                              <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
+                                {interpretMode === "friendly" ? translateToFriendlyTone(tp.desc, myName, otherName) : tp.desc}
+                              </p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
                   <p className="text-[11px] leading-relaxed text-muted-foreground/60">
                     ※ 운 흐름은 규칙 기반 간략 추정으로, 절대적 예언이 아닙니다.
                   </p>
@@ -1713,15 +1851,18 @@ export default function Compatibility() {
                     <div>
                       <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">추천 행동</p>
                       <div className="space-y-2">
-                        {result.advice.map((t, i) => (
-                          <div
-                            key={i}
-                            className="flex items-start gap-2 rounded-xl border border-emerald-100 bg-emerald-50/70 px-3 py-2 text-[13px] leading-relaxed text-foreground"
-                          >
-                            <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
-                            <span>{adaptTextForRelType(t)}</span>
-                          </div>
-                        ))}
+                        {result.advice.map((t, i) => {
+                          const originalText = adaptTextForRelType(t);
+                          return (
+                            <div
+                              key={i}
+                              className="flex items-start gap-2 rounded-xl border border-emerald-100 bg-emerald-50/70 px-3 py-2 text-[13px] leading-relaxed text-foreground"
+                            >
+                              <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+                              <span>{interpretMode === "friendly" ? translateToFriendlyTone(originalText, myName, otherName) : originalText}</span>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                     <div>
@@ -1729,15 +1870,18 @@ export default function Compatibility() {
                       <div className="space-y-2">
                         {(fullReport.conflictPoints.length > 0
                           ? fullReport.conflictPoints.slice(0, 3)
-                          : ["반복되는 갈등 패턴을 미리 짚고, 감정이 격해질 때 잠시 거리를 두는 연습을 해보세요."]).map((item, i) => (
-                          <div
-                            key={i}
-                            className="flex items-start gap-2 rounded-xl border border-amber-100 bg-amber-50/60 px-3 py-2 text-[13px] leading-relaxed text-foreground"
-                          >
-                            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
-                            <span>{adaptTextForRelType(item)}</span>
-                          </div>
-                        ))}
+                          : ["반복되는 갈등 패턴을 미리 짚고, 감정이 격해질 때 잠시 거리를 두는 연습을 해보세요."]).map((item, i) => {
+                          const originalText = adaptTextForRelType(item);
+                          return (
+                            <div
+                              key={i}
+                              className="flex items-start gap-2 rounded-xl border border-amber-100 bg-amber-50/60 px-3 py-2 text-[13px] leading-relaxed text-foreground"
+                            >
+                              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+                              <span>{interpretMode === "friendly" ? translateToFriendlyTone(originalText, myName, otherName) : originalText}</span>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                     {fullReport.tips.length > 0 && (
@@ -1749,24 +1893,21 @@ export default function Compatibility() {
                             <p className="text-sm font-bold text-foreground">오늘부터 써먹기</p>
                           </div>
                           <ul className="space-y-2">
-                            {fullReport.tips.slice(0, 5).map((tip, i) => (
-                              <li key={i} className="flex items-start gap-2 text-[13px] leading-relaxed text-muted-foreground">
-                                <span className="mt-0.5 shrink-0">•</span>
-                                <span>{adaptTextForRelType(tip)}</span>
-                              </li>
-                            ))}
+                            {fullReport.tips.slice(0, 5).map((tip, i) => {
+                              const originalText = adaptTextForRelType(tip);
+                              return (
+                                <li key={i} className="flex items-start gap-2 text-[13px] leading-relaxed text-muted-foreground">
+                                  <span className="mt-0.5 shrink-0">•</span>
+                                  <span>{interpretMode === "friendly" ? translateToFriendlyTone(originalText, myName, otherName) : originalText}</span>
+                                </li>
+                              );
+                            })}
                           </ul>
                         </div>
                       </div>
                     )}
                   </div>
                 </div>
-
-              {/* ── 궁합 분석 전체 복사 (맨 하단) ── */}
-              <CopyButton
-                buildText={() => buildCompatibilityClipboardText(p1!, p2!, result)}
-                label="궁합 분석 전체 복사"
-              />
 
             </div>
           );})()}

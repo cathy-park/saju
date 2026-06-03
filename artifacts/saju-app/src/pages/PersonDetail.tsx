@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useParams, Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { SajuReport } from "@/components/SajuReport";
@@ -31,6 +32,7 @@ function partnerBadgeStatus(person: PersonRecord): MaritalBadgeStatus | undefine
 export default function PersonDetail() {
   const { id } = useParams<{ id: string }>();
   const person = getPeople().find((p) => p.id === id);
+  const [hourMode, setHourMode] = useState<"포함" | "제외" | "비교">("포함");
 
   if (!person) {
     return (
@@ -116,13 +118,17 @@ export default function PersonDetail() {
 
         <div className="mt-4 border-t border-border pt-4">
           <CopyButton 
-            buildText={() => buildPersonClipboardText(person, "포함")} 
+            buildText={() => buildPersonClipboardText(person, hourMode)} 
             label="AI 해석 프롬프트 전체 복사" 
           />
         </div>
       </div>
 
-      <SajuReport record={person} />
+      <SajuReport 
+        record={person} 
+        hourMode={hourMode} 
+        onHourModeChange={setHourMode} 
+      />
 
       {/* Bottom actions */}
       <div className="flex gap-3 pt-2">
