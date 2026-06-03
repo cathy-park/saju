@@ -237,6 +237,7 @@ export function computeCombinedTimingFlow(
   a: PersonCurrentFlow,
   b: PersonCurrentFlow,
   staticCompatScore: number,
+  relType?: string
 ): CombinedTimingFlow {
   const aO = a.flowOpenness;
   const bO = b.flowOpenness;
@@ -324,16 +325,16 @@ export function computeCombinedTimingFlow(
 
   if (isSewoonUnionA && isSewoonUnionB) {
     timingTurningPoints.push({
-      title: "올해는 결실과 결합의 시기 💍",
-      desc: `올해 세운의 기운(${sewoonBr})이 ${a.name}님과 ${b.name}님의 배우자궁을 모두 좋게 결합(합)해 줍니다. 마음의 정서적 일치와 결합이 최고조로 일어나는 때로, 평생의 약속이나 결혼 이야기를 구체화하기에 완벽한 타이밍입니다.`,
+      title: relType === "coworker" ? "올해는 협력과 성과의 시기 🤝" : relType === "family" || relType === "friend" ? "올해는 신뢰와 공감의 시기 🍀" : "올해는 결실과 결합의 시기 💍",
+      desc: `올해 세운의 기운(${sewoonBr})이 ${a.name}님과 ${b.name}님의 ${relType === "coworker" ? "사회궁(월지)을 모두 좋게 결합해 줍니다" : relType === "family" || relType === "friend" ? "일지를 모두 따뜻하게 결합해 줍니다" : "배우자궁을 모두 좋게 결합(합)해 줍니다"}. 마음의 정서적 일치와 결합이 최고조로 일어나는 때로, ${relType === "coworker" ? "중요한 프로젝트나 협력 관계를 구체화하기에 완벽한 타이밍입니다" : relType === "family" || relType === "friend" ? "서로에 대한 이해와 유대감이 깊어지는 완벽한 타이밍입니다" : "평생의 약속이나 결혼 이야기를 구체화하기에 완벽한 타이밍입니다"}.`,
       type: "union"
     });
   } else if (isSewoonUnionA || isSewoonUnionB) {
     const unionPerson = isSewoonUnionA ? a.name : b.name;
     const unionRel = isSewoonUnionA ? aSewoonRel : bSewoonRel;
     timingTurningPoints.push({
-      title: `${unionPerson}님의 마음이 안착하는 결실기 🍀`,
-      desc: `올해 흘러가는 기운이 ${unionPerson}님의 배우자궁과 따뜻하게 결합(${unionRel})합니다. 관계의 의구심이 사라지고 마음에 안정이 찾아오며, 동반자로서의 신뢰가 아주 두터워지는 좋은 타이밍입니다.`,
+      title: `${unionPerson}님의 ${relType === "coworker" ? "기반이 안정되는 성장기 🌱" : relType === "family" || relType === "friend" ? "마음이 편안해지는 안정기 🍀" : "마음이 안착하는 결실기 🍀"}`,
+      desc: `올해 흘러가는 기운이 ${unionPerson}님의 ${relType === "coworker" ? "사회궁(월지)과 따뜻하게 결합(${unionRel})합니다" : relType === "family" || relType === "friend" ? "일지와 따뜻하게 결합(${unionRel})합니다" : "배우자궁과 따뜻하게 결합(${unionRel})합니다"}. 관계의 의구심이 사라지고 마음에 안정이 찾아오며, 동반자로서의 신뢰가 아주 두터워지는 좋은 타이밍입니다.`,
       type: "union"
     });
   }
@@ -348,7 +349,7 @@ export function computeCombinedTimingFlow(
     const adjRel = isSewoonAdjA ? aSewoonRel : bSewoonRel;
     timingTurningPoints.push({
       title: `${adjPerson}에게 변화와 조정의 시기 ⚡`,
-      desc: `올해의 기운이 배우자궁과 부딪히거나(${adjRel}) 자극을 주어 익숙한 패턴에 변화를 가져옵니다. 이동이나 소통 방식의 조율이 필요한 시점이지만, 서로를 보듬어준다면 갈등을 넘어 한 차원 깊은 신뢰를 쌓는 성장기가 될 것입니다.`,
+      desc: `올해의 기운이 ${relType === "coworker" ? "사회궁(월지)과 부딪히거나" : relType === "family" || relType === "friend" ? "일지와 부딪히거나" : "배우자궁과 부딪히거나"}(${adjRel}) 자극을 주어 익숙한 패턴에 변화를 가져옵니다. 이동이나 소통 방식의 조율이 필요한 시점이지만, 서로를 보듬어준다면 갈등을 넘어 한 차원 깊은 신뢰를 쌓는 성장기가 될 것입니다.`,
       type: "adjustment"
     });
   }
@@ -363,7 +364,7 @@ export function computeCombinedTimingFlow(
     const cautionRel = isSewoonCautionA ? aSewoonRel : bSewoonRel;
     timingTurningPoints.push({
       title: `${cautionPerson}의 정서적 조율 구간 ⚠️`,
-      desc: `올해 흘러가는 기운이 배우자궁에 예민한 자극(${cautionRel})을 주어 사소한 오해나 서운함이 생기기 쉬운 때입니다. 직설적인 표현 대신 따뜻한 배려와 조용한 믿음으로 대화를 나누며 오해를 방지해야 하는 타이밍입니다.`,
+      desc: `올해 흘러가는 기운이 ${relType === "coworker" ? "사회궁(월지)에 예민한 자극" : relType === "family" || relType === "friend" ? "일지에 예민한 자극" : "배우자궁에 예민한 자극"}(${cautionRel})을 주어 사소한 오해나 서운함이 생기기 쉬운 때입니다. 직설적인 표현 대신 따뜻한 배려와 조용한 믿음으로 대화를 나누며 오해를 방지해야 하는 타이밍입니다.`,
       type: "caution"
     });
   }
@@ -377,16 +378,16 @@ export function computeCombinedTimingFlow(
   const isDaewoonUnionA = aDaewoonRel === "합" || aDaewoonRel === "반합";
   if (isDaewoonUnionA) {
     timingTurningPoints.push({
-      title: `${a.name}님의 장기적 결실 지지기`,
-      desc: `현재 흘러가는 대운의 큰 흐름이 ${a.name}님의 배우자궁을 따뜻하게 지지하여, 장기적으로 안정된 관계와 결실을 맺는 좋은 배경을 만들어 줍니다.`,
+      title: `${a.name}님의 ${relType === "coworker" ? "장기적 협력 지지기" : relType === "family" || relType === "friend" ? "장기적 유대 지지기" : "장기적 결실 지지기"}`,
+      desc: `현재 흘러가는 대운의 큰 흐름이 ${a.name}님의 ${relType === "coworker" ? "사회궁(월지)을 든든하게 지지하여" : relType === "family" || relType === "friend" ? "일지를 따뜻하게 지지하여" : "배우자궁을 따뜻하게 지지하여"}, 장기적으로 안정된 관계와 결실을 맺는 좋은 배경을 만들어 줍니다.`,
       type: "union"
     });
   }
   const isDaewoonUnionB = bDaewoonRel === "합" || bDaewoonRel === "반합";
   if (isDaewoonUnionB) {
     timingTurningPoints.push({
-      title: `${b.name}님의 장기적 결실 지지기`,
-      desc: `현재 흘러가는 대운의 큰 흐름이 ${b.name}님의 배우자궁을 따뜻하게 지지하여, 장기적으로 안정된 관계와 결실을 맺는 좋은 배경을 만들어 줍니다.`,
+      title: `${b.name}님의 ${relType === "coworker" ? "장기적 협력 지지기" : relType === "family" || relType === "friend" ? "장기적 유대 지지기" : "장기적 결실 지지기"}`,
+      desc: `현재 흘러가는 대운의 큰 흐름이 ${b.name}님의 ${relType === "coworker" ? "사회궁(월지)을 든든하게 지지하여" : relType === "family" || relType === "friend" ? "일지를 따뜻하게 지지하여" : "배우자궁을 따뜻하게 지지하여"}, 장기적으로 안정된 관계와 결실을 맺는 좋은 배경을 만들어 줍니다.`,
       type: "union"
     });
   }

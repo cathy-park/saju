@@ -841,7 +841,7 @@ export default function Compatibility() {
   const combinedFlow = useMemo(
     () =>
       flowA && flowB && result
-        ? computeCombinedTimingFlow(flowA, flowB, result.score)
+        ? computeCombinedTimingFlow(flowA, flowB, result.score, (p2 as any)?.relationshipType)
         : null,
     [flowA, flowB, result],
   );
@@ -1472,7 +1472,7 @@ export default function Compatibility() {
                           <GenderSymbol gender={myGender} />{myName}
                         </p>
                         <div className="ds-inline-detail-nested mt-2 py-2">
-                          <p className="text-sm font-bold text-foreground">{deRomance((fullReport as any).styleComp?.person1Style)}</p>
+                          <p className="text-sm font-bold text-foreground">{deRomance((fullReport as any).styleComp?.person1Style || (fullReport as any).workStyleComp?.person1Style || (fullReport as any).dynamicsComp?.person1Style)}</p>
                         </div>
                       </div>
                       <div className={cn("rounded-xl border p-3 text-center", otherGender === "여" ? "border-rose-200 bg-rose-50/60" : "border-sky-200 bg-sky-50/60")}>
@@ -1480,12 +1480,12 @@ export default function Compatibility() {
                           <GenderSymbol gender={otherGender} />{otherName}
                         </p>
                         <div className="ds-inline-detail-nested mt-2 py-2">
-                          <p className="text-sm font-bold text-foreground">{deRomance((fullReport as any).styleComp?.person2Style)}</p>
+                          <p className="text-sm font-bold text-foreground">{deRomance((fullReport as any).styleComp?.person2Style || (fullReport as any).workStyleComp?.person2Style || (fullReport as any).dynamicsComp?.person2Style)}</p>
                         </div>
                       </div>
                     </div>
                     <div className="ds-inline-detail-nested">
-                      <p className="ds-body">{deRomance((fullReport as any).styleComp?.dynamicsDesc)}</p>
+                      <p className="ds-body">{deRomance((fullReport as any).styleComp?.dynamicsDesc || (fullReport as any).workStyleComp?.synergyDesc || (fullReport as any).dynamicsComp?.desc)}</p>
                     </div>
                   </div>
                 </div>
