@@ -205,15 +205,15 @@ function RelationInlineDetail({
             {RELATION_DESC[type] ?? detail.domain}
           </p>
           <div className="ds-inline-detail-nested space-y-1.5">
-            <p className="text-[12px] font-semibold text-foreground">의미</p>
+            <p className="text-[12px] font-semibold text-foreground">📋 의미</p>
             <p className="ds-body">{detail.meaning}</p>
           </div>
           <div className="ds-inline-detail-nested space-y-1.5">
-            <p className="text-[12px] font-semibold text-foreground">해석</p>
+            <p className="text-[12px] font-semibold text-foreground">🟢 긍정적 발현 (잘 사용될 경우)</p>
             <p className="ds-body">{detail.interpretation}</p>
           </div>
           <div className="ds-inline-detail-nested space-y-1.5">
-            <p className="text-[12px] font-semibold text-foreground">주의</p>
+            <p className="text-[12px] font-semibold text-foreground">⚠️ 주의할 점 (잘못 사용될 경우)</p>
             <p className="ds-body">{detail.caution}</p>
           </div>
         </div>
@@ -1205,22 +1205,56 @@ export default function Compatibility() {
                       )}
                       <div className="space-y-1.5">
                         {fullReport.crossBranch.positive.map((item, i) => (
-                          <div
-                            key={`p-${i}`}
-                            className="flex items-start gap-2 rounded-xl border border-emerald-100 bg-emerald-50/70 px-3 py-2 text-[13px] leading-relaxed text-foreground"
-                          >
-                            <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
-                            <span>{item.desc}</span>
-                          </div>
+                          <React.Fragment key={`p-${i}`}>
+                            <button
+                              type="button"
+                              onClick={() => setActiveRelation({ scope: "crossBranch", type: item.type as RelationType, title: item.label })}
+                              className={cn(
+                                "w-full text-left flex items-start gap-2 rounded-xl border px-3 py-2 text-[13px] leading-relaxed transition-colors",
+                                activeRelation?.scope === "crossBranch" && activeRelation.title === item.label
+                                  ? "border-emerald-300 bg-emerald-100/50 text-foreground"
+                                  : "border-emerald-100 bg-emerald-50/70 text-foreground hover:bg-emerald-100/50"
+                              )}
+                            >
+                              <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+                              <span>{item.desc}</span>
+                            </button>
+                            {activeRelation?.scope === "crossBranch" && activeRelation.title === item.label && (
+                              <div className="pl-6 pb-2">
+                                <RelationInlineDetail
+                                  type={activeRelation.type as RelationType}
+                                  title={activeRelation.title}
+                                  onClose={() => setActiveRelation(null)}
+                                />
+                              </div>
+                            )}
+                          </React.Fragment>
                         ))}
                         {fullReport.crossBranch.negative.map((item, i) => (
-                          <div
-                            key={`n-${i}`}
-                            className="flex items-start gap-2 rounded-xl border border-amber-100 bg-amber-50/60 px-3 py-2 text-[13px] leading-relaxed text-foreground"
-                          >
-                            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
-                            <span>{item.desc}</span>
-                          </div>
+                          <React.Fragment key={`n-${i}`}>
+                            <button
+                              type="button"
+                              onClick={() => setActiveRelation({ scope: "crossBranch", type: item.type as RelationType, title: item.label })}
+                              className={cn(
+                                "w-full text-left flex items-start gap-2 rounded-xl border px-3 py-2 text-[13px] leading-relaxed transition-colors",
+                                activeRelation?.scope === "crossBranch" && activeRelation.title === item.label
+                                  ? "border-amber-300 bg-amber-100/50 text-foreground"
+                                  : "border-amber-100 bg-amber-50/60 text-foreground hover:bg-amber-100/50"
+                              )}
+                            >
+                              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+                              <span>{item.desc}</span>
+                            </button>
+                            {activeRelation?.scope === "crossBranch" && activeRelation.title === item.label && (
+                              <div className="pl-6 pb-2">
+                                <RelationInlineDetail
+                                  type={activeRelation.type as RelationType}
+                                  title={activeRelation.title}
+                                  onClose={() => setActiveRelation(null)}
+                                />
+                              </div>
+                            )}
+                          </React.Fragment>
                         ))}
                         {fullReport.crossBranch.positive.length === 0 &&
                           fullReport.crossBranch.negative.length === 0 && (

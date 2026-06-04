@@ -469,9 +469,9 @@ export function getRelationshipTips(style1: string, style2: string, tone: string
 
 export function getCrossBranchAnalysis(
   p1Branches: string[], p2Branches: string[]
-): { positive: { desc: string }[]; negative: { desc: string }[] } {
-  const positive: { desc: string }[] = [];
-  const negative: { desc: string }[] = [];
+): { positive: { desc: string; type: string; label: string }[]; negative: { desc: string; type: string; label: string }[] } {
+  const positive: { desc: string; type: string; label: string }[] = [];
+  const negative: { desc: string; type: string; label: string }[] = [];
   const seen = new Set<string>();
 
   for (const b1 of p1Branches) {
@@ -481,12 +481,51 @@ export function getCrossBranchAnalysis(
         const key = `${rel}|${[b1, b2].sort().join(",")}`;
         if (seen.has(key)) continue;
         seen.add(key);
-        if (rel === "지지육합" || rel === "지지삼합" || rel === "지지방합" || rel === "합")  positive.push({ desc: `${b1}·${b2} 합(合) — 강한 인연의 고리, 자연스러운 결합력` });
-        if (rel === "충")  negative.push({ desc: `${b1}·${b2} 충(衝) — 충돌과 변화, 서로 다른 방향을 향함` });
-        if (rel === "형")  negative.push({ desc: `${b1}·${b2} 형(刑) — 정서적 긴장, 의도치 않은 상처` });
-        if (rel === "파")  negative.push({ desc: `${b1}·${b2} 파(破) — 관계 균열, 어긋남 주의` });
-        if (rel === "해")  negative.push({ desc: `${b1}·${b2} 해(害) — 방해·오해 요소, 불필요한 갈등 주의` });
-        if (rel === "원진") negative.push({ desc: `${b1}·${b2} 원진(怨嗔) — 반목·피로감, 시간이 지날수록 멀어지는 기운` });
+        
+        let label = `${b1}·${b2} ${rel}`;
+        let baseDesc = "";
+        
+        if (rel === "지지삼합" || rel === "지지방합") {
+           const WOOD = ["해", "묘", "미", "인", "진"];
+           const FIRE = ["인", "오", "술", "사", "미"];
+           const METAL = ["사", "유", "축", "신", "술"];
+           const WATER = ["신", "자", "진", "해", "축"];
+           
+           let element = "";
+           if (WOOD.includes(b1) && WOOD.includes(b2)) element = "목국(木)";
+           else if (FIRE.includes(b1) && FIRE.includes(b2)) element = "화국(火)";
+           else if (METAL.includes(b1) && METAL.includes(b2)) element = "금국(金)";
+           else if (WATER.includes(b1) && WATER.includes(b2)) element = "수국(水)";
+           
+           label = `${b1}·${b2} ${rel === "지지삼합" ? "삼합" : "방합"}${element ? ` ${element}` : ""}`;
+           baseDesc = `${label} — 강한 인연의 고리, 자연스러운 결합력`;
+        } else if (rel === "지지육합" || rel === "합") {
+           label = `${b1}·${b2} 합(合)`;
+           baseDesc = `${label} — 강한 인연의 고리, 자연스러운 결합력`;
+        } else if (rel === "충") {
+           label = `${b1}·${b2} 충(衝)`;
+           baseDesc = `${label} — 충돌과 변화, 서로 다른 방향을 향함`;
+        } else if (rel === "형") {
+           label = `${b1}·${b2} 형(刑)`;
+           baseDesc = `${label} — 정서적 긴장, 의도치 않은 상처`;
+        } else if (rel === "파") {
+           label = `${b1}·${b2} 파(破)`;
+           baseDesc = `${label} — 관계 균열, 어긋남 주의`;
+        } else if (rel === "해") {
+           label = `${b1}·${b2} 해(害)`;
+           baseDesc = `${label} — 방해·오해 요소, 불필요한 갈등 주의`;
+        } else if (rel === "원진") {
+           label = `${b1}·${b2} 원진(怨嗔)`;
+           baseDesc = `${label} — 반목·피로감, 시간이 지날수록 멀어지는 기운`;
+        }
+        
+        const item = { desc: baseDesc, type: rel, label };
+
+        if (rel === "지지육합" || rel === "지지삼합" || rel === "지지방합" || rel === "합") {
+          positive.push(item);
+        } else {
+          negative.push(item);
+        }
       }
     }
   }
