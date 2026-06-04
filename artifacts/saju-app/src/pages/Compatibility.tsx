@@ -1220,7 +1220,7 @@ export default function Compatibility() {
                               <span>{item.desc}</span>
                             </button>
                             {activeRelation?.scope === "crossBranch" && activeRelation.title === item.label && (
-                              <div className="pl-6 pb-2">
+                              <div className="pt-2 pb-2">
                                 <RelationInlineDetail
                                   type={activeRelation.type as RelationType}
                                   title={activeRelation.title}
@@ -1246,7 +1246,7 @@ export default function Compatibility() {
                               <span>{item.desc}</span>
                             </button>
                             {activeRelation?.scope === "crossBranch" && activeRelation.title === item.label && (
-                              <div className="pl-6 pb-2">
+                              <div className="pt-2 pb-2">
                                 <RelationInlineDetail
                                   type={activeRelation.type as RelationType}
                                   title={activeRelation.title}

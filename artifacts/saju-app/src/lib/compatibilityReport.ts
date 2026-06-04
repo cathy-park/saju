@@ -474,6 +474,37 @@ export function getCrossBranchAnalysis(
   const negative: { desc: string; type: string; label: string }[] = [];
   const seen = new Set<string>();
 
+  const allBranches = Array.from(new Set([...p1Branches, ...p2Branches]));
+  const SAMHAP_GROUPS = [
+    { branches: ["해", "묘", "미"], name: "목국(木)", type: "지지삼합" },
+    { branches: ["인", "오", "술"], name: "화국(火)", type: "지지삼합" },
+    { branches: ["사", "유", "축"], name: "금국(金)", type: "지지삼합" },
+    { branches: ["신", "자", "진"], name: "수국(水)", type: "지지삼합" },
+  ];
+  const BANGHAP_GROUPS = [
+    { branches: ["인", "묘", "진"], name: "목국(木)", type: "지지방합" },
+    { branches: ["사", "오", "미"], name: "화국(火)", type: "지지방합" },
+    { branches: ["신", "유", "술"], name: "금국(金)", type: "지지방합" },
+    { branches: ["해", "자", "축"], name: "수국(水)", type: "지지방합" },
+  ];
+
+  const checkFull = (groups: typeof SAMHAP_GROUPS, isSamhap: boolean) => {
+    for (const g of groups) {
+      if (g.branches.every(b => allBranches.includes(b))) {
+         const p1Has = g.branches.filter(b => p1Branches.includes(b));
+         const p2Has = g.branches.filter(b => p2Branches.includes(b));
+         if (p1Has.length > 0 && p2Has.length > 0) {
+            const label = `${g.branches.join('·')} ${isSamhap ? "삼합" : "방합"} ${g.name}`;
+            const baseDesc = `${label} — 강한 인연의 고리, 자연스러운 결합력`;
+            positive.push({ desc: baseDesc, type: g.type, label });
+         }
+      }
+    }
+  };
+
+  checkFull(SAMHAP_GROUPS, true);
+  checkFull(BANGHAP_GROUPS, false);
+
   for (const b1 of p1Branches) {
     for (const b2 of p2Branches) {
       const rels = branchRel(b1, b2);
@@ -481,6 +512,22 @@ export function getCrossBranchAnalysis(
         const key = `${rel}|${[b1, b2].sort().join(",")}`;
         if (seen.has(key)) continue;
         seen.add(key);
+
+        let skip = false;
+        if (rel === "지지삼합") {
+           for (const g of SAMHAP_GROUPS) {
+              if (g.branches.every(b => allBranches.includes(b)) && g.branches.includes(b1) && g.branches.includes(b2)) {
+                 skip = true;
+              }
+           }
+        } else if (rel === "지지방합") {
+           for (const g of BANGHAP_GROUPS) {
+              if (g.branches.every(b => allBranches.includes(b)) && g.branches.includes(b1) && g.branches.includes(b2)) {
+                 skip = true;
+              }
+           }
+        }
+        if (skip) continue;
         
         let label = `${b1}·${b2} ${rel}`;
         let baseDesc = "";
