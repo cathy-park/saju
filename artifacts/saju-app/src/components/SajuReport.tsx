@@ -580,21 +580,18 @@ function TwelveStageInlineCard({
 function TenGodNatalInlineBlock({
   dayStem,
   tg,
-  displayCounts,
+  pct,
   onClose,
   onMore,
 }: {
   dayStem: string;
   tg: TenGod;
-  displayCounts: ManualTenGodCounts;
+  pct: number;
   onClose: () => void;
   onMore: () => void;
 }) {
   const nm = TG_NATAL_MEANING[tg];
   if (!nm) return null;
-  const allTgTotal = Object.values(displayCounts).reduce((s, c) => s + c, 0) || 1;
-  const cnt = displayCounts[tg] ?? 0;
-  const pct = Math.round((cnt / allTgTotal) * 100);
   const pctLabel = pct === 0 ? "없음(0%)" : pct <= 10 ? `매우 약함(${pct}%)` : pct <= 25 ? `적당함(${pct}%)` : pct <= 50 ? `강함(${pct}%)` : `매우 강함(${pct}%)`;
   const pctContext =
     pct === 0
@@ -5495,7 +5492,7 @@ export function SajuReport({ record, showSaveStatus = false, hourMode: parentHou
                           <TenGodNatalInlineBlock
                             dayStem={dayStem}
                             tg={openTg}
-                            displayCounts={tenGodDisplayCounts}
+                            pct={detailed[openTg] ?? Math.round(((displayCounts[openTg] ?? 0) / allTgTotal) * 100)}
                             onClose={() => setYuanGuoInlineDetail(null)}
                             onMore={() =>
                               setInfoSheet({ kind: "tengodNatal", tenGod: openTg, dayStem })
