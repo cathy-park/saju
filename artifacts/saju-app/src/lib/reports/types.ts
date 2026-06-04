@@ -28,8 +28,8 @@ export interface BaseCompatibilityReport {
   };
   
   crossBranch: {
-    positive: { desc: string }[];
-    negative: { desc: string }[];
+    positive: { desc: string; type: string; label: string }[];
+    negative: { desc: string; type: string; label: string }[];
     overallDesc: string;
   };
 

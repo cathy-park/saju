@@ -568,9 +568,9 @@ export interface FullCompatibilityReport {
   };
   // E
   crossBranch: {
-    positive: { desc: string }[];
-    negative: { desc: string }[];
     overallDesc: string;
+    positive: { desc: string; type: string; label: string }[];
+    negative: { desc: string; type: string; label: string }[];
   };
   // F
   elementComp: {

@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, Fragment } from "react";
 import { useParams } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -760,7 +760,7 @@ export default function Compatibility() {
   const [hourModeA, setHourModeA] = useState<"포함" | "제외">("포함");
   const [hourModeB, setHourModeB] = useState<"포함" | "제외">("포함");
   const [activeRelation, setActiveRelation] = useState<{
-    scope: "stem" | "dayBranch";
+    scope: "stem" | "dayBranch" | "crossBranch";
     type: RelationType;
     title: string;
   } | null>(null);
@@ -1205,7 +1205,7 @@ export default function Compatibility() {
                       )}
                       <div className="space-y-1.5">
                         {fullReport.crossBranch.positive.map((item, i) => (
-                          <React.Fragment key={`p-${i}`}>
+                          <Fragment key={`p-${i}`}>
                             <button
                               type="button"
                               onClick={() => setActiveRelation({ scope: "crossBranch", type: item.type as RelationType, title: item.label })}
@@ -1228,10 +1228,10 @@ export default function Compatibility() {
                                 />
                               </div>
                             )}
-                          </React.Fragment>
+                          </Fragment>
                         ))}
                         {fullReport.crossBranch.negative.map((item, i) => (
-                          <React.Fragment key={`n-${i}`}>
+                          <Fragment key={`n-${i}`}>
                             <button
                               type="button"
                               onClick={() => setActiveRelation({ scope: "crossBranch", type: item.type as RelationType, title: item.label })}
@@ -1254,7 +1254,7 @@ export default function Compatibility() {
                                 />
                               </div>
                             )}
-                          </React.Fragment>
+                          </Fragment>
                         ))}
                         {fullReport.crossBranch.positive.length === 0 &&
                           fullReport.crossBranch.negative.length === 0 && (
