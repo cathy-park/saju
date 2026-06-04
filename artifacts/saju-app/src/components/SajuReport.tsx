@@ -1644,11 +1644,18 @@ function SajuStructureSummary({
           ) : (
             <>
               <p className={`text-lg font-bold ${elementTextClass(yongshinPrimary, "strong")}`}>{yongshinPrimary}</p>
-              {yongshinSecondary && (
-                <p className="mt-1 text-[12px] text-muted-foreground">
-                  희신: <span className={cn("font-semibold", elementTextClass(yongshinSecondary, "strong"))}>{yongshinSecondary}</span>
-                </p>
-              )}
+              <div className="mt-1 flex items-center gap-3">
+                {yongshinSecondary && (
+                  <p className="text-[12px] text-muted-foreground">
+                    희신: <span className={cn("font-semibold", elementTextClass(yongshinSecondary, "strong"))}>{yongshinSecondary}</span>
+                  </p>
+                )}
+                {yongshinPrimary && (
+                  <p className="text-[12px] text-muted-foreground">
+                    기신: <span className={cn("font-semibold", elementTextClass(getController(yongshinPrimary), "strong"))}>{getController(yongshinPrimary)}</span>
+                  </p>
+                )}
+              </div>
             </>
           )}
         </div>
@@ -5370,25 +5377,7 @@ export function SajuReport({ record, showSaveStatus = false, hourMode: parentHou
             />
           ) : null}
 
-          {dayBranch ? (
-            <YuanSpouseStructureCard
-              monthBranch={effectivePillars.month?.hangul?.[1]}
-              spousePalace={spousePalace}
-              relationshipPattern={relationshipPattern}
-              spouseStabilityGrade={sajuPipelineResult?.evaluations?.spousePalaceStability?.grade ?? null}
-              dayStem={dayStem}
-              dayBranch={dayBranch}
-              allChars={allChars}
-              allStems={allStems}
-              allBranches={allBranches}
-              counts={effectiveFiveElements}
-              evaluations={sajuPipelineResult?.evaluations}
-              shinsalNames={yuanGuoFinalShinsalNames}
-              ageYears={yuanReportAge}
-              strengthLevel={sajuPipelineResult?.adjusted?.effectiveStrengthLevel}
-              tenGodGroups={sajuPipelineResult?.base?.tenGodGroups}
-            />
-          ) : null}
+          {/* Moved YuanSpouseStructureCard to personality tab */}
 
           <div className="rounded-lg border border-border/60 bg-muted/15 px-3 py-2.5 text-[12px] leading-relaxed text-muted-foreground">
             <span className="font-semibold text-foreground">원국</span>은 표와 오행·십성의{" "}
@@ -5514,14 +5503,14 @@ export function SajuReport({ record, showSaveStatus = false, hourMode: parentHou
 
           {/* 신강/신약 (single source: sajuPipelineResult.adjusted.strengthResult) */}
           {sajuPipelineResult?.adjusted?.strengthResult && (
-            <AccSection id="yuan-strength" title="일간 강도" defaultOpen>
+            <AccSection id="yuan-strength" title="일간 강도" defaultOpen={false}>
               <DayMasterStrengthCard strength={sajuPipelineResult.adjusted.strengthResult} />
             </AccSection>
           )}
 
           {/* 격국·조후 */}
           {dayStem && (
-            <AccSection id="yuan-gukguk" title="격국·조후" defaultOpen>
+            <AccSection id="yuan-gukguk" title="격국·조후" defaultOpen={false}>
               <GukgukSection
                 dayStem={dayStem}
                 monthBranch={effectivePillars.month?.hangul?.[1]}
@@ -5980,91 +5969,32 @@ export function SajuReport({ record, showSaveStatus = false, hourMode: parentHou
                     }}
                   />
                 </div>
-                <div>
-                  <p className="text-[13px] font-semibold text-muted-foreground mb-2">십성 개별 배치</p>
-                  <div className="overflow-hidden rounded-xl border border-border">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="bg-muted/40 text-[13px] text-muted-foreground">
-                          <td className="py-1.5 px-2 text-center font-medium">주</td>
-                          <td className="py-1.5 px-2 text-center font-medium border-l border-border">천간</td>
-                          <td className="py-1.5 px-2 text-center font-medium border-l border-border">십성</td>
-                          <td className="py-1.5 px-2 text-center font-medium border-l border-border">지지</td>
-                          <td className="py-1.5 px-2 text-center font-medium border-l border-border">십성</td>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {tenGodPairs.map(({ label, pillar, isSelf }, i) => {
-                          if (!pillar) return null;
-                          const stem = pillar.hangul[0];
-                          const branch = pillar.hangul[1];
-                          const stemTg = getTenGod(dayStem, stem);
-                          const branchTg = getTenGod(dayStem, branch);
-                          const stemEl = charToElement(stem);
-                          const branchEl = charToElement(branch);
-                          return (
-                            <tr key={i} className={`border-t border-border ${isSelf ? "bg-amber-50/60" : ""}`}>
-                              <td className="py-2 px-2 text-center text-[13px] text-muted-foreground">{label}</td>
-                              <td className="py-2 px-2 text-center border-l border-border">
-                                <span className={`font-bold ${stemEl ? elementTextClass(stemEl, "strong") : ""}`}>{stem}</span>
-                              </td>
-                              <td className="py-2 px-2 text-center border-l border-border">
-                                {stemTg ? (
-                                  <span className={`text-[13px] px-1.5 py-0.5 rounded font-bold ${getTenGodTw(stemTg, dayStem)}`} style={getTenGodChipStyle(stemTg, dayStem)}>{stemTg}</span>
-                                ) : <span className="text-[13px] text-muted-foreground">-</span>}
-                              </td>
-                              <td className="py-2 px-2 text-center border-l border-border">
-                                <span className={`font-bold ${branchEl ? elementTextClass(branchEl, "strong") : ""}`}>{branch}</span>
-                              </td>
-                              <td className="py-2 px-2 text-center border-l border-border">
-                                {branchTg ? (
-                                  <span className={`text-[13px] px-1.5 py-0.5 rounded font-bold ${getTenGodTw(branchTg, dayStem)}`} style={getTenGodChipStyle(branchTg, dayStem)}>{branchTg}</span>
-                                ) : <span className="text-[13px] text-muted-foreground">-</span>}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">일간 정보가 없습니다</p>
             )}
           </AccSection>
 
-          {/* 배우자궁 */}
-          {spousePalace && (
-            <AccSection title="배우자궁" defaultOpen>
-              <div className="rounded-xl border border-rose-100 bg-rose-50/40 p-4 space-y-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-rose-100 border border-rose-200 flex items-center justify-center">
-                    <span className="text-lg font-bold text-rose-700">{dayBranch}</span>
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold text-foreground">{spousePalace.title}</p>
-                    <p className="text-[13px] text-muted-foreground">{spousePalace.element} 기운 · 일지(배우자궁)</p>
-                  </div>
-                </div>
-                <p className="text-sm text-foreground leading-relaxed">{spousePalace.summary}</p>
-                {spousePalace.strengths.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5">
-                    {spousePalace.strengths.map((s) => (
-                      <span key={s} className="text-[13px] bg-emerald-50 border border-emerald-100 text-emerald-800 px-2.5 py-0.5 rounded-full">✓ {s}</span>
-                    ))}
-                  </div>
-                )}
-                {spousePalace.cautions.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5">
-                    {spousePalace.cautions.map((c) => (
-                      <span key={c} className="text-[13px] bg-amber-50 border border-amber-100 text-amber-800 px-2.5 py-0.5 rounded-full">⚠ {c}</span>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </AccSection>
-          )}
+          {/* 배우자 구조 분석 (원국 탭에서 이동) */}
+          {dayBranch ? (
+            <YuanSpouseStructureCard
+              monthBranch={effectivePillars.month?.hangul?.[1]}
+              spousePalace={spousePalace}
+              relationshipPattern={relationshipPattern}
+              spouseStabilityGrade={sajuPipelineResult?.evaluations?.spousePalaceStability?.grade ?? null}
+              dayStem={dayStem}
+              dayBranch={dayBranch}
+              allChars={allChars}
+              allStems={allStems}
+              allBranches={allBranches}
+              counts={effectiveFiveElements}
+              evaluations={sajuPipelineResult?.evaluations}
+              shinsalNames={yuanGuoFinalShinsalNames}
+              ageYears={yuanReportAge}
+              strengthLevel={sajuPipelineResult?.adjusted?.effectiveStrengthLevel}
+              tenGodGroups={sajuPipelineResult?.base?.tenGodGroups}
+            />
+          ) : null}
 
           {/* 연애·관계 구조 (오늘운세 탭에서 이동) */}
           {(complementary || marriageTiming || relationshipPattern) && (
@@ -6268,9 +6198,66 @@ export function SajuReport({ record, showSaveStatus = false, hourMode: parentHou
             const tgBranch = dayLayer?.branchTenGod as TenGod | undefined;
             const hint = tgStem ? (TG_LUCK_MEANING[tgStem]?.summary ?? "") : "";
             const layerCount = fortune.luckLayers?.length ?? 0;
+            const yPrimary = (sajuPipelineResult?.adjusted?.effectiveYongshin ?? "목") as FiveElKey;
 
             return (
-              <div className="space-y-3">
+              <div className="space-y-6 pb-12">
+                <div className="text-center py-6 space-y-1">
+                  <p className="text-sm font-bold tracking-widest text-primary mb-2">STORY MODE</p>
+                  <h2 className="text-2xl font-extrabold tracking-tight text-foreground">
+                    <span className="text-primary">{record.birthInput.name}</span>님의 사주 스토리
+                  </h2>
+                  <p className="text-[14px] text-muted-foreground">
+                    어려운 명리 용어 없이, 나만의 흐름을 읽어보세요
+                  </p>
+                </div>
+
+                {/* Zone 1: 나의 기질 */}
+                <Card className="border-indigo-100/60 shadow-sm bg-gradient-to-b from-indigo-50/50 to-white">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-bold text-indigo-700 flex items-center gap-2">
+                      <span>✨</span> 타고난 기질
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <p className="text-base font-bold text-foreground leading-relaxed">
+                      "{getDayMasterSummaryFromStrength(dayStem, sajuPipelineResult?.adjusted?.effectiveStrengthLevel ?? "중화")}"
+                    </p>
+                    {sajuPipelineResult?.interpretation?.gukguk?.name && (
+                      <div className="flex flex-wrap gap-2">
+                        <span className="px-2.5 py-1 rounded-full bg-white border border-indigo-100 text-[12px] font-semibold text-indigo-800">
+                          {sajuPipelineResult.interpretation.gukguk.name}
+                        </span>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Zone 2: 나의 에너지 균형 (용신/기신) */}
+                <Card className="border-emerald-100/60 shadow-sm bg-gradient-to-b from-emerald-50/50 to-white">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-bold text-emerald-700 flex items-center gap-2">
+                      <span>⚖️</span> 나의 에너지 밸런스
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <p className="text-[13px] text-foreground leading-relaxed">
+                      나의 에너지는 <span className="font-bold">{sajuPipelineResult?.adjusted?.effectiveStrengthLevel}</span> 편입니다. 
+                      나를 가장 편안하게 해주는 기운은 <span className={`font-bold ${elementTextClass(yPrimary, "strong")}`}>{yPrimary} 기운</span>이에요.
+                    </p>
+                    <p className="text-[13px] text-muted-foreground leading-relaxed">
+                      반대로 피하면 좋은 기운은 <span className={`font-bold ${elementTextClass(getController(yPrimary), "strong")}`}>{getController(yPrimary)} 기운</span>입니다. 
+                      중요한 결정을 할 때 이 밸런스를 떠올려 보세요.
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <div className="pt-4 border-t border-border/40 mt-6 mb-2 flex items-center justify-center">
+                  <span className="px-4 py-1 rounded-full bg-muted/40 text-[12px] font-bold text-muted-foreground tracking-widest">
+                    TODAY'S GUIDE
+                  </span>
+                </div>
+
                 {/* 1) 오늘의 한눈에 보기 */}
                 {(() => {
                   const KEYWORD_STYLES = [
