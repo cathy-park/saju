@@ -724,6 +724,7 @@ export default function Compatibility() {
     type: RelationType;
     title: string;
   } | null>(null);
+  const [isListExpanded, setIsListExpanded] = useState(false);
 
   // ── 시주 제외 모드 지원: manualPillars.hour = null 로 시주 무력화 ──
   function withHourRemoved(record: PersonRecord): PersonRecord {
@@ -866,23 +867,38 @@ export default function Compatibility() {
       </div>
       {/* ── 모드 탭: 사주 포함/제외 세그먼트와 동일 스타일 ── */}
       {canUsePairMode && (
-        <div className="ds-segment-list min-h-10 w-full rounded-xl border border-border shadow-none">
-          {([
-            { key: "me_other" as const, label: "나 ↔ 상대" },
-            { key: "pair" as const, label: "상대끼리" },
-          ]).map(({ key, label }) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => setMode(key)}
+        <div className="flex items-center gap-2 w-full">
+          <div className="ds-segment-list min-h-10 flex-1 rounded-xl border border-border shadow-none">
+            {([
+              { key: "me_other" as const, label: "나 ↔ 상대" },
+              { key: "pair" as const, label: "상대끼리" },
+            ]).map(({ key, label }) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setMode(key)}
+                className={cn(
+                  "ds-segment-item flex-1 text-[12px] font-bold shadow-none",
+                  mode === key ? "ds-segment-item-active" : "ds-segment-item-inactive",
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsListExpanded((v) => !v)}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border bg-card text-muted-foreground hover:bg-muted/60 transition-all active:scale-95 shadow-none"
+            aria-label={isListExpanded ? "인물 목록 접기" : "인물 목록 펼치기"}
+          >
+            <ChevronDown
               className={cn(
-                "ds-segment-item flex-1 text-[12px] font-bold shadow-none",
-                mode === key ? "ds-segment-item-active" : "ds-segment-item-inactive",
+                "h-5 w-5 transition-transform duration-200",
+                isListExpanded && "rotate-180"
               )}
-            >
-              {label}
-            </button>
-          ))}
+            />
+          </button>
         </div>
       )}
       {people.length === 0 ? (
@@ -903,40 +919,44 @@ export default function Compatibility() {
       ) : (
         <>
           {/* ── 상대 선택 ── */}
-          {mode === "me_other" ? (
-            <PeopleTabSelector
-              people={people}
-              selectedPerson={selectedPerson}
-              onSelect={setSelectedPerson}
-            />
-          ) : (
-            <div className="ds-card ds-card-pad space-y-3 shadow-none">
-              <div className="flex items-start gap-2">
-                <PairSelector
-                  label="A"
+          {(!canUsePairMode || isListExpanded) && (
+            <div className="space-y-3">
+              {mode === "me_other" ? (
+                <PeopleTabSelector
                   people={people}
-                  selected={pairPersonA}
-                  excluded={pairPersonB}
-                  onSelect={setPairPersonA}
+                  selectedPerson={selectedPerson}
+                  onSelect={setSelectedPerson}
                 />
-                <button
-                  onClick={swapPair}
-                  disabled={!pairPersonA || !pairPersonB}
-                  className="mt-6 p-2 rounded-full border border-border bg-background hover:bg-muted disabled:opacity-30 transition-colors shrink-0"
-                  title="A ↔ B 바꾸기"
-                >
-                  <ArrowLeftRight className="h-4 w-4 text-muted-foreground" />
-                </button>
-                <PairSelector
-                  label="B"
-                  people={people}
-                  selected={pairPersonB}
-                  excluded={pairPersonA}
-                  onSelect={setPairPersonB}
-                />
-              </div>
-              {(!pairPersonA || !pairPersonB) && (
-                <p className="text-[12px] text-muted-foreground text-center">A와 B를 각각 선택하면 궁합이 계산됩니다</p>
+              ) : (
+                <div className="ds-card ds-card-pad space-y-3 shadow-none">
+                  <div className="flex items-start gap-2">
+                    <PairSelector
+                      label="A"
+                      people={people}
+                      selected={pairPersonA}
+                      excluded={pairPersonB}
+                      onSelect={setPairPersonA}
+                    />
+                    <button
+                      onClick={swapPair}
+                      disabled={!pairPersonA || !pairPersonB}
+                      className="mt-6 p-2 rounded-full border border-border bg-background hover:bg-muted disabled:opacity-30 transition-colors shrink-0"
+                      title="A ↔ B 바꾸기"
+                    >
+                      <ArrowLeftRight className="h-4 w-4 text-muted-foreground" />
+                    </button>
+                    <PairSelector
+                      label="B"
+                      people={people}
+                      selected={pairPersonB}
+                      excluded={pairPersonA}
+                      onSelect={setPairPersonB}
+                    />
+                  </div>
+                  {(!pairPersonA || !pairPersonB) && (
+                    <p className="text-[12px] text-muted-foreground text-center">A와 B를 각각 선택하면 궁합이 계산됩니다</p>
+                  )}
+                </div>
               )}
             </div>
           )}
