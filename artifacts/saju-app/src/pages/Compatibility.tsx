@@ -696,6 +696,50 @@ function HeartBattery({ score }: { score: number }) {
   );
 }
 
+function SynergyGauge({ score }: { score: number }) {
+  const fillWidth = `${score}%`;
+
+  return (
+    <div className="rounded-xl border border-border bg-card p-3 shadow-none transition-all hover:border-primary/20">
+      <div className="flex items-center justify-between mb-1.5">
+        <span className="text-[11px] font-bold text-muted-foreground">업무/우정 시너지 ⚙️</span>
+        <span className="text-[13px] font-extrabold text-blue-600 tracking-tight">{score}%</span>
+      </div>
+      <div className="relative h-3 w-full rounded-full bg-muted overflow-hidden">
+        <div
+          className="absolute left-0 top-0 h-full rounded-full bg-gradient-to-r from-teal-400 via-blue-500 to-indigo-600 transition-all duration-1000 ease-out"
+          style={{ width: fillWidth }}
+        />
+      </div>
+      <p className="mt-1.5 text-[10px] text-muted-foreground leading-normal">
+        두 사람이 함께할 때 발생하는 추진력과 시너지 에너지를 나타냅니다.
+      </p>
+    </div>
+  );
+}
+
+function BalanceScale({ score }: { score: number }) {
+  const fillWidth = `${score}%`;
+
+  return (
+    <div className="rounded-xl border border-border bg-card p-3 shadow-none transition-all hover:border-primary/20">
+      <div className="flex items-center justify-between mb-1.5">
+        <span className="text-[11px] font-bold text-muted-foreground">조율 저울 ⚖️</span>
+        <span className="text-[13px] font-extrabold text-indigo-600 tracking-tight">{score}%</span>
+      </div>
+      <div className="relative h-3 w-full rounded-full bg-muted overflow-hidden">
+        <div
+          className="absolute left-0 top-0 h-full rounded-full bg-gradient-to-r from-violet-400 via-purple-500 to-indigo-600 transition-all duration-1000 ease-out"
+          style={{ width: fillWidth }}
+        />
+      </div>
+      <p className="mt-1.5 text-[10px] text-muted-foreground leading-normal">
+        서로 다름을 인정하고 안정적인 균형을 이룰 수 있는 조율 능력을 보여줍니다.
+      </p>
+    </div>
+  );
+}
+
 // ── Main Page ─────────────────────────────────────────────────────
 
 export default function Compatibility() {
@@ -1037,10 +1081,19 @@ export default function Compatibility() {
                     </div>
                   </div>
 
-                  {/* 온도계 및 하트 게이지 UI */}
+                  {/* 온도계 및 하트 게이지 UI (또는 시너지/저울) */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4 pt-4 border-t border-border/40">
-                    <LoveThermometer score={result.score} />
-                    <HeartBattery score={result.score} />
+                    {isPersonalLove ? (
+                      <>
+                        <LoveThermometer score={result.score} />
+                        <HeartBattery score={result.score} />
+                      </>
+                    ) : (
+                      <>
+                        <SynergyGauge score={result.score} />
+                        <BalanceScale score={result.score} />
+                      </>
+                    )}
                   </div>
 
                   {/* 복사 버튼 상단 이동 */}
@@ -1190,8 +1243,11 @@ export default function Compatibility() {
                     </div>
                   </div>
                   <div>
-                    <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">오행 궁합</p>
-                    <div className="ds-inline-detail-nested space-y-3">
+                    <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Give & Take (오행 보완)</p>
+                    <div className="ds-inline-detail-nested space-y-3 bg-gradient-to-br from-indigo-50/50 to-white dark:from-indigo-950/20 dark:to-background border border-indigo-100 dark:border-indigo-900/50">
+                      <p className="text-[13px] font-bold text-indigo-800 dark:text-indigo-300 leading-relaxed mb-1">
+                        {fullReport.elementComp.desc}
+                      </p>
                       <ElementMirror
                         name1={myName}
                         el1={result.elementBalance.person1}
@@ -1199,7 +1255,6 @@ export default function Compatibility() {
                         name2={otherName}
                         el2={result.elementBalance.person2}
                       />
-                      <p className="ds-body">{fullReport.elementComp.desc}</p>
                     </div>
                   </div>
                   <div>
