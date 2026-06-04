@@ -80,7 +80,7 @@ const BRANCH_HYEONG_MAP: Record<string, string[]> = {
   진: ["진"], 오: ["오"], 유: ["유"], 해: ["해"],
 };
 const BRANCH_PA: [string, string][] = [
-  ["자", "유"], ["묘", "오"], ["인", "해"], ["사", "신"], ["진", "축"], ["술", "미"],
+  ["자", "유"], ["묘", "오"], ["진", "축"], ["미", "술"]
 ];
 const BRANCH_HAE: [string, string][] = [
   ["자", "미"], ["축", "오"], ["인", "사"], ["묘", "진"], ["신", "해"], ["유", "술"],
@@ -89,14 +89,25 @@ const BRANCH_WONJIN: [string, string][] = [
   ["자", "미"], ["축", "오"], ["인", "유"], ["묘", "신"], ["진", "해"], ["사", "술"],
 ];
 
+const HALF_TRIAD = [
+  ["인", "오", "술"], ["사", "유", "축"], ["신", "자", "진"], ["해", "묘", "미"]
+];
+const DIR_COMBINE = [
+  ["인", "묘", "진"], ["사", "오", "미"], ["신", "유", "술"], ["해", "자", "축"]
+];
+
 export function branchRel(b1: string, b2: string): string[] {
   const rels: string[] = [];
-  if (BRANCH_HAP_6.some(([a, b]) => (b1 === a && b2 === b) || (b1 === b && b2 === a))) rels.push("합");
+  if (BRANCH_HAP_6.some(([a, b]) => (b1 === a && b2 === b) || (b1 === b && b2 === a))) rels.push("지지육합");
   if (BRANCH_CHUNG.some(([a, b]) => (b1 === a && b2 === b) || (b1 === b && b2 === a))) rels.push("충");
   if (BRANCH_HYEONG_MAP[b1]?.includes(b2)) rels.push("형");
   if (BRANCH_PA.some(([a, b]) => (b1 === a && b2 === b) || (b1 === b && b2 === a))) rels.push("파");
   if (BRANCH_HAE.some(([a, b]) => (b1 === a && b2 === b) || (b1 === b && b2 === a))) rels.push("해");
   if (BRANCH_WONJIN.some(([a, b]) => (b1 === a && b2 === b) || (b1 === b && b2 === a))) rels.push("원진");
+  
+  if (HALF_TRIAD.some(g => g.includes(b1) && g.includes(b2)) && !rels.includes("지지육합")) rels.push("지지삼합");
+  if (DIR_COMBINE.some(g => g.includes(b1) && g.includes(b2)) && !rels.includes("지지육합") && !rels.includes("지지삼합")) rels.push("지지방합");
+
   return rels;
 }
 
@@ -210,6 +221,21 @@ export const BRANCH_REL_COMPAT: Record<string, { tone: string; desc: string; sta
     desc: "두 배우자궁이 합(合)을 이루어 강한 결합력과 정서적 유대감이 있습니다. 자연스럽게 끌리고 함께 있을 때 편안함을 느낍니다.",
     stability: "정서적 안정도가 높고 장기적 관계 유지에 유리합니다.",
   },
+  지지육합: {
+    tone: "매우 좋음",
+    desc: "두 배우자궁이 육합을 이루어 강한 결합력과 정서적 유대감이 있습니다. 자연스럽게 끌리고 함께 있을 때 편안함을 느낍니다.",
+    stability: "정서적 안정도가 높고 장기적 관계 유지에 유리합니다.",
+  },
+  지지삼합: {
+    tone: "매우 좋음",
+    desc: "두 배우자궁이 삼합(또는 반합)을 이루어 공통의 목표나 강한 결속력을 갖게 됩니다. 함께 성장하는 에너지가 뛰어납니다.",
+    stability: "서로의 뜻이 잘 맞아 안정적이고 발전적인 관계를 유지하기 좋습니다.",
+  },
+  지지방합: {
+    tone: "매우 좋음",
+    desc: "두 배우자궁이 방합을 이루어 가족 같은 편안함과 강한 소속감을 공유합니다.",
+    stability: "서로 비슷한 가치관과 배경으로 안정적인 관계를 유지합니다.",
+  },
   충: {
     tone: "활력 있지만 긴장",
     desc: "두 배우자궁이 충(衝)하여 강한 에너지가 충돌합니다. 활력과 자극이 있지만 충돌과 변화가 잦을 수 있습니다.",
@@ -270,14 +296,16 @@ export function getElementComplement(el1: FiveElementCount, el2: FiveElementCoun
 export function getMarriageView(score: number, elRel: StemElRel, dayBranchRel: string): {
   type: string; typeColor: string; desc: string;
 } {
-  if (score >= 78 && (dayBranchRel === "합" || elRel === "생" || elRel === "피생")) {
+  const isHap = dayBranchRel === "합" || dayBranchRel === "지지육합" || dayBranchRel === "지지삼합" || dayBranchRel === "지지방합";
+
+  if (score >= 78 && (isHap || elRel === "생" || elRel === "피생")) {
     return {
       type: "장기 안정형",
       typeColor: "text-green-700",
       desc: "오행과 배우자궁이 서로 잘 맞아 시간이 지날수록 안정되고 깊어지는 관계입니다. 초기의 설렘이 깊은 신뢰로 성숙할 가능성이 높습니다. 결혼 후 삶의 기반을 함께 쌓아가기에 좋은 궁합입니다.",
     };
   }
-  if (score >= 65 && dayBranchRel === "합") {
+  if (score >= 65 && isHap) {
     return {
       type: "정서적 결합형",
       typeColor: "text-rose-600",
@@ -388,9 +416,12 @@ export function getHarmonyPoints(
   if (elRel === "생" || elRel === "피생") {
     points.push("일간의 상생 관계로 자연스럽게 서로를 돕고 발전시키는 힘이 있습니다.");
   }
-  if (dayBranchRel === "합") {
+  
+  const isHap = dayBranchRel === "합" || dayBranchRel === "지지육합" || dayBranchRel === "지지삼합" || dayBranchRel === "지지방합";
+  if (isHap) {
     points.push("배우자궁이 합하여 깊은 정서적 유대와 함께 있을 때의 편안함이 있습니다.");
   }
+  
   const all: (keyof FiveElementCount)[] = ["목", "화", "토", "금", "수"];
   const oneComps = all.filter(e => (el1[e] === 0 && el2[e] > 0) || (el2[e] === 0 && el1[e] > 0));
   if (oneComps.length >= 2) {
@@ -450,7 +481,7 @@ export function getCrossBranchAnalysis(
         const key = `${rel}|${[b1, b2].sort().join(",")}`;
         if (seen.has(key)) continue;
         seen.add(key);
-        if (rel === "합")  positive.push({ desc: `${b1}·${b2} 합(合) — 강한 인연의 고리, 자연스러운 결합력` });
+        if (rel === "지지육합" || rel === "지지삼합" || rel === "지지방합" || rel === "합")  positive.push({ desc: `${b1}·${b2} 합(合) — 강한 인연의 고리, 자연스러운 결합력` });
         if (rel === "충")  negative.push({ desc: `${b1}·${b2} 충(衝) — 충돌과 변화, 서로 다른 방향을 향함` });
         if (rel === "형")  negative.push({ desc: `${b1}·${b2} 형(刑) — 정서적 긴장, 의도치 않은 상처` });
         if (rel === "파")  negative.push({ desc: `${b1}·${b2} 파(破) — 관계 균열, 어긋남 주의` });
