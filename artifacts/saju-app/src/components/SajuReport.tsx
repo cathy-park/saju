@@ -6201,17 +6201,7 @@ export function SajuReport({ record, showSaveStatus = false, hourMode: parentHou
             const yPrimary = (sajuPipelineResult?.adjusted?.effectiveYongshin ?? "목") as FiveElKey;
 
             return (
-              <div className="space-y-6 pb-12">
-                <div className="text-center py-6 space-y-1">
-                  <p className="text-sm font-bold tracking-widest text-primary mb-2">STORY MODE</p>
-                  <h2 className="text-2xl font-extrabold tracking-tight text-foreground">
-                    <span className="text-primary">{record.birthInput.name}</span>님의 사주 스토리
-                  </h2>
-                  <p className="text-[14px] text-muted-foreground">
-                    어려운 명리 용어 없이, 나만의 흐름을 읽어보세요
-                  </p>
-                </div>
-
+              <div className="space-y-6 pb-12 pt-2">
                 {/* Zone 1: 나의 기질 */}
                 <Card className="border-indigo-100/60 shadow-sm bg-gradient-to-b from-indigo-50/50 to-white">
                   <CardHeader className="pb-2">

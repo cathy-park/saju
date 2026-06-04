@@ -211,44 +211,164 @@ function Dashboard({ record }: { record: PersonRecord }) {
         </div>
       </div>
 
-      {/* ── 스토리 모드 (일반 모드) 진입 배너 ── */}
-      <div className="px-4 pt-6 pb-2">
-        <div 
-          role="button"
-          tabIndex={0}
-          onClick={goToTodayFortune}
-          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); goToTodayFortune(); } }}
-          className="relative overflow-hidden rounded-2xl border border-indigo-200/60 bg-gradient-to-br from-indigo-50 to-white p-5 shadow-sm transition-transform active:scale-[0.98] cursor-pointer"
-        >
-          <div className="pointer-events-none absolute -right-4 -top-4 h-24 w-24 rounded-full bg-indigo-500/[0.05]" aria-hidden />
-          <div className="pointer-events-none absolute -bottom-6 -left-6 h-20 w-20 rounded-full bg-violet-500/[0.05]" aria-hidden />
-          
-          <div className="relative z-10 flex items-center justify-between">
-            <div className="space-y-1">
-              <div className="flex items-center gap-1.5 mb-2">
-                <span className="text-[12px] font-extrabold tracking-widest text-indigo-500">STORY MODE</span>
-                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-indigo-100 text-[10px] leading-none">✨</span>
-              </div>
-              <h3 className="text-[17px] font-bold text-foreground">나만의 사주 스토리 읽기</h3>
-              <p className="text-[13px] text-muted-foreground leading-relaxed mt-1">
-                어려운 명리 용어 없이<br/>나의 기질과 오늘 운세를 편하게 보세요.
+      {/* '오늘 해석' 라벨 제거 — 동일 구역 여백 유지 (간격 절반으로 축소) */}
+      <div className="px-4 pt-0.5 mb-1 min-h-[13px]" aria-hidden />
+
+      {lifeFlow && (
+        <div className="px-4 pt-0">
+          <div className="ds-card relative overflow-hidden border-violet-200/80 p-5 shadow-none">
+            <div className="pointer-events-none absolute -right-5 -top-5 h-20 w-20 rounded-full bg-indigo-500/[0.08]" aria-hidden />
+            <div className="mb-4 flex items-center gap-2">
+              <span className="text-[13px] font-extrabold text-indigo-600">✦ 오늘의 전체 흐름</span>
+            </div>
+            <p className="ds-body mb-4 font-medium text-foreground leading-relaxed">
+              {lifeFlow.overall.fullText}
+            </p>
+            {lifeFlow.overall.activityFlow && (
+              <p className="mb-4 text-xs font-semibold text-indigo-600 leading-relaxed">
+                {lifeFlow.overall.activityFlow}
               </p>
+            )}
+            <div className="grid grid-cols-2 gap-4">
+              {[
+                { label: "감정 흐름", text: lifeFlow.overall.emotional },
+                { label: "결정 타이밍", text: lifeFlow.overall.decisionTiming },
+              ].map(({ label, text }) => (
+                <div key={label} className="rounded-lg bg-violet-50/80 px-4 py-3.5">
+                  <p className="ds-caption mb-2 font-bold tracking-wide text-violet-600/90">{label}</p>
+                  <p className="text-xs leading-snug text-foreground/90">{text}</p>
+                </div>
+              ))}
             </div>
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-indigo-600 shadow-md">
-              <span className="text-white text-lg leading-none" aria-hidden>→</span>
+            <Button
+              type="button"
+              onClick={goToTodayFortune}
+              className="mt-4 w-full border-0 bg-gradient-to-r from-indigo-600 to-violet-600 text-primary-foreground shadow-none hover:from-indigo-600 hover:to-violet-600"
+            >
+              오늘 운세 보러가기 →
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* ── 오늘 일운 해석 (십성) ── */}
+      {(() => {
+        const dayLayer = fortune.luckLayers[3] ?? fortune.luckLayers[fortune.luckLayers.length - 1];
+        if (!dayLayer) return null;
+        const stemFortune   = getTenGodFortune(dayLayer.tenGod);
+        const branchFortune = getTenGodFortune(dayLayer.branchTenGod);
+        const stemEl   = charToElement(dayLayer.ganZhi[0]) as FiveElKey | null;
+        const branchEl = charToElement(dayLayer.ganZhi[1]) as FiveElKey | null;
+        const items = [
+          { label: dayLayer.tenGod,   sub: "천간", el: stemEl,   ...stemFortune },
+          ...(dayLayer.branchTenGod && dayLayer.branchTenGod !== dayLayer.tenGod
+            ? [{ label: dayLayer.branchTenGod, sub: "지지", el: branchEl, ...branchFortune }]
+            : []),
+        ];
+        return (
+          <div className="px-4 pt-2">
+            <div className="ds-card overflow-hidden p-0 shadow-none">
+              <div className="border-b border-border px-3.5 py-2">
+                <span className="text-[10px] font-bold tracking-wide text-muted-foreground">오늘 일운 해석</span>
+              </div>
+              {items.map((item, idx) => (
+                <div
+                  key={idx}
+                  className={cn("px-3.5 py-2.5", idx < items.length - 1 && "border-b border-border/60")}
+                >
+                  <div className="mb-1 flex items-center gap-1.5">
+                    <span
+                      className={cn(
+                        "ds-badge text-[11px] font-extrabold shadow-none",
+                        item.el
+                          ? cn(elementBgClass(item.el, "muted"), elementTextClass(item.el, "strong"), "border-transparent")
+                          : "bg-muted text-primary",
+                      )}
+                    >
+                      {item.label}
+                    </span>
+                    <span className="text-[10px] font-semibold text-muted-foreground">{item.sub}</span>
+                  </div>
+                  <p className="mb-1 text-xs font-semibold leading-snug text-foreground">{item.summary}</p>
+                  <p className="text-[11px] leading-snug text-muted-foreground">{item.guidance}</p>
+                </div>
+              ))}
             </div>
+          </div>
+        );
+      })()}
+
+      {/* ③ 운 흐름 스냅샷 — 대운·세운·월운·일운 한 그룹 */}
+      <div className="px-4 pt-4">
+        <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">운 흐름 스냅샷</p>
+        <div className="overflow-hidden rounded-xl border border-border bg-card shadow-none">
+          <div className="border-b border-border bg-muted/20 px-3.5 py-2">
+            <p className="text-[11px] font-bold text-foreground">대운 · 세운 · 월운 · 일운</p>
+            <p className="mt-0.5 text-[10px] text-muted-foreground">탭하면 리포트 운세 탭으로 이동합니다</p>
+          </div>
+          <div className="grid grid-cols-2 gap-px bg-border p-0">
+          {fortune.luckLayers.map((layer) => {
+            const stemEl = charToElement(layer.ganZhi[0]);
+            const branchEl = charToElement(layer.ganZhi[1]);
+            return (
+              <div
+                key={layer.label}
+                role="button"
+                tabIndex={0}
+                onClick={() => {
+                  sessionStorage.setItem("openReportTab", "운세");
+                  sessionStorage.setItem("openLuckTab", layer.label);
+                  navigate("/saju");
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    sessionStorage.setItem("openReportTab", "운세");
+                    sessionStorage.setItem("openLuckTab", layer.label);
+                    navigate("/saju");
+                  }
+                }}
+                className="cursor-pointer bg-background p-2.5 transition-colors hover:bg-muted/25"
+              >
+                <div className="mb-1.5 flex items-baseline gap-1">
+                  <span className="text-[10px] font-bold text-muted-foreground">{layer.label}</span>
+                  <span className="text-sm font-extrabold tracking-wide">
+                    <span className={stemEl ? elementTextClass(stemEl as FiveElKey, "strong") : "text-foreground"}>{layer.ganZhi[0]}</span>
+                    <span className={branchEl ? elementTextClass(branchEl as FiveElKey, "strong") : "text-foreground"}>{layer.ganZhi[1]}</span>
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {layer.tenGod && (
+                    <span className="daewoon-tengod-tag ds-badge border-indigo-200/50 bg-indigo-500/10 px-1.5 py-0.5 text-[9px] font-bold text-indigo-700 shadow-none">
+                      천:{layer.tenGod}
+                    </span>
+                  )}
+                  {layer.branchTenGod && (
+                    <span className="daewoon-tengod-tag ds-badge border-teal-200/50 bg-teal-500/10 px-1.5 py-0.5 text-[9px] font-bold text-teal-700 shadow-none">
+                      지:{layer.branchTenGod}
+                    </span>
+                  )}
+                  {layer.twelveStage && (
+                    <span className="daewoon-tengod-tag ds-badge border-border bg-muted/50 px-1.5 py-0.5 text-[9px] font-bold text-muted-foreground shadow-none">
+                      {layer.twelveStage}
+                    </span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
           </div>
         </div>
       </div>
 
-      {/* ④ 주요 기능 이동 (전문가 분석 / 궁합) */}
+      {/* ④ 주요 기능 이동 */}
       <div className="px-4 pt-4">
-        <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">상세 분석 기능</p>
+        <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">주요 기능</p>
         <div className="flex gap-2">
         <Link href="/saju" className="flex-1">
           <div className="flex h-12 cursor-pointer items-center justify-center gap-2 rounded-full border border-indigo-200/60 bg-indigo-500/10 px-4">
             <span className="text-base" aria-hidden>🔍</span>
-            <span className="text-sm font-bold text-indigo-600">전문가 뷰 보기</span>
+            <span className="text-sm font-bold text-indigo-600">내 사주 보기</span>
           </div>
         </Link>
         <Link href="/compatibility" className="flex-1">
