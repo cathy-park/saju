@@ -532,57 +532,39 @@ function scoreMonthBranchDelta(m1: string, m2: string, relType?: RelationshipTyp
 // ═══════════════════════════════════════════════════════════════════════
 //  4. 지지 전체 교차 delta  (−15 ~ +15 cap)
 // ═══════════════════════════════════════════════════════════════════════
-type PillarKey = "year" | "month" | "day" | "hour";
-const PILLAR_WEIGHTS: Record<PillarKey, number> = {
-  day: 1.5,
-  month: 1.2,
-  year: 1.0,
-  hour: 0.8
-};
-
 function scoreBranchInteractionDelta(
-  p1: ReturnType<typeof getFinalPillars>, p2: ReturnType<typeof getFinalPillars>
+  br1: string[], br2: string[],
 ): { delta: number; note: string; clashCount: number } {
   let raw = 0;
   let clashCount = 0;
   const seen = new Set<string>();
 
-  const keys: PillarKey[] = ["year", "month", "day", "hour"];
-  
-  for (const k1 of keys) {
-    const b1 = p1[k1]?.hangul?.[1];
-    if (!b1) continue;
-    for (const k2 of keys) {
-      const b2 = p2[k2]?.hangul?.[1];
-      if (!b2) continue;
-
-      const rels = getBranchRels(b1, b2);
-      const w1 = PILLAR_WEIGHTS[k1];
-      const w2 = PILLAR_WEIGHTS[k2];
-      const weight = w1 * w2;
-
-      for (const r of rels) {
-        const rk = `${r}|${k1}|${k2}`;
-        if (seen.has(rk)) continue;
+  for (const a of br1) {
+    for (const b of br2) {
+      const key = [a, b].sort().join(",");
+      if (seen.has(key)) continue;
+      const rels = getBranchRels(a, b);
+      const newRels = rels.filter(r => {
+        const rk = `${r}|${key}`;
+        if (seen.has(rk)) return false;
         seen.add(rk);
-
-        let baseScore = 0;
-        if (r === "합")   baseScore = 4;
-        else if (r === "반합") baseScore = 5;
-        else if (r === "충")   { baseScore = -5; clashCount++; }
-        else if (r === "형")   baseScore = -4;
-        else if (r === "파")   baseScore = -3;
-        else if (r === "해")   baseScore = -3;
-        else if (r === "원진") baseScore = -4;
-
-        raw += baseScore * weight;
+        return true;
+      });
+      for (const r of newRels) {
+        if (r === "합")   raw += 4;
+        if (r === "반합") raw += 5;
+        if (r === "충")   { raw -= 5; clashCount++; }
+        if (r === "형")   raw -= 4;
+        if (r === "파")   raw -= 3;
+        if (r === "해")   raw -= 3;
+        if (r === "원진") raw -= 4;
       }
     }
   }
 
-  const delta = Math.max(-15, Math.min(15, Math.round(raw)));
+  const delta = Math.max(-15, Math.min(15, raw));
   const note = raw !== 0
-    ? `지지 교차: 위치 가중치 적용 총합 ${raw > 0 ? "+" : ""}${Math.round(raw * 10) / 10}점 (충 ${clashCount}회, 최종 캡 ±15)`
+    ? `지지 교차: 총 ${raw > 0 ? "+" : ""}${raw}점 (충 ${clashCount}회, 캡 ±15)`
     : "지지 교차 관계 없음";
   return { delta, note, clashCount };
 }
@@ -760,7 +742,7 @@ function computeStructuralSteps(
   const steps: StructuralTierStep[] = [];
   let net = 0;
 
-  const isPersonalLove = relType === "lover" || relType === "spouse" || relType === "interest" || !relType || relType === "other";
+  const isPersonalLove = relType === "lover" || relType === "spouse" || !relType || relType === "other";
 
   // +1 up: dayMasterSupportive + spouse palace is not negative
   if (flags.dayMasterSupportive && spouseDelta >= 0) {
@@ -943,7 +925,7 @@ export function calculateCompatibilityScore(
   const dm   = scoreDayMasterDelta(s1, s2, relType);
   const sp   = scoreSpousePalaceDelta(b1, b2, relType);
   const mb   = scoreMonthBranchDelta(m1, m2, relType);
-  const bi   = scoreBranchInteractionDelta(p1, p2);
+  const bi   = scoreBranchInteractionDelta(br1, br2);
   const ec   = scoreElementComplementarityDelta(el1, el2);
   const tg   = scoreTenGodDelta(s1, s2);
   const yong = scoreYongshinDelta(

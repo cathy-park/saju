@@ -1,0 +1,65 @@
+import type { Pillar } from "@/lib/sajuEngine";
+import { ELEMENT_COLORS } from "@/lib/sajuEngine";
+import { charToElement, elementColorVar, type FiveElKey } from "@/lib/element-color";
+
+const STEM_ELEMENT: Record<string, string> = {
+  갑: "목", 을: "목", 병: "화", 정: "화",
+  무: "토", 기: "토", 경: "금", 신: "금",
+  임: "수", 계: "수",
+};
+
+interface PillarCardProps {
+  label: string;
+  pillar: Pillar | null | undefined;
+  unknown?: boolean;
+  highlight?: boolean;
+}
+
+export function PillarCard({ label, pillar, unknown, highlight }: PillarCardProps) {
+  const stemChar = pillar?.hangul?.[0];
+  const branchChar = pillar?.hangul?.[1];
+  const stemEl = stemChar ? STEM_ELEMENT[stemChar] : null;
+  const branchEl = branchChar ? STEM_ELEMENT[branchChar] : null;
+  const highlightEl = highlight && stemChar ? charToElement(stemChar) : null;
+  const highlightStyle: React.CSSProperties | undefined = highlightEl
+    ? {
+        borderColor: elementColorVar(highlightEl as FiveElKey, "base"),
+        background: elementColorVar(highlightEl as FiveElKey, "muted"),
+      }
+    : undefined;
+
+  return (
+    <div
+      className={`flex flex-col rounded-lg border text-center overflow-hidden ${
+        highlight ? "" : "border-border bg-card"
+      }`}
+      style={highlightStyle}
+    >
+      <div className="text-[13px] font-medium text-muted-foreground py-1 bg-muted/40 border-b border-border">
+        {label}
+      </div>
+      {unknown || !pillar ? (
+        <div className="flex flex-col items-center justify-center py-2">
+          <span className="text-base text-muted-foreground">?</span>
+        </div>
+      ) : (
+        <>
+          <div
+            className={`py-1.5 border-b border-border/50 font-bold text-base ${
+              stemEl ? ELEMENT_COLORS[stemEl as keyof typeof ELEMENT_COLORS] : ""
+            }`}
+          >
+            {stemChar}
+          </div>
+          <div
+            className={`py-1.5 font-bold text-base ${
+              branchEl ? ELEMENT_COLORS[branchEl as keyof typeof ELEMENT_COLORS] : ""
+            }`}
+          >
+            {branchChar}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}

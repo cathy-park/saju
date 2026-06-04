@@ -252,7 +252,7 @@ export function getElementComplement(el1: FiveElementCount, el2: FiveElementCoun
 
   let desc = "";
   if (p1Comps.length > 0 && p2Comps.length > 0) {
-    desc = `두 분이 서로의 부족한 오행을 채워주는 보완 관계입니다. 당신의 ${p1Comps.join("·")} 기운이 상대의 부족함을 채우고, 상대의 ${p2Comps.join("·")} 기운이 당신을 보완합니다. 매우 이상적인 오행 균형입니다.`;
+    desc = `두 분이 서로의 부족한 오행을 채워주는 보완 관계입니다. ${el1}의 ${p1Comps.join("·")} 기운이 상대의 부족함을 채우고, 상대의 ${p2Comps.join("·")} 기운이 당신을 보완합니다. 매우 이상적인 오행 균형입니다.`;
   } else if (p2Comps.length > 0) {
     desc = `상대방의 ${p2Comps.join("·")} 기운이 당신에게 필요한 에너지를 보완해 줍니다. 상대를 통해 당신의 약점을 채울 수 있는 좋은 인연입니다.`;
   } else if (p1Comps.length > 0) {

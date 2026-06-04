@@ -23,7 +23,7 @@ import { useAuth } from "@/lib/authContext";
 import { upsertPartnerProfile } from "@/lib/db";
 import { cn } from "@/lib/utils";
 
-const REL_TYPES: RelationshipType[] = ["lover", "spouse", "interest", "friend", "coworker", "family", "other"];
+const REL_TYPES: RelationshipType[] = ["lover", "spouse", "friend", "coworker", "family", "other"];
 
 export default function EditPerson() {
   const { id } = useParams<{ id: string }>();
