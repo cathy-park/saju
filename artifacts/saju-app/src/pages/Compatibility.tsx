@@ -560,6 +560,7 @@ const REL_TABS: { key: RelTab; label: string; emoji: string }[] = [
   { key: "전체",      label: "전체",   emoji: "" },
   { key: "lover",     label: "연인",   emoji: RELATIONSHIP_TYPE_EMOJI["lover"] },
   { key: "spouse",    label: "배우자", emoji: RELATIONSHIP_TYPE_EMOJI["spouse"] },
+  { key: "interest",  label: "이성",   emoji: RELATIONSHIP_TYPE_EMOJI["interest"] },
   { key: "friend",    label: "친구",   emoji: RELATIONSHIP_TYPE_EMOJI["friend"] },
   { key: "coworker",  label: "동료",   emoji: RELATIONSHIP_TYPE_EMOJI["coworker"] },
   { key: "family",    label: "가족",   emoji: RELATIONSHIP_TYPE_EMOJI["family"] },
@@ -635,43 +636,75 @@ function PairSelector({
 
 // ── LoveThermometer & HeartBattery ────────────────────────────────
 
-function LoveThermometer({ score }: { score: number }) {
-  const temp = (36.5 + score * 0.635).toFixed(1);
+function RelationThermometer({ score, isPersonalLove }: { score: number; isPersonalLove: boolean }) {
+  const temp = (36.5 + (score - 50) * 0.15).toFixed(1);
   const fillWidth = `${score}%`;
+
+  const label = isPersonalLove ? "궁합 온도계 🌡️" : "관계 온도계 🌡️";
+  const desc = isPersonalLove 
+    ? "두 사람의 궁합 에너지가 따뜻하게 교감하는 활성 온도를 나타냅니다."
+    : "두 사람의 에너지가 시너지를 내는 활성 온도를 나타냅니다.";
+  
+  const gradient = isPersonalLove 
+    ? "from-orange-400 via-rose-500 to-pink-600"
+    : "from-teal-400 via-blue-500 to-indigo-600";
+  const textColor = isPersonalLove ? "text-rose-500" : "text-blue-600";
 
   return (
     <div className="rounded-xl border border-border bg-card p-3 shadow-none transition-all hover:border-primary/20">
       <div className="flex items-center justify-between mb-1.5">
-        <span className="text-[11px] font-bold text-muted-foreground">궁합 온도계 🌡️</span>
-        <span className="text-[13px] font-extrabold text-rose-500 tracking-tight">{temp}°C</span>
+        <span className="text-[11px] font-bold text-muted-foreground">{label}</span>
+        <span className={`text-[13px] font-extrabold tracking-tight ${textColor}`}>{temp}°C</span>
       </div>
       <div className="relative h-3 w-full rounded-full bg-muted overflow-hidden">
         <div
-          className="absolute left-0 top-0 h-full rounded-full bg-gradient-to-r from-orange-400 via-rose-500 to-pink-600 transition-all duration-1000 ease-out"
+          className={`absolute left-0 top-0 h-full rounded-full bg-gradient-to-r ${gradient} transition-all duration-1000 ease-out`}
           style={{ width: fillWidth }}
         />
         <div className="absolute inset-0 bg-gradient-to-b from-white/15 to-transparent pointer-events-none" />
       </div>
-      <p className="mt-1.5 text-[10px] text-muted-foreground leading-normal">
-        두 사람의 궁합 에너지가 따뜻하게 교감하는 활성 온도를 나타냅니다.
-      </p>
+      <p className="mt-1.5 text-[10px] text-muted-foreground leading-normal">{desc}</p>
     </div>
   );
 }
 
-function HeartBattery({ score }: { score: number }) {
+function RelationBattery({ score, isPersonalLove, isFamily }: { score: number; isPersonalLove: boolean; isFamily: boolean }) {
   const fillHeight = `${100 - score}%`;
+  
+  let label = "충전 게이지 🔋";
+  let desc = "긍정적인 에너지가 충전된 상태를 나타냅니다.";
+  let svgPaths = (
+    <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+  );
+  let colors = { start: "#EC4899", end: "#F43F5E", text: "text-pink-600" };
+
+  if (isPersonalLove) {
+    label = "하트 충전 게이지 🔋";
+    desc = "서로를 향한 애정 기운과 긍정 지수가 충전된 상태를 나타냅니다.";
+  } else if (isFamily) {
+    label = "유대감 충전 게이지 🔋";
+    desc = "가족으로서의 유대감과 편안함이 충전된 상태를 나타냅니다.";
+    svgPaths = <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />;
+    colors = { start: "#F59E0B", end: "#D97706", text: "text-amber-600" };
+  } else {
+    label = "시너지 충전 게이지 🔋";
+    desc = "서로의 강점을 이끌어내는 시너지 에너지가 충전된 상태를 나타냅니다.";
+    svgPaths = <path d="M11 21h-1l1-7H7.5c-.58 0-.57-.32-.38-.66.19-.34.05-.08.16-.28L11.5 2h1l-1 7h3.5c.49 0 .56.33.47.51l-.07.15C12.96 17.55 11 21 11 21z" />;
+    colors = { start: "#8B5CF6", end: "#6D28D9", text: "text-violet-600" };
+  }
+
+  const gradId = `grad-${colors.start.replace('#', '')}`;
 
   return (
     <div className="rounded-xl border border-border bg-card p-3 shadow-none transition-all hover:border-primary/20">
       <div className="flex items-center justify-between mb-1.5">
-        <span className="text-[11px] font-bold text-muted-foreground">하트 충전 게이지 🔋</span>
-        <span className="text-[13px] font-extrabold text-pink-600 tracking-tight">{score}%</span>
+        <span className="text-[11px] font-bold text-muted-foreground">{label}</span>
+        <span className={`text-[13px] font-extrabold tracking-tight ${colors.text}`}>{score}%</span>
       </div>
       <div className="flex items-center gap-2">
         <div className="relative h-9 w-9 shrink-0">
           <svg viewBox="0 0 24 24" className="absolute inset-0 h-full w-full fill-muted stroke-border stroke-[1.5]">
-            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+            {svgPaths}
           </svg>
           <div
             className="absolute inset-0 overflow-hidden transition-all duration-1000 ease-out"
@@ -679,63 +712,21 @@ function HeartBattery({ score }: { score: number }) {
           >
             <svg viewBox="0 0 24 24" className="h-full w-full">
               <defs>
-                <linearGradient id="heartGrad" x1="0%" y1="100%" x2="0%" y2="0%">
-                  <stop offset="0%" stopColor="#EC4899" />
-                  <stop offset="100%" stopColor="#F43F5E" />
+                <linearGradient id={gradId} x1="0%" y1="100%" x2="0%" y2="0%">
+                  <stop offset="0%" stopColor={colors.start} />
+                  <stop offset="100%" stopColor={colors.end} />
                 </linearGradient>
               </defs>
-              <path fill="url(#heartGrad)" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+              <g fill={`url(#${gradId})`}>
+                {svgPaths}
+              </g>
             </svg>
           </div>
         </div>
         <p className="text-[10px] text-muted-foreground leading-tight">
-          서로를 향한 애정 기운과 긍정 지수가 충전된 상태를 나타냅니다.
+          {desc}
         </p>
       </div>
-    </div>
-  );
-}
-
-function SynergyGauge({ score }: { score: number }) {
-  const fillWidth = `${score}%`;
-
-  return (
-    <div className="rounded-xl border border-border bg-card p-3 shadow-none transition-all hover:border-primary/20">
-      <div className="flex items-center justify-between mb-1.5">
-        <span className="text-[11px] font-bold text-muted-foreground">업무/우정 시너지 ⚙️</span>
-        <span className="text-[13px] font-extrabold text-blue-600 tracking-tight">{score}%</span>
-      </div>
-      <div className="relative h-3 w-full rounded-full bg-muted overflow-hidden">
-        <div
-          className="absolute left-0 top-0 h-full rounded-full bg-gradient-to-r from-teal-400 via-blue-500 to-indigo-600 transition-all duration-1000 ease-out"
-          style={{ width: fillWidth }}
-        />
-      </div>
-      <p className="mt-1.5 text-[10px] text-muted-foreground leading-normal">
-        두 사람이 함께할 때 발생하는 추진력과 시너지 에너지를 나타냅니다.
-      </p>
-    </div>
-  );
-}
-
-function BalanceScale({ score }: { score: number }) {
-  const fillWidth = `${score}%`;
-
-  return (
-    <div className="rounded-xl border border-border bg-card p-3 shadow-none transition-all hover:border-primary/20">
-      <div className="flex items-center justify-between mb-1.5">
-        <span className="text-[11px] font-bold text-muted-foreground">조율 저울 ⚖️</span>
-        <span className="text-[13px] font-extrabold text-indigo-600 tracking-tight">{score}%</span>
-      </div>
-      <div className="relative h-3 w-full rounded-full bg-muted overflow-hidden">
-        <div
-          className="absolute left-0 top-0 h-full rounded-full bg-gradient-to-r from-violet-400 via-purple-500 to-indigo-600 transition-all duration-1000 ease-out"
-          style={{ width: fillWidth }}
-        />
-      </div>
-      <p className="mt-1.5 text-[10px] text-muted-foreground leading-normal">
-        서로 다름을 인정하고 안정적인 균형을 이룰 수 있는 조율 능력을 보여줍니다.
-      </p>
     </div>
   );
 }
@@ -1083,17 +1074,8 @@ export default function Compatibility() {
 
                   {/* 온도계 및 하트 게이지 UI (또는 시너지/저울) */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4 pt-4 border-t border-border/40">
-                    {isPersonalLove ? (
-                      <>
-                        <LoveThermometer score={result.score} />
-                        <HeartBattery score={result.score} />
-                      </>
-                    ) : (
-                      <>
-                        <SynergyGauge score={result.score} />
-                        <BalanceScale score={result.score} />
-                      </>
-                    )}
+                    <RelationThermometer score={result.score} isPersonalLove={isPersonalLove} />
+                    <RelationBattery score={result.score} isPersonalLove={isPersonalLove} isFamily={relType === "family"} />
                   </div>
 
                   {/* 복사 버튼 상단 이동 */}

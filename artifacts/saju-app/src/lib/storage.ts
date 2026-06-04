@@ -24,7 +24,7 @@ export interface ManualDerived {
 
 export type MaritalStatus = "솔로" | "연애중" | "기혼" | "모름";
 export type RelationshipStatus = "single" | "dating" | "married" | "other";
-export type RelationshipType = "lover" | "spouse" | "friend" | "coworker" | "family" | "other";
+export type RelationshipType = "lover" | "spouse" | "interest" | "friend" | "coworker" | "family" | "other";
 
 export const RELATIONSHIP_STATUS_LABEL: Record<RelationshipStatus, string> = {
   single: "솔로",
@@ -45,20 +45,22 @@ export function toRelationshipStatus(
 }
 
 export const RELATIONSHIP_TYPE_LABEL: Record<RelationshipType, string> = {
-  lover:    "연인",
-  spouse:   "배우자",
-  friend:   "친구",
+  lover: "연인",
+  spouse: "배우자",
+  interest: "썸/이성",
+  friend: "친구",
   coworker: "동료",
-  family:   "가족",
-  other:    "기타",
+  family: "가족",
+  other: "기타",
 };
 export const RELATIONSHIP_TYPE_EMOJI: Record<RelationshipType, string> = {
-  lover:    "❤️",
-  spouse:   "💍",
-  friend:   "👫",
+  lover: "💕",
+  spouse: "💍",
+  interest: "👀",
+  friend: "🤝",
   coworker: "💼",
-  family:   "🏠",
-  other:    "🙂",
+  family: "🏠",
+  other: "👤",
 };
 
 export interface ManualBranchRelation {

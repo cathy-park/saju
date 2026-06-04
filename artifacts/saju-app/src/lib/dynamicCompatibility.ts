@@ -334,7 +334,7 @@ export function computeCombinedTimingFlow(
     const unionRel = isSewoonUnionA ? aSewoonRel : bSewoonRel;
     timingTurningPoints.push({
       title: `${unionPerson}님의 ${relType === "coworker" ? "기반이 안정되는 성장기 🌱" : relType === "family" || relType === "friend" ? "마음이 편안해지는 안정기 🍀" : "마음이 안착하는 결실기 🍀"}`,
-      desc: `올해 흘러가는 기운이 ${unionPerson}님의 ${relType === "coworker" ? "사회궁(월지)과 따뜻하게 결합(${unionRel})합니다" : relType === "family" || relType === "friend" ? "일지와 따뜻하게 결합(${unionRel})합니다" : "배우자궁과 따뜻하게 결합(${unionRel})합니다"}. 관계의 의구심이 사라지고 마음에 안정이 찾아오며, 동반자로서의 신뢰가 아주 두터워지는 좋은 타이밍입니다.`,
+      desc: `올해 흘러가는 기운이 ${unionPerson}님의 ${relType === "coworker" ? `사회궁(월지)과 따뜻하게 결합(${unionRel})합니다` : relType === "family" || relType === "friend" ? `일지와 따뜻하게 결합(${unionRel})합니다` : `배우자궁과 따뜻하게 결합(${unionRel})합니다`}. 관계의 의구심이 사라지고 마음에 안정이 찾아오며, 동반자로서의 신뢰가 아주 두터워지는 좋은 타이밍입니다.`,
       type: "union"
     });
   }

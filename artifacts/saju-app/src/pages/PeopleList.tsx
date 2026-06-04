@@ -35,6 +35,7 @@ const REL_TABS: { key: TabKey; label: string; emoji: string }[] = [
   { key: "전체",      label: "전체",   emoji: "" },
   { key: "lover",     label: "연인",   emoji: RELATIONSHIP_TYPE_EMOJI["lover"] },
   { key: "spouse",    label: "배우자", emoji: RELATIONSHIP_TYPE_EMOJI["spouse"] },
+  { key: "interest",  label: "이성",   emoji: RELATIONSHIP_TYPE_EMOJI["interest"] },
   { key: "friend",    label: "친구",   emoji: RELATIONSHIP_TYPE_EMOJI["friend"] },
   { key: "coworker",  label: "동료",   emoji: RELATIONSHIP_TYPE_EMOJI["coworker"] },
   { key: "family",    label: "가족",   emoji: RELATIONSHIP_TYPE_EMOJI["family"] },

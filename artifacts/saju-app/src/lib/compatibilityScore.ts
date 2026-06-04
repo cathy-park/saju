@@ -742,7 +742,7 @@ function computeStructuralSteps(
   const steps: StructuralTierStep[] = [];
   let net = 0;
 
-  const isPersonalLove = relType === "lover" || relType === "spouse" || !relType || relType === "other";
+  const isPersonalLove = relType === "lover" || relType === "spouse" || relType === "interest" || !relType || relType === "other";
 
   // +1 up: dayMasterSupportive + spouse palace is not negative
   if (flags.dayMasterSupportive && spouseDelta >= 0) {
