@@ -6102,341 +6102,611 @@ export function SajuReport({ record, showSaveStatus = false, hourMode: parentHou
             const dayLayer = fortune.luckLayers.find((l) => l.label === "일운") ?? fortune.luckLayers[fortune.luckLayers.length - 1];
             const tgStem = dayLayer?.tenGod as TenGod | undefined;
             const tgBranch = dayLayer?.branchTenGod as TenGod | undefined;
+            const hint = tgStem ? (TG_LUCK_MEANING[tgStem]?.summary ?? "") : "";
             const layerCount = fortune.luckLayers?.length ?? 0;
             const yPrimary = (sajuPipelineResult?.adjusted?.effectiveYongshin ?? "목") as FiveElKey;
-            const elA = (charToElement(dayStemChar) ?? "토") as FiveElKey;
-            const elB = (charToElement(dayBranchChar) ?? elA) as FiveElKey;
-            const c1 = elementHslAlpha(elA, "strong", 0.22);
-            const c2 = elementHslAlpha(elB, "strong", 0.15);
-            const both = [tgStem, tgBranch].filter(Boolean) as TenGod[];
-            const uniqTg = Array.from(new Set(both));
-
-            const domainToChip = (lvl: "good" | "neutral" | "caution") => {
-              if (lvl === "good") return "border-emerald-200/60 bg-emerald-500/10 text-emerald-700";
-              if (lvl === "caution") return "border-orange-200/60 bg-orange-500/10 text-orange-700";
-              return "border-border bg-muted/50 text-muted-foreground";
-            };
-            const domainToMiniCard = (lvl: "good" | "neutral" | "caution") => {
-              if (lvl === "good") return "border-emerald-200/70 bg-emerald-50/60";
-              if (lvl === "caution") return "border-orange-200/70 bg-orange-50/60";
-              return "border-border/70 bg-muted/20";
-            };
-            const RECOMMEND_BY_DOMAIN: Record<string, string[]> = {
-              사랑: ["대화는 짧고 또렷하게 해보세요", "배려 표현은 한 번 먼저 건네보세요", "거리·빈도를 가볍게 조절해보세요"],
-              일: ["우선순위 1~2개만 잡아두면 좋아요", "계획을 짧게 적어보세요", "마감·정리부터 처리해보세요"],
-              돈: ["지출·수입을 한 번만 정리해보세요", "'필요/욕구'를 잠깐 나눠보면 좋아요", "계약·결제는 한 번 더 확인해보세요"],
-              건강: ["수면·휴식을 먼저 챙겨보세요", "가벼운 산책 정도가 좋아요", "과로·과식은 조금만 줄여봐요"],
-              대인관계: ["약속은 단순하게 잡아두면 편해요", "경계선을 부드럽게 지켜봐요", "오해는 짧게 풀어두면 좋아요"],
-              학업: ["30~60분만 가볍게 시작해봐요", "글/메모로 정리해보면 좋아요", "새로 늘리기보다 복습이 잘 맞아요"],
-            };
-            const CAUTION_BY_DOMAIN: Record<string, string[]> = {
-              사랑: ["감정이 올라올 때 말로 바로 맞붙는 것", "확답을 서두르게 만드는 것"],
-              일: ["즉흥적으로 일정을 늘리는 것", "한 번에 큰 결정을 확정하는 것"],
-              돈: ["충동구매", "무리한 투자·대출"],
-              건강: ["무리한 운동", "야식·카페인을 과하게 늘리는 것"],
-              대인관계: ["감정적으로 바로 반응하는 것", "단정/험담"],
-              학업: ["멀티태스킹", "완벽주의로 시작이 늦어지는 것"],
-            };
 
             return (
-              <div className="space-y-5 pb-12 pt-1">
-
-                {/* ── Zone 1: 타고난 기질 ── */}
-                <div className="rounded-2xl border border-indigo-100/80 bg-gradient-to-br from-indigo-50/70 to-white shadow-sm overflow-hidden">
-                  <div className="px-4 py-3 border-b border-indigo-100/60 flex items-center gap-2">
-                    <span className="text-base">✨</span>
-                    <span className="text-sm font-bold text-indigo-700">타고난 기질</span>
-                  </div>
-                  <div className="px-4 py-3 space-y-2">
-                    <p className="text-[15px] font-bold text-foreground leading-relaxed">
+              <div className="space-y-6 pb-12 pt-2">
+                {/* Zone 1: 나의 기질 */}
+                <Card className="border-indigo-100/60 shadow-sm bg-gradient-to-b from-indigo-50/50 to-white">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-bold text-indigo-700 flex items-center gap-2">
+                      <span>✨</span> 타고난 기질
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <p className="text-base font-bold text-foreground leading-relaxed">
                       "{getDayMasterSummaryFromStrength(dayStem, sajuPipelineResult?.adjusted?.effectiveStrengthLevel ?? "중화")}"
                     </p>
                     {sajuPipelineResult?.interpretation?.gukguk?.name && (
-                      <span className="inline-block px-2.5 py-1 rounded-full bg-white border border-indigo-100 text-[12px] font-semibold text-indigo-800">
-                        {sajuPipelineResult.interpretation.gukguk.name}
-                      </span>
+                      <div className="flex flex-wrap gap-2">
+                        <span className="px-2.5 py-1 rounded-full bg-white border border-indigo-100 text-[12px] font-semibold text-indigo-800">
+                          {sajuPipelineResult.interpretation.gukguk.name}
+                        </span>
+                      </div>
                     )}
-                  </div>
-                </div>
+                  </CardContent>
+                </Card>
 
-                {/* ── Zone 2: 에너지 밸런스 ── */}
-                <div className="rounded-2xl border border-emerald-100/80 bg-gradient-to-br from-emerald-50/70 to-white shadow-sm overflow-hidden">
-                  <div className="px-4 py-3 border-b border-emerald-100/60 flex items-center gap-2">
-                    <span className="text-base">⚖️</span>
-                    <span className="text-sm font-bold text-emerald-700">나의 에너지 밸런스</span>
-                  </div>
-                  <div className="px-4 py-3 space-y-1.5">
+                {/* Zone 2: 나의 에너지 균형 (용신/기신) */}
+                <Card className="border-emerald-100/60 shadow-sm bg-gradient-to-b from-emerald-50/50 to-white">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-bold text-emerald-700 flex items-center gap-2">
+                      <span>⚖️</span> 나의 에너지 밸런스
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
                     <p className="text-[13px] text-foreground leading-relaxed">
-                      나의 에너지는{" "}
-                      <span className="font-bold">{sajuPipelineResult?.adjusted?.effectiveStrengthLevel}</span> 편입니다.
-                      나를 가장 편안하게 해주는 기운은{" "}
-                      <span className={`font-bold ${elementTextClass(yPrimary, "strong")}`}>{yPrimary} 기운</span>이에요.
+                      나의 에너지는 <span className="font-bold">{sajuPipelineResult?.adjusted?.effectiveStrengthLevel}</span> 편입니다. 
+                      나를 가장 편안하게 해주는 기운은 <span className={`font-bold ${elementTextClass(yPrimary, "strong")}`}>{yPrimary} 기운</span>이에요.
                     </p>
                     <p className="text-[13px] text-muted-foreground leading-relaxed">
-                      반대로 피하면 좋은 기운은{" "}
-                      <span className={`font-bold ${elementTextClass(getController(yPrimary), "strong")}`}>{getController(yPrimary)} 기운</span>입니다.
+                      반대로 피하면 좋은 기운은 <span className={`font-bold ${elementTextClass(getController(yPrimary), "strong")}`}>{getController(yPrimary)} 기운</span>입니다. 
                       중요한 결정을 할 때 이 밸런스를 떠올려 보세요.
                     </p>
-                  </div>
+                  </CardContent>
+                </Card>
+
+                <div className="pt-4 border-t border-border/40 mt-6 mb-2 flex items-center justify-center">
+                  <span className="px-4 py-1 rounded-full bg-muted/40 text-[12px] font-bold text-muted-foreground tracking-widest">
+                    TODAY'S GUIDE
+                  </span>
                 </div>
 
-                {/* ── TODAY'S GUIDE 구분선 ── */}
-                <div className="flex items-center gap-3 my-1">
-                  <div className="flex-1 h-px bg-border/40" />
-                  <span className="px-3 py-1 rounded-full bg-muted/50 text-[11px] font-bold text-muted-foreground tracking-widest">TODAY'S GUIDE</span>
-                  <div className="flex-1 h-px bg-border/40" />
-                </div>
+                {/* 1) 오늘의 한눈에 보기 */}
+                {(() => {
+                  const KEYWORD_STYLES = [
+                    "border-indigo-200/60 bg-indigo-500/10 text-indigo-700",
+                    "border-teal-200/60 bg-teal-500/10 text-teal-700",
+                    "border-primary/30 bg-primary/10 text-primary",
+                  ];
+                  const domainToChip = (lvl: "good" | "neutral" | "caution") => {
+                    if (lvl === "good") return "border-emerald-200/60 bg-emerald-500/10 text-emerald-700";
+                    if (lvl === "caution") return "border-orange-200/60 bg-orange-500/10 text-orange-700";
+                    return "border-border bg-muted/50 text-muted-foreground";
+                  };
+                  const domainToMiniCard = (lvl: "good" | "neutral" | "caution") => {
+                    if (lvl === "good") return "border-emerald-200/70 bg-emerald-50/60";
+                    if (lvl === "caution") return "border-orange-200/70 bg-orange-50/60";
+                    return "border-border/70 bg-muted/20";
+                  };
 
-                {/* ── Zone 3: 오늘의 에너지 히어로 카드 ── */}
-                <div
-                  className="relative rounded-2xl overflow-hidden border border-border/50 shadow-sm"
-                  style={{
-                    backgroundImage: `linear-gradient(135deg, ${c1} 0%, ${c2} 55%, rgba(255,255,255,0.05) 100%)`,
-                    backgroundColor: "hsl(var(--card))",
-                  }}
-                >
-                  <div className="relative px-4 pt-4 pb-2">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-[11px] font-semibold text-muted-foreground/70 uppercase tracking-wider mb-1">
-                          ✨ 오늘의 에너지 — {fortune.dateLabel}
-                        </p>
-                        <div className="flex items-baseline gap-2">
-                          <span className="text-3xl font-extrabold tracking-tight">
-                            <span className={dayStemChar ? elementTextClass(elA, "strong") : "text-foreground"}>{dayStemChar}</span>
-                            <span className={dayBranchChar ? elementTextClass(elB, "strong") : "text-foreground"}>{dayBranchChar}</span>
-                          </span>
-                          <span className="text-sm text-muted-foreground font-medium">일</span>
-                        </div>
-                      </div>
-                      {fortune.keywords.length > 0 && (
-                        <div className="flex flex-wrap justify-end gap-1 max-w-[55%]">
-                          {fortune.keywords.slice(0, 3).map((kw, i) => {
-                            const KEYWORD_STYLES = [
-                              "border-indigo-200/60 bg-indigo-500/10 text-indigo-700",
-                              "border-teal-200/60 bg-teal-500/10 text-teal-700",
-                              "border-primary/30 bg-primary/10 text-primary",
-                            ];
-                            return (
-                              <button
-                                key={kw}
-                                type="button"
-                                onClick={() =>
-                                  setTodayHeroInline((prev) =>
-                                    prev?.kind === "keyword" && prev.keyword === kw ? null : { kind: "keyword", keyword: kw },
-                                  )
-                                }
-                                className={cn("ds-badge text-[10px] font-bold shadow-none", KEYWORD_STYLES[i % 3])}
-                              >
-                                {kw}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  </div>
+                  return (
+                    <div className="space-y-2">
+                      {/* Layer 1) Hero gradient 영역 (키워드 칩까지) */}
+                      <div className="ds-card relative overflow-hidden border-border/60 shadow-none">
+                        {(() => {
+                          const elA = (charToElement(dayStemChar) ?? "토") as FiveElKey;
+                          const elB = (charToElement(dayBranchChar) ?? elA) as FiveElKey;
+                          const c1 = elementHslAlpha(elA, "strong", 0.18);
+                          const c2 = elementHslAlpha(elB, "strong", 0.14);
+                          return (
+                            <div
+                              aria-hidden
+                              className="absolute inset-0"
+                              style={{
+                                backgroundImage: `linear-gradient(135deg, ${c1} 0%, ${c2} 55%, rgba(255,255,255,0) 100%)`,
+                                backgroundColor: "hsl(var(--card))",
+                              }}
+                            />
+                          );
+                        })()}
 
-                  {todayHeroInline?.kind === "keyword" && (
-                    <div className="mx-4 mb-2 ds-inline-detail overflow-visible">
-                      <div className="ds-inline-detail-header">
-                        <span className="ds-badge text-[12px] font-bold shadow-none border-border bg-muted/50 text-foreground">{todayHeroInline.keyword}</span>
-                        <button type="button" onClick={() => setTodayHeroInline(null)} className="shrink-0 px-2 text-sm text-muted-foreground">✕</button>
-                      </div>
-                      <div className="ds-inline-detail-body">
-                        <p className="text-[13px] text-foreground leading-relaxed">
-                          {(todayFortune.basisKeywords?.length ? todayFortune.basisKeywords.slice(0, 6).join(" · ") : "") || "근거 텍스트를 불러올 수 없습니다."}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="relative mx-4 mb-3 rounded-xl border border-border/40 bg-white/60 backdrop-blur-sm px-4 py-3">
-                    <p className="text-[14px] font-bold text-foreground leading-relaxed">{fortune.summary}</p>
-                    {fortune.guidance && (
-                      <p className="mt-1.5 text-[12px] text-muted-foreground leading-relaxed">
-                        오늘은 <span className="font-semibold text-foreground">"{fortune.guidance}"</span> 쪽으로 마음이 더 편하게 기울 수 있어요.
-                      </p>
-                    )}
-                    {uniqTg.length > 0 && (
-                      <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                        <span className="text-[11px] text-muted-foreground font-semibold">오늘 십성</span>
-                        {uniqTg.map((t) => (
-                          <button
-                            key={t}
-                            type="button"
-                            onClick={() =>
-                              setTodayHeroInline((prev) =>
-                                prev?.kind === "tengod" && prev.tenGod === t ? null : { kind: "tengod", tenGod: t },
-                              )
-                            }
-                            className={`ds-badge text-[10px] font-bold shadow-none ${getTenGodTw(t, dayStem)}`}
-                            style={getTenGodChipStyle(t, dayStem)}
-                          >
-                            {t}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                    {todayHeroInline?.kind === "tengod" && (
-                      <div className="mt-2 ds-inline-detail overflow-visible">
-                        <div className="ds-inline-detail-header">
-                          <span
-                            className={`ds-badge text-[12px] font-bold shadow-none ${getTenGodTw(todayHeroInline.tenGod, dayStem)}`}
-                            style={getTenGodChipStyle(todayHeroInline.tenGod, dayStem)}
-                          >
-                            {todayHeroInline.tenGod}
-                          </span>
-                          <span className="text-[12px] font-semibold text-muted-foreground ml-1">십성 해설</span>
-                          <button type="button" onClick={() => setTodayHeroInline(null)} className="ml-auto shrink-0 px-2 text-sm text-muted-foreground">✕</button>
-                        </div>
-                        <div className="ds-inline-detail-body">
-                          <p className="text-[13px] text-foreground leading-relaxed">
-                            {TEN_GOD_TOOLTIP[todayHeroInline.tenGod]?.headline ?? ""}
-                            {TEN_GOD_TOOLTIP[todayHeroInline.tenGod]?.lines?.length
-                              ? ` — ${TEN_GOD_TOOLTIP[todayHeroInline.tenGod].lines.join(" · ")}`
-                              : ""}
+                        <div className="relative border-b border-border/50 bg-white/40 px-4 py-2.5">
+                          <p className="ds-caption font-semibold tracking-wide text-[hsl(var(--app-label-accent))]">
+                            ✨ 오늘 한눈에 보기 — {fortune.dateLabel}
                           </p>
                         </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {(() => {
-                    const goodCount = todayScoreRows.rows.filter((r) => r.lvl === "good").length;
-                    const cautionCount = todayScoreRows.rows.filter((r) => r.lvl === "caution").length;
-                    const label = goodCount >= 3 ? "⚡ 에너지가 넘치는 날" : cautionCount >= 3 ? "🌙 조용히 쉬어가는 날" : "🌿 평온하게 흐르는 날";
-                    const bg = goodCount >= 3
-                      ? "bg-emerald-500/10 text-emerald-700 border-emerald-200/60"
-                      : cautionCount >= 3
-                        ? "bg-orange-500/10 text-orange-700 border-orange-200/60"
-                        : "bg-indigo-500/10 text-indigo-700 border-indigo-200/60";
-                    return (
-                      <div className={`mx-4 mb-4 px-3 py-2 rounded-lg border text-[12px] font-bold ${bg}`}>
-                        {label}
-                      </div>
-                    );
-                  })()}
-                </div>
-
-                {/* ── Zone 4: 6영역 미니 카드 그리드 ── */}
-                <div className="space-y-2">
-                  <p className="text-[12px] font-bold text-muted-foreground uppercase tracking-widest px-1">오늘 6가지 영역</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    {todayScoreRows.rows.map((r) => {
-                      const active = todayDomainOpen === r.key;
-                      return (
-                        <div key={r.key} className="contents">
-                          <div>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setTodayDomainUserPicked(true);
-                                setTodayDomainOpen((prev) => (prev === r.key ? null : r.key));
-                              }}
-                              className={cn(
-                                "w-full rounded-xl border px-3 py-3 text-left transition-all active:scale-[0.98]",
-                                domainToMiniCard(r.lvl),
-                                active ? "ring-2 ring-primary/30 border-primary/30" : "hover:border-border",
-                              )}
-                            >
-                              <div className="flex items-center gap-2">
-                                <span className="text-xl leading-none">{r.emoji}</span>
-                                <div className="min-w-0 flex-1">
-                                  <p className="text-[13px] font-extrabold text-foreground/90">{r.key}</p>
-                                  <p className="text-[11px] font-semibold text-muted-foreground mt-0.5">{r.state}</p>
-                                </div>
-                                <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full border shrink-0", domainToChip(r.lvl))}>
-                                  {r.lvl === "good" ? "좋음" : r.lvl === "caution" ? "주의" : "보통"}
+                        <div className="relative ds-card-pad space-y-2.5">
+                          {/* 상단 1줄: 오늘의 일진 + 키워드 칩 (스크린샷 레이아웃) */}
+                          <div className="rounded-2xl border border-border/50 bg-white/60 backdrop-blur-sm px-4 py-3">
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className="text-[13px] font-semibold text-muted-foreground shrink-0">오늘의 일진</span>
+                                <span className="text-[18px] font-extrabold tracking-wide shrink-0">
+                                  <span className={dayStemChar ? elementTextClass((charToElement(dayStemChar) ?? "토") as FiveElKey, "strong") : "text-foreground"}>{dayStemChar}</span>
+                                  <span className={dayBranchChar ? elementTextClass((charToElement(dayBranchChar) ?? "토") as FiveElKey, "strong") : "text-foreground"}>{dayBranchChar}</span>
                                 </span>
                               </div>
-                            </button>
+
+                              {fortune.keywords.length > 0 && (
+                                <div className="flex flex-wrap justify-end gap-1">
+                                  {fortune.keywords.slice(0, 3).map((kw, i) => (
+                                    <button
+                                      key={kw}
+                                      type="button"
+                                      onClick={() =>
+                                        setTodayHeroInline((prev) =>
+                                          prev?.kind === "keyword" && prev.keyword === kw ? null : { kind: "keyword", keyword: kw },
+                                        )
+                                      }
+                                      className={cn("ds-badge text-[10px] font-bold shadow-none", KEYWORD_STYLES[i % KEYWORD_STYLES.length])}
+                                    >
+                                      {kw}
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
                           </div>
-                          {active && (() => {
-                            const sh = todayOrderedShinsalInsights.slice(0, 3).map((x) => x.name);
-                            const inlineTint = r.lvl === "good"
-                              ? "border-emerald-200/40 bg-emerald-500/5"
-                              : r.lvl === "caution"
-                                ? "border-orange-200/40 bg-orange-500/5"
-                                : "border-border/60 bg-muted/10";
-                            return (
-                              <div className={cn("col-span-2 rounded-xl border px-4 py-3 space-y-3", inlineTint)}>
-                                <div className="flex items-center justify-between">
-                                  <span className={cn("text-[11px] font-bold px-2 py-0.5 rounded-full border", domainToChip(r.lvl))}>
-                                    {r.key} {r.emoji} {r.state}
-                                  </span>
+
+                          {/* 키워드 인라인 근거 카드 */}
+                          {todayHeroInline?.kind === "keyword" && (
+                            <div className="ds-inline-detail overflow-visible">
+                              <div className="ds-inline-detail-header">
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex flex-wrap items-center gap-1.5">
+                                    <span className="ds-badge text-[12px] font-bold shadow-none border-border bg-muted/50 text-foreground">
+                                      {todayHeroInline.keyword}
+                                    </span>
+                                    <span className="text-[12px] font-semibold text-muted-foreground">키워드 근거</span>
+                                  </div>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => setTodayHeroInline(null)}
+                                  className="shrink-0 px-2 text-sm text-muted-foreground hover:text-foreground"
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                              <div className="ds-inline-detail-body">
+                                <p className="text-[13px] text-foreground leading-relaxed">
+                                  {(todayFortune.basisKeywords?.length ? todayFortune.basisKeywords.slice(0, 6).join(" · ") : "") || "근거 텍스트를 불러올 수 없습니다."}
+                                </p>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* 핵심 메시지 / 오늘 십성 / 한 줄 설명 */}
+                          <div className="rounded-2xl border border-border/50 bg-white/60 backdrop-blur-sm px-4 py-3">
+                            <p className="ds-body font-bold text-foreground">{fortune.summary}</p>
+                            <div className="mt-2 mb-3 h-px w-full bg-border/60" />
+                            {(tgStem || tgBranch) && (
+                              <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                                <span className="text-[11px] font-semibold text-muted-foreground/80">오늘 십성</span>
+                                {tgStem && (
                                   <button
                                     type="button"
-                                    onClick={() => { setTodayDomainUserPicked(true); setTodayDomainOpen(null); }}
-                                    className="text-muted-foreground text-sm"
+                                    onClick={() =>
+                                      setTodayHeroInline((prev) =>
+                                        prev?.kind === "tengod" && prev.tenGod === tgStem ? null : { kind: "tengod", tenGod: tgStem },
+                                      )
+                                    }
+                                    className={`ds-badge text-[10px] font-bold shadow-none ${getTenGodTw(tgStem, dayStem)}`}
+                                    style={getTenGodChipStyle(tgStem, dayStem)}
+                                  >
+                                    {tgStem}
+                                  </button>
+                                )}
+                                {tgBranch && (
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setTodayHeroInline((prev) =>
+                                        prev?.kind === "tengod" && prev.tenGod === tgBranch ? null : { kind: "tengod", tenGod: tgBranch },
+                                      )
+                                    }
+                                    className={`ds-badge text-[10px] font-bold shadow-none ${getTenGodTw(tgBranch, dayStem)}`}
+                                    style={getTenGodChipStyle(tgBranch, dayStem)}
+                                  >
+                                    {tgBranch}
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                            {/* 십성 인라인 설명 카드 */}
+                            {todayHeroInline?.kind === "tengod" && (
+                              <div className="mt-2 ds-inline-detail overflow-visible">
+                                <div className="ds-inline-detail-header">
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex flex-wrap items-center gap-1.5">
+                                      <span
+                                        className={`ds-badge text-[12px] font-bold shadow-none ${getTenGodTw(todayHeroInline.tenGod, dayStem)}`}
+                                        style={getTenGodChipStyle(todayHeroInline.tenGod, dayStem)}
+                                      >
+                                        {todayHeroInline.tenGod}
+                                      </span>
+                                      <span className="text-[12px] font-semibold text-muted-foreground">십성 해설</span>
+                                    </div>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => setTodayHeroInline(null)}
+                                    className="shrink-0 px-2 text-sm text-muted-foreground hover:text-foreground"
                                   >
                                     ✕
                                   </button>
                                 </div>
-                                <div>
-                                  <p className="text-[11px] font-bold text-emerald-700 mb-1">✅ 추천</p>
-                                  <ul className="space-y-0.5">
-                                    {(RECOMMEND_BY_DOMAIN[r.key] ?? []).slice(0, 2).map((t) => (
-                                      <li key={t} className="text-[12px] text-foreground">• {t}</li>
+                                <div className="ds-inline-detail-body">
+                                  <p className="text-[13px] text-foreground leading-relaxed">
+                                    {TEN_GOD_TOOLTIP[todayHeroInline.tenGod]?.headline ?? ""}
+                                    {TEN_GOD_TOOLTIP[todayHeroInline.tenGod]?.lines?.length ? ` — ${TEN_GOD_TOOLTIP[todayHeroInline.tenGod].lines.join(" · ")}` : ""}
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+                            {fortune.guidance && (
+                              <p className="mt-1 text-[13px] text-muted-foreground leading-relaxed">
+                                오늘은 <span className="font-semibold text-foreground">“{fortune.guidance}”</span> 쪽으로 마음이 더 편하게 기울 수 있어요.
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Layer 2) 카테고리 카드 영역 (항상 white) */}
+                      <div className="rounded-xl border border-border/60 bg-white px-3.5 py-3">
+                        <div className="grid grid-cols-2 sm:grid-cols-6 gap-1.5">
+                          {todayScoreRows.rows.map((r) => {
+                            const active = todayDomainOpen === r.key;
+                            return (
+                              <button
+                                key={r.key}
+                                type="button"
+                                onClick={() => {
+                                  setTodayDomainUserPicked(true);
+                                  setTodayDomainOpen((prev) => (prev === r.key ? null : r.key));
+                                }}
+                                className={cn(
+                                  "rounded-lg border px-2.5 py-2 text-left transition-all active:scale-[0.98]",
+                                  domainToMiniCard(r.lvl),
+                                  active ? "ring-1 ring-primary/30 border-primary/30" : "hover:border-border",
+                                )}
+                              >
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-[12px] font-extrabold text-foreground/90">{r.key}</span>
+                                  <span className="text-base leading-none" aria-hidden>{r.emoji}</span>
+                                </div>
+                                <p className="mt-0.5 text-[11px] font-bold text-muted-foreground">{r.state}</p>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Layer 3) 선택된 영역 상세 해석 (인라인) */}
+                      {todayDomainOpen && (() => {
+                          const row = todayScoreRows.rows.find((r) => r.key === todayDomainOpen);
+                          if (!row) return null;
+                          const sh = todayOrderedShinsalInsights.slice(0, 4).map((x) => x.name);
+                          const basis = todayFortune.basisKeywords?.slice(0, 4) ?? [];
+                          const layerText = todayFortune.luckLayers?.map((l) => `${l.label} ${l.ganZhi}`) ?? [];
+                          const dayLayer =
+                            todayFortune.luckLayers.find((l) => l.label === "일운") ??
+                            todayFortune.luckLayers[todayFortune.luckLayers.length - 1];
+                          const tgStem = (dayLayer?.tenGod ?? null) as TenGod | null;
+                          const tgBranch = (dayLayer?.branchTenGod ?? null) as TenGod | null;
+                          const both = [tgStem, tgBranch].filter(Boolean) as TenGod[];
+                          const uniq = Array.from(new Set(both));
+                          const tenGodText = uniq.length > 0 ? `${uniq.join(" · ")} 작동` : "십성 정보 없음";
+
+                          const RECOMMEND_BY_DOMAIN: Record<typeof todayDomainOpen, string[]> = {
+                            사랑: ["대화는 짧고 또렷하게 해보세요", "배려 표현은 한 번 먼저 건네보세요", "거리·빈도를 가볍게 조절해보세요"],
+                            일: ["우선순위 1~2개만 잡아두면 좋아요", "계획을 짧게 적어보세요", "마감·정리부터 처리해보세요"],
+                            돈: ["지출·수입을 한 번만 정리해보세요", "‘필요/욕구’를 잠깐 나눠보면 좋아요", "계약·결제는 한 번 더 확인해보세요"],
+                            건강: ["수면·휴식을 먼저 챙겨보세요", "가벼운 산책 정도가 좋아요", "과로·과식은 조금만 줄여봐요"],
+                            대인관계: ["약속은 단순하게 잡아두면 편해요", "경계선을 부드럽게 지켜봐요", "오해는 짧게 풀어두면 좋아요"],
+                            학업: ["30~60분만 가볍게 시작해봐요", "글/메모로 정리해보면 좋아요", "새로 늘리기보다 복습이 잘 맞아요"],
+                          };
+                          const CAUTION_BY_DOMAIN: Record<typeof todayDomainOpen, string[]> = {
+                            사랑: ["감정이 올라올 때 말로 바로 맞붙는 것", "확답을 서두르게 만드는 것", "상대 마음을 과하게 추측하는 것"],
+                            일: ["즉흥적으로 일정을 늘리는 것", "한 번에 큰 결정을 확정하는 것", "불필요한 회의·잡일에 끌려가는 것"],
+                            돈: ["충동구매", "무리한 투자·대출", "말로만 약속하는 거래"],
+                            건강: ["무리한 운동", "야식·카페인을 과하게 늘리는 것", "스트레스를 그냥 넘기는 것"],
+                            대인관계: ["감정적으로 바로 반응하는 것", "단정/험담", "기대·실망을 반복하는 것"],
+                            학업: ["멀티태스킹", "완벽주의로 시작이 늦어지는 것", "밤샘 몰아치기"],
+                          };
+
+                          const summaryLines: string[] = [];
+                          summaryLines.push(`오늘은 ${todayDomainOpen} 쪽에서 ${row.state} 흐름이 더 잘 느껴질 수 있어요.`);
+                          if (row.hint) summaryLines.push(`${row.hint}`);
+                          summaryLines.push(`오늘은 ${tenGodText} 쪽 기운이 함께 움직여서, ${todayDomainOpen}에서는 “정리·조절·선택”이 특히 편안하게 맞을 수 있어요.`);
+
+                          const inlineTint =
+                            row.lvl === "good"
+                              ? "border-emerald-200/40 bg-emerald-500/5"
+                              : row.lvl === "caution"
+                                ? "border-orange-200/40 bg-orange-500/5"
+                                : "border-border/60 bg-muted/10";
+
+                          return (
+                            <div className={cn("ds-inline-detail overflow-visible", inlineTint)}>
+                              <div className="ds-inline-detail-header">
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex flex-wrap items-center gap-1.5">
+                                    <span className={cn("ds-badge text-[12px] font-bold shadow-none", domainToChip(row.lvl))}>
+                                      {todayDomainOpen} {row.emoji} {row.state}
+                                    </span>
+                                    <span className="text-[12px] font-semibold text-muted-foreground">오늘 기준 상세 해석</span>
+                                  </div>
+                                  <p className="mt-1 text-[10px] text-muted-foreground">
+                                    오늘 일진·십성·신살·운흐름 보조를 합쳐 요약합니다
+                                  </p>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setTodayDomainUserPicked(true);
+                                    setTodayDomainOpen(null);
+                                  }}
+                                  className="shrink-0 px-2 text-sm text-muted-foreground hover:text-foreground"
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                              <div className="ds-inline-detail-body space-y-2">
+                                {/* 1) 오늘 해석 요약 */}
+                                <div className="ds-inline-detail-nested">
+                                  <p className="text-[12px] font-bold uppercase tracking-wide text-muted-foreground">오늘 해석 요약</p>
+                                  <div className="mt-1 space-y-1">
+                                    {summaryLines.slice(0, 3).map((t, i) => (
+                                      <p key={i} className="text-[13px] text-foreground leading-relaxed">{t}</p>
+                                    ))}
+                                  </div>
+                                </div>
+
+                                {/* 2) 추천 행동 */}
+                                <div className="ds-inline-detail-nested">
+                                  <p className="text-[12px] font-semibold text-emerald-700 mb-1">추천 행동</p>
+                                  <ul className="mt-1 space-y-1">
+                                    {(RECOMMEND_BY_DOMAIN[todayDomainOpen] ?? []).slice(0, 3).map((t) => (
+                                      <li key={t} className="text-[13px] text-foreground leading-relaxed">- {t}</li>
                                     ))}
                                   </ul>
                                 </div>
-                                <div>
-                                  <p className="text-[11px] font-bold text-orange-700 mb-1">⚠️ 주의</p>
-                                  <ul className="space-y-0.5">
-                                    {(CAUTION_BY_DOMAIN[r.key] ?? []).slice(0, 2).map((t) => (
-                                      <li key={t} className="text-[12px] text-foreground">• {t}</li>
+
+                                {/* 3) 주의 행동 */}
+                                <div className="ds-inline-detail-nested">
+                                  <p className="text-[12px] font-semibold text-amber-700 mb-1">주의 행동</p>
+                                  <ul className="mt-1 space-y-1">
+                                    {(CAUTION_BY_DOMAIN[todayDomainOpen] ?? []).slice(0, 3).map((t) => (
+                                      <li key={t} className="text-[13px] text-foreground leading-relaxed">- {t}</li>
                                     ))}
                                   </ul>
+                                </div>
+
+                                <div className="h-px w-full bg-border/60" />
+
+                                {/* 4) 근거 영역 */}
+                                <div className="ds-inline-detail-nested">
+                                  <p className="text-[12px] font-bold uppercase tracking-wide text-muted-foreground">오늘 십성 작동</p>
+                                  <p className="mt-1 text-[13px] text-foreground leading-relaxed">
+                                    {uniq.length > 0 ? `오늘은 ${uniq.join(" · ")} 작동이 함께 나타납니다.` : "오늘 십성 정보를 계산할 수 없습니다."}
+                                  </p>
                                 </div>
                                 {sh.length > 0 && (
-                                  <p className="text-[11px] text-muted-foreground">오늘 신살: {sh.join(" · ")}</p>
+                                  <div className="ds-inline-detail-nested">
+                                    <p className="text-[12px] font-bold uppercase tracking-wide text-muted-foreground">오늘 신살</p>
+                                    <p className="mt-1 text-[13px] text-foreground leading-relaxed">{sh.join(" · ")}</p>
+                                  </div>
+                                )}
+                                {(basis.length > 0 || layerText.length > 0) && (
+                                  <div className="ds-inline-detail-nested">
+                                    <p className="text-[12px] font-bold uppercase tracking-wide text-muted-foreground">보조 근거</p>
+                                    <p className="mt-1 text-[13px] text-foreground leading-relaxed">
+                                      {basis.length > 0 ? basis.join(" · ") : layerText.slice(0, 4).join(" · ")}
+                                    </p>
+                                  </div>
                                 )}
                               </div>
-                            );
-                          })()}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
+                            </div>
+                          );
+                        })()}
+                    </div>
+                  );
+                })()}
 
-                {/* ── Zone 5: 오늘 흐름 스토리 ── */}
-                <div className="rounded-2xl border border-indigo-100/80 bg-gradient-to-br from-indigo-50/50 to-white shadow-sm overflow-hidden">
-                  <div className="px-4 py-3 border-b border-indigo-100/60 flex items-center gap-2">
-                    <Layers className="h-3.5 w-3.5 text-indigo-600" />
-                    <span className="text-sm font-bold text-indigo-700">오늘 전체 흐름</span>
-                  </div>
-                  <div className="px-4 py-3 space-y-3">
-                    <p className="text-[13px] text-foreground leading-relaxed">{lifeFlowData.overall.fullText}</p>
-                    <div className="grid grid-cols-1 gap-2">
+                {/* 2) 오늘 전체 흐름 */}
+                <Card className="border-indigo-100 bg-gradient-to-br from-indigo-50/60 to-transparent">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-semibold text-indigo-700 flex items-center gap-1.5">
+                      <Layers className="h-3.5 w-3.5" />
+                      오늘 전체 흐름
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2.5">
+                    <p className="text-sm text-foreground leading-relaxed">{lifeFlowData.overall.fullText}</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
                       {[
-                        { emoji: "💭", label: "감정 흐름", text: lifeFlowData.overall.emotional },
-                        { emoji: "⏱", label: "결정 타이밍", text: lifeFlowData.overall.decisionTiming },
-                        { emoji: "🎯", label: "핵심 포인트", text: lifeFlowData.overall.activityFlow },
-                      ].map(({ emoji, label, text }) => (
-                        <div key={label} className="flex items-start gap-2.5 rounded-lg bg-white/70 border border-border/40 px-3 py-2.5">
-                          <span className="text-base mt-0.5 shrink-0">{emoji}</span>
-                          <div className="min-w-0">
-                            <p className="text-[11px] font-bold text-muted-foreground">{label}</p>
-                            <p className="text-[13px] text-foreground mt-0.5">{text}</p>
-                          </div>
+                        { label: "감정 흐름", text: lifeFlowData.overall.emotional },
+                        { label: "결정 타이밍", text: lifeFlowData.overall.decisionTiming },
+                        { label: "핵심 포인트", text: lifeFlowData.overall.activityFlow },
+                      ].map(({ label, text }) => (
+                        <div key={label} className="ds-inline-detail-nested space-y-0">
+                          <p className="text-[13px] font-semibold text-muted-foreground mb-0.5">{label}</p>
+                          <p className="text-[13px] text-foreground">{text}</p>
                         </div>
                       ))}
                     </div>
-                  </div>
-                </div>
+                  </CardContent>
+                </Card>
 
-                {/* ── Zone 6: 운 흐름 보조 (접힌 채로 시작) ── */}
-                <details className="group rounded-2xl border border-border/60 bg-muted/10 overflow-hidden">
-                  <summary className="flex items-center gap-2 px-4 py-3 cursor-pointer select-none list-none">
-                    <TrendingUp className="h-3.5 w-3.5 text-muted-foreground" />
-                    <span className="text-sm font-semibold text-muted-foreground">운 흐름 참고</span>
-                    <span className="text-[11px] text-muted-foreground/70 ml-1">(대운·세운·월운·일운)</span>
-                    <ChevronDown className="ml-auto h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
-                  </summary>
-                  <div className="px-4 pb-4 space-y-2.5 border-t border-border/40">
-                    <p className="text-[12px] text-muted-foreground pt-3">
+                {/* 3) 오늘 십성 작동 */}
+                <Card className="border-violet-100 bg-gradient-to-br from-violet-50/60 to-transparent">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-semibold text-violet-700 flex items-center gap-1.5">
+                      <Zap className="h-3.5 w-3.5" />
+                      오늘 십성 작동
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    {(() => {
+                      const dayLayer =
+                        fortune.luckLayers.find((l) => l.label === "일운") ??
+                        fortune.luckLayers[fortune.luckLayers.length - 1];
+                      const tgStem = (dayLayer?.tenGod ?? null) as TenGod | null;
+                      const tgBranch = (dayLayer?.branchTenGod ?? null) as TenGod | null;
+                      const both = [tgStem, tgBranch].filter(Boolean) as TenGod[];
+                      const uniq = Array.from(new Set(both));
+                      const help = tgStem ? (TG_LUCK_MEANING[tgStem]?.summary ?? "") : "";
+
+                      if (uniq.length === 0) return <p className="text-sm text-muted-foreground">오늘 십성 정보를 계산할 수 없습니다.</p>;
+
+                      return (
+                        <>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              {uniq.map((t) => (
+                                <button
+                                  key={t}
+                                  type="button"
+                                  onClick={() =>
+                                    setTodayHeroInline((prev) =>
+                                      prev?.kind === "tengod" && prev.tenGod === (t as TenGod) ? null : { kind: "tengod", tenGod: t as TenGod },
+                                    )
+                                  }
+                                  className={`ds-badge text-[11px] font-bold shadow-none ${getTenGodTw(t as TenGod, dayStem)}`}
+                                  style={getTenGodChipStyle(t as TenGod, dayStem)}
+                                >
+                                  {t}
+                                </button>
+                              ))}
+                            </div>
+                            <span className="text-[13px] text-muted-foreground">
+                              오늘 일진 <span className="font-semibold text-foreground">{dayStemChar}</span>
+                              {dayBranchChar ? (
+                                <>
+                                  <span className="mx-1 text-muted-foreground/60">·</span>
+                                  <span className="font-semibold text-foreground">{dayBranchChar}</span>
+                                </>
+                              ) : null}{" "}
+                              기준(천간·지지)
+                            </span>
+                          </div>
+                          <div className="ds-inline-detail-nested">
+                            <p className="text-[13px] text-foreground leading-relaxed">
+                              오늘은 <span className="font-semibold">천간·지지</span>가 내 일간 기준으로 각각 십성으로 작동하며, 그 합이 하루 결의·반응에 영향을 줍니다.
+                            </p>
+                          </div>
+                          {todayHeroInline?.kind === "tengod" && (
+                            <div className="ds-inline-detail mt-2 overflow-visible">
+                              <div className="ds-inline-detail-header">
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex flex-wrap items-center gap-1.5">
+                                    <span
+                                      className={`ds-badge text-[12px] font-bold shadow-none ${getTenGodTw(todayHeroInline.tenGod, dayStem)}`}
+                                      style={getTenGodChipStyle(todayHeroInline.tenGod, dayStem)}
+                                    >
+                                      {todayHeroInline.tenGod}
+                                    </span>
+                                    <span className="text-[12px] font-semibold text-muted-foreground">십성 해설</span>
+                                  </div>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => setTodayHeroInline(null)}
+                                  className="shrink-0 px-2 text-sm text-muted-foreground hover:text-foreground"
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                              <div className="ds-inline-detail-body space-y-2">
+                                <div className="ds-inline-detail-nested">
+                                  <p className="text-[13px] text-foreground leading-relaxed">
+                                    {TEN_GOD_TOOLTIP[todayHeroInline.tenGod]?.headline ?? ""}
+                                  </p>
+                                  {TEN_GOD_TOOLTIP[todayHeroInline.tenGod]?.lines?.length ? (
+                                    <p className="mt-1 text-[13px] text-muted-foreground leading-relaxed">
+                                      {TEN_GOD_TOOLTIP[todayHeroInline.tenGod].lines.join(" · ")}
+                                    </p>
+                                  ) : null}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                          {help ? (
+                            <div className="ds-inline-detail-nested">
+                              <p className="text-[13px] text-muted-foreground leading-relaxed">{help}</p>
+                            </div>
+                          ) : null}
+                        </>
+                      );
+                    })()}
+                  </CardContent>
+                </Card>
+
+                {/* 4) 오늘 신살 작동 */}
+                {todayOrderedShinsalInsights.length > 0 && (
+                  <Card className="border-amber-200 bg-amber-50/40">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-semibold text-amber-700 flex items-center gap-1.5">
+                        <Star className="h-3.5 w-3.5" />
+                        오늘 신살 작동
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      <p className="text-[11px] text-muted-foreground">
+                        기준: <span className="font-semibold text-foreground">오늘 일진(일운) 간지</span> ↔{" "}
+                        <span className="font-semibold text-foreground">내 원국(일간·일지)</span> 비교
+                      </p>
+                      <div className="space-y-2">
+                        {todayOrderedShinsalInsights.map(({ name, oneLine }) => (
+                          <div key={name} className="space-y-1.5">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setInfoSheet({
+                                  kind: "shinsal",
+                                  name,
+                                  source: "auto",
+                                  trigger: oneLine,
+                                })
+                              }
+                              className="inline-flex max-w-full text-left"
+                            >
+                              <ShinsalChip name={name} />
+                            </button>
+                            <div className="ds-inline-detail-nested">
+                              <p className="text-[13px] text-foreground leading-relaxed">{oneLine}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* 5) 오늘 행동 가이드 */}
+                <Card className="border-emerald-100 bg-gradient-to-br from-emerald-50/50 to-transparent">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-semibold text-emerald-700 flex items-center gap-1.5">
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      오늘 행동 가이드
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2.5">
+                    <div className="ds-inline-detail-nested">
+                      <p className="text-[12px] font-semibold text-emerald-700 mb-1">추천 행동</p>
+                      <p className="text-[13px] text-foreground leading-relaxed">
+                        {fortune.guidance || "오늘은 무리한 확정보다, 우선순위를 정리해 한 가지를 끝내는 쪽이 유리합니다."}
+                      </p>
+                    </div>
+                    <div className="ds-inline-detail-nested">
+                      <p className="text-[12px] font-semibold text-amber-700 mb-1">피할 행동</p>
+                      <p className="text-[13px] text-foreground leading-relaxed">
+                        오늘은 감정이 앞선 즉흥 결정·과도한 약속·한 번에 많은 일을 확정하는 흐름은 피하는 편이 안전합니다.
+                      </p>
+                    </div>
+                    <div className="ds-inline-detail-nested">
+                      <p className="text-[12px] font-semibold text-indigo-700 mb-1">오늘 잘 맞는 방식</p>
+                      <p className="text-[13px] text-foreground leading-relaxed">{lifeFlowData.overall.activityFlow}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* 6) 운 흐름 보조 카드 (참고) */}
+                <Card className="border-border/60 bg-muted/15">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+                      <TrendingUp className="h-3.5 w-3.5" />
+                      운 흐름 보조 카드
+                      <span className="text-[11px] font-normal normal-case text-muted-foreground/80">(오늘 기준 해석을 보조)</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2.5">
+                    <p className="text-[12px] text-muted-foreground">
                       오늘은 <span className="font-semibold text-foreground">일운</span>이 중심이며, 대운·세운·월운은 오늘의 톤을 보조합니다.
                     </p>
                     {layerCount > 0 && (
@@ -6478,14 +6748,13 @@ export function SajuReport({ record, showSaveStatus = false, hourMode: parentHou
                         ))}
                       </div>
                     )}
-                    <p className="text-[11px] text-muted-foreground/70 pt-1">더 깊은 분석은 원국·운세 탭에서 확인하세요.</p>
-                  </div>
-                </details>
-
+                  </CardContent>
+                </Card>
               </div>
             );
           })()}
 
+          {/* 개발 디버그 */}
           {import.meta.env.DEV && (
             <details className="rounded-lg border border-dashed border-border text-[13px] text-muted-foreground">
               <summary className="px-3 py-2 cursor-pointer font-mono font-bold hover:bg-muted/30">🛠 해석 입력 상태 (개발용)</summary>

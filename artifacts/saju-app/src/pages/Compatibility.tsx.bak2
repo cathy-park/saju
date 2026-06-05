@@ -1008,189 +1008,91 @@ export default function Compatibility() {
             return (
             <div className="ds-section-gap">
 
-              {/* ── 1. 궁합 히어로 카드 (파격 개편) ── */}
-              {(() => {
-                const isLoveType = relType === "lover" || relType === "spouse" || relType === "interest";
-                const isFamilyType = relType === "family";
-                const score = result.score;
+              {/* ── 1. 궁합 한눈에보기 (내 사주 Hero 카드 톤) ── */}
+              <div className="ds-card border-primary/15 bg-gradient-to-br from-primary/[0.06] via-card to-card shadow-none">
+                  <div className="ds-card-pad space-y-4">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">궁합 요약</p>
+                    <h2 className="ds-title mt-1">궁합 한눈에보기</h2>
+                    <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">
+                      점수와 관계 유형을 먼저 확인한 뒤, 아래에서 구조·해석·가이드를 순서대로 살펴보시면 됩니다.
+                    </p>
+                  </div>
+                  {/* 상단: 두 사람 카드 (스샷 구조) — 별도 배경 박스 제거 */}
+                  <div className="flex items-center gap-2">
+                      <MiniPersonCard
+                        title="나"
+                        name={myName}
+                        gender={myGender}
+                        dayHangul={myPillarsForZodiac?.day?.hangul ?? ""}
+                        zodiac={myZodiac}
+                        hourMode={hourModeA}
+                        onHourModeChange={setHourModeA}
+                      />
+                      <div className="shrink-0 px-1 text-center">
+                        <span className="text-2xl leading-none" style={{ color: "#EE4444" }}>♡</span>
+                      </div>
+                      <MiniPersonCard
+                        title="상대"
+                        name={otherName}
+                        gender={otherGender}
+                        dayHangul={otherPillarsFull?.day?.hangul ?? ""}
+                        zodiac={otherZodiac}
+                        hourMode={hourModeB}
+                        onHourModeChange={setHourModeB}
+                      />
+                  </div>
 
-                // 별점 계산 (5점 만점)
-                const starCount = score >= 85 ? 5 : score >= 70 ? 4 : score >= 55 ? 3 : score >= 40 ? 2 : 1;
-                const stars = Array.from({ length: 5 }, (_, i) => i < starCount ? "★" : "☆");
-
-                // 관계 분위기 라벨
-                const moodLabel = score >= 85
-                  ? isLoveType ? "💞 천생연분에 가까운 인연" : "⚡ 완벽한 시너지 파트너"
-                  : score >= 70
-                  ? isLoveType ? "🌸 설렘과 안정이 공존하는 관계" : "🌿 서로 잘 맞는 좋은 파트너"
-                  : score >= 55
-                  ? isLoveType ? "🌊 끌리지만 조율이 필요한 관계" : "🌀 보완하며 성장하는 관계"
-                  : score >= 40
-                  ? isLoveType ? "🔥 긴장과 자극이 공존하는 관계" : "⚙️ 다름을 인정하며 조율하는 관계"
-                  : isLoveType ? "⚡ 차이가 크지만 성장할 수 있는 관계" : "🧩 서로 다른 에너지의 관계";
-
-                // 관계 유형별 헤더 아이콘/색상
-                const typeEmoji = isLoveType ? (relType === "interest" ? "💫" : "💕") : isFamilyType ? "🏠" : "🤝";
-                const bgClass = isLoveType
-                  ? "from-pink-50/80 via-rose-50/40 to-white"
-                  : isFamilyType
-                  ? "from-amber-50/80 via-yellow-50/40 to-white"
-                  : "from-violet-50/80 via-indigo-50/40 to-white";
-                const accentClass = isLoveType ? "text-rose-500" : isFamilyType ? "text-amber-600" : "text-violet-600";
-                const borderClass = isLoveType ? "border-rose-100/80" : isFamilyType ? "border-amber-100/80" : "border-violet-100/80";
-
-                const myPillarsForZodiac = ep1 ? getFinalPillars(ep1) : null;
-                const myZodiac = getZodiacFromDayPillar(myPillarsForZodiac?.day?.hangul ?? "");
-                const otherZodiac = getZodiacFromDayPillar(otherPillarsFull?.day?.hangul ?? "");
-
-                return (
-                  <div className={`ds-card border shadow-sm overflow-hidden ${borderClass}`} style={{ background: `linear-gradient(135deg, var(--tw-gradient-stops))` }}>
-                    <div className={`bg-gradient-to-br ${bgClass}`}>
-                      <div className="ds-card-pad space-y-4">
-
-                        {/* 헤더: 관계 유형 + 두 사람 */}
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">궁합 분석</span>
-                            <h2 className="ds-title mt-0.5 flex items-center gap-1.5">
-                              <span>{typeEmoji}</span>
-                              <span>{myName} × {otherName}</span>
-                            </h2>
-                          </div>
+                  <div>
+                    <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">궁합 점수</p>
+                    <div className="flex items-center gap-4">
+                      <div className="shrink-0">
+                        <ScoreArc score={result.score} accentColor={palette.strong} />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span
+                            className="ds-badge border px-3 py-1.5 text-[14px] font-bold shadow-none"
+                            style={{
+                              background: palette.pastel,
+                              borderColor: palette.border,
+                              color: palette.badgeText,
+                            }}
+                          >
+                            {result.finalType}
+                          </span>
                           <button
                             type="button"
                             onClick={() => setShowInfoSheet(true)}
-                            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border text-[11px] font-bold text-muted-foreground hover:bg-muted/60"
+                            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border text-[11px] font-bold text-muted-foreground transition-colors hover:bg-muted/60"
                             aria-label="점수 계산 기준 보기"
                           >
                             i
                           </button>
                         </div>
-
-                        {/* 두 사람 카드 */}
-                        <div className="flex items-center gap-2">
-                          <MiniPersonCard
-                            title="나"
-                            name={myName}
-                            gender={myGender}
-                            dayHangul={myPillarsForZodiac?.day?.hangul ?? ""}
-                            zodiac={myZodiac}
-                            hourMode={hourModeA}
-                            onHourModeChange={setHourModeA}
-                          />
-                          <div className="shrink-0 px-1 text-center">
-                            <span className={`text-2xl leading-none ${accentClass}`}>
-                              {isLoveType ? "♡" : isFamilyType ? "⭐" : "⇄"}
-                            </span>
-                          </div>
-                          <MiniPersonCard
-                            title="상대"
-                            name={otherName}
-                            gender={otherGender}
-                            dayHangul={otherPillarsFull?.day?.hangul ?? ""}
-                            zodiac={otherZodiac}
-                            hourMode={hourModeB}
-                            onHourModeChange={setHourModeB}
-                          />
-                        </div>
-
-                        {/* ★ 점수 영역: 별점 + 분위기 라벨 + 숫자 */}
-                        <div className="rounded-2xl border border-border/40 bg-white/70 backdrop-blur-sm px-4 py-4 space-y-3">
-                          <div className="flex items-center justify-between gap-3">
-                            <div className="space-y-1">
-                              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">궁합 점수</p>
-                              <div className="flex items-baseline gap-2">
-                                <span className={`text-4xl font-extrabold tracking-tight ${accentClass}`}>{score}</span>
-                                <span className="text-base text-muted-foreground font-semibold">/100</span>
-                              </div>
-                              <div className="flex items-center gap-0.5">
-                                {stars.map((s, i) => (
-                                  <span key={i} className={`text-xl ${s === "★" ? accentClass : "text-muted-foreground/30"}`}>{s}</span>
-                                ))}
-                              </div>
-                            </div>
-                            <div className="shrink-0">
-                              <ScoreArc score={score} accentColor={palette.strong} />
-                            </div>
-                          </div>
-
-                          {/* 분위기 라벨 */}
-                          <div className={`rounded-xl px-3 py-2.5 border ${
-                            score >= 70 ? "bg-emerald-50/80 border-emerald-200/60 text-emerald-800"
-                            : score >= 50 ? "bg-amber-50/80 border-amber-200/60 text-amber-800"
-                            : "bg-orange-50/80 border-orange-200/60 text-orange-800"
-                          }`}>
-                            <p className="text-[13px] font-bold">{moodLabel}</p>
-                          </div>
-
-                          {/* 관계 타입 배지 + 요약 */}
-                          <div>
-                            <span
-                              className="ds-badge border px-3 py-1.5 text-[13px] font-bold shadow-none"
-                              style={{ background: palette.pastel, borderColor: palette.border, color: palette.badgeText }}
-                            >
-                              {result.finalType}
-                            </span>
-                            <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">{result.summary}</p>
-                          </div>
-                        </div>
-
-                        {/* 온도계 및 게이지 */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                          <RelationThermometer score={result.score} isPersonalLove={isPersonalLove} />
-                          <RelationBattery score={result.score} isPersonalLove={isPersonalLove} isFamily={relType === "family"} />
-                        </div>
-
-                        {/* Give & Take 에너지 흐름 카드 */}
-                        {fullReport.elementComp && (() => {
-                          const { p1Lacks, p2Lacks, p1Comps, p2Comps } = fullReport.elementComp;
-                          const hasGive = p1Comps.length > 0 || p2Comps.length > 0;
-                          if (!hasGive) return null;
-                          return (
-                            <div className="rounded-2xl border border-border/40 bg-white/60 px-4 py-3 space-y-2">
-                              <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">⚡ Give & Take 에너지 흐름</p>
-                              <div className="space-y-2">
-                                {p1Comps.length > 0 && (
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-[12px] font-bold text-foreground shrink-0">{myName}</span>
-                                    <span className="text-muted-foreground text-[11px]">→→</span>
-                                    <span className="text-[12px] text-muted-foreground flex-1">
-                                      <span className="font-semibold text-foreground">{p1Comps.join(" · ")} 기운</span>이 {otherName}님을 채워줘요
-                                    </span>
-                                    <span className="text-emerald-600 text-[13px]">✅</span>
-                                  </div>
-                                )}
-                                {p2Comps.length > 0 && (
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-[12px] font-bold text-foreground shrink-0">{otherName}</span>
-                                    <span className="text-muted-foreground text-[11px]">→→</span>
-                                    <span className="text-[12px] text-muted-foreground flex-1">
-                                      <span className="font-semibold text-foreground">{p2Comps.join(" · ")} 기운</span>이 {myName}님을 채워줘요
-                                    </span>
-                                    <span className="text-emerald-600 text-[13px]">✅</span>
-                                  </div>
-                                )}
-                              </div>
-                              {fullReport.elementComp.desc && (
-                                <p className="text-[12px] text-muted-foreground leading-relaxed border-t border-border/40 pt-2 mt-1">{fullReport.elementComp.desc}</p>
-                              )}
-                            </div>
-                          );
-                        })()}
-
-                        {/* AI 프롬프트 복사 버튼 */}
-                        <div className="border-t border-border/40 pt-4">
-                          <CopyButton
-                            buildText={() => buildCompatibilityClipboardText(p1!, p2!, result, hourModeA, hourModeB)}
-                            label="AI 해석 프롬프트 복사"
-                          />
-                        </div>
-
+                        <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">
+                          {result.summary}
+                        </p>
                       </div>
                     </div>
                   </div>
-                );
-              })()}
+
+                  {/* 온도계 및 하트 게이지 UI (또는 시너지/저울) */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4 pt-4 border-t border-border/40">
+                    <RelationThermometer score={result.score} isPersonalLove={isPersonalLove} />
+                    <RelationBattery score={result.score} isPersonalLove={isPersonalLove} isFamily={relType === "family"} />
+                  </div>
+
+                  {/* 복사 버튼 상단 이동 */}
+                  <div className="mt-4 border-t border-border/40 pt-4">
+                    <CopyButton
+                      buildText={() => buildCompatibilityClipboardText(p1!, p2!, result, hourModeA, hourModeB)}
+                      label="AI 해석 프롬프트 복사"
+                    />
+                  </div>
+
+                  </div>
+                </div>
 
               {/* 요약 타일 (일간 관계 / 배우자궁 혹은 월지) — 궁합 한눈에보기 카드 아래로 이동 */}
               <div className="grid grid-cols-2 gap-3">
