@@ -1984,17 +1984,20 @@ function GukgukSection({
 
 // ── Fortune Calendar (일운 monthly view) ──────────────────────────
 
-function FortuneCalendar({ record, dayStem, luckCycles, birthYear, adjustedDaewoon }: {
+function FortuneCalendar({ record, dayStem, birthYear, adjustedDaewoon, viewYear, viewMonth, onViewYearChange, onViewMonthChange }: {
   record: PersonRecord;
   dayStem: string;
-  luckCycles: ReturnType<typeof calculateLuckCycles>;
   birthYear: number;
   adjustedDaewoon: ReturnType<typeof calculateLuckCycles>["daewoon"];
+  viewYear: number;
+  viewMonth: number;
+  onViewYearChange: (year: number) => void;
+  onViewMonthChange: (month: number) => void;
 }) {
   const today = new Date();
-  const [viewYear, setViewYear] = useState(today.getFullYear());
-  const [viewMonth, setViewMonth] = useState(today.getMonth() + 1);
-  const [selectedDay, setSelectedDay] = useState<number | null>(today.getDate());
+  const [selectedDay, setSelectedDay] = useState<number | null>(
+    viewYear === today.getFullYear() && viewMonth === today.getMonth() + 1 ? today.getDate() : null
+  );
 
   const daysInMonth = new Date(viewYear, viewMonth, 0).getDate();
   const firstDayOfWeek = new Date(viewYear, viewMonth - 1, 1).getDay();
@@ -2024,13 +2027,13 @@ function FortuneCalendar({ record, dayStem, luckCycles, birthYear, adjustedDaewo
   }, [selectedDay, dayStem, viewYear, viewMonth, birthYear, adjustedDaewoon]);
 
   function prevMonth() {
-    if (viewMonth === 1) { setViewYear((y) => y - 1); setViewMonth(12); }
-    else setViewMonth((m) => m - 1);
+    if (viewMonth === 1) { onViewYearChange(viewYear - 1); onViewMonthChange(12); }
+    else onViewMonthChange(viewMonth - 1);
     setSelectedDay(null);
   }
   function nextMonth() {
-    if (viewMonth === 12) { setViewYear((y) => y + 1); setViewMonth(1); }
-    else setViewMonth((m) => m + 1);
+    if (viewMonth === 12) { onViewYearChange(viewYear + 1); onViewMonthChange(1); }
+    else onViewMonthChange(viewMonth + 1);
     setSelectedDay(null);
   }
 
@@ -2343,7 +2346,33 @@ function LuckFlowTabs({
   const [selectedDaewoonIdx, setSelectedDaewoonIdx] = useState<number>(
     currentDaewoonIdx >= 0 ? currentDaewoonIdx : 0
   );
-  const selectedSeunEntry = luckCycles.seun.find((e) => e.year === selectedSeunYear) ?? null;
+  const selectedDaewoonEntry = adjustedDaewoon[selectedDaewoonIdx] ?? null;
+
+  // 세운 탭은 luckCycles.seun(오늘 기준 고정 15년)이 아니라, 대운 탭에서 선택한 대운의
+  // 10년 구간을 기준으로 연도 목록을 만든다 — 과거·미래 대운을 골라도 해당 기간의 세운을 볼 수 있도록.
+  const seunForSelectedDaewoon = useMemo(() => {
+    if (!selectedDaewoonEntry) return luckCycles.seun;
+    const startYear = birthYear + selectedDaewoonEntry.startAge;
+    return Array.from({ length: 10 }, (_, i) => {
+      const year = startYear + i;
+      return { year, ganZhi: getYearGanZhi(year) };
+    });
+  }, [selectedDaewoonEntry, birthYear, luckCycles.seun]);
+
+  // 대운 선택이 바뀌면 세운 선택도 그 대운 구간 안의 연도로 옮겨준다(구간 밖 연도 선택 방지).
+  useEffect(() => {
+    if (!seunForSelectedDaewoon.some((e) => e.year === selectedSeunYear)) {
+      onSelectedSeunYearChange(seunForSelectedDaewoon[0]?.year ?? selectedSeunYear);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDaewoonIdx]);
+
+  const selectedSeunEntry = seunForSelectedDaewoon.find((e) => e.year === selectedSeunYear) ?? null;
+
+  // 세운 선택이 바뀌면 월운 탭도 그 연도를 따라가도록 동기화.
+  useEffect(() => {
+    setSelectedWolunYear(selectedSeunYear);
+  }, [selectedSeunYear]);
 
   // Read-only: 대운수는 엔진 자동 계산값만 표시합니다.
 
@@ -2452,11 +2481,13 @@ function LuckFlowTabs({
       {/* 세운 panel */}
       {tab === "세운" && (
         <div className="space-y-3">
-          <p className="text-[13px] text-muted-foreground px-0.5">연간 운세 · 탭하면 해석이 아래에 표시됩니다</p>
+          <p className="text-[13px] text-muted-foreground px-0.5">
+            {selectedDaewoonEntry ? `${selectedDaewoonEntry.ganZhi.hangul} 대운(${selectedDaewoonEntry.startAge}~${selectedDaewoonEntry.endAge}세) 기준 연간 운세` : "연간 운세"} · 탭하면 해석이 아래에 표시됩니다
+          </p>
           {/* 수평 스크롤 연도 목록 */}
           <div className="-mx-1 overflow-x-auto px-1 pb-1 scrollbar-none">
             <div className="flex min-w-max gap-2">
-              {luckCycles.seun.map(({ year, ganZhi }) => {
+              {seunForSelectedDaewoon.map(({ year, ganZhi }) => {
                 const se = getStemElement(ganZhi.stem);
                 const be = STEM_ELEMENT[ganZhi.branch] ?? null;
                 const isThisYear = year === refYear;
@@ -2485,9 +2516,9 @@ function LuckFlowTabs({
           </div>
 
           {/* 대운 × 선택된 세운 결합 해석 (상세 카드 위) */}
-          {currentDaewoon && selectedSeunEntry && dayStem && (() => {
+          {selectedDaewoonEntry && selectedSeunEntry && dayStem && (() => {
             const { layerDesc, combinedText } = getCombinedFortuneText(dayStem, [
-              { label: "대운", ganZhi: currentDaewoon.ganZhi },
+              { label: "대운", ganZhi: selectedDaewoonEntry.ganZhi },
               { label: "세운", ganZhi: selectedSeunEntry.ganZhi },
             ]);
             return (
@@ -2525,8 +2556,10 @@ function LuckFlowTabs({
           {(() => {
             const thisYear = refYear;
             const thisMonth = refMonth;
-            const wolunSeun = luckCycles.seun.find(e => e.year === selectedWolunYear) ?? null;
-            const wolunDaewoon = adjustedDaewoon.find(e => (selectedWolunYear - birthYear) >= e.startAge && (selectedWolunYear - birthYear) <= e.endAge) ?? currentDaewoon;
+            // luckCycles.seun은 오늘 기준 고정 15년 창이라 대운을 옮기면 범위를 벗어난다.
+            // getYearGanZhi는 연도만 넣으면 되는 순수 계산이라 과거·미래 어느 해든 항상 값을 준다.
+            const wolunSeun = { year: selectedWolunYear, ganZhi: getYearGanZhi(selectedWolunYear) };
+            const wolunDaewoon = adjustedDaewoon.find(e => (selectedWolunYear - birthYear) >= e.startAge && (selectedWolunYear - birthYear) <= e.endAge) ?? null;
             return (
               <div className="space-y-3">
                 {/* 연도 선택 */}
@@ -2617,8 +2650,19 @@ function LuckFlowTabs({
         </div>
       )}
 
-      {/* 일운 panel (달력) */}
-      {tab === "일운" && <FortuneCalendar record={record} dayStem={dayStem} luckCycles={luckCycles} birthYear={birthYear} adjustedDaewoon={adjustedDaewoon} />}
+      {/* 일운 panel (달력) — 월운 탭과 같은 연/월 상태를 공유해서, 대운→세운→월운에서 이어진 시점이 그대로 열린다 */}
+      {tab === "일운" && (
+        <FortuneCalendar
+          record={record}
+          dayStem={dayStem}
+          birthYear={birthYear}
+          adjustedDaewoon={adjustedDaewoon}
+          viewYear={selectedWolunYear}
+          viewMonth={selectedWolunMonth}
+          onViewYearChange={setSelectedWolunYear}
+          onViewMonthChange={setSelectedWolunMonth}
+        />
+      )}
     </div>
   );
 }
