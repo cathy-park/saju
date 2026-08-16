@@ -437,7 +437,7 @@ export function buildSpouseAxisComparisonNarrative(
 // ═══════════════════════════════════════════════════════════════════════
 //  1. 일간 관계 delta  (−12 ~ +15)
 // ═══════════════════════════════════════════════════════════════════════
-function scoreDayMasterDelta(s1: string, s2: string, relType?: RelationshipType): { delta: number; note: string } {
+export function scoreDayMasterDelta(s1: string, s2: string, relType?: RelationshipType): { delta: number; note: string } {
   if (!s1 || !s2) return { delta: 0, note: "일간 정보 없음" };
   const e1 = STEM_ELEMENT[s1];
   const e2 = STEM_ELEMENT[s2];
@@ -633,7 +633,13 @@ type StemRelCategory = "천간합" | "천간충" | "상생" | "상극" | "비화
 
 export function scoreStemInteractionDelta(
   p1: ReturnType<typeof getFinalPillars>, p2: ReturnType<typeof getFinalPillars>
-): { delta: number; note: string; pairCount: number; rawTotal: number } {
+): {
+  delta: number; note: string; pairCount: number; rawTotal: number;
+  /** 진단용(런타임 미사용) — 카테고리별 원시 합(카테고리 cap 전), null-expectation 감사용 */
+  categoryRaw: Partial<Record<StemRelCategory, number>>;
+  /** 진단용(런타임 미사용) — 카테고리별 cap(±10) 적용 후 합 */
+  categoryCapped: Partial<Record<StemRelCategory, number>>;
+} {
   const keys: PillarKey[] = ["year", "month", "day", "hour"];
   const byCategory = new Map<StemRelCategory, number>();
   let pairCount = 0;
@@ -671,8 +677,11 @@ export function scoreStemInteractionDelta(
   }
 
   let total = 0;
-  for (const sum of byCategory.values()) {
-    total += Math.max(-10, Math.min(10, sum)); // category cap
+  const categoryCapped: Partial<Record<StemRelCategory, number>> = {};
+  for (const [cat, sum] of byCategory.entries()) {
+    const capped = Math.max(-10, Math.min(10, sum)); // category cap
+    categoryCapped[cat] = capped;
+    total += capped;
   }
   const delta = Math.max(-15, Math.min(15, Math.round(total))); // overall cap(잠정값 — synthetic 회귀로 재검증 예정)
 
@@ -682,7 +691,11 @@ export function scoreStemInteractionDelta(
   const note = parts.length > 0
     ? `천간 교차(일간쌍 제외 15쌍): ${parts.join(", ")} → 캡 적용 ${delta > 0 ? "+" : ""}${delta}`
     : "천간 교차 관계 없음";
-  return { delta, note, pairCount, rawTotal: Math.round(total * 10) / 10 };
+  return {
+    delta, note, pairCount, rawTotal: Math.round(total * 10) / 10,
+    categoryRaw: Object.fromEntries(byCategory),
+    categoryCapped,
+  };
 }
 
 // ═══════════════════════════════════════════════════════════════════════
