@@ -6172,23 +6172,35 @@ export function SajuReport({ record, showSaveStatus = false, hourMode: parentHou
                 </p>
               </div>
               <div className="ds-card-pad space-y-2 text-[13px] leading-relaxed">
-                <p>
-                  <span className="font-semibold text-foreground">관성(연애·사회)</span> 지금{" "}
-                  {sajuPipelineResult.timingActivation.officerActivationNow}점 · 추세{" "}
-                  {sajuPipelineResult.timingActivation.officerActivationTrend}
-                  <span className="text-muted-foreground">
-                    {" "}
-                    (원국 {sajuPipelineResult.evaluations.officerActivation.grade})
+                <div className="flex items-center justify-between rounded-lg bg-amber-50/60 border border-amber-100 px-3 py-2">
+                  <span className="font-semibold text-amber-800">💼 커리어</span>
+                  <span className="font-bold text-amber-800">
+                    {sajuPipelineResult.careerActivation.careerActivationNow}점 · 추세{" "}
+                    {sajuPipelineResult.careerActivation.careerActivationTrend}
                   </span>
+                </div>
+                <p className="text-[11px] text-muted-foreground pl-0.5">
+                  직업·프로젝트·역할·성과·조직 활동이 얼마나 활성화되는가 — 식상·관성·인성 3축과 격국·용신을 종합 (원국 {sajuPipelineResult.structureDomains.career.classification})
                 </p>
-                <p>
-                  <span className="font-semibold text-foreground">재물운(종합·timing)</span> 지금{" "}
-                  {sajuPipelineResult.timingActivation.wealthActivationNow}점 · 추세{" "}
-                  {sajuPipelineResult.timingActivation.wealthActivationTrend}
-                  <span className="text-muted-foreground">
-                    {" "}
-                    (원국 종합 {sajuPipelineResult.evaluations.wealthActivation.grade})
+                <div className="flex items-center justify-between rounded-lg bg-orange-50/50 border border-orange-100 px-3 py-2">
+                  <span className="font-semibold text-orange-700">🏛️ 사회·책임(관성)</span>
+                  <span className="font-bold text-orange-700">
+                    {sajuPipelineResult.timingActivation.officerActivationNow}점 · 추세{" "}
+                    {sajuPipelineResult.timingActivation.officerActivationTrend}
                   </span>
+                </div>
+                <p className="text-[11px] text-muted-foreground pl-0.5">
+                  관성(조직·규율·직위) 단일 축만 본 값 — 위 커리어 활성도의 구성 요소 중 하나입니다 (원국 {sajuPipelineResult.evaluations.officerActivation.grade})
+                </p>
+                <div className="flex items-center justify-between rounded-lg bg-emerald-50/60 border border-emerald-100 px-3 py-2">
+                  <span className="font-semibold text-emerald-800">💰 재물</span>
+                  <span className="font-bold text-emerald-800">
+                    {sajuPipelineResult.timingActivation.wealthActivationNow}점 · 추세{" "}
+                    {sajuPipelineResult.timingActivation.wealthActivationTrend}
+                  </span>
+                </div>
+                <p className="text-[11px] text-muted-foreground pl-0.5">
+                  실제 돈이 얼마나 들어오고 감당·축적되는가 (원국 종합 {sajuPipelineResult.evaluations.wealthActivation.grade})
                 </p>
                 <p className="text-[11px] text-muted-foreground pl-0.5">
                   원국 종합은 재물 채널·유지·축적의 결합값이며, 재성 작동만을 뜻하지 않습니다. 세 축은 원국 탭 재물 카드를 참고하세요.

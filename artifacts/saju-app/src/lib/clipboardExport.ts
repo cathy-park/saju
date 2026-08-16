@@ -13,6 +13,10 @@ import {
 import { getTenGod } from "./tenGods";
 import { getTenGodGroup, getController, type FiveElKey } from "./element-color";
 import { computeSpouseActivationByYearRange, topSpouseActivationYears } from "./evaluations/spouseActivation";
+import {
+  computeRelationshipInteractionByYearRange,
+  type PersonInteractionContext,
+} from "./evaluations/relationshipInteractionActivation";
 import type { CompatibilityResult } from "./compatibilityScore";
 import {
   countFiveElements,
@@ -445,7 +449,17 @@ export function buildPersonClipboardText(
   if (timingActivation) {
     lines.push(`[현재 운 활성화 점수]`);
     lines.push("");
-    lines.push(`현재 관성 활성도:`);
+    const careerActivation = pipelineSnapshot?.careerActivation;
+    if (careerActivation) {
+      lines.push(`현재 커리어 활성도 (식상·관성·인성 3축 + 격국·용신 종합, 관성 단일 축과 다름):`);
+      lines.push(`${fmt2(careerActivation.careerActivationNow)}`);
+      lines.push(`(${careerActivation.careerActivationTrend})`);
+      if (careerActivation.factors.length > 0) {
+        lines.push(`근거: ${careerActivation.factors.map((f) => f.label).join(" / ")}`);
+      }
+      lines.push("");
+    }
+    lines.push(`현재 관성 활성도(단일 축 — 조직·규율·직위):`);
     lines.push(`${fmt2(timingActivation.officerActivationNow)}`);
     lines.push(`(${timingActivation.officerActivationTrend})`);
     lines.push("");
@@ -659,7 +673,7 @@ export function buildPersonClipboardText(
   if (spouseActivationByYear.length > 0) {
     lines.push(`[결혼운 시기 힌트]`);
     lines.push("");
-    lines.push(`현재 대운 기간 내 연도별 배우자·결혼 테마 활성도 / 배우자궁 안정도:`);
+    lines.push(`향후 연도별 배우자·결혼 테마 활성도 / 배우자궁 안정도 (각 연도의 실제 대운 기준):`);
     for (const y of spouseActivationByYear) {
       lines.push(
         `  ${y.year} ${y.ganZhiHangul} — 활성도 ${y.activation.activationScore}점(${y.activation.activationLevel}) / ` +
@@ -809,6 +823,86 @@ export function buildCompatibilityClipboardText(
   lines.push(`[장기 전망]`);
   lines.push(`  ${result.longTermOutlook}`);
   lines.push("");
+
+  // 💕 커플 관계 상호작용도(연도별) — 화면(Compatibility.tsx)과 동일한 계산 함수를 재사용.
+  // 개인별 배우자 활성도/안정도와는 별개로 "두 사람 사이의 관계 자체"가 그 해 얼마나
+  // 활성화·조화·충돌·안정적인지를 보여준다.
+  {
+    const pipe1 = computePersonPipelineSnapshot(person1);
+    const pipe2 = computePersonPipelineSnapshot(person2);
+    const lc1 = calculateLuckCycles(person1.birthInput, person1.profile.computedPillars);
+    const lc2 = calculateLuckCycles(person2.birthInput, person2.profile.computedPillars);
+    if (pipe1?.evaluations && pipe2?.evaluations) {
+      const y1 = pipe1.adjusted.effectiveYongshin;
+      const y2 = pipe2.adjusted.effectiveYongshin;
+      const aCtx: PersonInteractionContext = {
+        name: n1,
+        dayStem: pipe1.input.dayStem,
+        dayBranch: pipe1.input.dayBranch,
+        yongshin: y1,
+        heesin: pipe1.adjusted.effectiveYongshinSecondary,
+        gisin: getController(y1),
+        birthYear: person1.birthInput.year,
+        daewoon: lc1.daewoon,
+      };
+      const bCtx: PersonInteractionContext = {
+        name: n2,
+        dayStem: pipe2.input.dayStem,
+        dayBranch: pipe2.input.dayBranch,
+        yongshin: y2,
+        heesin: pipe2.adjusted.effectiveYongshinSecondary,
+        gisin: getController(y2),
+        birthYear: person2.birthInput.year,
+        daewoon: lc2.daewoon,
+      };
+      const interactionByYear = computeRelationshipInteractionByYearRange({
+        a: aCtx,
+        b: bCtx,
+        aSpouseCtx: {
+          dayStem: pipe1.input.dayStem,
+          dayBranch: pipe1.input.dayBranch,
+          allStems: pipe1.input.allStems,
+          gender: person1.birthInput.gender,
+          evaluations: pipe1.evaluations,
+          yongshin: y1,
+          heesin: pipe1.adjusted.effectiveYongshinSecondary,
+          gisin: getController(y1),
+          birthYear: person1.birthInput.year,
+          daewoon: lc1.daewoon,
+          seunEntries: lc1.seun,
+        },
+        bSpouseCtx: {
+          dayStem: pipe2.input.dayStem,
+          dayBranch: pipe2.input.dayBranch,
+          allStems: pipe2.input.allStems,
+          gender: person2.birthInput.gender,
+          evaluations: pipe2.evaluations,
+          yongshin: y2,
+          heesin: pipe2.adjusted.effectiveYongshinSecondary,
+          gisin: getController(y2),
+          birthYear: person2.birthInput.year,
+          daewoon: lc2.daewoon,
+          seunEntries: lc2.seun,
+        },
+        fromYear: lc1.wolun.year,
+        count: 10,
+      });
+      if (interactionByYear.length > 0) {
+        lines.push(`[커플 관계 상호작용도(연도별)]`);
+        lines.push(`  개인별 배우자 활성도/안정도와는 별개로, 그 해 대운·세운이 두 사람 사이의 관계 자체를 얼마나 활성화·조화·충돌시키는지 보여줍니다. 활성도가 높다고 재회·결혼으로 단정하지 마세요.`);
+        for (const { year, result: r } of interactionByYear) {
+          lines.push(
+            `  ${year}년 — 관계 활성 ${r.activationScore}점(${r.activationLevel}) / 조화 ${r.harmonyScore}점(${r.harmonyDirection}) / 안정 ${r.stabilityScore}점(${r.stabilityLevel})`,
+          );
+          lines.push(`    ${r.interpretation}`);
+          if (r.factors.length > 0) {
+            lines.push(`    근거: ${r.factors.map((f) => f.label).join(" / ")}`);
+          }
+        }
+        lines.push("");
+      }
+    }
+  }
 
   // 각 사람의 개인 사주 데이터 (간략, 프롬프트 제외)
   lines.push(buildPersonClipboardText(person1, hourMode1, true));

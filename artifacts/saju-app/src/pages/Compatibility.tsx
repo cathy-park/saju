@@ -39,6 +39,12 @@ import {
   computePersonCurrentFlow,
   computeCombinedTimingFlow,
 } from "@/lib/dynamicCompatibility";
+import { computePersonPipelineSnapshot } from "@/lib/personPipelineSnapshot";
+import { getController } from "@/lib/element-color";
+import {
+  computeRelationshipInteractionByYearRange,
+  type PersonInteractionContext,
+} from "@/lib/evaluations/relationshipInteractionActivation";
 import {
   RELATION_COLORS,
   RELATION_DETAIL,
@@ -886,6 +892,81 @@ export default function Compatibility() {
         : null,
     [flowA, flowB, result],
   );
+
+  // ── 💕 커플 관계 상호작용도(연도별) ──────────────────────────────
+  // 개인별 배우자 활성도/안정도(computePersonPipelineSnapshot의 spouseActivation)와는
+  // 별개로, 두 사람 사이의 관계 자체가 그 해에 얼마나 활성화·조화·충돌하는지 계산한다.
+  const myPipelineForInteraction = useMemo(
+    () => (ep1 ? computePersonPipelineSnapshot(ep1) : null),
+    [ep1],
+  );
+  const otherPipelineForInteraction = useMemo(
+    () => (ep2 ? computePersonPipelineSnapshot(ep2) : null),
+    [ep2],
+  );
+  const relationshipInteractionByYear = useMemo(() => {
+    if (
+      !ep1 || !ep2 || !myLC || !otherLC ||
+      !myPipelineForInteraction?.evaluations || !otherPipelineForInteraction?.evaluations ||
+      !myDayStem2 || !otherDayStem2
+    ) {
+      return [];
+    }
+    const aYongshin = myPipelineForInteraction.adjusted.effectiveYongshin;
+    const bYongshin = otherPipelineForInteraction.adjusted.effectiveYongshin;
+    const aCtx: PersonInteractionContext = {
+      name: ep1.birthInput.name,
+      dayStem: myDayStem2,
+      dayBranch: myDayBranch2,
+      yongshin: aYongshin,
+      heesin: myPipelineForInteraction.adjusted.effectiveYongshinSecondary,
+      gisin: getController(aYongshin),
+      birthYear: ep1.birthInput.year,
+      daewoon: myLC.daewoon,
+    };
+    const bCtx: PersonInteractionContext = {
+      name: ep2.birthInput.name,
+      dayStem: otherDayStem2,
+      dayBranch: otherDayBranch2,
+      yongshin: bYongshin,
+      heesin: otherPipelineForInteraction.adjusted.effectiveYongshinSecondary,
+      gisin: getController(bYongshin),
+      birthYear: ep2.birthInput.year,
+      daewoon: otherLC.daewoon,
+    };
+    return computeRelationshipInteractionByYearRange({
+      a: aCtx,
+      b: bCtx,
+      aSpouseCtx: {
+        dayStem: myDayStem2,
+        dayBranch: myDayBranch2,
+        allStems: myPipelineForInteraction.input.allStems,
+        gender: ep1.birthInput.gender as "남" | "여",
+        evaluations: myPipelineForInteraction.evaluations,
+        yongshin: aYongshin,
+        heesin: myPipelineForInteraction.adjusted.effectiveYongshinSecondary,
+        gisin: getController(aYongshin),
+        birthYear: ep1.birthInput.year,
+        daewoon: myLC.daewoon,
+        seunEntries: myLC.seun,
+      },
+      bSpouseCtx: {
+        dayStem: otherDayStem2,
+        dayBranch: otherDayBranch2,
+        allStems: otherPipelineForInteraction.input.allStems,
+        gender: ep2.birthInput.gender as "남" | "여",
+        evaluations: otherPipelineForInteraction.evaluations,
+        yongshin: bYongshin,
+        heesin: otherPipelineForInteraction.adjusted.effectiveYongshinSecondary,
+        gisin: getController(bYongshin),
+        birthYear: ep2.birthInput.year,
+        daewoon: otherLC.daewoon,
+        seunEntries: otherLC.seun,
+      },
+      fromYear: myLC.wolun.year,
+      count: 10,
+    });
+  }, [ep1, ep2, myLC, otherLC, myPipelineForInteraction, otherPipelineForInteraction, myDayStem2, otherDayStem2, myDayBranch2, otherDayBranch2]);
 
   const canUsePairMode = people.length >= 2;
 
@@ -2046,6 +2127,59 @@ export default function Compatibility() {
                   <p className="text-[11px] leading-relaxed text-muted-foreground/60">
                     ※ 운 흐름은 규칙 기반 간략 추정으로, 절대적 예언이 아닙니다.
                   </p>
+                </CardAccordion>
+              )}
+
+              {relationshipInteractionByYear.length > 0 && (
+                <CardAccordion title="💕 커플 관계 상호작용도(연도별)" defaultOpen={false}>
+                  <p className="text-[11px] leading-relaxed text-muted-foreground mb-2">
+                    각자의 개인별 배우자·결혼 활성도/안정도와는 별개로, 그 해 대운·세운이 두 사람 사이의
+                    관계 자체를 얼마나 활성화·조화·충돌시키는지 보여줍니다. 활성도가 높다고 재회·결혼으로
+                    단정하지 말고, 조화도(방향)와 개인별 배우자 활성도를 함께 참고하세요.
+                  </p>
+                  <div className="space-y-2">
+                    {relationshipInteractionByYear.map(({ year, result: r }) => (
+                      <div key={year} className="rounded-lg border border-border p-3 bg-white dark:bg-neutral-900">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-[13px] font-bold text-foreground">{year}년</span>
+                          <span className="text-[11px] font-semibold rounded-full border border-rose-200 bg-rose-50 text-rose-700 px-2 py-0.5">
+                            관계 활성 {r.activationScore} ({r.activationLevel})
+                          </span>
+                          <span
+                            className={cn(
+                              "text-[11px] font-semibold rounded-full border px-2 py-0.5",
+                              r.harmonyDirection === "조화"
+                                ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                                : r.harmonyDirection === "충돌"
+                                ? "border-red-200 bg-red-50 text-red-700"
+                                : "border-gray-200 bg-gray-50 text-gray-700",
+                            )}
+                          >
+                            조화 {r.harmonyScore} ({r.harmonyDirection})
+                          </span>
+                          <span className="text-[11px] font-semibold rounded-full border border-sky-200 bg-sky-50 text-sky-700 px-2 py-0.5">
+                            안정 {r.stabilityScore} ({r.stabilityLevel})
+                          </span>
+                        </div>
+                        <p className="mt-1.5 text-[12px] leading-relaxed text-foreground/85">{r.interpretation}</p>
+                        {r.factors.length > 0 && (
+                          <ul className="mt-1.5 space-y-0.5">
+                            {r.factors.map((f, i) => (
+                              <li key={i} className="flex items-start gap-1.5 text-[11px] text-muted-foreground">
+                                <span
+                                  className={cn(
+                                    "mt-1 h-1.5 w-1.5 shrink-0 rounded-full",
+                                    f.direction === "우호" ? "bg-emerald-400" : f.direction === "비우호" ? "bg-red-400" : "bg-gray-300",
+                                  )}
+                                />
+                                {f.label}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </CardAccordion>
               )}
 

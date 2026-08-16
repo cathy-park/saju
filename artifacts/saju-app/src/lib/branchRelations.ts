@@ -216,16 +216,22 @@ export function computeBranchRelations(
       if (matchPair(a, b, HAE_PAIRS))    push(makeRel(a, b, "해",      "해",      `${a}${b} 해`));
       if (matchPair(a, b, WONJIN_PAIRS)) push(makeRel(a, b, "원진",    "원진",    `${a}${b} 원진`));
 
-      // 삼합: any pair within a 삼합 group
+      // 삼합: any pair within a 삼합 group — 3지 모두 있으면 "완성", 2지만 있으면 "흐름"
       for (const group of BRANCH_THREE_COMBINE_GROUPS) {
-        if (group.has(a) && group.has(b))
-          push(makeRel(a, b, "지지삼합", "지지삼합", `${a}${b} 지지삼합`));
+        if (group.has(a) && group.has(b)) {
+          const full = Array.from(group).every((x) => presentSet.has(x));
+          const groupLabel = Array.from(group).join("");
+          push(makeRel(a, b, "지지삼합", "지지삼합", `${groupLabel} 삼합${full ? "" : " 흐름"}`));
+        }
       }
 
-      // 방합: any pair within a 방합 group
+      // 방합: any pair within a 방합 group — 3지 모두 있으면 "완성", 2지만 있으면 "흐름"
       for (const group of BRANCH_DIR_COMBINE_GROUPS) {
-        if (group.has(a) && group.has(b))
-          push(makeRel(a, b, "지지방합", "지지방합", `${a}${b} 지지방합`));
+        if (group.has(a) && group.has(b)) {
+          const full = Array.from(group).every((x) => presentSet.has(x));
+          const groupLabel = Array.from(group).join("");
+          push(makeRel(a, b, "지지방합", "지지방합", `${groupLabel} 방합${full ? "" : " 흐름"}`));
+        }
       }
 
       // 형 — triple group
