@@ -629,7 +629,13 @@ export function buildPersonClipboardText(
     .join("  ");
   lines.push(`  ${relSummary}`);
   if (branchRelations.length > 0) {
+    // 삼합·방합(3지 구조)은 지지쌍마다 관계 객체가 하나씩 나와 같은 설명이 여러 번 잡힌다
+    // (예: 해자축 방합이 해-자/해-축/자-축 세 쌍으로). type+description이 같으면 표시는 한 번만.
+    const seenRelText = new Set<string>();
     for (const rel of branchRelations) {
+      const key = `${rel.type}|${rel.description}`;
+      if (seenRelText.has(key)) continue;
+      seenRelText.add(key);
       lines.push(`  ${rel.type}: ${rel.description}`);
     }
   } else {
@@ -895,6 +901,11 @@ export function buildCompatibilityClipboardText(
             `  ${year}년 — 관계 활성 ${r.activationScore}점(${r.activationLevel}) / 조화 ${r.harmonyScore}점(${r.harmonyDirection}) / 안정 ${r.stabilityScore}점(${r.stabilityLevel})`,
           );
           lines.push(`    ${r.interpretation}`);
+          lines.push(`    💕 관계 진전 여건: ${r.progressReadinessLevel} — ${r.progressReadinessNote}`);
+          lines.push(`      (진전 여건은 확률이 아니라 구조적 여건을 나타내는 해석용 등급입니다. 근거: ${r.progressReadinessReasons.join(" / ")})`);
+          if (r.isLowActivityPeriod) {
+            lines.push(`    💤 관계 저활성 구간 — 두 사람 모두 배우자 테마와 커플 상호작용이 조용한 시기입니다(인연이 없다는 뜻은 아님).`);
+          }
           if (r.factors.length > 0) {
             lines.push(`    근거: ${r.factors.map((f) => f.label).join(" / ")}`);
           }
@@ -950,6 +961,7 @@ export function buildCompatibilityClipboardText(
   lines.push("12. 🌱 관계를 좋게 만드는 실전 조언: 서운함을 말하는 방식, 장기 관계로 가기 위한 습관을 구체적으로 제안해주세요.");
   lines.push("13. 🔮 최종 전망: 무조건 좋다/나쁘다 단정하지 말고, 어떤 조건이 충족되면 좋아질지 현실적으로 전망해주세요.");
   lines.push("14. 💒 대운·세운의 배우자/결혼 활성 흐름: 두 사람 각각의 결혼·배우자 테마 활성도와 배우자궁 안정도를 구분해서 해석하고, 현재 대운 안에서 관계·결혼 이슈가 특히 강하게 움직이는 연도를 비교해주세요. 활성도가 높다고 결혼 적기로 단정하지 말고, 활성도 × 안정도 조합에 따라 안정적 발전인지, 관계 변화·재편·결단이 강한 시기인지 구분해주세요.");
+  lines.push("15. 💕 연도별 커플 관계 상호작용 흐름: [커플 관계 상호작용도(연도별)]의 관계 활성도·조화도·안정도를 반드시 함께 해석해주세요. 개인별 배우자 활성도/안정도와 커플 자체의 상호작용 지표를 혼동하지 말고, 관계 활성도(그 해 두 사람 사이의 사건·감정·결정이 얼마나 강하게 움직이는가) / 관계 조화도(그 움직임이 연결·보완 방향인지 충돌·소모 방향인지) / 관계 안정도(관계가 실제 성립했을 때 얼마나 안정적으로 유지되기 쉬운지)를 구분해주세요. 활성도가 높다는 이유만으로 재회·결혼·연애 성사를 단정하지 말고, 세 축과 두 사람 각각의 배우자·결혼 활성도/안정도, 그리고 '관계 진전 여건' 등급을 함께 종합해서 해석해주세요.");
   lines.push("");
   lines.push("────────────────────");
   lines.push("[누락 방지 규칙]");

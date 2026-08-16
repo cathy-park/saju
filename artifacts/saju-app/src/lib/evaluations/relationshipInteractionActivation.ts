@@ -53,6 +53,7 @@ import { getYearGanZhi } from "../luckCycles";
 export type InteractionLevel = "높음" | "보통" | "낮음";
 export type HarmonyDirection = "조화" | "중립" | "충돌";
 export type StabilityLevel = "안정" | "보통" | "불안정";
+export type ProgressReadinessLevel = "매우 낮음" | "낮음" | "보통" | "높음" | "매우 높음";
 export type EvidenceAxis = "activation" | "harmony" | "stability";
 export type EvidenceCategory =
   | "spousePalaceStrike"       // ① 배우자궁 직접 합·충·형·파·해·원진
@@ -89,6 +90,19 @@ export interface RelationshipInteractionResult {
   stabilityLevel: StabilityLevel;
   factors: RelationshipInteractionFactor[];
   interpretation: string;
+  /**
+   * '관계 진전 여건' — 새 명리 계산이 아니라 위 3축 + 두 사람 개인 배우자 활성도를
+   * 조합한 파생 판정(derived interpretation)이다. 통계적 확률이 아니므로 %로 쓰지 않는다.
+   * "관계 사건이 강하다"(activation)와 "연애·결혼으로 진전될 여건이 좋다"(progressReadiness)는
+   * 서로 다른 질문이라는 것을 UI/clipboard 모두에서 분리해서 보여주기 위한 필드.
+   */
+  progressReadinessLevel: ProgressReadinessLevel;
+  /** 판정에 실제로 쓰인 근거 문장(오름/내림 요인 모두 포함) */
+  progressReadinessReasons: string[];
+  /** 진전 여건 판정에 대한 해설 문장 */
+  progressReadinessNote: string;
+  /** 두 사람 모두 개인 활성도가 낮고 커플 활성도도 낮은 "관계 저활성" 시기인지 */
+  isLowActivityPeriod: boolean;
 }
 
 // 근거군별 절댓값 상한 — 같은 구조가 여러 경로로 잡혀도 한 카테고리가 점수를 과도하게
@@ -130,15 +144,6 @@ function stabilityLevelFromScore(s: number): StabilityLevel {
 function parsePillar(hangul: string | undefined): { stem?: string; branch?: string } {
   if (!hangul || hangul.length < 2) return {};
   return { stem: hangul[0], branch: hangul[1] };
-}
-
-function pillarElements(hangul: string | undefined): FiveElKey[] {
-  const { stem, branch } = parsePillar(hangul);
-  const a = stem ? (STEM_TO_ELEMENT[stem] as FiveElKey | undefined) : undefined;
-  const b = branch ? (BRANCH_TO_ELEMENT[branch] as FiveElKey | undefined) : undefined;
-  const out: FiveElKey[] = [];
-  for (const e of [a, b]) if (e && !out.includes(e)) out.push(e);
-  return out;
 }
 
 /** calculateDaewoon(...)의 원본 배열을 나이 보정한다(spouseActivation.ts의 방식과 동일). */
@@ -220,6 +225,34 @@ function pushSpousePalaceStrikes(
           break;
       }
     }
+  }
+}
+
+/**
+ * ④ 근거 헬퍼 — 대운/세운의 천간 한 글자 또는 지지 한 글자가 상대의 용신·희신·기신 중
+ * 무엇에 해당하는지 개별 판정한다. 천간·지지를 분리해서 호출하므로, 천간은 희신을
+ * 지지는 기신을 건드리는 경우에도 "어느 글자가 원인인지"가 라벨에 그대로 드러난다.
+ */
+function pushYongshinGisinForChar(
+  factors: RelationshipInteractionFactor[],
+  sourceName: string,
+  target: PersonInteractionContext,
+  luckLabel: "대운" | "세운",
+  charKind: "천간" | "지지",
+  char: string | undefined,
+) {
+  if (!char) return;
+  const el = charKind === "천간" ? (STEM_TO_ELEMENT[char] as FiveElKey | undefined) : (BRANCH_TO_ELEMENT[char] as FiveElKey | undefined);
+  if (!el) return;
+  const tag = `${sourceName} ${luckLabel} ${charKind} ${char}(${el})`;
+  const source = `${sourceName}${luckLabel}${charKind}(${char})`;
+  if (el === target.yongshin) {
+    factors.push({ label: `${tag} → ${target.name} 용신 보완`, magnitude: 6, direction: "우호", axis: ["activation", "harmony"], category: "yongshinGisinCross", source, structureOrigin: "해당없음" });
+  } else if (target.heesin && el === target.heesin) {
+    factors.push({ label: `${tag} → ${target.name} 희신 보완`, magnitude: 4, direction: "우호", axis: ["activation", "harmony"], category: "yongshinGisinCross", source, structureOrigin: "해당없음" });
+  }
+  if (target.gisin && el === target.gisin) {
+    factors.push({ label: `${tag} → ${target.name} 기신 강화`, magnitude: 6, direction: "비우호", axis: ["activation", "harmony"], category: "yongshinGisinCross", source, structureOrigin: "해당없음" });
   }
 }
 
@@ -329,25 +362,23 @@ export function computeRelationshipInteractionForYear(
   // ③+⑦ 배우자궁이 얽힌 삼합·방합 — 기존 구조 강화 vs 신규 형성을 배타적으로 판정
   pushCrossGroupStructures(factors, a, b, aPoints, bPoints);
 
-  // ④ 한 사람의 운 오행이 상대의 용신·희신을 보완하거나 기신을 강화하는지
+  // ④ 한 사람의 운 천간·지지가 상대의 용신·희신을 보완하거나 기신을 강화하는지.
+  // 천간·지지를 한데 묶어 "오행이"라고만 쓰면, 천간은 희신을 지지는 기신을 건드리는 경우
+  // 같은 대운에 대해 "희신 보완"과 "기신 강화"가 동시에 떠서 모순처럼 보인다 — 어느 글자가
+  // 원인인지 천간/지지를 나눠 명시한다.
   for (const [source, target] of [[a, b], [b, a]] as const) {
     const points = source === a ? aPoints : bPoints;
     for (const p of points) {
-      const els = pillarElements(p.hangul);
-      if (els.includes(target.yongshin)) {
-        factors.push({ label: `${source.name} ${p.label} 오행이 ${target.name}의 용신을 보완`, magnitude: 6, direction: "우호", axis: ["activation", "harmony"], category: "yongshinGisinCross", source: `${source.name}${p.label}→${target.name}용신`, structureOrigin: "해당없음" });
-      } else if (target.heesin && els.includes(target.heesin)) {
-        factors.push({ label: `${source.name} ${p.label} 오행이 ${target.name}의 희신을 보완`, magnitude: 4, direction: "우호", axis: ["activation", "harmony"], category: "yongshinGisinCross", source: `${source.name}${p.label}→${target.name}희신`, structureOrigin: "해당없음" });
-      }
-      if (target.gisin && els.includes(target.gisin)) {
-        factors.push({ label: `${source.name} ${p.label} 오행이 ${target.name}의 기신을 강화`, magnitude: 6, direction: "비우호", axis: ["activation", "harmony"], category: "yongshinGisinCross", source: `${source.name}${p.label}→${target.name}기신`, structureOrigin: "해당없음" });
-      }
+      pushYongshinGisinForChar(factors, source.name, target, p.label, "천간", p.stem);
+      pushYongshinGisinForChar(factors, source.name, target, p.label, "지지", p.branch);
     }
   }
 
   // ⑤ 두 사람의 개인별 배우자·결혼 활성도가 동시에 높은지 — activation 축에만 반영(harmony 자동 가산 금지)
-  const aActHigh = (aSpouseYear?.activation.activationLevel ?? "낮음") === "높음";
-  const bActHigh = (bSpouseYear?.activation.activationLevel ?? "낮음") === "높음";
+  const aActLevel: InteractionLevel = aSpouseYear?.activation.activationLevel ?? "낮음";
+  const bActLevel: InteractionLevel = bSpouseYear?.activation.activationLevel ?? "낮음";
+  const aActHigh = aActLevel === "높음";
+  const bActHigh = bActLevel === "높음";
   if (aActHigh && bActHigh) {
     factors.push({ label: `${a.name}·${b.name} 모두 개인 배우자·결혼 활성도 동시 상승`, magnitude: 12, direction: "중립", axis: ["activation"], category: "personalActivationSync", source: "개인 활성도 동조", structureOrigin: "해당없음" });
   } else if (aActHigh || bActHigh) {
@@ -396,7 +427,26 @@ export function computeRelationshipInteractionForYear(
     bActHigh,
   });
 
-  return { activationScore, activationLevel, harmonyScore, harmonyDirection, stabilityScore, stabilityLevel, factors, interpretation };
+  const progressReadiness = deriveProgressReadiness({
+    activationScore,
+    activationLevel,
+    harmonyScore,
+    harmonyDirection,
+    stabilityScore,
+    stabilityLevel,
+    aName: a.name,
+    bName: b.name,
+    aActLevel,
+    bActLevel,
+  });
+
+  return {
+    activationScore, activationLevel, harmonyScore, harmonyDirection, stabilityScore, stabilityLevel, factors, interpretation,
+    progressReadinessLevel: progressReadiness.level,
+    progressReadinessReasons: progressReadiness.reasons,
+    progressReadinessNote: progressReadiness.note,
+    isLowActivityPeriod: progressReadiness.isLowActivityPeriod,
+  };
 }
 
 /**
@@ -427,6 +477,82 @@ function axisTotal(
     total += Math.max(-cap, Math.min(cap, sum));
   }
   return total;
+}
+
+/**
+ * '관계 진전 여건' 파생 판정 — 새 계산이 아니라 이미 산출된 값들을 조합만 한다:
+ *  A. 두 사람 개인 배우자·결혼 활성도(aActLevel/bActLevel)
+ *  B. 커플 관계 활성도(activationScore/Level)
+ *  C. 커플 관계 조화도(harmonyScore/Direction)
+ *  D. 커플 관계 안정도(stabilityScore/Level)
+ *
+ * 조화도(C)와 안정도(D)를 가장 무겁게, 활성도(B)는 상대적으로 가볍게 반영한다 —
+ * "사건이 강하다"와 "진전 여건이 좋다"를 분리하는 것이 이 함수의 핵심 목적이기 때문에,
+ * 활성도 혼자서 점수를 밀어올리지 못하게 한다. 충돌 방향이면서 활성도가 높은 해는
+ * "사건성은 크지만 진전 여건으로 보기엔 위험"하므로 별도 상한을 둔다.
+ */
+function deriveProgressReadiness(args: {
+  activationScore: number;
+  activationLevel: InteractionLevel;
+  harmonyScore: number;
+  harmonyDirection: HarmonyDirection;
+  stabilityScore: number;
+  stabilityLevel: StabilityLevel;
+  aName: string;
+  bName: string;
+  aActLevel: InteractionLevel;
+  bActLevel: InteractionLevel;
+}): { level: ProgressReadinessLevel; reasons: string[]; isLowActivityPeriod: boolean; note: string } {
+  const {
+    activationScore, activationLevel, harmonyScore, harmonyDirection,
+    stabilityScore, stabilityLevel, aName, bName, aActLevel, bActLevel,
+  } = args;
+
+  let score = harmonyScore * 0.45 + stabilityScore * 0.35 + activationScore * 0.2;
+
+  const personalHighCount = [aActLevel, bActLevel].filter((l) => l === "높음").length;
+  const personalLowCount = [aActLevel, bActLevel].filter((l) => l === "낮음").length;
+  if (personalHighCount === 2) score += 10;
+  if (personalLowCount === 2) score -= 15;
+
+  // 충돌 방향 + 커플 활성도 높음 = 사건은 강하지만 진전 여건으로는 위험한 조합 → 상한
+  if (harmonyDirection === "충돌" && activationLevel === "높음") {
+    score = Math.min(score, 55);
+  }
+  score = clamp100(score);
+
+  const level: ProgressReadinessLevel =
+    score >= 78 ? "매우 높음" : score >= 62 ? "높음" : score >= 42 ? "보통" : score >= 25 ? "낮음" : "매우 낮음";
+
+  const reasons: string[] = [];
+  if (aActLevel === "낮음") reasons.push(`${aName} 배우자·결혼 활성도 낮음`);
+  if (bActLevel === "낮음") reasons.push(`${bName} 배우자·결혼 활성도 낮음`);
+  if (aActLevel === "높음") reasons.push(`${aName} 배우자·결혼 활성도 높음`);
+  if (bActLevel === "높음") reasons.push(`${bName} 배우자·결혼 활성도 높음`);
+  reasons.push(`커플 관계 활성도 ${activationLevel}`);
+  reasons.push(`커플 관계 조화도 ${harmonyDirection}`);
+  reasons.push(`커플 관계 안정도 ${stabilityLevel}`);
+
+  const isLowActivityPeriod = aActLevel === "낮음" && bActLevel === "낮음" && activationLevel === "낮음";
+
+  let note: string;
+  if (isLowActivityPeriod) {
+    note = `두 사람 모두 개인 배우자·결혼 활성도가 낮고 커플 관계 활성도도 낮아, 이 시기에는 관계가 인생의 주요 이슈로 떠오를 가능성이 상대적으로 낮습니다. 다만 인연 자체가 없다는 뜻은 아니며, 조용히 지나가는 시기로 볼 수 있습니다.`;
+  } else if (harmonyDirection === "충돌" && activationLevel === "높음") {
+    note = `관계는 강하게 움직일 수 있지만 충돌·정리·재정의 형태일 가능성도 커, 단순한 연애·결혼 진전으로 보기 어렵습니다.`;
+  } else if (personalLowCount === 2 && activationLevel !== "낮음") {
+    note = `두 사람의 개인 배우자 활성도는 크게 튀지 않는데 커플 관계 활성도만 움직이는 시기입니다. 외부 상황이나 우연한 접점으로 관계 관련 사건은 생길 수 있으나, 연애·결혼을 적극적으로 추진하는 힘은 상대적으로 약한 것으로 해석됩니다.`;
+  } else if (level === "매우 높음" || level === "높음") {
+    note = personalHighCount === 2
+      ? `두 사람 모두 배우자·결혼 테마가 활성화되고, 관계 상호작용의 방향과 유지 기반도 함께 받쳐주는 시기입니다.`
+      : `${personalHighCount === 1 ? (aActLevel === "높음" ? aName : bName) + " 쪽 개인 신호가 두드러지지만, " : ""}관계 조화·안정 기반이 뒷받침돼 진전 여건 자체는 양호한 편입니다.`;
+  } else if (level === "보통") {
+    note = `관계 사건이 아예 없지는 않지만, 조화·안정 기반이 뚜렷하게 유리하지도 불리하지도 않은 중간 구간입니다.`;
+  } else {
+    note = `현재 조건으로는 관계가 안정적으로 진전되기보다 조율·재정비가 더 필요한 시기로 해석됩니다.`;
+  }
+
+  return { level, reasons, isLowActivityPeriod, note };
 }
 
 function buildInteractionInterpretation(args: {

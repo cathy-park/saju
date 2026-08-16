@@ -2162,6 +2162,19 @@ export default function Compatibility() {
                           </span>
                         </div>
                         <p className="mt-1.5 text-[12px] leading-relaxed text-foreground/85">{r.interpretation}</p>
+                        <div className="mt-2 rounded-md border border-pink-200/70 bg-pink-50/50 px-2.5 py-2 dark:border-pink-900/40 dark:bg-pink-950/20">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-[11px] font-bold text-pink-700">💕 관계 진전 여건</span>
+                            <span className="text-[12px] font-bold text-pink-700">{r.progressReadinessLevel}</span>
+                          </div>
+                          <p className="mt-1 text-[11px] leading-relaxed text-foreground/80">{r.progressReadinessNote}</p>
+                          <p className="mt-1 text-[10px] leading-relaxed text-muted-foreground">근거: {r.progressReadinessReasons.join(" · ")}</p>
+                        </div>
+                        {r.isLowActivityPeriod && (
+                          <div className="mt-1.5 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-[11px] text-muted-foreground dark:border-slate-800 dark:bg-slate-900/40">
+                            💤 관계 저활성 구간 — 두 사람 모두 배우자 테마와 커플 상호작용이 조용한 시기입니다. 인연이 없다는 뜻은 아니며, 특별한 사건 없이 지나갈 가능성이 상대적으로 높다는 의미입니다.
+                          </div>
+                        )}
                         {r.factors.length > 0 && (
                           <ul className="mt-1.5 space-y-0.5">
                             {r.factors.map((f, i) => (
