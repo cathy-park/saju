@@ -72,5 +72,6 @@ export function computePersonPipelineSnapshot(
     },
     timingDaewoonHangul: curDw?.ganZhi.hangul,
     timingSeunHangul: seunEntry?.ganZhi.hangul,
+    gender: input.gender,
   });
 }

@@ -1523,6 +1523,62 @@ export default function Compatibility() {
                 );
               })()}
 
+              {isPersonalLove && result.spouseActivationTiming && (() => {
+                const timing = result.spouseActivationTiming!;
+                const people = [
+                  { name: myName, data: timing.person1 },
+                  { name: otherName, data: timing.person2 },
+                ];
+                return (
+                  <div className="ds-card overflow-hidden shadow-none border-rose-200/50 bg-rose-50/25 dark:border-rose-900/35 dark:bg-rose-950/20">
+                    <div className="border-b border-border bg-muted/20 px-4 py-3">
+                      <h2 className="text-sm font-bold text-foreground">결혼운 시기 힌트 비교</h2>
+                      <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">
+                        각자의 현재 대운 안에서 세운별 배우자·결혼 테마 활성도를 계산했습니다. 활성도가 높다고 결혼 적기라는 뜻은 아니며, 활성도×안정도 조합으로 시기의 성격을 구분해서 봐야 합니다.
+                      </p>
+                    </div>
+                    <div className="space-y-5 p-4">
+                      {people.map(({ name, data }) => (
+                        <div key={name} className="ds-inline-detail-nested space-y-2.5">
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                            {name || "인물"}
+                          </p>
+                          <p className="text-[11px] text-muted-foreground">
+                            배우자·결혼 테마가 강하게 움직이는 연도:{" "}
+                            <span className="font-semibold text-foreground">
+                              {data.top.map((e) => `${e.year}(${e.activation.activationScore}점)`).join(" > ")}
+                            </span>
+                          </p>
+                          <div className="space-y-1.5">
+                            {data.years.map((e) => {
+                              const isTop = data.top.some((t) => t.year === e.year);
+                              return (
+                                <div
+                                  key={e.year}
+                                  className={`rounded-lg border px-3 py-2 text-[12px] ${isTop ? "border-rose-200/70 bg-background/90 dark:border-rose-900/40" : "border-border/50 bg-background/60"}`}
+                                >
+                                  <div className="flex items-center justify-between gap-2">
+                                    <span className="font-semibold text-foreground tabular-nums">
+                                      {e.year} {e.ganZhiHangul}
+                                    </span>
+                                    <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground">
+                                      ❤️ 활성 {e.activation.activationScore}({e.activation.activationLevel}) · 🏠 안정 {e.activation.stabilityScore}({e.activation.stabilityLevel})
+                                    </span>
+                                  </div>
+                                  <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+                                    {e.activation.interpretation}
+                                  </p>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
+
               {/* ── 시주 제외 비교 (중립 카드 + 흰 nested) ── */}
               {hasHourExcluded && resultBase && result && (
                   <div className="ds-card overflow-hidden shadow-none border-violet-200/70 bg-violet-50/35 dark:border-violet-900/40 dark:bg-violet-950/20">
@@ -1860,7 +1916,7 @@ export default function Compatibility() {
                         // avoid repeating already-expanded sections (구조 분석/비교 카드에서 다룬 항목)
                         .filter((d) => !["일간 분석", "배우자궁", "지지 교차", "오행 보완", "십성 관계"].includes(d.title))
                         // 비애정 관계 시 배우자/애정성 항목 필터링
-                        .filter((d) => isPersonalLove || !["배우자궁 안정(원국)", "관성 작동(원국)", "재성 작동(원국)", "올해 운 가중(타이밍)"].includes(d.title))
+                        .filter((d) => isPersonalLove || !["배우자궁 안정(원국)", "관성 작동(원국)", "재성 작동(원국)", "올해 운 가중(타이밍)", "배우자·결혼 활성도(타이밍)"].includes(d.title))
                         .map((d, i) => (
                         d.isPositive ? (
                           <div

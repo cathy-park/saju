@@ -28,6 +28,9 @@ import {
   BRANCH_TO_ELEMENT,
 } from "../element-color";
 import { computeBranchRelations, computeStemRelations } from "../branchRelations";
+import { computeLuckTimingActivation } from "./luckTimingActivation";
+import type { RelationshipWealthEvaluations } from "./relationshipWealthEvaluation";
+import type { DaewoonEntry } from "../luckCycles";
 
 export type ActivationLevel = "높음" | "보통" | "낮음";
 export type StabilityLevel = "안정" | "보통" | "불안정";
@@ -239,4 +242,87 @@ function buildInterpretation(activation: ActivationLevel, stability: StabilityLe
     return "배우자 관련 이슈가 간간이 떠오를 수 있고, 안정도가 낮아 사소한 마찰이 반복될 여지가 있습니다.";
   }
   return "배우자 테마가 두드러지지도, 크게 흔들리지도 않는 평이한 시기입니다.";
+}
+
+// ── 연도별(세운) 배우자·결혼 활성도 표 ──────────────────────────────
+// 화면(운세 탭)과 클립보드 복사(개인/궁합 payload)가 서로 다른 로직을 쓰지 않도록,
+// "향후 N년 세운별 활성도·안정도"를 계산하는 이 함수 하나만 양쪽에서 공유해서 부른다.
+
+export interface SpouseActivationYearEntry {
+  year: number;
+  ganZhiHangul: string;
+  daewoonHangul?: string;
+  activation: SpouseActivationResult;
+}
+
+export interface SpouseActivationYearRangeContext {
+  dayStem: string;
+  dayBranch?: string;
+  allStems: string[];
+  gender: "남" | "여";
+  /** 원국 evaluations — 화면·복사 어디서 호출하든 동일한 원국 값을 넘겨야 두 결과가 일치한다 */
+  evaluations: RelationshipWealthEvaluations;
+  yongshin: FiveElKey;
+  heesin?: FiveElKey;
+  gisin?: FiveElKey;
+  birthYear: number;
+  /** calculateLuckCycles(...).daewoon — 나이 보정 전 원본 배열(이 함수 안에서 보정한다) */
+  daewoon: DaewoonEntry[];
+  /** calculateLuckCycles(...).seun */
+  seunEntries: { year: number; ganZhi: { hangul: string } }[];
+  /** 표를 시작할 연도(보통 luckCycles.wolun.year = 실제 올해) */
+  fromYear: number;
+  /** 표시할 연도 수. 기본 10년 */
+  count?: number;
+}
+
+export function computeSpouseActivationByYearRange(
+  ctx: SpouseActivationYearRangeContext,
+): SpouseActivationYearEntry[] {
+  const dw0 = ctx.daewoon[0]?.startAge ?? 0;
+  const adjustedDw = ctx.daewoon.map((entry, i) => ({
+    ...entry,
+    startAge: dw0 + i * 10,
+    endAge: dw0 + i * 10 + 9,
+  }));
+  const count = ctx.count ?? 10;
+
+  return ctx.seunEntries
+    .filter((e) => e.year >= ctx.fromYear)
+    .slice(0, count)
+    .map((e) => {
+      const age = e.year - ctx.birthYear;
+      const dw = adjustedDw.find((d) => age >= d.startAge && age <= d.endAge);
+      const timing = computeLuckTimingActivation(
+        ctx.evaluations,
+        dw?.ganZhi.hangul,
+        e.ganZhi.hangul,
+        ctx.dayStem,
+        ctx.dayBranch,
+        ctx.yongshin,
+        ctx.heesin,
+        ctx.gisin,
+      );
+      const activation = computeSpouseActivation({
+        dayStem: ctx.dayStem,
+        dayBranch: ctx.dayBranch,
+        allStems: ctx.allStems,
+        gender: ctx.gender,
+        daewoonHangul: dw?.ganZhi.hangul,
+        saeunHangul: e.ganZhi.hangul,
+        yongshin: ctx.yongshin,
+        heesin: ctx.heesin,
+        gisin: ctx.gisin,
+        spousePalaceStabilityNow: timing.spousePalaceStabilityNow,
+      });
+      return { year: e.year, ganZhiHangul: e.ganZhi.hangul, daewoonHangul: dw?.ganZhi.hangul, activation };
+    });
+}
+
+/** 활성도 기준 내림차순 상위 N개 연도만 뽑는다(랭킹 표시용). */
+export function topSpouseActivationYears(
+  entries: SpouseActivationYearEntry[],
+  n = 3,
+): SpouseActivationYearEntry[] {
+  return [...entries].sort((a, b) => b.activation.activationScore - a.activation.activationScore).slice(0, n);
 }

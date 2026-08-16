@@ -11,7 +11,8 @@ import {
   type DaewoonSuOpts,
 } from "./luckCycles";
 import { getTenGod } from "./tenGods";
-import { getTenGodGroup, type FiveElKey } from "./element-color";
+import { getTenGodGroup, getController, type FiveElKey } from "./element-color";
+import { computeSpouseActivationByYearRange, topSpouseActivationYears } from "./evaluations/spouseActivation";
 import type { CompatibilityResult } from "./compatibilityScore";
 import {
   countFiveElements,
@@ -313,6 +314,26 @@ export function buildPersonClipboardText(
     return refYear >= dStart && refYear <= dEnd;
   });
 
+  // 화면(SajuReport.tsx 운세 탭)과 동일한 함수 — 배우자·결혼 활성도 연도별 표.
+  // 계산식을 여기서 새로 만들지 않고 spouseActivation.ts의 순수 함수를 그대로 재사용한다.
+  const spouseActivationByYear =
+    pipelineSnapshot && input.gender
+      ? computeSpouseActivationByYearRange({
+          dayStem,
+          dayBranch,
+          allStems,
+          gender: input.gender,
+          evaluations: pipelineSnapshot.evaluations,
+          yongshin: pipelineSnapshot.adjusted.effectiveYongshin,
+          heesin: pipelineSnapshot.adjusted.effectiveYongshinSecondary,
+          gisin: getController(pipelineSnapshot.adjusted.effectiveYongshin),
+          birthYear,
+          daewoon: luckCycles.daewoon,
+          seunEntries: luckCycles.seun,
+          fromYear: refYear,
+        })
+      : [];
+
   const lines: string[] = [];
 
   lines.push(`=== 사주 분석 데이터: ${input.name} ===`);
@@ -435,6 +456,42 @@ export function buildPersonClipboardText(
     lines.push(`현재 배우자궁 안정도:`);
     lines.push(`${fmt2(timingActivation.spousePalaceStabilityNow)}`);
     lines.push(`(${timingActivation.spouseActivationTrend})`);
+    lines.push("");
+  }
+
+  // 화면(운세 탭)의 "❤️ 배우자·결혼 활성도 / 🏠 배우자궁 안정도" 카드와 동일한
+  // computeSpouseActivation 결과(pipelineSnapshot.spouseActivation)를 그대로 옮긴다.
+  const spouseActivation = pipelineSnapshot?.spouseActivation;
+  if (spouseActivation) {
+    lines.push(`[결혼·배우자 활성 구조]`);
+    lines.push("");
+    lines.push(`현재 결혼·배우자 테마 활성도: ${spouseActivation.activationScore}점 / ${spouseActivation.activationLevel}`);
+    const nextYearEntry = spouseActivationByYear[1];
+    const activationTrend = nextYearEntry
+      ? nextYearEntry.activation.activationScore > spouseActivation.activationScore + 7
+        ? "상승"
+        : nextYearEntry.activation.activationScore < spouseActivation.activationScore - 7
+          ? "하락"
+          : "보통"
+      : "보통";
+    lines.push(`추세(내년 대비): ${activationTrend}`);
+    lines.push(`현재 배우자궁 안정도: ${spouseActivation.stabilityScore}점 / ${spouseActivation.stabilityLevel}`);
+    lines.push("");
+    lines.push(`활성도 × 안정도 조합 해석:`);
+    lines.push(`  ${spouseActivation.interpretation}`);
+    lines.push("");
+    lines.push(`활성 근거:`);
+    if (spouseActivation.factors.length > 0) {
+      for (const f of spouseActivation.factors) {
+        lines.push(`  · [${f.direction}] ${f.label}`);
+      }
+    } else {
+      lines.push(`  · (뚜렷한 자극 요소 없음 — 배경 수준 활성도만 적용)`);
+    }
+    lines.push("");
+    lines.push(
+      `※ "결혼하기 좋은 해"를 판정하는 점수가 아니라, 배우자·연애·결혼 관련 사건·고민·결단이 얼마나 강하게 움직이는 시기인지를 보여주는 참고 지표입니다. 안정도가 낮다고 활성도까지 낮은 건 아닙니다.`,
+    );
     lines.push("");
   }
 
@@ -596,6 +653,37 @@ export function buildPersonClipboardText(
     );
   }
   lines.push("");
+
+  // 화면(운세 탭)의 "결혼운 시기 힌트" 카드와 동일한 데이터 — 새 계산식 없이 위에서 이미
+  // 구한 spouseActivationByYear(computeSpouseActivationByYearRange)를 그대로 나열한다.
+  if (spouseActivationByYear.length > 0) {
+    lines.push(`[결혼운 시기 힌트]`);
+    lines.push("");
+    lines.push(`현재 대운 기간 내 연도별 배우자·결혼 테마 활성도 / 배우자궁 안정도:`);
+    for (const y of spouseActivationByYear) {
+      lines.push(
+        `  ${y.year} ${y.ganZhiHangul} — 활성도 ${y.activation.activationScore}점(${y.activation.activationLevel}) / ` +
+        `안정도 ${y.activation.stabilityScore}점(${y.activation.stabilityLevel})`,
+      );
+      lines.push(`    조합: ${y.activation.interpretation}`);
+      if (y.activation.factors.length > 0) {
+        lines.push(`    활성 근거: ${y.activation.factors.map((f) => f.label).join(" / ")}`);
+      }
+    }
+    lines.push("");
+    const top3 = topSpouseActivationYears(spouseActivationByYear, 3);
+    if (top3.length > 0) {
+      lines.push(
+        `배우자·결혼 테마가 특히 강한 연도 TOP${top3.length}: ${top3.map((y) => `${y.year}년(${y.activation.activationScore}점)`).join(" > ")}`,
+      );
+      lines.push("");
+    }
+    lines.push(
+      `※ 위 표는 "결혼하기 좋은 해" 판정이 아니라, 배우자·결혼 관련 사건·고민·결단이 강하게 발생할 수 있는 해를 보여주는 참고 지표입니다.`,
+    );
+    lines.push("");
+  }
+
   lines.push("본 분석에는 강약 보정(설기·음간 포함),");
   lines.push("관계·재물 구조 지표(재물운=종합),");
   lines.push("대운·세운 활성화 가중이 적용되었습니다.");
@@ -767,6 +855,7 @@ export function buildCompatibilityClipboardText(
   lines.push("11. ⚠️ 갈등 패턴: 두 사람이 다툴 때 생기는 오해 패턴, 대화법, 서운함 표현의 주의점을 알려주세요.");
   lines.push("12. 🌱 관계를 좋게 만드는 실전 조언: 서운함을 말하는 방식, 장기 관계로 가기 위한 습관을 구체적으로 제안해주세요.");
   lines.push("13. 🔮 최종 전망: 무조건 좋다/나쁘다 단정하지 말고, 어떤 조건이 충족되면 좋아질지 현실적으로 전망해주세요.");
+  lines.push("14. 💒 대운·세운의 배우자/결혼 활성 흐름: 두 사람 각각의 결혼·배우자 테마 활성도와 배우자궁 안정도를 구분해서 해석하고, 현재 대운 안에서 관계·결혼 이슈가 특히 강하게 움직이는 연도를 비교해주세요. 활성도가 높다고 결혼 적기로 단정하지 말고, 활성도 × 안정도 조합에 따라 안정적 발전인지, 관계 변화·재편·결단이 강한 시기인지 구분해주세요.");
   lines.push("");
   lines.push("────────────────────");
   lines.push("[누락 방지 규칙]");

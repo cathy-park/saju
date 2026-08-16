@@ -37,8 +37,10 @@ import { upsertMyProfile, upsertPartnerProfile } from "@/lib/db";
 import { useAuth } from "@/lib/authContext";
 import { computePersonPipelineSnapshot } from "@/lib/personPipelineSnapshot";
 import { computeSajuPipeline } from "@/lib/sajuPipeline";
-import { computeLuckTimingActivation } from "@/lib/evaluations/luckTimingActivation";
-import { computeSpouseActivation, type SpouseActivationResult } from "@/lib/evaluations/spouseActivation";
+import {
+  computeSpouseActivationByYearRange,
+  type SpouseActivationYearEntry,
+} from "@/lib/evaluations/spouseActivation";
 import { charToElement, elementBgClass, elementBorderClass, elementChipColors, elementColorVar, elementHslAlpha, elementTextClass, getTenGodGroup, getController, STEM_TO_ELEMENT, BRANCH_TO_ELEMENT, type ElementTone, type FiveElKey } from "@/lib/element-color";
 import { buildPersonClipboardText } from "@/lib/clipboardExport";
 import { CopyButton } from "@/components/CopyButton";
@@ -4720,61 +4722,26 @@ export function SajuReport({ record, showSaveStatus = false, hourMode: parentHou
 
   /**
    * 결혼운 시기 힌트용 — 앞으로 10년(세운 기준)의 배우자·결혼 테마 활성도/안정도를 연도별로 계산.
-   * 원국·용신은 그대로 두고 대운·세운만 연도별로 바꿔가며 computeLuckTimingActivation·
-   * computeSpouseActivation을 재사용한다(둘 다 순수 함수, 기존 로직 변경 없음).
+   * computeSpouseActivationByYearRange 하나만 부른다 — 복사(clipboardExport.ts)도 동일 함수를
+   * 호출해서, 화면과 복사 데이터가 서로 다른 로직으로 어긋나지 않게 한다.
    */
-  const spouseActivationByYear = useMemo((): {
-    year: number;
-    ganZhiHangul: string;
-    daewoonHangul?: string;
-    activation: SpouseActivationResult;
-  }[] => {
+  const spouseActivationByYear = useMemo((): SpouseActivationYearEntry[] => {
     if (!sajuPipelineResult?.evaluations || !sajuPipelineResult.input.dayStem || !input.gender) return [];
-    const gender = input.gender;
-    const dayStemForYear = sajuPipelineResult.input.dayStem;
-    const dayBranchForYear = sajuPipelineResult.input.dayBranch;
-    const evaluations = sajuPipelineResult.evaluations;
     const yongshin = sajuPipelineResult.adjusted.effectiveYongshin;
-    const heesin = sajuPipelineResult.adjusted.effectiveYongshinSecondary;
-    const gisin = getController(yongshin);
-    const allStemsNow = sajuPipelineResult.input.allStems;
-    const dw0 = luckCycles.daewoon[0]?.startAge ?? 0;
-    const adjustedDw = luckCycles.daewoon.map((entry, i) => ({
-      ...entry,
-      startAge: dw0 + i * 10,
-      endAge: dw0 + i * 10 + 9,
-    }));
-
-    return luckCycles.seun
-      .filter((e) => e.year >= luckCycles.wolun.year)
-      .slice(0, 10)
-      .map((e) => {
-        const age = e.year - input.year;
-        const dw = adjustedDw.find((d) => age >= d.startAge && age <= d.endAge);
-        const timing = computeLuckTimingActivation(
-          evaluations,
-          dw?.ganZhi.hangul,
-          e.ganZhi.hangul,
-          dayStemForYear,
-          dayBranchForYear,
-          yongshin,
-          heesin,
-          gisin,
-        );
-        const activation = computeSpouseActivation({
-          dayStem: dayStemForYear,
-          dayBranch: dayBranchForYear,
-          allStems: allStemsNow,
-          gender,
-          daewoonHangul: dw?.ganZhi.hangul,
-          saeunHangul: e.ganZhi.hangul,
-          yongshin,
-          heesin,
-          gisin,
-          spousePalaceStabilityNow: timing.spousePalaceStabilityNow,
-        });
-        return { year: e.year, ganZhiHangul: e.ganZhi.hangul, daewoonHangul: dw?.ganZhi.hangul, activation };
-      });
+    return computeSpouseActivationByYearRange({
+      dayStem: sajuPipelineResult.input.dayStem,
+      dayBranch: sajuPipelineResult.input.dayBranch,
+      allStems: sajuPipelineResult.input.allStems,
+      gender: input.gender,
+      evaluations: sajuPipelineResult.evaluations,
+      yongshin,
+      heesin: sajuPipelineResult.adjusted.effectiveYongshinSecondary,
+      gisin: getController(yongshin),
+      birthYear: input.year,
+      daewoon: luckCycles.daewoon,
+      seunEntries: luckCycles.seun,
+      fromYear: luckCycles.wolun.year,
+    });
   }, [sajuPipelineResult?.evaluations, sajuPipelineResult?.adjusted, sajuPipelineResult?.input, input.gender, input.year, luckCycles]);
 
   /** 메인 파이프라인에 structureDomains가 없을 때(구번들) 스냅샷으로 재시도 */

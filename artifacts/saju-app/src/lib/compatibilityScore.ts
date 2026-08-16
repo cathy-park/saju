@@ -16,10 +16,16 @@ import { getTenGod } from "./tenGods";
 import { getController, type FiveElKey } from "./element-color";
 import { computePersonPipelineSnapshot } from "./personPipelineSnapshot";
 import type { SajuPipelineResult } from "./sajuPipeline";
+import { calculateLuckCycles, type DaewoonSuOpts } from "./luckCycles";
 import {
   computeSpouseStructureAxisBundleFromPersonRecord,
   type SpouseStructureAxisBundle,
 } from "./evaluations/spouseStructureAxisBundle";
+import {
+  computeSpouseActivationByYearRange,
+  topSpouseActivationYears,
+  type SpouseActivationYearEntry,
+} from "./evaluations/spouseActivation";
 
 // ── 기초 상수 ─────────────────────────────────────────────────────────────
 
@@ -179,6 +185,11 @@ export interface CompatibilityResult {
    * calculateCompatibilityScore의 기준점·7조정 합계에는 반영하지 않음.
    */
   spouseStructureAxisComparison: SpouseStructureAxisComparisonBlock | null;
+
+  /**
+   * 두 사람 각각의 결혼·배우자 테마 활성도 연도별 표 + TOP3(개인 사주 화면과 동일 계산 함수 재사용).
+   */
+  spouseActivationTiming: SpouseActivationTimingBlock | null;
 }
 
 export interface SpouseAxisComparisonSentences {
@@ -714,6 +725,8 @@ function buildStructureCompatDetails(
   const w2 = pipe2.evaluations.wealthActivation;
   const t1 = pipe1.timingActivation;
   const t2 = pipe2.timingActivation;
+  const sa1 = pipe1.spouseActivation;
+  const sa2 = pipe2.spouseActivation;
   return [
     { title: "구조 격국(파이프라인)", description: `${n1}: ${g1} · ${n2}: ${g2}`, isPositive: true },
     {
@@ -738,6 +751,18 @@ function buildStructureCompatDetails(
         `${n2}: 관${t2.officerActivationTrend}·재${t2.wealthActivationTrend}·궁${t2.spouseActivationTrend}`,
       isPositive: true,
     },
+    ...(sa1 && sa2
+      ? [
+          {
+            title: "배우자·결혼 활성도(타이밍)",
+            description:
+              `${n1} 활성 ${sa1.activationScore}점(${sa1.activationLevel})·안정 ${sa1.stabilityScore}점(${sa1.stabilityLevel}) vs ` +
+              `${n2} 활성 ${sa2.activationScore}점(${sa2.activationLevel})·안정 ${sa2.stabilityScore}점(${sa2.stabilityLevel}). ` +
+              `${n1}: ${sa1.interpretation} ${n2}: ${sa2.interpretation}`,
+            isPositive: sa1.stabilityScore + sa2.stabilityScore >= 90,
+          },
+        ]
+      : []),
   ];
 }
 
@@ -896,6 +921,40 @@ function buildKeywords(
   return kw.slice(0, 3);
 }
 
+/** 두 사람 각각의 연도별 배우자·결혼 활성도 + 활성도 TOP3(개인 사주 화면과 동일 함수 재사용). */
+export interface SpouseActivationTimingBlock {
+  person1: { years: SpouseActivationYearEntry[]; top: SpouseActivationYearEntry[] };
+  person2: { years: SpouseActivationYearEntry[]; top: SpouseActivationYearEntry[] };
+}
+
+function buildSpouseActivationYearsForPerson(
+  pipe: SajuPipelineResult | null,
+  record: PersonRecord,
+): { years: SpouseActivationYearEntry[]; top: SpouseActivationYearEntry[] } | null {
+  if (!pipe || !pipe.spouseActivation) return null;
+  const daewoonSuOpts: DaewoonSuOpts = {
+    exactSolarTermBoundaryOn: record.fortuneOptions?.exactSolarTermBoundaryOn ?? true,
+    trueSolarTimeOn: record.fortuneOptions?.trueSolarTimeOn ?? false,
+  };
+  const luckCycles = calculateLuckCycles(record.birthInput, record.profile.computedPillars, daewoonSuOpts);
+  const yongshin = pipe.adjusted.effectiveYongshin;
+  const years = computeSpouseActivationByYearRange({
+    dayStem: pipe.input.dayStem,
+    dayBranch: pipe.input.dayBranch,
+    allStems: pipe.input.allStems,
+    gender: record.birthInput.gender,
+    evaluations: pipe.evaluations,
+    yongshin,
+    heesin: pipe.adjusted.effectiveYongshinSecondary,
+    gisin: getController(yongshin),
+    birthYear: record.birthInput.year,
+    daewoon: luckCycles.daewoon,
+    seunEntries: luckCycles.seun,
+    fromYear: luckCycles.wolun.year,
+  });
+  return { years, top: topSpouseActivationYears(years, 3) };
+}
+
 // ── Main export ──────────────────────────────────────────────────────────
 
 export function calculateCompatibilityScore(
@@ -1004,6 +1063,13 @@ export function calculateCompatibilityScore(
     ...(pipe1 && pipe2 ? buildStructureCompatDetails(pipe1, pipe2, person1.birthInput.name, person2.birthInput.name) : []),
   ];
 
+  const spouseActivationYears1 = buildSpouseActivationYearsForPerson(pipe1, person1);
+  const spouseActivationYears2 = buildSpouseActivationYearsForPerson(pipe2, person2);
+  const spouseActivationTiming: SpouseActivationTimingBlock | null =
+    spouseActivationYears1 && spouseActivationYears2
+      ? { person1: spouseActivationYears1, person2: spouseActivationYears2 }
+      : null;
+
   const axis1 = computeSpouseStructureAxisBundleFromPersonRecord(person1);
   const axis2 = computeSpouseStructureAxisBundleFromPersonRecord(person2);
   const spouseStructureAxisComparison =
@@ -1043,6 +1109,7 @@ export function calculateCompatibilityScore(
       yongshin:               yong.delta,
     },
     spouseStructureAxisComparison,
+    spouseActivationTiming,
   };
 }
 
