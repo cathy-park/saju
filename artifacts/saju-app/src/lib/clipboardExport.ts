@@ -508,11 +508,12 @@ export function buildPersonClipboardText(
     lines.push("");
     lines.push(`현재 결혼·배우자 테마 활성도: ${spouseActivation.activationScore}점 / ${spouseActivation.activationLevel}`);
     const nextYearEntry = spouseActivationByYear[1];
+    // activation은 방향 무관 사건 크기 축이므로 상승/하락(가치 판단형 표현) 대신 강화/완화로 표기한다.
     const activationTrend = nextYearEntry
       ? nextYearEntry.activation.activationScore > spouseActivation.activationScore + 7
-        ? "상승"
+        ? "강화"
         : nextYearEntry.activation.activationScore < spouseActivation.activationScore - 7
-          ? "하락"
+          ? "완화"
           : "보통"
       : "보통";
     lines.push(`추세(내년 대비): ${activationTrend}`);
@@ -784,7 +785,7 @@ export function buildPersonClipboardText(
     lines.push("당신은 20년 경력의 통찰력 있고 따뜻한 명리학 전문가입니다.");
     lines.push("위의 사주 구조 데이터를 바탕으로, 내담자에게 직접 말하듯 다정하고 이해하기 쉬운 현대적인 언어로 다음 목차에 따라 사주를 해석해 주세요.");
     lines.push("");
-    lines.push("1. 🔮 지금 당장의 운세 (오늘의 일운, 이번 달 월운, 올해 세운, 현재 대운을 종합하여 '지금 내 운의 흐름이 어떤지' 가장 먼저 브리핑해 주세요.)");
+    lines.push("1. 🔮 지금 당장의 운세 (현재 대운과 올해 세운을 중심으로 '지금 내 운의 흐름이 어떤지' 가장 먼저 브리핑해 주세요. 월운·일운 데이터는 제공되지 않으니 언급하지 마세요.)");
     lines.push("2. 💼 돈과 커리어 (어떤 일을 해야 돈을 벌기 좋은지, 내 사주의 재물 그릇과 재물 축적 방식에 대해 상세히 풀어주세요.)");
     lines.push("3. 💕 연애와 결혼운 (어떤 사람과 잘 맞는지, 나의 연애 성향과 다가오는 좋은 연애/결혼 타이밍에 대해 조언해 주세요.)");
     lines.push("4. 🌟 타고난 본성과 무기 (가장 강한 오행과 십성을 바탕으로 내가 가진 가장 강력한 무기와 잠재력을 알려주세요.)");

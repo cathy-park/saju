@@ -775,7 +775,7 @@ function scoreRomance(
   let s = 55;
 
   if (!dayBranch) {
-    return domain("romance", "연애·배우자운", 50, "정보 부족", [], ["일지 없음"], "일지가 없어 배우자궁 평가를 중립으로 둡니다.");
+    return domain("romance", "연애·배우자 구조", 50, "정보 부족", [], ["일지 없음"], "일지가 없어 배우자궁 평가를 중립으로 둡니다.");
   }
 
   if (hasChungDay(dayBranch, allBranches)) {
@@ -817,7 +817,7 @@ function scoreRomance(
   const summary =
     "연애 ‘횟수’가 아니라 일지·합충형·관재 작동으로 본 관계 운영 난이도입니다.";
 
-  return domain("romance", "연애·배우자운", s, cls, w, d, summary);
+  return domain("romance", "연애·배우자 구조", s, cls, w, d, summary);
 }
 
 // ═══════════════════════════════════════════════════════════════════
