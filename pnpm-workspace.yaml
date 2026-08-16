@@ -36,6 +36,10 @@ minimumReleaseAgeExclude:
 
 packages:
   - artifacts/*
+  # 백업 스냅샷 — 실제 앱(artifacts/saju-app)과 동일한 package name(@workspace/saju-app)을
+  # 쓰고 있어 workspace에 포함되면 pnpm --filter/-r 명령이 둘 다 대상으로 잡는 사고가 난다
+  # (2026-08-16 vitest 설치 시 실제로 발생 — 배포 실패로 이어짐). 개발 대상이 아니므로 제외.
+  - '!artifacts/saju-app-backup-20260604'
   - lib/*
   - lib/integrations/*
   - scripts
