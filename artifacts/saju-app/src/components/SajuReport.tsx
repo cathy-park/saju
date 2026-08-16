@@ -2768,7 +2768,7 @@ function ReportAtAGlanceCard({
   );
 }
 
-// ── 구조 기반 재물운(요약 카드) ─────────────────────────────────────
+// ── 구조 기반 재물 구조(요약 카드) ─────────────────────────────────────
 
 function wealthChannelBand(score: number): string {
   if (score >= 72) return "높음";
@@ -4244,7 +4244,7 @@ function StructureWealthBriefCard({
     <div className={te.shell}>
       <div className="flex items-start justify-between gap-2">
         <div>
-          <p className={te.kicker}>구조 기반 재물운</p>
+          <p className={te.kicker}>원국 재물 구조</p>
           <p className={te.sub}>원국 · 구조 요약</p>
         </div>
       </div>
@@ -4254,7 +4254,7 @@ function StructureWealthBriefCard({
         </p>
       ) : null}
       <div className="mt-2 flex flex-wrap items-baseline gap-x-1 gap-y-0">
-        <span className="text-[13px] font-semibold text-foreground">재물운</span>
+        <span className="text-[13px] font-semibold text-foreground">재물 구조</span>
         <span className="text-2xl font-black tabular-nums leading-none text-emerald-700">{wealth.score}</span>
         <span className="text-[12px] font-semibold text-emerald-900/90">점</span>
       </div>

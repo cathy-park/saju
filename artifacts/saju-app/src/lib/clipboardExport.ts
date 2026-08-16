@@ -411,7 +411,7 @@ export function buildPersonClipboardText(
     lines.push(`${fmt2(s.score)}`);
     lines.push(`(${s.grade})`);
     lines.push("");
-    lines.push(`재물운 종합 점수(채널·감당·축적 결합):`);
+    lines.push(`재물 구조 종합 점수(채널·감당·축적 결합):`);
     lines.push(`${fmt2(w.score)}`);
     lines.push(`(${w.grade})`);
     lines.push("");
@@ -421,16 +421,16 @@ export function buildPersonClipboardText(
     lines.push(`배우자궁 요약:`);
     lines.push(`${s.summary}`);
     lines.push("");
-    lines.push(`재물운 요약:`);
+    lines.push(`재물 구조 요약:`);
     lines.push(`${w.summary}`);
     lines.push("");
   }
 
   const wStruct = pipelineSnapshot?.structureDomains?.wealth;
   if (wStruct) {
-    lines.push(`[구조 기반 재물운 (화면 요약과 동일)]`);
+    lines.push(`[원국 재물 구조 (화면 요약과 동일)]`);
     lines.push("");
-    lines.push(`최종 재물운: ${wStruct.score}점`);
+    lines.push(`최종 재물 구조 점수: ${wStruct.score}점`);
     lines.push(`유형: ${wStruct.classification}`);
     if (wStruct.wealthAxes) {
       lines.push(`보조·재물 채널: ${wStruct.wealthAxes.channelScore}점`);
@@ -541,7 +541,7 @@ export function buildPersonClipboardText(
   if (structureDomains) {
     lines.push(`[구조 기반 7영역 점수]`);
     lines.push(
-      "각 영역은 단순 존재 가산이 아니라 작동력·감당력·안정성 등 구조 가중·결합(예: 재물운=세 축 기하평균)으로 산출됩니다.",
+      "각 영역은 단순 존재 가산이 아니라 작동력·감당력·안정성 등 구조 가중·결합(예: 재물 구조=세 축 기하평균)으로 산출됩니다.",
     );
     lines.push("");
     const domainOrder = [
@@ -733,7 +733,7 @@ export function buildPersonClipboardText(
   }
 
   lines.push("본 분석에는 강약 보정(설기·음간 포함),");
-  lines.push("관계·재물 구조 지표(재물운=종합),");
+  lines.push("관계·재물 구조 지표(재물 구조=종합),");
   lines.push("대운·세운 활성화 가중이 적용되었습니다.");
 
   // ── debug anchor (append-only: 기존 payload 순서·필드 유지) ─────────

@@ -382,7 +382,7 @@ function scoreWealth(
     const neutral: WealthAxisScores = { channelScore: 50, capacityScore: 50, accumulationScore: 50 };
     return domain(
       "wealth",
-      "재물운",
+      "재물 구조",
       50,
       "미산출",
       [],
@@ -562,7 +562,7 @@ function scoreWealth(
     accumulationScore: accDisplayed,
   };
 
-  return domain("wealth", "재물운", final, cls, working, demerit, summary, axes);
+  return domain("wealth", "재물 구조", final, cls, working, demerit, summary, axes);
 }
 
 function hasChungDay(dayBranch: string, all: string[]): boolean {
@@ -597,7 +597,7 @@ function scoreCareer(
   const { dayStem, allStems, allBranches, monthBranch } = input;
   const dm = STEM_TO_ELEMENT[dayStem] as FiveElKey | undefined;
   if (!dm) {
-    return domain("career", "커리어운", 50, "미산출", [], ["일간 오행 없음"], "일간이 없어 커리어 구조 점수를 산출하지 않았습니다.");
+    return domain("career", "커리어 구조", 50, "미산출", [], ["일간 오행 없음"], "일간이 없어 커리어 구조 점수를 산출하지 않았습니다.");
   }
   const g = base.tenGodGroups;
   const yong = adjusted.effectiveYongshin;
@@ -652,7 +652,7 @@ function scoreCareer(
   struct = clamp(struct);
   const summary = `${best} 구조에 가깝습니다. 식상·관·인의 밸런스와 격국 안정도가 장기 커리어 탄력을 만듭니다.`;
 
-  return domain("career", "커리어운", struct, `${best} 커리어 구조`, working, demerit, summary);
+  return domain("career", "커리어 구조", struct, `${best} 커리어 구조`, working, demerit, summary);
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -667,7 +667,7 @@ function scoreHonor(
   const { dayStem, allStems, monthBranch } = input;
   const dm = STEM_TO_ELEMENT[dayStem] as FiveElKey | undefined;
   if (!dm) {
-    return domain("honor", "명예운", 50, "미산출", [], ["일간 오행 없음"], "일간이 없어 명예 구조 점수를 산출하지 않았습니다.");
+    return domain("honor", "명예 구조", 50, "미산출", [], ["일간 오행 없음"], "일간이 없어 명예 구조 점수를 산출하지 않았습니다.");
   }
   const monthStem = allStems[2];
   let s = 42;
@@ -708,7 +708,7 @@ function scoreHonor(
   const summary =
     "명예는 ‘인기’가 아니라 규범·전문성·신뢰 축입니다. 관·인 투출과 격국이 뒷받침될수록 사회적 인정 구조가 단단해집니다.";
 
-  return domain("honor", "명예운", s, "신뢰·전문성 중심", w, d, summary);
+  return domain("honor", "명예 구조", s, "신뢰·전문성 중심", w, d, summary);
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -757,7 +757,7 @@ function scoreSocial(
       ? "관계망은 넓을수록 에너지 소모가 큽니다. 소수 깊은 연결과 명확한 경계가 유리합니다."
       : "협업·독립·확장 중 현재 팔자는 " + type + "에 가깝습니다.";
 
-  return domain("social", "인간관계운", raw, type, w, d, summary);
+  return domain("social", "인간관계 구조", raw, type, w, d, summary);
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -874,7 +874,7 @@ function scoreHealth(
   s = clamp(s);
   const summary = "건강은 ‘체력 한 방’이 아니라 오행·조후·형충과 강약이 만드는 지속성 축입니다.";
 
-  return domain("health", "건강운", s, "체력 지속성 중심", w, d, summary);
+  return domain("health", "건강 구조", s, "체력 지속성 중심", w, d, summary);
 }
 
 // ═══════════════════════════════════════════════════════════════════
