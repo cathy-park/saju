@@ -2291,11 +2291,15 @@ function LuckFlowTabs({
   dayStem,
   birthYear,
   record,
+  selectedSeunYear,
+  onSelectedSeunYearChange,
 }: {
   luckCycles: ReturnType<typeof calculateLuckCycles>;
   dayStem: string;
   birthYear: number;
   record: PersonRecord;
+  selectedSeunYear: number;
+  onSelectedSeunYearChange: (year: number) => void;
 }) {
   const [tab, setTab] = useState<LuckTabKey>(() => {
     const saved = sessionStorage.getItem("openLuckTab") as LuckTabKey | null;
@@ -2335,7 +2339,6 @@ function LuckFlowTabs({
   const [selectedDaewoonIdx, setSelectedDaewoonIdx] = useState<number>(
     currentDaewoonIdx >= 0 ? currentDaewoonIdx : 0
   );
-  const [selectedSeunYear, setSelectedSeunYear] = useState<number>(refYear);
   const selectedSeunEntry = luckCycles.seun.find((e) => e.year === selectedSeunYear) ?? null;
 
   // Read-only: 대운수는 엔진 자동 계산값만 표시합니다.
@@ -2458,7 +2461,7 @@ function LuckFlowTabs({
                 return (
                   <button
                     key={year}
-                    onClick={() => setSelectedSeunYear(year)}
+                    onClick={() => onSelectedSeunYearChange(year)}
                     className={`shrink-0 rounded-lg border px-3 py-2 text-center cursor-pointer transition-all active:scale-95 ${
                       isSelected ? "border-indigo-400 bg-indigo-50" : isThisYear ? "border-amber-300 bg-amber-50" : "border-border bg-muted/20"
                     }`}
@@ -4665,6 +4668,10 @@ export function SajuReport({ record, showSaveStatus = false, hourMode: parentHou
     [input, effectivePillars, daewoonSuOpts],
   );
 
+  // 세운 탭에서 선택한 연도. LuckFlowTabs와 공유해서, 아래 "구조·운 가중" 섹션이
+  // 항상 실제 올해가 아니라 사용자가 위에서 고른 연도 기준으로 계산되게 한다.
+  const [selectedSeunYear, setSelectedSeunYear] = useState<number>(() => luckCycles.wolun.year);
+
   // ── 4-Layer Saju Pipeline (auto-recomputes when any input changes) ──
   // 오행·십성·신강약·조후·용신·규칙 해석을 한 번에 재계산합니다.
   // 계산 순서: 오행 → 십성 → 신강약 → 조후 보정 → 용신 → 규칙 해석
@@ -4679,7 +4686,8 @@ export function SajuReport({ record, showSaveStatus = false, hourMode: parentHou
       effectivePillars.hour?.hangul?.[1], effectivePillars.day?.hangul?.[1],
       effectivePillars.month?.hangul?.[1], effectivePillars.year?.hangul?.[1],
     ].filter((c): c is string => !!c);
-    const refYear = luckCycles.wolun.year;
+    // 실제 올해가 아니라, 세운 탭에서 사용자가 선택한 연도 기준으로 계산한다.
+    const refYear = selectedSeunYear;
     const age = refYear - input.year;
     const dw0 = luckCycles.daewoon[0]?.startAge ?? 0;
     const adjustedDw = luckCycles.daewoon.map((entry, i) => ({
@@ -4705,7 +4713,7 @@ export function SajuReport({ record, showSaveStatus = false, hourMode: parentHou
       timingDaewoonHangul: curDw?.ganZhi.hangul,
       timingSeunHangul: seunEntry?.ganZhi.hangul,
     });
-  }, [effectiveFiveElements, effectivePillars, luckCycles, input.year, record.manualStrengthLevel, record.manualYongshinData, fortuneOpts?.seasonalAdjustmentOff]);
+  }, [effectiveFiveElements, effectivePillars, luckCycles, input.year, selectedSeunYear, record.manualStrengthLevel, record.manualYongshinData, fortuneOpts?.seasonalAdjustmentOff]);
 
   /** 메인 파이프라인에 structureDomains가 없을 때(구번들) 스냅샷으로 재시도 */
   const structureWealthDomain = useMemo(() => {
@@ -6040,6 +6048,8 @@ export function SajuReport({ record, showSaveStatus = false, hourMode: parentHou
                 dayStem={dayStem}
                 birthYear={input.year}
                 record={record}
+                selectedSeunYear={selectedSeunYear}
+                onSelectedSeunYearChange={setSelectedSeunYear}
               />
             </div>
           </div>
@@ -6047,10 +6057,10 @@ export function SajuReport({ record, showSaveStatus = false, hourMode: parentHou
             <div className="ds-card overflow-hidden shadow-none border-border/80">
               <div className="border-b border-border px-4 pb-2 pt-4">
                 <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                  올해 구조·운 가중 (timingActivation)
+                  {selectedSeunYear}년 구조·운 가중 (timingActivation)
                 </h3>
                 <p className="mt-1 text-[11px] text-muted-foreground leading-relaxed">
-                  원국 점수는 그대로 두고, 현재 대운·세운 간지로 활성도만 가중한 값입니다. 월운 연도({luckCycles.wolun.year}년) 기준 세운과 동일 입력입니다.
+                  원국 점수는 그대로 두고, 위 세운 탭에서 선택한 {selectedSeunYear}년의 대운·세운 간지로 활성도만 가중한 값입니다.
                 </p>
               </div>
               <div className="ds-card-pad space-y-2 text-[13px] leading-relaxed">
