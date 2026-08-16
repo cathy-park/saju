@@ -11,9 +11,9 @@
 import type { PersonRecord, RelationshipType } from "./storage";
 import { getFinalPillars } from "./storage";
 import type { FiveElementCount } from "./sajuEngine";
-import { computeBranchRelations } from "./branchRelations";
+import { computeBranchRelations, computeStemRelations } from "./branchRelations";
 import { getTenGod } from "./tenGods";
-import { getController, type FiveElKey } from "./element-color";
+import { getController, CONTROLS, type FiveElKey } from "./element-color";
 import { computePersonPipelineSnapshot } from "./personPipelineSnapshot";
 import type { SajuPipelineResult } from "./sajuPipeline";
 import { calculateLuckCycles, type DaewoonSuOpts } from "./luckCycles";
@@ -623,6 +623,69 @@ function scoreBranchInteractionDelta(
 }
 
 // ═══════════════════════════════════════════════════════════════════════
+//  4-2. 천간 전체 교차 delta (지지 전체 교차와 대칭) — 일간×일간 쌍은 scoreDayMasterDelta가
+//  이미 담당하므로 제외하고 나머지 15쌍만 본다. 한 쌍에서 구체적 천간합/천간충이 성립하면
+//  그것만 채택하고, 없을 때만 오행 상생·상극·비화(scoreDayMasterDelta와 동일한 GENERATING/
+//  CONTROLLING 배열 재사용)로 대체한다 — 같은 쌍에서 두 가지를 동시에 가산하지 않는다.
+//  관계 유형별 category cap(±10) 적용 후 overall cap(±15, bi와 동일 스케일)까지 씌운다.
+// ═══════════════════════════════════════════════════════════════════════
+type StemRelCategory = "천간합" | "천간충" | "상생" | "상극" | "비화";
+
+export function scoreStemInteractionDelta(
+  p1: ReturnType<typeof getFinalPillars>, p2: ReturnType<typeof getFinalPillars>
+): { delta: number; note: string; pairCount: number; rawTotal: number } {
+  const keys: PillarKey[] = ["year", "month", "day", "hour"];
+  const byCategory = new Map<StemRelCategory, number>();
+  let pairCount = 0;
+
+  for (const k1 of keys) {
+    const s1 = p1[k1]?.hangul?.[0];
+    if (!s1) continue;
+    for (const k2 of keys) {
+      if (k1 === "day" && k2 === "day") continue; // 일간×일간은 scoreDayMasterDelta가 전담(중복 방지)
+      const s2 = p2[k2]?.hangul?.[0];
+      if (!s2) continue;
+
+      const weight = PILLAR_WEIGHTS[k1] * PILLAR_WEIGHTS[k2];
+      const add = (cat: StemRelCategory, base: number) => {
+        byCategory.set(cat, (byCategory.get(cat) ?? 0) + base * weight);
+        pairCount++;
+      };
+
+      // ① 구체적 천간합/천간충 우선
+      const specific = computeStemRelations([s1, s2]);
+      const hasHap = specific.some((r) => r.type === "천간합");
+      const hasChung = specific.some((r) => r.type === "천간충");
+      if (hasHap) { add("천간합", 6); continue; }
+      if (hasChung) { add("천간충", -6); continue; }
+
+      // ② 없을 때만 오행 상생·상극·비화로 대체(같은 쌍에 ①②를 동시에 더하지 않음)
+      const e1 = STEM_ELEMENT[s1], e2 = STEM_ELEMENT[s2];
+      if (!e1 || !e2) continue;
+      if (e1 === e2) { add("비화", 1.5); continue; }
+      if (GENERATING.some(([a, b]) => a === e1 && b === e2)) { add("상생", 3); continue; }
+      if (GENERATING.some(([a, b]) => a === e2 && b === e1)) { add("상생", 2); continue; }
+      if (CONTROLLING.some(([a, b]) => a === e1 && b === e2)) { add("상극", -2.5); continue; }
+      if (CONTROLLING.some(([a, b]) => a === e2 && b === e1)) { add("상극", -3); continue; }
+    }
+  }
+
+  let total = 0;
+  for (const sum of byCategory.values()) {
+    total += Math.max(-10, Math.min(10, sum)); // category cap
+  }
+  const delta = Math.max(-15, Math.min(15, Math.round(total))); // overall cap(잠정값 — synthetic 회귀로 재검증 예정)
+
+  const parts = [...byCategory.entries()]
+    .filter(([, v]) => Math.abs(v) >= 0.5)
+    .map(([cat, v]) => `${cat} ${v > 0 ? "+" : ""}${Math.round(v * 10) / 10}`);
+  const note = parts.length > 0
+    ? `천간 교차(일간쌍 제외 15쌍): ${parts.join(", ")} → 캡 적용 ${delta > 0 ? "+" : ""}${delta}`
+    : "천간 교차 관계 없음";
+  return { delta, note, pairCount, rawTotal: Math.round(total * 10) / 10 };
+}
+
+// ═══════════════════════════════════════════════════════════════════════
 //  5. 오행 보완도 delta  (−8 ~ +12)
 // ═══════════════════════════════════════════════════════════════════════
 function scoreElementComplementarityDelta(el1: FiveElementCount, el2: FiveElementCount): { delta: number; note: string } {
@@ -1060,6 +1123,93 @@ function marriageGroupStructureBonus(
   return { bonus: Math.min(8, bonus), notes: [...new Set(notes)] };
 }
 
+/**
+ * 일간 기준 십성 — 상대 원국 전체(연/월/시 3개, 일간쌍 제외)를 "내 일간이 상대 3글자를 어떻게
+ * 보는가"로 해석만 제공한다. 일간↔일간은 scoreTenGodDelta가 전담하고, 나머지 3×2=6개 평가는
+ * stemInteractionDelta가 다루는 15쌍 중 "일간이 낀" 6쌍과 정확히 겹치므로, 여기서는 숫자를
+ * 전혀 더하지 않고(0점) 해석 라벨만 남겨 이중 가산을 원천 차단한다.
+ */
+function buildStemTenGodLabels(
+  p1: ReturnType<typeof getFinalPillars>, p2: ReturnType<typeof getFinalPillars>,
+  s1: string, s2: string, n1: string, n2: string,
+): string[] {
+  const labels: string[] = [];
+  const otherKeys: PillarKey[] = ["year", "month", "hour"];
+  const collect = (selfName: string, selfDayStem: string, otherName: string, other: ReturnType<typeof getFinalPillars>) => {
+    const found: string[] = [];
+    for (const k of otherKeys) {
+      const stem = other[k]?.hangul?.[0];
+      if (!stem) continue;
+      const tg = getTenGod(selfDayStem, stem);
+      if (tg) found.push(`${k === "year" ? "연" : k === "month" ? "월" : "시"}간=${tg}`);
+    }
+    if (found.length > 0) {
+      labels.push(`${selfName}의 일간 기준 ${otherName} 원국: ${found.join(", ")}`);
+    }
+  };
+  collect(n1, s1, n2, p2);
+  collect(n2, s2, n1, p1);
+  return labels;
+}
+
+/**
+ * 배우자성 ↔ 실제 상대 대응도 — 큰 독립 점수가 아니라 romanceRaw에만 들어가는 소폭 modifier다.
+ * "recognition"(상대 일간이 내 배우자성 오행에 해당 — 배우자/연애 대상으로 인식되기 쉬운 구조적
+ * 신호, 그 자체로는 작은 +2)과 "quality"(그 배우자성 오행이 내 용신·희신인지 기신인지)를 서로
+ * 다른 evidence로 분리해 둔다. quality가 기신이어도 recognition을 지우거나 부호를 뒤집지 않고
+ * "인식은 되지만 quality는 상쇄됨"이 그대로 보이도록 둘 다 남긴다. quality는 recognition이 성립할
+ * 때만(=실제로 상대 일간이 배우자성에 해당할 때만) 의미가 있으므로 recognition 미성립 시 계산하지
+ * 않는다.
+ */
+interface SpouseStarEvidence { label: string; magnitude: number; direction: "우호" | "비우호" }
+
+function spouseStarEvidenceOneWay(
+  selfName: string, selfDayStem: string, selfGender: "남" | "여" | undefined,
+  otherName: string, otherDayStem: string,
+  selfYongshin: FiveElKey, selfHeesin: FiveElKey | undefined, selfGisin: FiveElKey,
+): SpouseStarEvidence[] {
+  const dmEl = STEM_ELEMENT[selfDayStem];
+  const otherEl = STEM_ELEMENT[otherDayStem];
+  if (!dmEl || !otherEl || !selfGender) return [];
+  const spouseStarEl: FiveElKey = selfGender === "여" ? getController(dmEl) : CONTROLS[dmEl];
+  if (otherEl !== spouseStarEl) return [];
+
+  const evidence: SpouseStarEvidence[] = [
+    {
+      label: `${otherName}의 일간이 ${selfName}의 배우자성(${spouseStarEl})에 해당 — 배우자·연애 대상으로 인식되기 쉬움`,
+      magnitude: 2,
+      direction: "우호",
+    },
+  ];
+  if (spouseStarEl === selfYongshin || spouseStarEl === selfHeesin) {
+    evidence.push({
+      label: `${selfName}의 배우자성 오행(${spouseStarEl})이 용신/희신과 일치 — quality 우호`,
+      magnitude: 2.5,
+      direction: "우호",
+    });
+  } else if (spouseStarEl === selfGisin) {
+    evidence.push({
+      label: `${selfName}의 배우자성 오행(${spouseStarEl})이 기신과 겹침 — quality 비우호(인식 자체는 유지)`,
+      magnitude: 3.5,
+      direction: "비우호",
+    });
+  }
+  return evidence;
+}
+
+export function scoreSpouseStarModifier(
+  n1: string, s1: string, gender1: "남" | "여" | undefined, y1: FiveElKey, h1: FiveElKey | undefined, g1: FiveElKey,
+  n2: string, s2: string, gender2: "남" | "여" | undefined, y2: FiveElKey, h2: FiveElKey | undefined, g2: FiveElKey,
+): { modifier: number; evidence: SpouseStarEvidence[] } {
+  const evidence = [
+    ...spouseStarEvidenceOneWay(n1, s1, gender1, n2, s2, y1, h1, g1),
+    ...spouseStarEvidenceOneWay(n2, s2, gender2, n1, s1, y2, h2, g2),
+  ];
+  const raw = evidence.reduce((acc, e) => acc + (e.direction === "우호" ? e.magnitude : -e.magnitude), 0);
+  const modifier = Math.max(-5, Math.min(5, raw)); // 전체 cap ±5
+  return { modifier, evidence };
+}
+
 function classifyRelationshipType(romance: number, marriage: number): RelationshipTypeLabel {
   const romanceHigh = romance >= 65;
   const marriageHigh = marriage >= 65;
@@ -1084,7 +1234,7 @@ function normalizeNeutralDelta(delta: number, note: string): number {
 
 function buildRomanceMarriageFit(
   dmDelta: number, spDeltaRaw: number, spNote: string, mbDeltaRaw: number, mbNote: string, biDelta: number,
-  ecDelta: number, tgDelta: number, yongDelta: number,
+  ecDelta: number, tgDelta: number, yongDelta: number, stemDelta: number, spouseStarModifier: number,
   avgSpousePalaceStability: number,
   br1: string[], br2: string[],
   y1: FiveElKey, h1: FiveElKey | undefined, g1: FiveElKey,
@@ -1095,17 +1245,18 @@ function buildRomanceMarriageFit(
 
   const romanceRaw =
     dmDelta * 1.2 + tgDelta * 1.2 + biDelta * 1.3 + yongDelta * 1.1 +
-    ecDelta * 1.0 + mbDelta * 0.8 + spDelta * 0.4;
+    ecDelta * 1.0 + mbDelta * 0.8 + spDelta * 0.4 + stemDelta * 1.1 + spouseStarModifier;
   const romanceScore = Math.max(0, Math.min(100, Math.round(50 + romanceRaw)));
 
   const { bonus: groupBonus, notes: marriageGroupStructureNotes } = marriageGroupStructureBonus(
     br1, br2, y1, h1, g1, y2, h2, g2,
   );
   // netDelta는 sp/bi/mb/dm에서 이미 파생된 boolean 요약이라 별도로 더하면 같은 근거를
-  // 중복 가산하게 되므로 사용하지 않는다(투명성 보고 참고).
+  // 중복 가산하게 되므로 사용하지 않는다(투명성 보고 참고). 배우자성 modifier는 "관계 형성/끌림"
+  // 의미가 강해 romanceRaw에만 반영하고 marriageRaw에는 더하지 않는다(설계 승인 사항).
   const marriageRaw =
     spDelta * 1.8 + (avgSpousePalaceStability - 50) * 0.3 + yongDelta * 1.3 + mbDelta * 1.1 +
-    biDelta * 0.9 + dmDelta * 0.5 + ecDelta * 0.5 + tgDelta * 0.3 + groupBonus;
+    biDelta * 0.9 + dmDelta * 0.5 + ecDelta * 0.5 + tgDelta * 0.3 + stemDelta * 0.4 + groupBonus;
   const marriageScore = Math.max(0, Math.min(100, Math.round(50 + marriageRaw)));
 
   const relationshipType = classifyRelationshipType(romanceScore, marriageScore);
@@ -1172,6 +1323,7 @@ export function calculateCompatibilityScore(
   const sp   = scoreSpousePalaceDelta(b1, b2, relType);
   const mb   = scoreMonthBranchDelta(m1, m2, relType);
   const bi   = scoreBranchInteractionDelta(p1, p2);
+  const stem = scoreStemInteractionDelta(p1, p2);
   const ec   = scoreElementComplementarityDelta(el1, el2);
   const tg   = scoreTenGodDelta(s1, s2);
   const yong = scoreYongshinDelta(
@@ -1184,6 +1336,7 @@ export function calculateCompatibilityScore(
     { category: "배우자궁(일지)", delta: sp.delta,   note: sp.note },
     { category: "월지 교차",      delta: mb.delta,   note: mb.note },
     { category: "지지 전체 교차", delta: bi.delta,   note: bi.note },
+    { category: "천간 전체 교차", delta: stem.delta, note: stem.note },
     { category: "오행 보완도",    delta: ec.delta,   note: ec.note },
     { category: "십성 궁합",      delta: tg.delta,   note: tg.note },
     { category: "용신 보완",      delta: yong.delta, note: yong.note },
@@ -1221,10 +1374,21 @@ export function calculateCompatibilityScore(
   const keywords = buildKeywords(baseScore, s1, s2, hasHarmonyStructure, hasConflictStructure, bi.clashCount);
   const domains = buildDomains(el1, el2, s1, s2);
 
+  const spouseStarResult = (() => {
+    if (!pipe1 || !pipe2) return { modifier: 0, evidence: [] as SpouseStarEvidence[] };
+    const y1v = pipe1.adjusted.effectiveYongshin;
+    const y2v = pipe2.adjusted.effectiveYongshin;
+    return scoreSpouseStarModifier(
+      person1.birthInput.name, s1, person1.birthInput.gender, y1v, pipe1.adjusted.effectiveYongshinSecondary, getController(y1v),
+      person2.birthInput.name, s2, person2.birthInput.gender, y2v, pipe2.adjusted.effectiveYongshinSecondary, getController(y2v),
+    );
+  })();
+
   const romanceMarriageFit: RomanceMarriageFit = (() => {
     if (!pipe1 || !pipe2) {
       return buildRomanceMarriageFit(
         dm.delta, sp.delta, sp.note, mb.delta, mb.note, bi.delta, ec.delta, tg.delta, yong.delta,
+        stem.delta, spouseStarResult.modifier,
         50, br1, br2, "목", undefined, "금", "목", undefined, "금",
       );
     }
@@ -1234,20 +1398,34 @@ export function calculateCompatibilityScore(
       (pipe1.evaluations.spousePalaceStability.score + pipe2.evaluations.spousePalaceStability.score) / 2;
     return buildRomanceMarriageFit(
       dm.delta, sp.delta, sp.note, mb.delta, mb.note, bi.delta, ec.delta, tg.delta, yong.delta,
+      stem.delta, spouseStarResult.modifier,
       avgSpousePalaceStability, br1, br2,
       y1v, pipe1.adjusted.effectiveYongshinSecondary, getController(y1v),
       y2v, pipe2.adjusted.effectiveYongshinSecondary, getController(y2v),
     );
   })();
 
+  const stemTenGodLabels = buildStemTenGodLabels(p1, p2, s1, s2, person1.birthInput.name, person2.birthInput.name);
+
   const details: CompatibilityResult["details"] = [
     { title: "일간 분석",  description: dm.note,   isPositive: dm.delta >= 0 },
     { title: "배우자궁",   description: sp.note,   isPositive: sp.delta >= 0 },
     { title: "월지 교차",  description: mb.note,   isPositive: mb.delta >= 0 },
     { title: "지지 교차",  description: bi.note,   isPositive: bi.delta >= 0 },
+    { title: "천간 교차",  description: stem.note, isPositive: stem.delta >= 0 },
     { title: "오행 보완",  description: ec.note,   isPositive: ec.delta >= 0 },
     { title: "십성 관계",  description: tg.note,   isPositive: tg.delta >= 0 },
     { title: "용신 보완",  description: yong.note, isPositive: yong.delta >= 0 },
+    ...(stemTenGodLabels.length > 0
+      ? [{ title: "십성(원국 전체, 해석 참고용)", description: stemTenGodLabels.join(" / "), isPositive: true }]
+      : []),
+    ...(spouseStarResult.evidence.length > 0
+      ? [{
+          title: "배우자성 대응(연애 적합도 소폭 반영)",
+          description: spouseStarResult.evidence.map((e) => e.label).join(" / "),
+          isPositive: spouseStarResult.modifier >= 0,
+        }]
+      : []),
     ...(pipe1 && pipe2 ? buildStructureCompatDetails(pipe1, pipe2, person1.birthInput.name, person2.birthInput.name) : []),
   ];
 
