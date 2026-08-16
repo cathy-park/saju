@@ -65,6 +65,26 @@ const BRANCH_THREE_COMBINE_GROUPS: ReadonlyArray<ReadonlySet<string>> = [
 ];
 
 /**
+ * 한 지지의 "잘 맞는 상대 지지" 3개 — 육합 파트너 1개 + 그 지지가 속한 삼합 그룹의
+ * 나머지 2개. HAP_PAIRS/BRANCH_THREE_COMBINE_GROUPS를 유일한 source로 삼아 계산하므로,
+ * 이 표를 쓰는 다른 모듈(예: relationshipReport.ts의 "잘 맞는 배우자 요소")이 별도로
+ * 하드코딩한 표를 두면서 어긋나는 일을 막는다.
+ */
+export function getSixHapAndSamhapComplement(branch: string): string[] {
+  const hapPair = HAP_PAIRS.find(([a, b]) => a === branch || b === branch);
+  const hapPartner = hapPair ? (hapPair[0] === branch ? hapPair[1] : hapPair[0]) : null;
+  const group = BRANCH_THREE_COMBINE_GROUPS.find((g) => g.has(branch));
+  const samhapRemainder = group ? [...group].filter((b) => b !== branch) : [];
+  return hapPartner ? [hapPartner, ...samhapRemainder] : samhapRemainder;
+}
+
+/** branch가 속한 삼합 그룹의 이름(예: "인오술") — 회귀 테스트/해설 문구 자기검증용. */
+export function getSamhapGroupLabel(branch: string): string | null {
+  const group = BRANCH_THREE_COMBINE_GROUPS.find((g) => g.has(branch));
+  return group ? [...group].join("") : null;
+}
+
+/**
  * 지지방합 (方合) — each group: any 2+ branches from same direction
  * 인묘진(木/동), 사오미(火/남), 신유술(金/서), 해자축(水/북)
  */

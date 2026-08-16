@@ -1,5 +1,6 @@
 import type { FiveElementCount } from "./sajuEngine";
 import type { DaewoonEntry } from "./luckCycles";
+import { getSixHapAndSamhapComplement } from "./branchRelations";
 
 const STEM_ELEMENT: Record<string, keyof FiveElementCount> = {
   갑: "목", 을: "목", 병: "화", 정: "화",
@@ -116,21 +117,35 @@ export function getSpousePalaceInfo(dayBranch: string): SpousePalaceInfo | null 
 }
 
 // ── 잘 맞는 배우자 요소 ──────────────────────────────────────────
+// branches/elements는 하드코딩하지 않고 branchRelations.ts의 육합·삼합 표에서 직접
+// derive한다(과거 12개 중 6개가 어긋났던 원인이 별도 하드코딩 표였기 때문 — 재발 방지).
+// guidance만 지지별로 손으로 쓴 해설 문장이라 별도 표로 유지한다.
 
-const COMPLEMENTARY: Record<string, { branches: string[]; elements: string[]; guidance: string }> = {
-  자: { branches: ["신", "진", "축"], elements: ["금", "토"], guidance: "금 기운의 배우자가 수 기운을 돕는 구조로 궁합이 좋습니다. 신유·진술축미와 조화롭습니다." },
-  축: { branches: ["사", "유", "자"], elements: ["화", "금", "수"], guidance: "자수·사화·유금이 보완 관계에 있습니다. 사유축 금국이 되면 인연이 강해집니다." },
-  인: { branches: ["해", "오", "술"], elements: ["수", "화", "토"], guidance: "해수 기운이 목 기운을 돕는 구조로 궁합이 좋습니다. 인오술 화국 인연으로 활동적인 관계가 됩니다." },
-  묘: { branches: ["술", "해", "미"], elements: ["토", "수"], guidance: "해수·술토와 조화롭습니다. 해묘미 목국이 형성되면 성장 지향적인 깊은 인연입니다." },
-  진: { branches: ["자", "유", "신"], elements: ["수", "금"], guidance: "자수·유금이 좋은 보완 관계입니다. 신자진 수국이 되면 조화롭고 안정적인 관계가 됩니다." },
-  사: { branches: ["신", "유", "축"], elements: ["금", "토"], guidance: "신금·유금과 잘 어울립니다. 사유축 금국이 되면 격조 있고 안정적인 인연입니다." },
-  오: { branches: ["인", "술", "미"], elements: ["목", "토"], guidance: "인목이 화 기운을 돕는 구조로 생기 있는 관계가 됩니다. 인오술 화국에서 특히 강한 인연입니다." },
-  미: { branches: ["오", "해", "묘"], elements: ["화", "수", "목"], guidance: "오화·묘목과 조화롭습니다. 해묘미 목국이 형성되면 풍요롭고 감성적인 관계입니다." },
-  신: { branches: ["자", "진", "사"], elements: ["수", "토", "화"], guidance: "사화·자수와 상호 보완적입니다. 신자진 수국이 되면 현실적이고 안정적인 관계입니다." },
-  유: { branches: ["진", "사", "축"], elements: ["토", "화"], guidance: "사화·축토와 잘 맞습니다. 사유축 금국이 되면 격조 있고 안정적인 관계입니다." },
-  술: { branches: ["인", "오", "묘"], elements: ["목", "화"], guidance: "인목·오화와 조화롭습니다. 인오술 화국으로 뜨겁고 충실한 인연을 형성합니다." },
-  해: { branches: ["묘", "미", "인"], elements: ["목", "화"], guidance: "인목·묘목이 수 기운을 받아 성장합니다. 해묘미 목국이 되면 자유롭고 창의적인 관계입니다." },
+const COMPLEMENTARY_GUIDANCE: Record<string, string> = {
+  자: "축토·신금이 좋은 보완 관계에 있습니다. 신자진 수국이 되면 조화롭고 안정적인 관계가 됩니다.",
+  축: "자수·사화·유금이 보완 관계에 있습니다. 사유축 금국이 되면 인연이 강해집니다.",
+  인: "해수 기운이 목 기운을 돕는 구조로 궁합이 좋습니다. 인오술 화국 인연으로 활동적인 관계가 됩니다.",
+  묘: "해수·술토와 조화롭습니다. 해묘미 목국이 형성되면 성장 지향적인 깊은 인연입니다.",
+  진: "자수·유금이 좋은 보완 관계입니다. 신자진 수국이 되면 조화롭고 안정적인 관계가 됩니다.",
+  사: "신금·유금과 잘 어울립니다. 사유축 금국이 되면 격조 있고 안정적인 인연입니다.",
+  오: "인목이 화 기운을 돕는 구조로 생기 있는 관계가 됩니다. 인오술 화국에서 특히 강한 인연입니다.",
+  미: "오화·묘목과 조화롭습니다. 해묘미 목국이 형성되면 풍요롭고 감성적인 관계입니다.",
+  신: "사화·자수와 상호 보완적입니다. 신자진 수국이 되면 현실적이고 안정적인 관계입니다.",
+  유: "사화·축토와 잘 맞습니다. 사유축 금국이 되면 격조 있고 안정적인 관계입니다.",
+  술: "인목·오화와 조화롭습니다. 인오술 화국으로 뜨겁고 충실한 인연을 형성합니다.",
+  해: "인목·묘목이 수 기운을 받아 성장합니다. 해묘미 목국이 되면 자유롭고 창의적인 관계입니다.",
 };
+
+const ALL_BRANCHES = ["자", "축", "인", "묘", "진", "사", "오", "미", "신", "유", "술", "해"] as const;
+
+const COMPLEMENTARY: Record<string, { branches: string[]; elements: string[]; guidance: string }> =
+  Object.fromEntries(
+    ALL_BRANCHES.map((b) => {
+      const branches = getSixHapAndSamhapComplement(b);
+      const elements = [...new Set(branches.map((x) => BRANCH_ELEMENT[x]).filter(Boolean))];
+      return [b, { branches, elements, guidance: COMPLEMENTARY_GUIDANCE[b] }];
+    }),
+  );
 
 export function getComplementaryInfo(dayBranch: string) {
   return COMPLEMENTARY[dayBranch] ?? null;
