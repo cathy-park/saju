@@ -16,6 +16,10 @@
  *  3) 배우자성(여: 관성 / 남: 재성)이 대운·세운에 출현하거나 생조되는지
  *  4) 원국에 있던 배우자성 글자가 대운·세운 천간과 합·충을 이루는지
  *  5) 대운과 세운이 같은 간지(복음)일 때의 강도 증폭
+ *  6) 대운·세운이 원국 일주(일간+일지)와 완전히 동일할 때의 강도 증폭 — 일주는 배우자궁(일지)과
+ *     자기 자신(일간)이 합쳐진 자리라 5)보다 이 모듈 테마에 더 직접적인 신호로 본다. 연·월·시주가
+ *     세운과 겹치는 것은 배우자궁과의 연결이 약해 채택하지 않았다. 5)·6)이 동시에 성립하면(대운=
+ *     세운=원국 일주) 가장 강한 값 하나만 숫자에 반영하고 나머지는 라벨만 남긴다(3중 가산 금지).
  * 근거가 약하거나 유파마다 갈리는 요소(예: 신살 다수 결합, 공망 등)는 포함하지 않았다.
  */
 
@@ -203,9 +207,32 @@ export function computeSpouseActivation(ctx: SpouseActivationContext): SpouseAct
     }
   }
 
-  // 5) 대운·세운 복음(동일 간지) — 테마 반복으로 강도 증폭. 유파마다 비중이 갈리는 요소라 소폭만 반영.
+  // 5)+6) 복음(동일 간지) 계열 — 대운·세운끼리 같은 경우(5) + 대운·세운이 원국 일주(일간+일지,
+  // 배우자궁·자기 자신이 합쳐진 자리)와 완전히 같은 경우(6, provisional: 세운=일주 +10 > 대운·세운
+  // +8 = 대운=일주 +8). 세 조건은 등가관계라 dw=se이고 se=ilju면 dw=ilju도 자동 성립 — 즉 셋이
+  // 동시에 성립하는 경우(대운=세운=원국 일주)만 실제로 겹칠 수 있다. 이때 evidence 라벨은 전부
+  // 남기되, 같은 복음 계열이 숫자로 3중 누적되지 않도록 가장 강한 값 하나만 magnitude에 반영하고
+  // 나머지는 magnitude 0(라벨은 유지, "중복 방지"로 표시)으로 둔다.
+  const iljuHangul = ctx.dayBranch ? `${ctx.dayStem}${ctx.dayBranch}` : "";
+  const bokeumHits: { label: string; magnitude: number }[] = [];
   if (ctx.daewoonHangul && ctx.saeunHangul && ctx.daewoonHangul === ctx.saeunHangul) {
-    factors.push({ label: "대운·세운 복음(동일 간지) — 테마 반복으로 강도 증폭", magnitude: 8, direction: "중립" });
+    bokeumHits.push({ label: `대운·세운 복음(동일 간지 ${ctx.daewoonHangul}) — 테마 반복으로 강도 증폭`, magnitude: 8 });
+  }
+  if (iljuHangul && ctx.saeunHangul === iljuHangul) {
+    bokeumHits.push({ label: `세운 일주 복음(원국 일주와 완전 동일 ${iljuHangul}) — 배우자궁·자기 테마 재현`, magnitude: 10 });
+  }
+  if (iljuHangul && ctx.daewoonHangul === iljuHangul) {
+    bokeumHits.push({ label: `대운 일주 복음(원국 일주와 완전 동일 ${iljuHangul}) — 배우자궁·자기 테마 재현(10년 배경)`, magnitude: 8 });
+  }
+  if (bokeumHits.length > 0) {
+    bokeumHits.sort((a, b) => b.magnitude - a.magnitude);
+    bokeumHits.forEach((hit, i) => {
+      factors.push({
+        label: i === 0 ? hit.label : `${hit.label} (같은 복음 계열 중복 — 숫자 미반영)`,
+        magnitude: i === 0 ? hit.magnitude : 0,
+        direction: "중립",
+      });
+    });
   }
 
   const magnitudeSum = factors.reduce((sum, f) => sum + f.magnitude, 0);
