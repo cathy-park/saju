@@ -8,7 +8,9 @@ import type { CSSProperties, ReactNode } from "react";
  * - 긴 설명: `InfoBottomSheet` (`setInfoSheet`)
  *
  * 태그 컬러 단일 출처: 신살 `SHINSAL_COLOR`, 십성 `getTenGodChipStyle`+`getTenGodTw`, 오행 `element*Class`/`elementColorVar`,
- * 관계(지지) `RELATION_COLORS` — 동일 의미 태그는 다른 페이지에서도 이 토큰만 사용.
+ * 관계(지지) `RELATION_COLORS`, 좋음/보통/나쁨 등급(안정도·적합도·궁합등급 등 "높을수록 좋은" 지표) `toneColors.ts`
+ * — 동일 의미 태그는 다른 페이지에서도 이 토큰만 사용. 단, 활성도류(방향 무관 사건 크기)는 toneColors의
+ * 5색 스펙트럼 대상이 아니다(toneClassesNeutral만 사용) — 자세한 이유는 toneColors.ts 상단 주석 참고.
  */
 import type { ComputedPillars, FiveElementCount } from "@/lib/sajuEngine";
 import { countFiveElements, calculateProfileFromBirth } from "@/lib/sajuEngine";
@@ -152,6 +154,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { toneClasses, toneTierFromLevel, toneClassesNeutral } from "@/lib/toneColors";
 
 // ── Constants ──────────────────────────────────────────────────────
 
@@ -6192,26 +6195,26 @@ export function SajuReport({ record, showSaveStatus = false, hourMode: parentHou
                 <p className="text-[11px] text-muted-foreground pl-0.5">
                   관성(조직·규율·직위) 단일 축만 본 값 — 위 커리어 활성도의 구성 요소 중 하나입니다 (원국 {sajuPipelineResult.evaluations.officerActivation.grade})
                 </p>
-                <div className="rounded-lg border border-emerald-100 bg-emerald-50/60 px-3 py-2 space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold text-emerald-800">💰 재물 활성도</span>
-                    <span className="font-bold text-emerald-800">
+                <div className="rounded-lg border border-border/60 bg-muted/10 px-3 py-2 space-y-1.5">
+                  <div className={cn("flex items-center justify-between rounded-md px-2 py-1", toneClassesNeutral(sajuPipelineResult.wealthActivation.activationLevel).box)}>
+                    <span className={cn("font-semibold", toneClassesNeutral(sajuPipelineResult.wealthActivation.activationLevel).text)}>💰 재물 활성도</span>
+                    <span className={cn("font-bold", toneClassesNeutral(sajuPipelineResult.wealthActivation.activationLevel).text)}>
                       {sajuPipelineResult.wealthActivation.activationScore}점 · {sajuPipelineResult.wealthActivation.activationLevel}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold text-emerald-800">📈 재물 유입 기회도</span>
-                    <span className="font-bold text-emerald-800">
+                  <div className={cn("flex items-center justify-between rounded-md px-2 py-1", toneClasses(toneTierFromLevel(sajuPipelineResult.wealthActivation.inflowLevel)).box)}>
+                    <span className={cn("font-semibold", toneClasses(toneTierFromLevel(sajuPipelineResult.wealthActivation.inflowLevel)).text)}>📈 재물 유입 기회도</span>
+                    <span className={cn("font-bold", toneClasses(toneTierFromLevel(sajuPipelineResult.wealthActivation.inflowLevel)).text)}>
                       {sajuPipelineResult.wealthActivation.inflowScore}점 · {sajuPipelineResult.wealthActivation.inflowLevel}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold text-emerald-800">🏦 재물 안정·축적도</span>
-                    <span className="font-bold text-emerald-800">
+                  <div className={cn("flex items-center justify-between rounded-md px-2 py-1", toneClasses(toneTierFromLevel(sajuPipelineResult.wealthActivation.stabilityLevel)).box)}>
+                    <span className={cn("font-semibold", toneClasses(toneTierFromLevel(sajuPipelineResult.wealthActivation.stabilityLevel)).text)}>🏦 재물 안정·축적도</span>
+                    <span className={cn("font-bold", toneClasses(toneTierFromLevel(sajuPipelineResult.wealthActivation.stabilityLevel)).text)}>
                       {sajuPipelineResult.wealthActivation.stabilityScore}점 · {sajuPipelineResult.wealthActivation.stabilityLevel}
                     </span>
                   </div>
-                  <p className="text-[11px] leading-relaxed text-emerald-900/70 pt-0.5 border-t border-emerald-100">
+                  <p className="text-[11px] leading-relaxed text-muted-foreground pt-0.5 border-t border-border/50">
                     {sajuPipelineResult.wealthActivation.interpretation}
                   </p>
                 </div>
@@ -6249,9 +6252,9 @@ export function SajuReport({ record, showSaveStatus = false, hourMode: parentHou
                       {sajuPipelineResult.spouseActivation.activationScore}점
                     </span>
                   </div>
-                  <div className="flex items-center justify-between rounded-lg bg-muted/20 border border-border px-3 py-2">
-                    <span className="font-semibold text-foreground">🏠 배우자궁 안정도</span>
-                    <span className="font-bold text-foreground">
+                  <div className={cn("flex items-center justify-between rounded-lg border px-3 py-2", toneClasses(toneTierFromLevel(sajuPipelineResult.spouseActivation.stabilityLevel)).box)}>
+                    <span className={cn("font-semibold", toneClasses(toneTierFromLevel(sajuPipelineResult.spouseActivation.stabilityLevel)).text)}>🏠 배우자궁 안정도</span>
+                    <span className={cn("font-bold", toneClasses(toneTierFromLevel(sajuPipelineResult.spouseActivation.stabilityLevel)).text)}>
                       {sajuPipelineResult.spouseActivation.stabilityLevel}{" "}
                       {sajuPipelineResult.spouseActivation.stabilityScore}점
                     </span>

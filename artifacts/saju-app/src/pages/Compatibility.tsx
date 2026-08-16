@@ -7,6 +7,11 @@ import type { CompatibilityResult, CompatibilityTone } from "@/lib/compatibility
 import type { AnyCompatibilityReport } from "@/lib/reports";
 import { getCompatibilityReport } from "@/lib/reports";
 import { COMPAT_TONE_COLOR } from "@/lib/compatibilityScore";
+import { toneClasses, toneTierFromScore, toneTierFromLevel, toneClassesNeutral, type ToneTier } from "@/lib/toneColors";
+
+const PROGRESS_READINESS_TONE: Record<"매우 낮음" | "낮음" | "보통" | "높음" | "매우 높음", ToneTier> = {
+  "매우 낮음": 4, "낮음": 3, "보통": 2, "높음": 1, "매우 높음": 0,
+};
 import { Switch } from "@/components/ui/switch";
 import {
   getMyProfile,
@@ -1277,8 +1282,7 @@ export default function Compatibility() {
 
               {isPersonalLove && result.romanceMarriageFit && (() => {
                 const fit = result.romanceMarriageFit;
-                const scoreColor = (score: number) =>
-                  score >= 65 ? "text-emerald-700" : score < 45 ? "text-rose-700" : "text-amber-700";
+                const scoreColor = (score: number) => toneClasses(toneTierFromScore(score)).text;
                 return (
                   <div className="ds-card overflow-hidden shadow-none border-fuchsia-200/60 bg-fuchsia-50/25 dark:border-fuchsia-900/35 dark:bg-fuchsia-950/15">
                     <div className="border-b border-border bg-muted/20 px-4 py-3">
@@ -2184,22 +2188,18 @@ export default function Compatibility() {
                       <div key={year} className="rounded-lg border border-border p-3 bg-white dark:bg-neutral-900">
                         <div className="flex flex-wrap items-center gap-2">
                           <span className="text-[13px] font-bold text-foreground">{year}년</span>
-                          <span className="text-[11px] font-semibold rounded-full border border-rose-200 bg-rose-50 text-rose-700 px-2 py-0.5">
+                          <span className={cn("text-[11px] font-semibold rounded-full border px-2 py-0.5", toneClassesNeutral(r.activationLevel).badge)}>
                             관계 활성 {r.activationScore} ({r.activationLevel})
                           </span>
                           <span
                             className={cn(
                               "text-[11px] font-semibold rounded-full border px-2 py-0.5",
-                              r.harmonyDirection === "조화"
-                                ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                                : r.harmonyDirection === "충돌"
-                                ? "border-red-200 bg-red-50 text-red-700"
-                                : "border-gray-200 bg-gray-50 text-gray-700",
+                              toneClasses(toneTierFromLevel(r.harmonyDirection)).badge,
                             )}
                           >
                             조화 {r.harmonyScore} ({r.harmonyDirection})
                           </span>
-                          <span className="text-[11px] font-semibold rounded-full border border-sky-200 bg-sky-50 text-sky-700 px-2 py-0.5">
+                          <span className={cn("text-[11px] font-semibold rounded-full border px-2 py-0.5", toneClasses(toneTierFromLevel(r.stabilityLevel)).badge)}>
                             안정 {r.stabilityScore} ({r.stabilityLevel})
                           </span>
                         </div>
@@ -2207,13 +2207,7 @@ export default function Compatibility() {
                         <div
                           className={cn(
                             "mt-2 rounded-md border px-2.5 py-2",
-                            {
-                              "매우 낮음": "border-slate-300 bg-slate-50 dark:border-slate-700 dark:bg-slate-900/30",
-                              "낮음": "border-sky-200 bg-sky-50/60 dark:border-sky-900/40 dark:bg-sky-950/20",
-                              "보통": "border-amber-200 bg-amber-50/60 dark:border-amber-900/40 dark:bg-amber-950/20",
-                              "높음": "border-rose-200 bg-rose-50/60 dark:border-rose-900/40 dark:bg-rose-950/20",
-                              "매우 높음": "border-pink-300 bg-pink-100/70 dark:border-pink-800/50 dark:bg-pink-950/30",
-                            }[r.progressReadinessLevel],
+                            toneClasses(PROGRESS_READINESS_TONE[r.progressReadinessLevel]).box,
                           )}
                         >
                           <div className="flex items-center justify-between gap-2">
@@ -2221,13 +2215,7 @@ export default function Compatibility() {
                             <span
                               className={cn(
                                 "text-[11px] font-bold rounded-full border px-2 py-0.5",
-                                {
-                                  "매우 낮음": "border-slate-400 bg-slate-200 text-slate-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200",
-                                  "낮음": "border-sky-300 bg-sky-100 text-sky-700 dark:border-sky-800 dark:bg-sky-900/50 dark:text-sky-300",
-                                  "보통": "border-amber-300 bg-amber-100 text-amber-700 dark:border-amber-800 dark:bg-amber-900/50 dark:text-amber-300",
-                                  "높음": "border-rose-300 bg-rose-100 text-rose-700 dark:border-rose-800 dark:bg-rose-900/50 dark:text-rose-300",
-                                  "매우 높음": "border-pink-400 bg-pink-200 text-pink-800 dark:border-pink-700 dark:bg-pink-900/60 dark:text-pink-200",
-                                }[r.progressReadinessLevel],
+                                toneClasses(PROGRESS_READINESS_TONE[r.progressReadinessLevel]).badge,
                               )}
                             >
                               {r.progressReadinessLevel}
