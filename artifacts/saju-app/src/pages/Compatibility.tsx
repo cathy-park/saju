@@ -2162,10 +2162,34 @@ export default function Compatibility() {
                           </span>
                         </div>
                         <p className="mt-1.5 text-[12px] leading-relaxed text-foreground/85">{r.interpretation}</p>
-                        <div className="mt-2 rounded-md border border-pink-200/70 bg-pink-50/50 px-2.5 py-2 dark:border-pink-900/40 dark:bg-pink-950/20">
+                        <div
+                          className={cn(
+                            "mt-2 rounded-md border px-2.5 py-2",
+                            {
+                              "매우 낮음": "border-slate-300 bg-slate-50 dark:border-slate-700 dark:bg-slate-900/30",
+                              "낮음": "border-sky-200 bg-sky-50/60 dark:border-sky-900/40 dark:bg-sky-950/20",
+                              "보통": "border-amber-200 bg-amber-50/60 dark:border-amber-900/40 dark:bg-amber-950/20",
+                              "높음": "border-rose-200 bg-rose-50/60 dark:border-rose-900/40 dark:bg-rose-950/20",
+                              "매우 높음": "border-pink-300 bg-pink-100/70 dark:border-pink-800/50 dark:bg-pink-950/30",
+                            }[r.progressReadinessLevel],
+                          )}
+                        >
                           <div className="flex items-center justify-between gap-2">
-                            <span className="text-[11px] font-bold text-pink-700">💕 관계 진전 여건</span>
-                            <span className="text-[12px] font-bold text-pink-700">{r.progressReadinessLevel}</span>
+                            <span className="text-[11px] font-bold text-foreground/90">💕 관계 진전 여건</span>
+                            <span
+                              className={cn(
+                                "text-[11px] font-bold rounded-full border px-2 py-0.5",
+                                {
+                                  "매우 낮음": "border-slate-400 bg-slate-200 text-slate-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200",
+                                  "낮음": "border-sky-300 bg-sky-100 text-sky-700 dark:border-sky-800 dark:bg-sky-900/50 dark:text-sky-300",
+                                  "보통": "border-amber-300 bg-amber-100 text-amber-700 dark:border-amber-800 dark:bg-amber-900/50 dark:text-amber-300",
+                                  "높음": "border-rose-300 bg-rose-100 text-rose-700 dark:border-rose-800 dark:bg-rose-900/50 dark:text-rose-300",
+                                  "매우 높음": "border-pink-400 bg-pink-200 text-pink-800 dark:border-pink-700 dark:bg-pink-900/60 dark:text-pink-200",
+                                }[r.progressReadinessLevel],
+                              )}
+                            >
+                              {r.progressReadinessLevel}
+                            </span>
                           </div>
                           <p className="mt-1 text-[11px] leading-relaxed text-foreground/80">{r.progressReadinessNote}</p>
                           <p className="mt-1 text-[10px] leading-relaxed text-muted-foreground">근거: {r.progressReadinessReasons.join(" · ")}</p>

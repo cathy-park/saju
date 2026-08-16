@@ -6193,14 +6193,13 @@ export function SajuReport({ record, showSaveStatus = false, hourMode: parentHou
                   관성(조직·규율·직위) 단일 축만 본 값 — 위 커리어 활성도의 구성 요소 중 하나입니다 (원국 {sajuPipelineResult.evaluations.officerActivation.grade})
                 </p>
                 <div className="flex items-center justify-between rounded-lg bg-emerald-50/60 border border-emerald-100 px-3 py-2">
-                  <span className="font-semibold text-emerald-800">💰 재물</span>
+                  <span className="font-semibold text-emerald-800">💰 재물 활성</span>
                   <span className="font-bold text-emerald-800">
-                    {sajuPipelineResult.timingActivation.wealthActivationNow}점 · 추세{" "}
-                    {sajuPipelineResult.timingActivation.wealthActivationTrend}
+                    {sajuPipelineResult.timingActivation.wealthActivationNow}점 · {sajuPipelineResult.timingActivation.wealthActivationTrend}
                   </span>
                 </div>
                 <p className="text-[11px] text-muted-foreground pl-0.5">
-                  실제 돈이 얼마나 들어오고 감당·축적되는가 (원국 종합 {sajuPipelineResult.evaluations.wealthActivation.grade})
+                  재물 관련 사건·기회가 이 시기에 얼마나 강하게 움직이는가 — 실제로 남는지(안정·축적)와는 다른 축입니다 (원국 종합 {sajuPipelineResult.evaluations.wealthActivation.grade})
                 </p>
                 <p className="text-[11px] text-muted-foreground pl-0.5">
                   원국 종합은 재물 채널·유지·축적의 결합값이며, 재성 작동만을 뜻하지 않습니다. 세 축은 원국 탭 재물 카드를 참고하세요.
