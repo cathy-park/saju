@@ -452,18 +452,31 @@ export function buildPersonClipboardText(
     lines.push("");
     const careerActivation = pipelineSnapshot?.careerActivation;
     if (careerActivation) {
-      lines.push(`현재 커리어 활성도 (식상·관성·인성 3축 + 격국·용신 종합, 관성 단일 축과 다름):`);
-      lines.push(`${fmt2(careerActivation.careerActivationNow)}`);
-      lines.push(`(${careerActivation.careerActivationTrend})`);
+      lines.push(`현재 커리어 2축 (식상·관성·인성 3축 + 격국·용신 종합, 관성 단일 축과 다름 — 활성도≠전개방향):`);
+      lines.push(`  💼 커리어 활성도(방향 무관 사건 크기): ${careerActivation.activationScore}점 (${careerActivation.activationLevel})`);
+      lines.push(`  📈 커리어 전개 방향(확장·성과 ↔ 압박·축소): ${careerActivation.directionScore}점 (${careerActivation.directionLevel})`);
+      lines.push(`  해석: ${careerActivation.interpretation}`);
       if (careerActivation.factors.length > 0) {
-        lines.push(`근거: ${careerActivation.factors.map((f) => f.label).join(" / ")}`);
+        lines.push(`  근거: ${careerActivation.factors.map((f) => f.label).join(" / ")}`);
       }
       lines.push("");
     }
-    lines.push(`현재 관성 활성도(단일 축 — 조직·규율·직위):`);
-    lines.push(`${fmt2(timingActivation.officerActivationNow)}`);
-    lines.push(`(${timingActivation.officerActivationTrend})`);
-    lines.push("");
+    const officerActivation = pipelineSnapshot?.officerActivation;
+    if (officerActivation) {
+      lines.push(`현재 관성 2축(단일 축 — 조직·규율·직위, 위 커리어 활성도의 구성 요소 중 하나 — 활성도≠작동방향):`);
+      lines.push(`  🏛️ 조직·책임 활성도(방향 무관 사건 크기): ${officerActivation.activationScore}점 (${officerActivation.activationLevel})`);
+      lines.push(`  ⚖️ 조직·책임 작동 방향(재생관/상관견관 + 용신·희신·기신 종합): ${officerActivation.directionScore}점 (${officerActivation.directionLevel})`);
+      lines.push(`  해석: ${officerActivation.interpretation}`);
+      if (officerActivation.factors.length > 0) {
+        lines.push(`  근거: ${officerActivation.factors.map((f) => f.label).join(" / ")}`);
+      }
+      lines.push("");
+    } else {
+      lines.push(`현재 관성 활성도(단일 축 — 조직·규율·직위):`);
+      lines.push(`${fmt2(timingActivation.officerActivationNow)}`);
+      lines.push(`(${timingActivation.officerActivationTrend})`);
+      lines.push("");
+    }
     const wealthActivation = pipelineSnapshot?.wealthActivation;
     if (wealthActivation) {
       lines.push(`현재 재물 3축(원국 재물 그릇과 분리된 이 해의 timing — 활성도≠유입도≠안정축적도):`);

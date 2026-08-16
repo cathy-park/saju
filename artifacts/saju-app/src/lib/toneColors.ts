@@ -74,10 +74,10 @@ export function toneTierFromScore(
  */
 const LEVEL_TIER_MAP: Record<string, ToneTier> = {
   "이상적": 0, "이상적 궁합": 0, "매우 높음": 0,
-  "좋음": 1, "좋은 궁합": 1, "유리": 1, "안정": 1, "조화": 1,
+  "좋음": 1, "좋은 궁합": 1, "유리": 1, "안정": 1, "조화": 1, "우호 우세": 1,
   "보통": 2, "중립": 2, "노력형 궁합": 2, "노력형": 2,
   "불리": 3, "긴장형 궁합": 3, "긴장형": 3,
-  "매우 낮음": 4, "불안정": 4, "충돌": 4, "주의": 4, "주의 궁합": 4,
+  "매우 낮음": 4, "불안정": 4, "충돌": 4, "주의": 4, "주의 궁합": 4, "부담 우세": 4,
 };
 export function toneTierFromLevel(level: string): ToneTier {
   return LEVEL_TIER_MAP[level] ?? 2;
@@ -87,8 +87,8 @@ export function toneTierFromLevel(level: string): ToneTier {
  * 활성도류(방향 무관 사건 크기) 전용 — 좋음/나쁨 색조를 쓰지 않고 단일 색조(호박/amber)의
  * 강도만 다르게 준다. "활성도가 높다 = 좋다"로 오독되지 않도록 의도적으로 5색 팔레트와 분리.
  */
-export function toneClassesNeutral(intensity: "높음" | "보통" | "낮음"): ToneClasses {
-  if (intensity === "높음") {
+export function toneClassesNeutral(intensity: "높음" | "강함" | "보통" | "낮음" | "약함"): ToneClasses {
+  if (intensity === "높음" || intensity === "강함") {
     return {
       box: "border-amber-200 bg-amber-50/70 dark:border-amber-900/40 dark:bg-amber-950/20",
       text: "text-amber-800 dark:text-amber-300",

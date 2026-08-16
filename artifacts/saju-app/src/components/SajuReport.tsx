@@ -6175,25 +6175,45 @@ export function SajuReport({ record, showSaveStatus = false, hourMode: parentHou
                 </p>
               </div>
               <div className="ds-card-pad space-y-2 text-[13px] leading-relaxed">
-                <div className="flex items-center justify-between rounded-lg bg-amber-50/60 border border-amber-100 px-3 py-2">
-                  <span className="font-semibold text-amber-800">💼 커리어</span>
-                  <span className="font-bold text-amber-800">
-                    {sajuPipelineResult.careerActivation.careerActivationNow}점 · 추세{" "}
-                    {sajuPipelineResult.careerActivation.careerActivationTrend}
-                  </span>
+                <div className="rounded-lg border border-border/60 bg-muted/10 px-3 py-2 space-y-1.5">
+                  <div className={cn("flex items-center justify-between rounded-md px-2 py-1", toneClassesNeutral(sajuPipelineResult.careerActivation.activationLevel).box)}>
+                    <span className={cn("font-semibold", toneClassesNeutral(sajuPipelineResult.careerActivation.activationLevel).text)}>💼 커리어 활성도</span>
+                    <span className={cn("font-bold", toneClassesNeutral(sajuPipelineResult.careerActivation.activationLevel).text)}>
+                      {sajuPipelineResult.careerActivation.activationScore}점 · {sajuPipelineResult.careerActivation.activationLevel}
+                    </span>
+                  </div>
+                  <div className={cn("flex items-center justify-between rounded-md px-2 py-1", toneClasses(toneTierFromLevel(sajuPipelineResult.careerActivation.directionLevel)).box)}>
+                    <span className={cn("font-semibold", toneClasses(toneTierFromLevel(sajuPipelineResult.careerActivation.directionLevel)).text)}>📈 커리어 전개 방향</span>
+                    <span className={cn("font-bold", toneClasses(toneTierFromLevel(sajuPipelineResult.careerActivation.directionLevel)).text)}>
+                      {sajuPipelineResult.careerActivation.directionScore}점 · {sajuPipelineResult.careerActivation.directionLevel}
+                    </span>
+                  </div>
+                  <p className="text-[11px] leading-relaxed text-muted-foreground pt-0.5 border-t border-border/50">
+                    {sajuPipelineResult.careerActivation.interpretation}
+                  </p>
                 </div>
                 <p className="text-[11px] text-muted-foreground pl-0.5">
-                  직업·프로젝트·역할·성과·조직 활동이 얼마나 활성화되는가 — 식상·관성·인성 3축과 격국·용신을 종합 (원국 {sajuPipelineResult.structureDomains.career.classification})
+                  활성도는 방향과 무관한 사건 크기(식상·관성·인성 3축 종합), 전개 방향은 그 움직임이 확장·성과 쪽인지 압박·축소 쪽인지입니다 — 활성도가 높다고 좋다는 뜻은 아닙니다 (원국 {sajuPipelineResult.structureDomains.career.classification})
                 </p>
-                <div className="flex items-center justify-between rounded-lg bg-orange-50/50 border border-orange-100 px-3 py-2">
-                  <span className="font-semibold text-orange-700">🏛️ 사회·책임(관성)</span>
-                  <span className="font-bold text-orange-700">
-                    {sajuPipelineResult.timingActivation.officerActivationNow}점 · 추세{" "}
-                    {sajuPipelineResult.timingActivation.officerActivationTrend}
-                  </span>
+                <div className="rounded-lg border border-border/60 bg-muted/10 px-3 py-2 space-y-1.5">
+                  <div className={cn("flex items-center justify-between rounded-md px-2 py-1", toneClassesNeutral(sajuPipelineResult.officerActivation.activationLevel).box)}>
+                    <span className={cn("font-semibold", toneClassesNeutral(sajuPipelineResult.officerActivation.activationLevel).text)}>🏛️ 조직·책임 활성도</span>
+                    <span className={cn("font-bold", toneClassesNeutral(sajuPipelineResult.officerActivation.activationLevel).text)}>
+                      {sajuPipelineResult.officerActivation.activationScore}점 · {sajuPipelineResult.officerActivation.activationLevel}
+                    </span>
+                  </div>
+                  <div className={cn("flex items-center justify-between rounded-md px-2 py-1", toneClasses(toneTierFromLevel(sajuPipelineResult.officerActivation.directionLevel)).box)}>
+                    <span className={cn("font-semibold", toneClasses(toneTierFromLevel(sajuPipelineResult.officerActivation.directionLevel)).text)}>⚖️ 조직·책임 작동 방향</span>
+                    <span className={cn("font-bold", toneClasses(toneTierFromLevel(sajuPipelineResult.officerActivation.directionLevel)).text)}>
+                      {sajuPipelineResult.officerActivation.directionScore}점 · {sajuPipelineResult.officerActivation.directionLevel}
+                    </span>
+                  </div>
+                  <p className="text-[11px] leading-relaxed text-muted-foreground pt-0.5 border-t border-border/50">
+                    {sajuPipelineResult.officerActivation.interpretation}
+                  </p>
                 </div>
                 <p className="text-[11px] text-muted-foreground pl-0.5">
-                  관성(조직·규율·직위) 단일 축만 본 값 — 위 커리어 활성도의 구성 요소 중 하나입니다 (원국 {sajuPipelineResult.evaluations.officerActivation.grade})
+                  관성(조직·규율·직위) 단일 축만 본 값 — 위 커리어 활성도의 구성 요소 중 하나입니다. 방향에는 재생관·상관견관 구조와 용신·희신·기신 일치 여부가 반영됩니다 (원국 {sajuPipelineResult.evaluations.officerActivation.grade})
                 </p>
                 <div className="rounded-lg border border-border/60 bg-muted/10 px-3 py-2 space-y-1.5">
                   <div className={cn("flex items-center justify-between rounded-md px-2 py-1", toneClassesNeutral(sajuPipelineResult.wealthActivation.activationLevel).box)}>

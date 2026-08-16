@@ -63,6 +63,10 @@ import {
   computeWealthActivation,
   type WealthActivationResult,
 } from "./evaluations/wealthActivation";
+import {
+  computeOfficerActivation,
+  type OfficerActivationResult,
+} from "./evaluations/officerActivation";
 
 // ── 지장간 오행 증폭 (地藏干 Augmentation) ────────────────────────
 // Adds hidden stem elements to a five-element count with fractional weights.
@@ -477,6 +481,9 @@ export interface SajuPipelineResult {
   /** 재물 timing 3축(유입도·활성도·안정축적도) — wealthActivationNow(원국+델타 혼합)와 별개로,
    * 원국 축적력은 제한된 calibration으로만 쓰고 이 해의 재물 지지 충형을 직접 반영한다 */
   wealthActivation: WealthActivationResult;
+  /** 관성(조직·책임) 활성도/작동방향 2축 — officerActivationNow(원국+델타 혼합, 방향 미반영)와
+   * 별개로, 크기(activation)와 방향(direction, 용희신·기신 포함)을 분리한다 */
+  officerActivation: OfficerActivationResult;
 }
 
 /**
@@ -609,6 +616,20 @@ export function computeSajuPipeline(input: PipelineInput): SajuPipelineResult {
     console.log("[wealthActivation]", wealthActivation);
   }
 
+  const officerActivation = computeOfficerActivation({
+    dayStem: input.dayStem,
+    daewoonHangul: input.timingDaewoonHangul,
+    saeunHangul: input.timingSeunHangul,
+    yongshin: adjusted.effectiveYongshin,
+    heesin: adjusted.effectiveYongshinSecondary,
+    gisin: getController(adjusted.effectiveYongshin),
+  });
+
+  if (isDevRuntime()) {
+    // eslint-disable-next-line no-console
+    console.log("[officerActivation]", officerActivation);
+  }
+
   const diagnostics: EngineDiagnostics = {
     strength: {
       source: "interpretSchema.computeStrengthResult",
@@ -642,5 +663,5 @@ export function computeSajuPipeline(input: PipelineInput): SajuPipelineResult {
       reason: interpretation.seasonalNote,
     },
   };
-  return { input, base, adjusted, interpretation, diagnostics, evaluations, structureDomains, timingActivation, spouseActivation, careerActivation, wealthActivation };
+  return { input, base, adjusted, interpretation, diagnostics, evaluations, structureDomains, timingActivation, spouseActivation, careerActivation, wealthActivation, officerActivation };
 }
