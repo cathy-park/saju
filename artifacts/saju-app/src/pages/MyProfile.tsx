@@ -7,6 +7,7 @@ import {
   getMyProfile,
   saveMyProfile,
   deleteMyProfile,
+  clearPendingDelete,
   saveMaritalStatus,
   createRecord,
   type PersonRecord,
@@ -87,14 +88,17 @@ export default function MyProfile() {
   }
 
   async function handleDelete() {
+    const deletedId = record?.id;
     deleteMyProfile();
     setRecord(null);
     setShowDeleteConfirm(false);
     if (user) {
       try {
         await deleteMyProfileFromDb(user.id);
+        if (deletedId) clearPendingDelete(deletedId);
       } catch (e) {
-        console.error("[MyProfile] delete from db failed:", e);
+        // 실패해도 pendingDelete는 남아 다음 로그인 sync 때 재시도된다.
+        console.error("[MyProfile] delete from db failed, will retry on next sync:", e);
       }
     }
     toast({ description: "내 사주가 삭제되었습니다", duration: 3000 });

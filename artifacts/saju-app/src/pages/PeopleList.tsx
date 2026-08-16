@@ -15,6 +15,7 @@ import {
 import {
   getPeople,
   deletePerson,
+  clearPendingDelete,
   getFinalPillars,
   type PersonRecord,
   type RelationshipType,
@@ -237,7 +238,14 @@ export default function PeopleList() {
     deletePerson(id);
     setPeople(getPeople());
     if (user) {
-      await deletePartnerProfile(id);
+      try {
+        await deletePartnerProfile(id);
+        clearPendingDelete(id);
+      } catch (e) {
+        // 실패해도 pendingDelete는 남아 다음 로그인 sync 때 재시도된다(삭제한 사람이
+        // 다시 나타나는 걸 막기 위한 tombstone).
+        console.warn("[PeopleList] delete from db failed, will retry on next sync:", e);
+      }
     }
   }
 

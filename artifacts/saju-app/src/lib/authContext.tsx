@@ -7,11 +7,15 @@ import {
   upsertMyProfile,
   upsertPartnerProfile,
   upsertUserProfile,
+  deleteMyProfileFromDb,
+  deletePartnerProfile,
 } from "./db";
 import {
   load as loadLocal,
   saveMyProfile,
   savePerson,
+  getPendingDeletes,
+  clearPendingDelete,
 } from "./storage";
 import { toast } from "@/hooks/use-toast";
 
@@ -109,6 +113,20 @@ async function syncWithSupabase(uid: string, userMeta: SupabaseUser | null): Pro
     }
   }
 
+  // 3.5. 로컬에서 삭제됐지만 DB 삭제가 아직 반영 안 됐을 수 있는 id(로그아웃 상태에서 삭제했거나,
+  // 삭제 직후 즉시 DB 호출이 실패한 경우)를 재시도한다. 이걸 안 하면 아래 4번 pull이 "DB에는
+  // 있는데 로컬엔 없다"고 보고 되살려버린다(삭제한 사람이 다시 나타나는 버그의 원인).
+  const pendingDeletes = getPendingDeletes();
+  for (const delId of pendingDeletes) {
+    try {
+      if (dbProfile?.id === delId) await deleteMyProfileFromDb(uid);
+      else await deletePartnerProfile(delId);
+      clearPendingDelete(delId);
+    } catch (e) {
+      console.warn(`[auth] pending delete retry failed for ${delId} (will retry next sync):`, e);
+    }
+  }
+
   // 4. Pull final DB state → merge with localStorage (DB wins for known records, local wins for local-only)
   try {
     const [finalProfile, finalPartners] = await Promise.all([
@@ -116,14 +134,19 @@ async function syncWithSupabase(uid: string, userMeta: SupabaseUser | null): Pro
       fetchPartnerProfiles(uid),
     ]);
 
-    if (finalProfile) {
+    // 위 재시도가 실패해 DB에 여전히 남아있을 수 있는 tombstone은 여기서도 한 번 더 걸러
+    // 되살아나지 않게 막는다(재시도는 다음 sync에서 계속됨).
+    const stillPending = new Set(getPendingDeletes());
+
+    if (finalProfile && !stillPending.has(finalProfile.id)) {
       saveMyProfile(finalProfile);
       console.log("[auth] synced myProfile from Supabase ✓");
     }
 
     const finalDbIds = new Set(finalPartners.map((p) => p.id));
-    // Save DB partners (DB wins for these records)
+    // Save DB partners (DB wins for these records) — pending-delete tombstone이 남아있는 건 제외
     for (const p of finalPartners) {
+      if (stillPending.has(p.id)) continue;
       savePerson(p);
     }
     // Preserve any local-only partners that didn't make it to DB (local fallback)

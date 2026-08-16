@@ -137,6 +137,13 @@ export interface PersonRecord {
 export interface AppStorage {
   myProfile: PersonRecord | null;
   people: PersonRecord[];
+  /**
+   * 로컬에서 삭제됐지만 Supabase에는 아직 반영되지 못했을 수 있는 id 목록(myProfile.id 또는
+   * people[].id). 로그아웃 상태로 삭제했거나 DB 삭제 호출이 실패한 경우, 다음 로그인 sync가
+   * "DB에는 있는데 로컬에는 없다"고 보고 되살리는 걸 막고, sync 시점에 삭제를 재시도하기 위한
+   * tombstone이다. 재시도가 성공하면 이 목록에서 제거된다.
+   */
+  pendingDeletes?: string[];
 }
 
 const STORAGE_KEY = "saju_app_v1";
@@ -165,9 +172,28 @@ export function saveMyProfile(record: PersonRecord): void {
   save(data);
 }
 
+function addPendingDelete(data: AppStorage, id: string): void {
+  const pending = new Set(data.pendingDeletes ?? []);
+  pending.add(id);
+  data.pendingDeletes = [...pending];
+}
+
+export function clearPendingDelete(id: string): void {
+  const data = load();
+  if (!data.pendingDeletes) return;
+  data.pendingDeletes = data.pendingDeletes.filter((x) => x !== id);
+  save(data);
+}
+
+export function getPendingDeletes(): string[] {
+  return load().pendingDeletes ?? [];
+}
+
 export function deleteMyProfile(): void {
   const data = load();
+  const deletedId = data.myProfile?.id;
   data.myProfile = null;
+  if (deletedId) addPendingDelete(data, deletedId);
   save(data);
 }
 
@@ -189,6 +215,7 @@ export function savePerson(record: PersonRecord): void {
 export function deletePerson(id: string): void {
   const data = load();
   data.people = data.people.filter((p) => p.id !== id);
+  addPendingDelete(data, id);
   save(data);
 }
 
