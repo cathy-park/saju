@@ -823,7 +823,9 @@ export default function Compatibility() {
   const relType: RelationshipType | undefined =
     (p2 as (PersonRecord & { relationshipType?: RelationshipType }) | null)?.relationshipType;
 
-  const isPersonalLove = relType === "lover" || relType === "spouse";
+  // 썸/이성(interest)도 연애 전제 관계라 연인·배우자와 동일하게 연애/결혼 적합도 등
+  // isPersonalLove 계열 UI를 노출한다.
+  const isPersonalLove = relType === "lover" || relType === "spouse" || relType === "interest";
 
   const fullReport: AnyCompatibilityReport | null = (ep1 && ep2)
     ? getCompatibilityReport(ep1, ep2, relType)
@@ -1871,7 +1873,7 @@ export default function Compatibility() {
 
                 {mode === "me_other" && (() => {
                   const rel = (p2 as (PersonRecord & { relationshipType?: RelationshipType }) | null)?.relationshipType;
-                  const show = rel === "lover" || rel === "spouse";
+                  const show = rel === "lover" || rel === "spouse" || rel === "interest";
                   if (!show) return null;
                   return (
                     <div className="ds-card overflow-hidden shadow-none">
