@@ -468,7 +468,7 @@ export function buildPersonClipboardText(
     if (wealthActivation) {
       lines.push(`현재 재물 3축(원국 재물 그릇과 분리된 이 해의 timing — 활성도≠유입도≠안정축적도):`);
       lines.push(`  💰 재물 활성도(방향 무관 사건 크기): ${wealthActivation.activationScore}점 (${wealthActivation.activationLevel})`);
-      lines.push(`  📈 재물 유입도(실제 들어오는 방향의 유불리): ${wealthActivation.inflowScore}점 (${wealthActivation.inflowLevel})`);
+      lines.push(`  📈 재물 유입 기회도(수익으로 연결될 기회·채널이 열리는 방향 — 실제 현금 입금 시점과는 다를 수 있음): ${wealthActivation.inflowScore}점 (${wealthActivation.inflowLevel})`);
       lines.push(`  🏦 재물 안정·축적도(남기고 지키기 쉬운 정도): ${wealthActivation.stabilityScore}점 (${wealthActivation.stabilityLevel})`);
       lines.push(`  해석: ${wealthActivation.interpretation}`);
       if (wealthActivation.factors.length > 0) {
@@ -778,9 +778,23 @@ export function buildPersonClipboardText(
     lines.push("5. 💡 실생활 개운법 (아쉬운 점을 보완하고 특히 재물운과 연애운을 높이기 위해 일상에서 실천할 수 있는 구체적인 팁 3가지를 제안해 주세요.)");
     lines.push("");
     lines.push("어려운 한자어는 최대한 피하거나 반드시 쉽게 풀어서 설명하고, 희망적이고 긍정적인 조언을 중심으로 작성해 주세요.");
+    lines.push("");
+    pushInterpretationConsistencyRules(lines);
   }
 
   return lines.join("\n");
+}
+
+/** [해석 일관성 규칙] — 제공된 계산 결과를 anchor로 고정하고 AI가 임의로 재계산·역전하지 않도록 하는 공통 지시. 개인·궁합 프롬프트 하단에 동일하게 붙인다. */
+function pushInterpretationConsistencyRules(lines: string[]): void {
+  lines.push("---");
+  lines.push("[해석 일관성 규칙]");
+  lines.push("제공된 계산 점수·등급·관계 유형·evidence를 최우선 anchor로 사용한다.");
+  lines.push("이미 계산된 점수를 AI가 임의로 재계산하거나 상향·하향하지 않는다.");
+  lines.push("동일 데이터라면 핵심 결론이 달라지지 않도록 한다.");
+  lines.push("표현 방식은 달라질 수 있으나 좋음/보통/주의, 활성/조화/안정, 연애/결혼 적합도의 방향을 뒤집지 않는다.");
+  lines.push("evidence가 상충할 경우 한쪽을 임의로 삭제하지 않고 \"우호 요인과 긴장 요인이 공존한다\"고 설명한다.");
+  lines.push("코드 결과와 일반 명리 지식이 충돌하면 코드에서 제공된 구조 데이터를 우선하고, 필요하면 한계를 별도로 설명한다.");
 }
 
 // ── 궁합 분석 전체 텍스트 빌드 ────────────────────────────────────
@@ -1012,6 +1026,8 @@ export function buildCompatibilityClipboardText(
   lines.push("- 개인 사주 데이터는 참고로만 쓰시고 철저히 관계성 중심(궁합)으로만 해석할 것.");
   lines.push("- 개인용 운세(오늘운세, 커리어, 개인적 개운법 등)는 절대 중복 삽입하지 말 것.");
   lines.push("- 따뜻하고 상담하듯 자연스러운 문장식(산문)으로 작성할 것 (표 남용 금지).");
+  lines.push("");
+  pushInterpretationConsistencyRules(lines);
 
   return lines.join("\n");
 }

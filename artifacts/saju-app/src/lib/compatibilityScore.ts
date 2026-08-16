@@ -980,39 +980,56 @@ function buildSpouseActivationYearsForPerson(
 }
 
 // ── 연애 적합도 / 결혼 적합도 (원국 기반, 연도별 timing과 분리) ────────────
-// 삼합·방합 그룹의 대표 오행(원국 삼합/방합 이론의 표준 배속).
-const GROUP_ELEMENT: Record<string, FiveElKey> = {
-  인오술: "화", 사유축: "금", 신자진: "수", 해묘미: "목", // 삼합
-  인묘진: "목", 사오미: "화", 신유술: "금", 해자축: "수", // 방합
+// 삼합·방합 그룹의 대표 오행(원국 삼합/방합 이론의 표준 배속). 삼합/방합을 분리해 두어
+// 그룹 문자열(예: "신유술")을 split("")한 배열이 곧 그 그룹의 3개 지지가 된다.
+const SAMHAP_GROUP_ELEMENT: Record<string, FiveElKey> = {
+  인오술: "화", 사유축: "금", 신자진: "수", 해묘미: "목",
+};
+const BANGHAP_GROUP_ELEMENT: Record<string, FiveElKey> = {
+  인묘진: "목", 사오미: "화", 신유술: "금", 해자축: "수",
 };
 
 /**
  * 결혼 적합도의 삼합/방합 가산 — 있다는 사실만으로 무조건 +5를 주지 않는다.
- * 1) 두 사람 지지를 가로질러 실제로 교차 형성되는 구조만 인정(한 사람 원국 내부 완결은 제외)
- * 2) 완성(3지) vs 흐름(2지 부분)을 구분해 흐름은 훨씬 낮은 가중치
+ * 1) 진짜 "두 사람 교차 형성"만 인정한다: 그룹을 이루는 지지 중 실제로 사용된 지지들
+ *    (unionPresent)을 한 사람의 원국 혼자만으로 전부 커버한다면(=상대가 아무것도 보태지
+ *    않는다면) 그건 원래 그 사람 개인 원국에 있던 구조이므로 커플 bonus에서 제외한다.
+ *    지지 문자가 두 사람 모두에게 우연히 겹친다는 이유만으로 "교차"로 오인하지 않도록,
+ *    branchRelations의 pair 단위 결과를 쓰지 않고 그룹 단위로 직접 판정한다.
+ * 2) 완성(3지 모두 사용) vs 흐름(2지만 사용)을 구분해 흐름은 훨씬 낮은 가중치.
  * 3) 그 합국 오행이 각자의 용신·희신인지 기신인지 확인해서, 한쪽 기신을 강하게 만드는
- *    합국이면 가산을 줄이거나(한쪽만 기신) 아예 주지 않는다(양쪽 다 기신)
+ *    합국이면 가산을 줄이거나(한쪽만 기신) 아예 주지 않는다(양쪽 다 기신).
  */
 function marriageGroupStructureBonus(
   br1: string[], br2: string[],
   y1: FiveElKey, h1: FiveElKey | undefined, g1: FiveElKey,
   y2: FiveElKey, h2: FiveElKey | undefined, g2: FiveElKey,
 ): { bonus: number; notes: string[] } {
-  const combined = [...new Set([...br1, ...br2])];
-  const rels = computeBranchRelations(combined);
+  const set1 = new Set(br1);
+  const set2 = new Set(br2);
   let bonus = 0;
   const notes: string[] = [];
-  for (const r of rels) {
-    if (r.type !== "지지삼합" && r.type !== "지지방합") continue;
-    const b1InP1 = br1.includes(r.branch1), b1InP2 = br2.includes(r.branch1);
-    const b2InP1 = br1.includes(r.branch2), b2InP2 = br2.includes(r.branch2);
-    const crossFormed = (b1InP1 && b2InP2) || (b1InP2 && b2InP1);
-    if (!crossFormed) continue; // 한 사람 원국 내부에서만 완결되는 구조는 "두 사람 사이" 결속이 아님
 
-    const groupKey = r.description.split(" ")[0];
-    const el = GROUP_ELEMENT[groupKey];
-    if (!el) continue;
-    const isPartial = r.description.includes("흐름");
+  const allGroups: Array<[string, FiveElKey, "삼합" | "방합"]> = [
+    ...Object.entries(SAMHAP_GROUP_ELEMENT).map(([k, v]) => [k, v, "삼합"] as [string, FiveElKey, "삼합" | "방합"]),
+    ...Object.entries(BANGHAP_GROUP_ELEMENT).map(([k, v]) => [k, v, "방합"] as [string, FiveElKey, "삼합" | "방합"]),
+  ];
+
+  for (const [groupKey, el, relLabel] of allGroups) {
+    const members = groupKey.split("");
+    const presentInP1 = members.filter((m) => set1.has(m));
+    const presentInP2 = members.filter((m) => set2.has(m));
+    const unionPresent = [...new Set([...presentInP1, ...presentInP2])];
+    if (unionPresent.length < 2) continue; // 흐름도 안 되는 상태
+
+    // 한쪽 원국 혼자서 unionPresent를 전부 커버하면 상대는 아무것도 보태지 않은 것
+    // — 원래 그 사람 개인 원국의 기존 구조이므로 커플 cross-formation이 아니다.
+    const p1CoversAlone = unionPresent.every((m) => presentInP1.includes(m));
+    const p2CoversAlone = unionPresent.every((m) => presentInP2.includes(m));
+    if (p1CoversAlone || p2CoversAlone) continue;
+
+    const isPartial = unionPresent.length === 2;
+    const groupDesc = `${groupKey} ${relLabel}${isPartial ? " 흐름" : ""}`;
     const baseWeight = isPartial ? 2 : 5;
 
     const p1Fav = el === y1 || (!!h1 && el === h1);
@@ -1037,7 +1054,7 @@ function marriageGroupStructureBonus(
     }
     if (weight > 0) {
       bonus += weight;
-      notes.push(`${r.description}(${el}행) — ${tag}`);
+      notes.push(`${groupDesc}(${el}행, 교차 형성) — ${tag}`);
     }
   }
   return { bonus: Math.min(8, bonus), notes: [...new Set(notes)] };
@@ -1055,14 +1072,27 @@ function classifyRelationshipType(romance: number, marriage: number): Relationsh
   return "조건부 적합(양쪽 다 무난)";
 }
 
+/**
+ * scoreSpousePalaceDelta/scoreMonthBranchDelta의 "무관"(두 지지 사이에 아무 관계도 없음)
+ * 기본값은 +6/+4 같은 flat 양수를 돌려주는데, 이건 "명확한 우호 구조"가 아니라 "특별한
+ * 악재가 없다"는 뜻이다. 적합도 공식에서 그대로 증폭(×1.8 등)하면 "충이 없음"이 "강한
+ * 적합성"으로 둔갑하므로, neutral 케이스는 훨씬 작은 값으로 눌러서 넘긴다.
+ */
+function normalizeNeutralDelta(delta: number, note: string): number {
+  return note.includes("무관") ? delta * 0.2 : delta;
+}
+
 function buildRomanceMarriageFit(
-  dmDelta: number, spDelta: number, mbDelta: number, biDelta: number,
+  dmDelta: number, spDeltaRaw: number, spNote: string, mbDeltaRaw: number, mbNote: string, biDelta: number,
   ecDelta: number, tgDelta: number, yongDelta: number,
   avgSpousePalaceStability: number,
   br1: string[], br2: string[],
   y1: FiveElKey, h1: FiveElKey | undefined, g1: FiveElKey,
   y2: FiveElKey, h2: FiveElKey | undefined, g2: FiveElKey,
 ): RomanceMarriageFit {
+  const spDelta = normalizeNeutralDelta(spDeltaRaw, spNote);
+  const mbDelta = normalizeNeutralDelta(mbDeltaRaw, mbNote);
+
   const romanceRaw =
     dmDelta * 1.2 + tgDelta * 1.2 + biDelta * 1.3 + yongDelta * 1.1 +
     ecDelta * 1.0 + mbDelta * 0.8 + spDelta * 0.4;
@@ -1194,7 +1224,7 @@ export function calculateCompatibilityScore(
   const romanceMarriageFit: RomanceMarriageFit = (() => {
     if (!pipe1 || !pipe2) {
       return buildRomanceMarriageFit(
-        dm.delta, sp.delta, mb.delta, bi.delta, ec.delta, tg.delta, yong.delta,
+        dm.delta, sp.delta, sp.note, mb.delta, mb.note, bi.delta, ec.delta, tg.delta, yong.delta,
         50, br1, br2, "목", undefined, "금", "목", undefined, "금",
       );
     }
@@ -1203,7 +1233,7 @@ export function calculateCompatibilityScore(
     const avgSpousePalaceStability =
       (pipe1.evaluations.spousePalaceStability.score + pipe2.evaluations.spousePalaceStability.score) / 2;
     return buildRomanceMarriageFit(
-      dm.delta, sp.delta, mb.delta, bi.delta, ec.delta, tg.delta, yong.delta,
+      dm.delta, sp.delta, sp.note, mb.delta, mb.note, bi.delta, ec.delta, tg.delta, yong.delta,
       avgSpousePalaceStability, br1, br2,
       y1v, pipe1.adjusted.effectiveYongshinSecondary, getController(y1v),
       y2v, pipe2.adjusted.effectiveYongshinSecondary, getController(y2v),

@@ -6200,7 +6200,7 @@ export function SajuReport({ record, showSaveStatus = false, hourMode: parentHou
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="font-semibold text-emerald-800">📈 재물 유입도</span>
+                    <span className="font-semibold text-emerald-800">📈 재물 유입 기회도</span>
                     <span className="font-bold text-emerald-800">
                       {sajuPipelineResult.wealthActivation.inflowScore}점 · {sajuPipelineResult.wealthActivation.inflowLevel}
                     </span>
@@ -6216,7 +6216,7 @@ export function SajuReport({ record, showSaveStatus = false, hourMode: parentHou
                   </p>
                 </div>
                 <p className="text-[11px] text-muted-foreground pl-0.5">
-                  활성도는 방향과 무관한 사건 크기, 유입도는 실제 들어오는 방향의 유불리, 안정·축적도는 남기고 지키기 쉬운 정도입니다 — 셋을 같은 개념으로 보지 마세요. (원국 축적력 {sajuPipelineResult.structureDomains.wealth.wealthAxes?.accumulationScore ?? "-"}점은 제한된 범위로만 반영됩니다.)
+                  활성도는 방향과 무관한 사건 크기, 유입 기회도는 수익으로 연결될 수 있는 기회·채널이 열리는 방향(실제 현금 입금 시점과는 다를 수 있음), 안정·축적도는 남기고 지키기 쉬운 정도입니다 — 셋을 같은 개념으로 보지 마세요. (원국 축적력 {sajuPipelineResult.structureDomains.wealth.wealthAxes?.accumulationScore ?? "-"}점은 제한된 범위로만 반영됩니다.)
                 </p>
                 <p>
                   <span className="font-semibold text-foreground">배우자궁 안정</span> 지금{" "}
