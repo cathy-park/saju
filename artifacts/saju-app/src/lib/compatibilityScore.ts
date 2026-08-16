@@ -624,10 +624,20 @@ function scoreBranchInteractionDelta(
 
 // ═══════════════════════════════════════════════════════════════════════
 //  4-2. 천간 전체 교차 delta (지지 전체 교차와 대칭) — 일간×일간 쌍은 scoreDayMasterDelta가
-//  이미 담당하므로 제외하고 나머지 15쌍만 본다. 한 쌍에서 구체적 천간합/천간충이 성립하면
-//  그것만 채택하고, 없을 때만 오행 상생·상극·비화(scoreDayMasterDelta와 동일한 GENERATING/
-//  CONTROLLING 배열 재사용)로 대체한다 — 같은 쌍에서 두 가지를 동시에 가산하지 않는다.
-//  관계 유형별 category cap(±10) 적용 후 overall cap(±15, bi와 동일 스케일)까지 씌운다.
+//  이미 담당하므로 제외하고 나머지 15쌍만 본다.
+//
+//  [A안 확정 — null-expectation 감사 결과 반영]
+//  이 모듈의 원래 목적은 기존 궁합 계산(scoreDayMasterDelta/elementComplement/yongshinDelta/
+//  tenGodDelta)에 없던 "구체적 천간합·천간충"을 deterministic하게 추가하는 것이다. 초판에서는
+//  구체 관계가 없는 나머지 쌍에도 오행 상생·상극·비화 점수를 매겨 15쌍 거의 전부가 evidence를
+//  만들었는데, synthetic N=5,000 감사 결과 그 설계가 평균 +7.16(양수 83%, overall ±15 cap
+//  히트 19.6%)이라는 구조적 양수 편향을 만드는 것으로 확인됐다(비화가 대응 음수 카테고리 없이
+//  전체 편향의 약 2/3을 차지, 나머지는 천간합/충의 상극 재분류로 상생:상극 발생빈도가
+//  40.3%:22.2%로 벌어진 결과). 이에 따라 숫자 기여를 천간합·천간충으로만 좁혔다: 같은 감사에서
+//  A안은 평균 +0.94(중앙값 0, overall cap 히트 0%)로 재현됐고, 잔여 +0.94는 천간합 5종·천간충
+//  4종이라는 명리 이론 자체의 개수 비대칭에서 오는 것이라 이번 단계에서는 보정하지 않는다
+//  (특정 실제 사례에 맞춘 calibration이 아니라 이론적 의미를 우선한다는 결정).
+//  일반 오행 상생·상극·비화는 숫자 0으로 유지하되 참고용 label로만 note에 남긴다.
 // ═══════════════════════════════════════════════════════════════════════
 type StemRelCategory = "천간합" | "천간충" | "상생" | "상극" | "비화";
 
@@ -635,13 +645,14 @@ export function scoreStemInteractionDelta(
   p1: ReturnType<typeof getFinalPillars>, p2: ReturnType<typeof getFinalPillars>
 ): {
   delta: number; note: string; pairCount: number; rawTotal: number;
-  /** 진단용(런타임 미사용) — 카테고리별 원시 합(카테고리 cap 전), null-expectation 감사용 */
+  /** 진단용(런타임 미사용) — 카테고리별 원시 합(카테고리 cap 전). 천간합/천간충만 채워짐 */
   categoryRaw: Partial<Record<StemRelCategory, number>>;
-  /** 진단용(런타임 미사용) — 카테고리별 cap(±10) 적용 후 합 */
+  /** 진단용(런타임 미사용) — 카테고리별 cap(±10) 적용 후 합. 천간합/천간충만 채워짐 */
   categoryCapped: Partial<Record<StemRelCategory, number>>;
 } {
   const keys: PillarKey[] = ["year", "month", "day", "hour"];
   const byCategory = new Map<StemRelCategory, number>();
+  const genericCount: Partial<Record<"상생" | "상극" | "비화", number>> = {};
   let pairCount = 0;
 
   for (const k1 of keys) {
@@ -653,44 +664,56 @@ export function scoreStemInteractionDelta(
       if (!s2) continue;
 
       const weight = PILLAR_WEIGHTS[k1] * PILLAR_WEIGHTS[k2];
-      const add = (cat: StemRelCategory, base: number) => {
-        byCategory.set(cat, (byCategory.get(cat) ?? 0) + base * weight);
-        pairCount++;
-      };
 
-      // ① 구체적 천간합/천간충 우선
+      // ① 구체적 천간합/천간충만 숫자 반영(A안)
       const specific = computeStemRelations([s1, s2]);
       const hasHap = specific.some((r) => r.type === "천간합");
       const hasChung = specific.some((r) => r.type === "천간충");
-      if (hasHap) { add("천간합", 6); continue; }
-      if (hasChung) { add("천간충", -6); continue; }
+      if (hasHap) {
+        byCategory.set("천간합", (byCategory.get("천간합") ?? 0) + 6 * weight);
+        pairCount++;
+        continue;
+      }
+      if (hasChung) {
+        byCategory.set("천간충", (byCategory.get("천간충") ?? 0) + -6 * weight);
+        pairCount++;
+        continue;
+      }
 
-      // ② 없을 때만 오행 상생·상극·비화로 대체(같은 쌍에 ①②를 동시에 더하지 않음)
+      // ② 없으면 오행 상생·상극·비화는 숫자 0, 참고용 카운트만(label-only)
       const e1 = STEM_ELEMENT[s1], e2 = STEM_ELEMENT[s2];
       if (!e1 || !e2) continue;
-      if (e1 === e2) { add("비화", 1.5); continue; }
-      if (GENERATING.some(([a, b]) => a === e1 && b === e2)) { add("상생", 3); continue; }
-      if (GENERATING.some(([a, b]) => a === e2 && b === e1)) { add("상생", 2); continue; }
-      if (CONTROLLING.some(([a, b]) => a === e1 && b === e2)) { add("상극", -2.5); continue; }
-      if (CONTROLLING.some(([a, b]) => a === e2 && b === e1)) { add("상극", -3); continue; }
+      let cat: "상생" | "상극" | "비화" | null = null;
+      if (e1 === e2) cat = "비화";
+      else if (GENERATING.some(([a, b]) => a === e1 && b === e2)) cat = "상생";
+      else if (GENERATING.some(([a, b]) => a === e2 && b === e1)) cat = "상생";
+      else if (CONTROLLING.some(([a, b]) => a === e1 && b === e2)) cat = "상극";
+      else if (CONTROLLING.some(([a, b]) => a === e2 && b === e1)) cat = "상극";
+      if (cat) genericCount[cat] = (genericCount[cat] ?? 0) + 1;
     }
   }
 
   let total = 0;
   const categoryCapped: Partial<Record<StemRelCategory, number>> = {};
   for (const [cat, sum] of byCategory.entries()) {
-    const capped = Math.max(-10, Math.min(10, sum)); // category cap
+    const capped = Math.max(-10, Math.min(10, sum)); // category cap(안전장치, 잠정값)
     categoryCapped[cat] = capped;
     total += capped;
   }
-  const delta = Math.max(-15, Math.min(15, Math.round(total))); // overall cap(잠정값 — synthetic 회귀로 재검증 예정)
+  const delta = Math.max(-15, Math.min(15, Math.round(total))); // overall cap(안전장치, 잠정값)
 
   const parts = [...byCategory.entries()]
     .filter(([, v]) => Math.abs(v) >= 0.5)
     .map(([cat, v]) => `${cat} ${v > 0 ? "+" : ""}${Math.round(v * 10) / 10}`);
+  const genericParts = (["상생", "상극", "비화"] as const)
+    .filter((cat) => genericCount[cat])
+    .map((cat) => `${cat} ${genericCount[cat]}건`);
+  const genericSuffix = genericParts.length > 0
+    ? ` (그 외 오행 ${genericParts.join(", ")} — 해석 참고용, 점수 미반영)`
+    : "";
   const note = parts.length > 0
-    ? `천간 교차(일간쌍 제외 15쌍): ${parts.join(", ")} → 캡 적용 ${delta > 0 ? "+" : ""}${delta}`
-    : "천간 교차 관계 없음";
+    ? `천간 교차(일간쌍 제외, 천간합/천간충만 반영): ${parts.join(", ")} → 캡 적용 ${delta > 0 ? "+" : ""}${delta}${genericSuffix}`
+    : `천간합/천간충 없음${genericSuffix || " — 오행 교차도 없음"}`;
   return {
     delta, note, pairCount, rawTotal: Math.round(total * 10) / 10,
     categoryRaw: Object.fromEntries(byCategory),
