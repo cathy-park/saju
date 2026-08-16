@@ -51,6 +51,10 @@ import {
   computeLuckTimingActivation,
   type TimingActivationResult,
 } from "./evaluations/luckTimingActivation";
+import {
+  computeSpouseActivation,
+  type SpouseActivationResult,
+} from "./evaluations/spouseActivation";
 
 // ── 지장간 오행 증폭 (地藏干 Augmentation) ────────────────────────
 // Adds hidden stem elements to a five-element count with fractional weights.
@@ -119,6 +123,8 @@ export interface PipelineInput {
   timingSeunHangul?: string;
   /** 일주 한글(예: 정미). 없으면 dayStem+dayBranch로 자동 구성 */
   dayPillarHangul?: string;
+  /** 배우자·결혼 테마 활성도(spouseActivation) 계산에만 쓰인다. 없으면 이 지표는 생략됨 */
+  gender?: "남" | "여";
 }
 
 // ── Layer 2: Base Structure Calculation ───────────────────────────
@@ -456,6 +462,8 @@ export interface SajuPipelineResult {
   structureDomains: StructureDomainScoreReport;
   /** 대운·세운 가중 활성화(원국 evaluations는 변경하지 않음) */
   timingActivation: TimingActivationResult;
+  /** 배우자·결혼 테마 활성도 — timingActivation.spousePalaceStabilityNow와 독립된 별도 지표. gender 미제공 시 undefined */
+  spouseActivation?: SpouseActivationResult;
 }
 
 /**
@@ -536,6 +544,26 @@ export function computeSajuPipeline(input: PipelineInput): SajuPipelineResult {
     console.log("[timingActivation]", timingActivation);
   }
 
+  const spouseActivation = input.gender
+    ? computeSpouseActivation({
+        dayStem: input.dayStem,
+        dayBranch: input.dayBranch,
+        allStems: input.allStems,
+        gender: input.gender,
+        daewoonHangul: input.timingDaewoonHangul,
+        saeunHangul: input.timingSeunHangul,
+        yongshin: adjusted.effectiveYongshin,
+        heesin: adjusted.effectiveYongshinSecondary,
+        gisin: getController(adjusted.effectiveYongshin),
+        spousePalaceStabilityNow: timingActivation.spousePalaceStabilityNow,
+      })
+    : undefined;
+
+  if (isDevRuntime()) {
+    // eslint-disable-next-line no-console
+    console.log("[spouseActivation]", spouseActivation);
+  }
+
   const diagnostics: EngineDiagnostics = {
     strength: {
       source: "interpretSchema.computeStrengthResult",
@@ -569,5 +597,5 @@ export function computeSajuPipeline(input: PipelineInput): SajuPipelineResult {
       reason: interpretation.seasonalNote,
     },
   };
-  return { input, base, adjusted, interpretation, diagnostics, evaluations, structureDomains, timingActivation };
+  return { input, base, adjusted, interpretation, diagnostics, evaluations, structureDomains, timingActivation, spouseActivation };
 }

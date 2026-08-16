@@ -37,6 +37,8 @@ import { upsertMyProfile, upsertPartnerProfile } from "@/lib/db";
 import { useAuth } from "@/lib/authContext";
 import { computePersonPipelineSnapshot } from "@/lib/personPipelineSnapshot";
 import { computeSajuPipeline } from "@/lib/sajuPipeline";
+import { computeLuckTimingActivation } from "@/lib/evaluations/luckTimingActivation";
+import { computeSpouseActivation, type SpouseActivationResult } from "@/lib/evaluations/spouseActivation";
 import { charToElement, elementBgClass, elementBorderClass, elementChipColors, elementColorVar, elementHslAlpha, elementTextClass, getTenGodGroup, getController, STEM_TO_ELEMENT, BRANCH_TO_ELEMENT, type ElementTone, type FiveElKey } from "@/lib/element-color";
 import { buildPersonClipboardText } from "@/lib/clipboardExport";
 import { CopyButton } from "@/components/CopyButton";
@@ -4712,8 +4714,68 @@ export function SajuReport({ record, showSaveStatus = false, hourMode: parentHou
       },
       timingDaewoonHangul: curDw?.ganZhi.hangul,
       timingSeunHangul: seunEntry?.ganZhi.hangul,
+      gender: input.gender,
     });
-  }, [effectiveFiveElements, effectivePillars, luckCycles, input.year, selectedSeunYear, record.manualStrengthLevel, record.manualYongshinData, fortuneOpts?.seasonalAdjustmentOff]);
+  }, [effectiveFiveElements, effectivePillars, luckCycles, input.year, input.gender, selectedSeunYear, record.manualStrengthLevel, record.manualYongshinData, fortuneOpts?.seasonalAdjustmentOff]);
+
+  /**
+   * 결혼운 시기 힌트용 — 앞으로 10년(세운 기준)의 배우자·결혼 테마 활성도/안정도를 연도별로 계산.
+   * 원국·용신은 그대로 두고 대운·세운만 연도별로 바꿔가며 computeLuckTimingActivation·
+   * computeSpouseActivation을 재사용한다(둘 다 순수 함수, 기존 로직 변경 없음).
+   */
+  const spouseActivationByYear = useMemo((): {
+    year: number;
+    ganZhiHangul: string;
+    daewoonHangul?: string;
+    activation: SpouseActivationResult;
+  }[] => {
+    if (!sajuPipelineResult?.evaluations || !sajuPipelineResult.input.dayStem || !input.gender) return [];
+    const gender = input.gender;
+    const dayStemForYear = sajuPipelineResult.input.dayStem;
+    const dayBranchForYear = sajuPipelineResult.input.dayBranch;
+    const evaluations = sajuPipelineResult.evaluations;
+    const yongshin = sajuPipelineResult.adjusted.effectiveYongshin;
+    const heesin = sajuPipelineResult.adjusted.effectiveYongshinSecondary;
+    const gisin = getController(yongshin);
+    const allStemsNow = sajuPipelineResult.input.allStems;
+    const dw0 = luckCycles.daewoon[0]?.startAge ?? 0;
+    const adjustedDw = luckCycles.daewoon.map((entry, i) => ({
+      ...entry,
+      startAge: dw0 + i * 10,
+      endAge: dw0 + i * 10 + 9,
+    }));
+
+    return luckCycles.seun
+      .filter((e) => e.year >= luckCycles.wolun.year)
+      .slice(0, 10)
+      .map((e) => {
+        const age = e.year - input.year;
+        const dw = adjustedDw.find((d) => age >= d.startAge && age <= d.endAge);
+        const timing = computeLuckTimingActivation(
+          evaluations,
+          dw?.ganZhi.hangul,
+          e.ganZhi.hangul,
+          dayStemForYear,
+          dayBranchForYear,
+          yongshin,
+          heesin,
+          gisin,
+        );
+        const activation = computeSpouseActivation({
+          dayStem: dayStemForYear,
+          dayBranch: dayBranchForYear,
+          allStems: allStemsNow,
+          gender,
+          daewoonHangul: dw?.ganZhi.hangul,
+          saeunHangul: e.ganZhi.hangul,
+          yongshin,
+          heesin,
+          gisin,
+          spousePalaceStabilityNow: timing.spousePalaceStabilityNow,
+        });
+        return { year: e.year, ganZhiHangul: e.ganZhi.hangul, daewoonHangul: dw?.ganZhi.hangul, activation };
+      });
+  }, [sajuPipelineResult?.evaluations, sajuPipelineResult?.adjusted, sajuPipelineResult?.input, input.gender, input.year, luckCycles]);
 
   /** 메인 파이프라인에 structureDomains가 없을 때(구번들) 스냅샷으로 재시도 */
   const structureWealthDomain = useMemo(() => {
@@ -6020,6 +6082,41 @@ export function SajuReport({ record, showSaveStatus = false, hourMode: parentHou
                         <p className="text-[13px] font-semibold text-muted-foreground mb-1">참고 사항</p>
                         <p className="text-sm text-foreground">{marriageTiming.favorable}</p>
                       </div>
+                      {spouseActivationByYear.length > 0 && (
+                        <div className="rounded-lg bg-rose-50/40 border border-rose-100 px-3 py-2">
+                          <p className="text-[13px] font-semibold text-rose-700 mb-1">연도별 배우자·결혼 테마 활성도</p>
+                          <p className="text-[11px] text-muted-foreground mb-2 leading-relaxed">
+                            "결혼하기 좋은 해"를 판정하는 게 아니라, 배우자·결혼 관련 사건이나 고민·결단이 강하게 발생할 수 있는 해를 보여줍니다. 근거는 위 "운세" 탭 → 세운에서 해당 연도를 선택하면 자세히 볼 수 있어요.
+                          </p>
+                          <div className="space-y-1">
+                            {spouseActivationByYear.map((y) => (
+                              <div key={y.year} className="flex items-center justify-between text-[12px]">
+                                <span className="text-foreground">
+                                  {y.year}년 ({y.ganZhiHangul})
+                                </span>
+                                <span className="text-muted-foreground">
+                                  활성도 <span className="font-semibold text-rose-700">{y.activation.activationScore}</span>
+                                  {" · "}
+                                  안정도 <span className="font-semibold text-foreground">{y.activation.stabilityScore}</span>
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                          {(() => {
+                            const ranked = [...spouseActivationByYear].sort(
+                              (a, b) => b.activation.activationScore - a.activation.activationScore,
+                            );
+                            const top = ranked.slice(0, 3);
+                            if (top.length === 0) return null;
+                            return (
+                              <p className="mt-2 text-[12px] text-foreground">
+                                <span className="font-semibold">배우자·결혼 테마가 강하게 움직이는 연도:</span>{" "}
+                                {top.map((y) => `${y.year}년`).join(" > ")}
+                              </p>
+                            );
+                          })()}
+                        </div>
+                      )}
                       <p className="text-[13px] text-muted-foreground italic">※ 위 내용은 규칙 기반 간략 추정으로, 절대적 예언이 아닙니다.</p>
                     </CardContent>
                   </Card>
@@ -6093,6 +6190,66 @@ export function SajuReport({ record, showSaveStatus = false, hourMode: parentHou
                     {" "}
                     (원국 {sajuPipelineResult.evaluations.spousePalaceStability.grade})
                   </span>
+                </p>
+              </div>
+            </div>
+          )}
+          {sajuPipelineResult?.spouseActivation && (
+            <div className="ds-card overflow-hidden shadow-none border-rose-200/70">
+              <div className="border-b border-border px-4 pb-2 pt-4">
+                <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                  {selectedSeunYear}년 배우자·결혼 테마 활성도
+                </h3>
+                <p className="mt-1 text-[11px] text-muted-foreground leading-relaxed">
+                  위 "배우자궁 안정" 점수(관계 운영 난이도)와는 다른 축입니다. 활성도는 이 시기에 배우자·연애·결혼 문제가 얼마나 강하게 전면화되는지를 보여줍니다 — 안정도가 낮다고 활성도까지 낮은 건 아니에요.
+                </p>
+              </div>
+              <div className="ds-card-pad space-y-3 text-[13px] leading-relaxed">
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between rounded-lg bg-rose-50/60 border border-rose-100 px-3 py-2">
+                    <span className="font-semibold text-rose-700">❤️ 배우자·결혼 활성도</span>
+                    <span className="font-bold text-rose-700">
+                      {sajuPipelineResult.spouseActivation.activationLevel}{" "}
+                      {sajuPipelineResult.spouseActivation.activationScore}점
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between rounded-lg bg-muted/20 border border-border px-3 py-2">
+                    <span className="font-semibold text-foreground">🏠 배우자궁 안정도</span>
+                    <span className="font-bold text-foreground">
+                      {sajuPipelineResult.spouseActivation.stabilityLevel}{" "}
+                      {sajuPipelineResult.spouseActivation.stabilityScore}점
+                    </span>
+                  </div>
+                </div>
+                <p className="rounded-lg bg-muted/10 border border-border/60 px-3 py-2 text-foreground">
+                  {sajuPipelineResult.spouseActivation.interpretation}
+                </p>
+                {sajuPipelineResult.spouseActivation.factors.length > 0 && (
+                  <div className="space-y-1">
+                    <p className="text-[11px] font-semibold text-muted-foreground">
+                      {selectedSeunYear}년 활성 근거
+                    </p>
+                    <ul className="space-y-1">
+                      {sajuPipelineResult.spouseActivation.factors.map((f, i) => (
+                        <li key={i} className="flex items-start gap-1.5 text-[12px]">
+                          <span
+                            className={cn(
+                              "mt-1 h-1.5 w-1.5 shrink-0 rounded-full",
+                              f.direction === "우호"
+                                ? "bg-emerald-500"
+                                : f.direction === "비우호"
+                                  ? "bg-rose-500"
+                                  : "bg-zinc-400",
+                            )}
+                          />
+                          <span className="text-foreground">{f.label}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                <p className="text-[11px] text-muted-foreground">
+                  ※ "결혼하기 좋은 해"를 판정하는 점수가 아니라, 배우자·연애·결혼 관련 사건·고민·결단이 얼마나 강하게 움직이는 시기인지를 보여주는 참고 지표입니다.
                 </p>
               </div>
             </div>
