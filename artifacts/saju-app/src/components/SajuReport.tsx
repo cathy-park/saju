@@ -5172,6 +5172,8 @@ export function SajuReport({ record, showSaveStatus = false, hourMode: parentHou
           calendarMonth: luckCycles.wolun.month,
           calendarDay: luckCycles.ilun.day,
           timingActivation: sajuPipelineResult?.timingActivation ?? null,
+          spouseActivationCurrent: spouseActivationByYear[0]?.activation ?? sajuPipelineResult?.spouseActivation ?? null,
+          spouseActivationNext: spouseActivationByYear[1]?.activation ?? null,
         },
       ),
     [
@@ -5182,6 +5184,8 @@ export function SajuReport({ record, showSaveStatus = false, hourMode: parentHou
       luckCycles.wolun.month,
       luckCycles.ilun.day,
       sajuPipelineResult?.timingActivation,
+      sajuPipelineResult?.spouseActivation,
+      spouseActivationByYear,
     ],
   );
 

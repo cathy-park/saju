@@ -3,6 +3,7 @@ import { getFinalPillars } from "./storage";
 import { getDayGanZhi, getYearGanZhi, getMonthGanZhi, calculateDaewoon } from "./luckCycles";
 import { getTenGod } from "./tenGods";
 import type { TimingActivationResult } from "./evaluations/luckTimingActivation";
+import type { SpouseActivationResult, ActivationLevel, StabilityLevel } from "./evaluations/spouseActivation";
 
 const STEM_ELEMENT: Record<string, string> = {
   갑: "목", 을: "목", 병: "화", 정: "화",
@@ -509,120 +510,116 @@ export function getShinsalInsight(names: Set<string>): string | null {
   return notes.join(" ");
 }
 
-export function getRelationshipFlowTiming(
-  ctx: LuckContext,
-  daywoonTGSeries: string[],
-  maritalStatus?: string
-): RelationshipFlowTiming {
-  const dw = ctx.daewoonTG;
-  const se = ctx.seunTG;
-  const wo = ctx.wolunTG;
-  const isMarried = maritalStatus === "기혼";
-  const isDating = maritalStatus === "연애중";
+const ACT_RANK: Record<ActivationLevel, number> = { "낮음": 0, "보통": 1, "높음": 2 };
+const STAB_RANK: Record<StabilityLevel, number> = { "불안정": 0, "보통": 1, "안정": 2 };
 
-  let current: string;
-  if (isMarried) {
-    if (dw === "편재" || dw === "정재" || dw === "정관") {
-      current = "현재 대운에서 부부 관계의 유대가 강화되는 흐름입니다.";
-    } else if (dw === "겁재" || dw === "상관") {
-      current = "현재 대운에서 가정 내 긴장이 생기기 쉬운 흐름입니다. 배우자와의 대화가 중요합니다.";
-    } else {
-      current = "현재 흐름에서는 부부 관계 안정화와 가정 균형 유지가 강조됩니다.";
-    }
-  } else if (isDating) {
-    if (dw === "편재" || dw === "정재" || dw === "편관" || dw === "정관" || dw === "식신") {
-      current = "현재 대운에서 연애 관계가 더 깊어지고 발전할 수 있는 흐름입니다.";
-    } else if (dw === "겁재" || dw === "상관") {
-      current = "현재 대운에서 감정 기복이나 갈등이 생기기 쉬운 시기입니다. 소통에 집중하세요.";
-    } else {
-      current = "현재 흐름에서는 관계 조율과 서로에 대한 이해를 깊게 하는 것이 중요합니다.";
-    }
-  } else {
-    if (dw === "편재" || dw === "정재" || dw === "편관" || dw === "정관" || dw === "식신") {
-      current = "현재 대운 흐름에서 인연 활성화 기운이 강하게 흐르고 있습니다.";
-    } else if (dw === "겁재" || dw === "상관") {
-      current = "현재 대운에서는 관계보다 자신의 내면 정리가 더 중요한 흐름입니다.";
-    } else {
-      current = "현재 흐름에서는 관계 확장보다 관계 안정화와 내면 준비가 강조됩니다.";
-    }
-  }
-
-  let upcoming: string;
-  if (isMarried) {
-    if (wo === "편재" || wo === "정재" || wo === "정관") {
-      upcoming = "다가오는 월운에서 가정 관계 흐름이 따뜻하게 활성화될 수 있습니다.";
-    } else if (se === "식신") {
-      upcoming = "올해 세운에서 가정 내 즐거운 에너지가 흐를 가능성이 있습니다.";
-    } else {
-      upcoming = "앞으로도 현재의 관계 기조를 유지하며 안정을 다지는 흐름이 이어집니다.";
-    }
-  } else {
-    if (wo === "편재" || wo === "정재" || wo === "편관" || wo === "정관") {
-      upcoming = "다가오는 월운에서 새로운 인연 흐름이 활성화될 가능성이 있습니다.";
-    } else if (se === "식신" || se === "편재") {
-      upcoming = "올해 세운 흐름에서 관계 연결 가능성이 높아집니다.";
-    } else if (daywoonTGSeries.some((t) => ["편재", "정재", "편관", "정관"].includes(t))) {
-      upcoming = "곧 이어질 운 흐름에서 관계 변화의 시기가 다가올 수 있습니다.";
-    } else {
-      upcoming = "다가오는 흐름에서도 현재 기조가 유지될 것으로 보입니다.";
-    }
-  }
-
-  return { current, upcoming };
+function relationshipSubjectNoun(maritalStatus?: string): string {
+  if (maritalStatus === "기혼") return "부부 관계";
+  if (maritalStatus === "연애중") return "연애 관계";
+  return "관계";
 }
 
-export function getConnectionActivation(
-  ctx: LuckContext,
-  gender: string,
-  maritalStatus?: string
-): ConnectionActivation {
-  const tg = ctx.wolunTG ?? ctx.seunTG ?? ctx.ilunTG;
-  const femalePositive = ["편관", "정관", "식신", "편재"];
-  const malePositive = ["편재", "정재", "식신", "정관"];
-  const positive = gender === "여" ? femalePositive : malePositive;
-
-  const isMarried = maritalStatus === "기혼";
-  const isDating = maritalStatus === "연애중";
-
-  let summary: string;
-  let period: string;
-
-  if (isMarried) {
-    if (tg && positive.includes(tg)) {
-      summary = "배우자와의 관계 흐름이 따뜻하게 활성화되는 시기입니다.";
-      period = "이 시기에 부부 간 솔직한 대화와 감사 표현이 관계를 더욱 단단하게 합니다.";
-    } else if (tg === "편인" || tg === "정인") {
-      summary = "혼자 성장하고 쉬는 시간이 오히려 관계에 긍정적 영향을 줄 수 있습니다.";
-      period = "자신을 돌보는 것이 가정 안정의 기반이 됩니다.";
-    } else {
-      summary = "현재 흐름은 부부 관계의 일상적인 안정과 균형을 유지하는 시기입니다.";
-      period = "큰 변화보다는 꾸준한 신뢰와 배려가 관계를 지켜줍니다.";
-    }
-  } else if (isDating) {
-    if (tg && positive.includes(tg)) {
-      summary = "현재 파트너와의 관계가 한 단계 발전할 수 있는 에너지가 흐릅니다.";
-      period = "감정을 솔직하게 나누고, 함께하는 경험을 쌓기 좋은 시기입니다.";
-    } else if (tg === "편인" || tg === "정인") {
-      summary = "지금은 관계보다 개인 내면을 돌보는 것이 더 중요한 흐름입니다.";
-      period = "자신을 충분히 이해하는 것이 관계 발전의 기반이 됩니다.";
-    } else {
-      summary = "지금은 관계를 서두르기보다 현재 흐름을 자연스럽게 유지하는 것이 좋습니다.";
-      period = "작은 배려와 소통이 관계를 안정적으로 이끌어줍니다.";
-    }
-  } else {
-    if (tg && positive.includes(tg)) {
-      summary = "다가오는 몇 달 동안 새로운 사람과의 연결 가능성이 높아지는 흐름입니다.";
-      period = "감정이 자연스럽게 열리는 시기이니 새로운 만남에 조금 더 열려 있어보세요.";
-    } else if (tg === "편인" || tg === "정인") {
-      summary = "지금은 혼자만의 시간을 통해 내면을 돌아보는 흐름입니다.";
-      period = "억지로 관계를 만들기보다 자연스러운 흐름에 맡기는 것이 좋습니다.";
-    } else {
-      summary = "현재 흐름은 기존 관계를 다지는 데 적합한 시기입니다.";
-      period = "새로운 인연보다 깊어지는 관계에 집중하세요.";
-    }
+/**
+ * 활성도(방향 무관 사건 크기) × 안정도(quality) 조합으로 문장을 만든다. "활성도 높음=좋음"으로
+ * 읽히지 않도록, 높은 활성도+낮은 안정도 조합은 반드시 변화·리스크 쪽 표현을 쓴다.
+ */
+function spouseFlowSentence(activationLevel: ActivationLevel, stabilityLevel: StabilityLevel, subject: string): string {
+  if (activationLevel === "높음" && stabilityLevel === "안정") {
+    return `${subject} 테마가 강하게 움직이면서도 안정적으로 운영되는 흐름입니다.`;
   }
+  if (activationLevel === "높음" && stabilityLevel === "보통") {
+    return `${subject} 테마가 강하게 움직이는 시기이며, 안정도는 무난한 수준입니다.`;
+  }
+  if (activationLevel === "높음") {
+    return `${subject} 테마는 크게 강화되지만 안정성은 낮아, 시작·종료·재정의·갈등·결단 등 변화가 커질 수 있습니다.`;
+  }
+  if (activationLevel === "보통" && stabilityLevel === "안정") {
+    return `${subject} 테마의 움직임은 보통 수준이지만, 관계를 안정적으로 운영하기 좋은 흐름입니다.`;
+  }
+  if (activationLevel === "보통" && stabilityLevel === "보통") {
+    return `${subject} 테마의 움직임과 안정도 모두 무난한 수준입니다.`;
+  }
+  if (activationLevel === "보통") {
+    return `${subject} 테마 움직임은 보통이지만 안정도가 낮아, 관계 운영에 좀 더 신경 써야 하는 시기입니다.`;
+  }
+  if (stabilityLevel === "안정") {
+    return `${subject} 관련 사건은 크지 않지만, 안정적으로 유지되는 조용한 흐름입니다.`;
+  }
+  if (stabilityLevel === "보통") {
+    return `${subject} 테마가 크게 움직이지 않는 잔잔한 시기입니다.`;
+  }
+  return `${subject} 관련 사건은 적지만 기반 자체는 불안정해, 작은 계기에도 흔들릴 수 있는 시기입니다.`;
+}
 
-  return { summary, period };
+/** 올해 → 내년 activation/stability 변화를 비교해 전환 문장을 만든다(레벨이 같으면 "기조 유지"). */
+function spouseFlowTransitionSentence(
+  current: { activationLevel: ActivationLevel; stabilityLevel: StabilityLevel },
+  next: { activationLevel: ActivationLevel; stabilityLevel: StabilityLevel },
+  subject: string,
+): string {
+  const actChanged = current.activationLevel !== next.activationLevel;
+  const stabChanged = current.stabilityLevel !== next.stabilityLevel;
+  if (!actChanged && !stabChanged) {
+    return "다가오는 해에도 비슷한 흐름이 이어질 것으로 보입니다.";
+  }
+  const actWord = ACT_RANK[next.activationLevel] > ACT_RANK[current.activationLevel]
+    ? "강화" : ACT_RANK[next.activationLevel] < ACT_RANK[current.activationLevel] ? "완화" : "유지";
+  const stabWord = STAB_RANK[next.stabilityLevel] > STAB_RANK[current.stabilityLevel]
+    ? "상승" : STAB_RANK[next.stabilityLevel] < STAB_RANK[current.stabilityLevel] ? "하락" : "유지";
+  let sentence = `다음 해에는 ${subject} 테마 활성도가 ${next.activationLevel} 수준으로 ${actWord}되고, 안정도는 ${next.stabilityLevel} 수준으로 ${stabWord}합니다.`;
+  if (next.activationLevel === "높음" && next.stabilityLevel === "불안정") {
+    sentence += " 시작·종료·재정의·갈등·결단 등 변화가 커질 수 있는 시기로 전환됩니다.";
+  }
+  return sentence;
+}
+
+/**
+ * "배우자 운 흐름" 카드의 현재/다가오는 흐름 문장. spouseActivation(활성도)·
+ * spousePalaceStability(안정도, spouseActivation.stabilityScore로 재사용됨)를 source of truth로
+ * 쓴다 — 대운·세운·월운 십성만 보는 별도 heuristic을 쓰지 않는다(화면 하단 "연도별 배우자·결혼
+ * 테마 활성도" 표와 다른 근거로 문장이 만들어져 서로 어긋나던 문제를 없애기 위함). 엔진이 "신규
+ * 인연"과 "기존 인연"을 구분해 계산하지 않으므로 그런 구분은 문구에 넣지 않는다.
+ */
+export function getRelationshipFlowTiming(
+  maritalStatus: string | undefined,
+  current: SpouseActivationResult | null,
+  next: SpouseActivationResult | null,
+): RelationshipFlowTiming {
+  const subject = relationshipSubjectNoun(maritalStatus);
+  if (!current) {
+    return { current: "배우자·관계 활성도 데이터가 없어 흐름을 표시할 수 없습니다.", upcoming: "" };
+  }
+  return {
+    current: spouseFlowSentence(current.activationLevel, current.stabilityLevel, subject),
+    upcoming: next
+      ? spouseFlowTransitionSentence(current, next, subject)
+      : "다가오는 해의 비교 데이터가 없습니다.",
+  };
+}
+
+/**
+ * "인연운 활성" 카드 — relationshipTiming.current와 같은 문장을 반복하지 않도록, 그 활성도를
+ * 만든 근거(factors)와 활성도·안정도 조합에 맞는 실행 조언으로 구성한다. "새 인연 vs 기존
+ * 인연" 같은 엔진이 계산하지 않는 구분은 만들지 않는다.
+ */
+export function getConnectionActivation(
+  maritalStatus: string | undefined,
+  current: SpouseActivationResult | null,
+): ConnectionActivation {
+  if (!current) {
+    return { summary: "배우자·관계 활성도 데이터가 없습니다.", period: "" };
+  }
+  const topFactors = current.factors.filter((f) => f.magnitude > 0).slice(0, 2);
+  const summary = topFactors.length > 0
+    ? `이 시기 활성도에 영향을 준 요인: ${topFactors.map((f) => f.label).join(" · ")}`
+    : "뚜렷한 자극 요인 없이 배경 수준의 활성도만 적용된 시기입니다.";
+  const period = current.stabilityLevel === "불안정"
+    ? "변화가 큰 시기이니 결정을 서두르기보다 상황을 충분히 살피는 것이 좋습니다."
+    : current.activationLevel === "높음"
+      ? "사건·감정 변화가 잦은 시기이니 소통을 자주 나누는 것이 도움이 됩니다."
+      : "큰 변화가 없는 시기이니 평소의 흐름을 유지하는 것으로 충분합니다.";
+  const subject = relationshipSubjectNoun(maritalStatus);
+  return { summary: `${subject} — ${summary}`, period };
 }
 
 // ── Master builder ────────────────────────────────────────────────
@@ -645,6 +642,9 @@ export interface BuildLifeFlowInsightsOptions {
   calendarDay?: number;
   /** 대운·세운 활성화 레이어 — 전체 요약 문장에 덧붙입니다. */
   timingActivation?: TimingActivationResult | null;
+  /** "배우자 운 흐름"/"인연운 활성" 문장의 source of truth. 올해 값(현재)과 내년 값(다가오는 흐름 비교용). */
+  spouseActivationCurrent?: SpouseActivationResult | null;
+  spouseActivationNext?: SpouseActivationResult | null;
 }
 
 function mergeTimingIntoOverall(
@@ -711,11 +711,6 @@ export function buildLifeFlowInsights(
     wolunElement: STEM_ELEMENT[monthGZ.stem] ?? null,
   };
 
-  const daywoonTGSeries = daewoon
-    .filter((d) => d.startAge > age)
-    .slice(0, 3)
-    .map((d) => getTenGod(dayStem, d.ganZhi.stem) ?? "");
-
   const shinsalInsightText = finalShinsalNames && finalShinsalNames.size > 0
     ? getShinsalInsight(finalShinsalNames) ?? undefined
     : undefined;
@@ -727,8 +722,8 @@ export function buildLifeFlowInsights(
     ctx,
     overall,
     lifeFlows: getLifeFlowInsights(ctx, gender, maritalStatus, finalShinsalNames),
-    relationshipTiming: getRelationshipFlowTiming(ctx, daywoonTGSeries, maritalStatus),
-    connectionActivation: getConnectionActivation(ctx, gender, maritalStatus),
+    relationshipTiming: getRelationshipFlowTiming(maritalStatus, options?.spouseActivationCurrent ?? null, options?.spouseActivationNext ?? null),
+    connectionActivation: getConnectionActivation(maritalStatus, options?.spouseActivationCurrent ?? null),
     maritalStatus,
     shinsalInsight: shinsalInsightText,
   };
