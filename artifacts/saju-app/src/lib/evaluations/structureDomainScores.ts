@@ -47,7 +47,7 @@ import type {
 } from "./relationshipWealthEvaluation";
 
 // ── 지장간 (재성 위치 판단용, relationshipWealthEvaluation과 동일) ─────
-const JIJANGGAN: Record<string, string[]> = {
+export const JIJANGGAN: Record<string, string[]> = {
   자: ["임", "계"],
   축: ["계", "신", "기"],
   인: ["무", "병", "갑"],
@@ -66,7 +66,7 @@ function stemEl(ch: string): FiveElKey | undefined {
   return STEM_TO_ELEMENT[ch] as FiveElKey | undefined;
 }
 
-function branchCarriesWealth(branch: string, wealthEl: FiveElKey): boolean {
+export function branchCarriesWealth(branch: string, wealthEl: FiveElKey): boolean {
   const surf = BRANCH_TO_ELEMENT[branch] as FiveElKey | undefined;
   if (surf === wealthEl) return true;
   for (const h of JIJANGGAN[branch] ?? []) {

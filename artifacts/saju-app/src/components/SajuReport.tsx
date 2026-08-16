@@ -6192,17 +6192,31 @@ export function SajuReport({ record, showSaveStatus = false, hourMode: parentHou
                 <p className="text-[11px] text-muted-foreground pl-0.5">
                   관성(조직·규율·직위) 단일 축만 본 값 — 위 커리어 활성도의 구성 요소 중 하나입니다 (원국 {sajuPipelineResult.evaluations.officerActivation.grade})
                 </p>
-                <div className="flex items-center justify-between rounded-lg bg-emerald-50/60 border border-emerald-100 px-3 py-2">
-                  <span className="font-semibold text-emerald-800">💰 재물 활성</span>
-                  <span className="font-bold text-emerald-800">
-                    {sajuPipelineResult.timingActivation.wealthActivationNow}점 · {sajuPipelineResult.timingActivation.wealthActivationTrend}
-                  </span>
+                <div className="rounded-lg border border-emerald-100 bg-emerald-50/60 px-3 py-2 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-emerald-800">💰 재물 활성도</span>
+                    <span className="font-bold text-emerald-800">
+                      {sajuPipelineResult.wealthActivation.activationScore}점 · {sajuPipelineResult.wealthActivation.activationLevel}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-emerald-800">📈 재물 유입도</span>
+                    <span className="font-bold text-emerald-800">
+                      {sajuPipelineResult.wealthActivation.inflowScore}점 · {sajuPipelineResult.wealthActivation.inflowLevel}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-emerald-800">🏦 재물 안정·축적도</span>
+                    <span className="font-bold text-emerald-800">
+                      {sajuPipelineResult.wealthActivation.stabilityScore}점 · {sajuPipelineResult.wealthActivation.stabilityLevel}
+                    </span>
+                  </div>
+                  <p className="text-[11px] leading-relaxed text-emerald-900/70 pt-0.5 border-t border-emerald-100">
+                    {sajuPipelineResult.wealthActivation.interpretation}
+                  </p>
                 </div>
                 <p className="text-[11px] text-muted-foreground pl-0.5">
-                  재물 관련 사건·기회가 이 시기에 얼마나 강하게 움직이는가 — 실제로 남는지(안정·축적)와는 다른 축입니다 (원국 종합 {sajuPipelineResult.evaluations.wealthActivation.grade})
-                </p>
-                <p className="text-[11px] text-muted-foreground pl-0.5">
-                  원국 종합은 재물 채널·유지·축적의 결합값이며, 재성 작동만을 뜻하지 않습니다. 세 축은 원국 탭 재물 카드를 참고하세요.
+                  활성도는 방향과 무관한 사건 크기, 유입도는 실제 들어오는 방향의 유불리, 안정·축적도는 남기고 지키기 쉬운 정도입니다 — 셋을 같은 개념으로 보지 마세요. (원국 축적력 {sajuPipelineResult.structureDomains.wealth.wealthAxes?.accumulationScore ?? "-"}점은 제한된 범위로만 반영됩니다.)
                 </p>
                 <p>
                   <span className="font-semibold text-foreground">배우자궁 안정</span> 지금{" "}

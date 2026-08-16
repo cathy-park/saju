@@ -15,6 +15,7 @@ import { getTenGodGroup, getController, type FiveElKey } from "./element-color";
 import { computeSpouseActivationByYearRange, topSpouseActivationYears } from "./evaluations/spouseActivation";
 import {
   computeRelationshipInteractionByYearRange,
+  dampeningFromCompatibilityTone,
   type PersonInteractionContext,
 } from "./evaluations/relationshipInteractionActivation";
 import type { CompatibilityResult } from "./compatibilityScore";
@@ -463,10 +464,23 @@ export function buildPersonClipboardText(
     lines.push(`${fmt2(timingActivation.officerActivationNow)}`);
     lines.push(`(${timingActivation.officerActivationTrend})`);
     lines.push("");
-    lines.push(`현재 재물운 활성도(종합·timing):`);
-    lines.push(`${fmt2(timingActivation.wealthActivationNow)}`);
-    lines.push(`(${timingActivation.wealthActivationTrend})`);
-    lines.push("");
+    const wealthActivation = pipelineSnapshot?.wealthActivation;
+    if (wealthActivation) {
+      lines.push(`현재 재물 3축(원국 재물 그릇과 분리된 이 해의 timing — 활성도≠유입도≠안정축적도):`);
+      lines.push(`  💰 재물 활성도(방향 무관 사건 크기): ${wealthActivation.activationScore}점 (${wealthActivation.activationLevel})`);
+      lines.push(`  📈 재물 유입도(실제 들어오는 방향의 유불리): ${wealthActivation.inflowScore}점 (${wealthActivation.inflowLevel})`);
+      lines.push(`  🏦 재물 안정·축적도(남기고 지키기 쉬운 정도): ${wealthActivation.stabilityScore}점 (${wealthActivation.stabilityLevel})`);
+      lines.push(`  해석: ${wealthActivation.interpretation}`);
+      if (wealthActivation.factors.length > 0) {
+        lines.push(`  근거: ${wealthActivation.factors.map((f) => f.label).join(" / ")}`);
+      }
+      lines.push("");
+    } else {
+      lines.push(`현재 재물운 활성도(종합·timing):`);
+      lines.push(`${fmt2(timingActivation.wealthActivationNow)}`);
+      lines.push(`(${timingActivation.wealthActivationTrend})`);
+      lines.push("");
+    }
     lines.push(`현재 배우자궁 안정도:`);
     lines.push(`${fmt2(timingActivation.spousePalaceStabilityNow)}`);
     lines.push(`(${timingActivation.spouseActivationTrend})`);
@@ -795,6 +809,20 @@ export function buildCompatibilityClipboardText(
   }
   lines.push("");
 
+  // 💕 연애 적합도 / 💍 결혼 적합도 — 두 사람 원국 자체의 구조 적합성(연도별 timing과 분리)
+  if (result.romanceMarriageFit) {
+    const fit = result.romanceMarriageFit;
+    lines.push(`[연애 적합도 / 결혼 적합도 (원국 기반, 연도별 timing과 분리)]`);
+    lines.push(`  💕 연애 적합도: ${fit.romanceScore}점 — ${fit.romanceNote}`);
+    lines.push(`  💍 결혼 적합도: ${fit.marriageScore}점 — ${fit.marriageNote}`);
+    lines.push(`  🧭 관계 유형: ${fit.relationshipType}`);
+    if (fit.marriageGroupStructureNotes.length > 0) {
+      lines.push(`  결혼 적합도 삼합/방합 근거: ${fit.marriageGroupStructureNotes.join(" / ")}`);
+    }
+    lines.push(`  (확률이 아니라 구조적 여건을 나타내는 해석용 점수입니다.)`);
+    lines.push("");
+  }
+
   // 세부 조정 항목
   lines.push(`[세부 점수 (기준점 50 + 조정)]`);
   for (const step of result.adjustmentSteps) {
@@ -892,6 +920,7 @@ export function buildCompatibilityClipboardText(
         },
         fromYear: lc1.wolun.year,
         count: 10,
+        baseCompatibilityDampening: dampeningFromCompatibilityTone(result.finalType),
       });
       if (interactionByYear.length > 0) {
         lines.push(`[커플 관계 상호작용도(연도별)]`);
@@ -962,6 +991,7 @@ export function buildCompatibilityClipboardText(
   lines.push("13. 🔮 최종 전망: 무조건 좋다/나쁘다 단정하지 말고, 어떤 조건이 충족되면 좋아질지 현실적으로 전망해주세요.");
   lines.push("14. 💒 대운·세운의 배우자/결혼 활성 흐름: 두 사람 각각의 결혼·배우자 테마 활성도와 배우자궁 안정도를 구분해서 해석하고, 현재 대운 안에서 관계·결혼 이슈가 특히 강하게 움직이는 연도를 비교해주세요. 활성도가 높다고 결혼 적기로 단정하지 말고, 활성도 × 안정도 조합에 따라 안정적 발전인지, 관계 변화·재편·결단이 강한 시기인지 구분해주세요.");
   lines.push("15. 💕 연도별 커플 관계 상호작용 흐름: [커플 관계 상호작용도(연도별)]의 관계 활성도·조화도·안정도를 반드시 함께 해석해주세요. 개인별 배우자 활성도/안정도와 커플 자체의 상호작용 지표를 혼동하지 말고, 관계 활성도(그 해 두 사람 사이의 사건·감정·결정이 얼마나 강하게 움직이는가) / 관계 조화도(그 움직임이 연결·보완 방향인지 충돌·소모 방향인지) / 관계 안정도(관계가 실제 성립했을 때 얼마나 안정적으로 유지되기 쉬운지)를 구분해주세요. 활성도가 높다는 이유만으로 재회·결혼·연애 성사를 단정하지 말고, 세 축과 두 사람 각각의 배우자·결혼 활성도/안정도, 그리고 '관계 진전 여건' 등급을 함께 종합해서 해석해주세요.");
+  lines.push("16. 💕💍 연애 적합도 · 결혼 적합도: [연애 적합도 / 결혼 적합도] 데이터는 두 사람 원국 자체의 구조 적합성이며, 연도별 timing과는 완전히 분리된 값입니다. 연애 적합도는 '연인으로서 끌리고 관계가 형성·유지되기 쉬운가'를, 결혼 적합도는 '장기 배우자로 생활·책임·갈등을 운영하기 쉬운가'를 뜻합니다. 두 점수와 관계 유형을 함께 언급하되, 확률이 아니라 구조적 여건이라는 점을 분명히 하고, 위 연도별 timing 항목(14·15번)과 섞어서 하나로 뭉뚱그리지 말아주세요.");
   lines.push("");
   lines.push("────────────────────");
   lines.push("[누락 방지 규칙]");

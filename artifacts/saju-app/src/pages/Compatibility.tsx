@@ -43,6 +43,7 @@ import { computePersonPipelineSnapshot } from "@/lib/personPipelineSnapshot";
 import { getController } from "@/lib/element-color";
 import {
   computeRelationshipInteractionByYearRange,
+  dampeningFromCompatibilityTone,
   type PersonInteractionContext,
 } from "@/lib/evaluations/relationshipInteractionActivation";
 import {
@@ -965,8 +966,9 @@ export default function Compatibility() {
       },
       fromYear: myLC.wolun.year,
       count: 10,
+      baseCompatibilityDampening: dampeningFromCompatibilityTone(result?.finalType),
     });
-  }, [ep1, ep2, myLC, otherLC, myPipelineForInteraction, otherPipelineForInteraction, myDayStem2, otherDayStem2, myDayBranch2, otherDayBranch2]);
+  }, [ep1, ep2, myLC, otherLC, myPipelineForInteraction, otherPipelineForInteraction, myDayStem2, otherDayStem2, myDayBranch2, otherDayBranch2, result?.finalType]);
 
   const canUsePairMode = people.length >= 2;
 
@@ -1268,6 +1270,46 @@ export default function Compatibility() {
                         </div>
 
                       </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {isPersonalLove && result.romanceMarriageFit && (() => {
+                const fit = result.romanceMarriageFit;
+                const scoreColor = (score: number) =>
+                  score >= 65 ? "text-emerald-700" : score < 45 ? "text-rose-700" : "text-amber-700";
+                return (
+                  <div className="ds-card overflow-hidden shadow-none border-fuchsia-200/60 bg-fuchsia-50/25 dark:border-fuchsia-900/35 dark:bg-fuchsia-950/15">
+                    <div className="border-b border-border bg-muted/20 px-4 py-3">
+                      <h2 className="text-sm font-bold text-foreground">연애 적합도 · 결혼 적합도</h2>
+                      <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">
+                        두 사람 원국 자체의 구조 적합성입니다(연도별 커플 활성/조화/안정 timing과는 별개). 확률이 아니라 구조적 여건을 나타내는 해석용 점수입니다.
+                      </p>
+                    </div>
+                    <div className="space-y-3 p-4">
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="rounded-lg border border-border/60 bg-background/80 p-3 text-center">
+                          <p className="text-[11px] text-muted-foreground">💕 연애 적합도</p>
+                          <p className={cn("text-2xl font-bold tabular-nums", scoreColor(fit.romanceScore))}>{fit.romanceScore}</p>
+                          <p className="mt-1 text-[11px] leading-relaxed text-foreground/80">{fit.romanceNote}</p>
+                        </div>
+                        <div className="rounded-lg border border-border/60 bg-background/80 p-3 text-center">
+                          <p className="text-[11px] text-muted-foreground">💍 결혼 적합도</p>
+                          <p className={cn("text-2xl font-bold tabular-nums", scoreColor(fit.marriageScore))}>{fit.marriageScore}</p>
+                          <p className="mt-1 text-[11px] leading-relaxed text-foreground/80">{fit.marriageNote}</p>
+                        </div>
+                      </div>
+                      <div className="rounded-md border border-fuchsia-200/60 bg-fuchsia-100/40 px-3 py-2 text-center dark:border-fuchsia-800/40 dark:bg-fuchsia-950/30">
+                        <span className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">🧭 관계 유형</span>
+                        <p className="mt-0.5 text-[14px] font-bold text-foreground">{fit.relationshipType}</p>
+                      </div>
+                      {fit.marriageGroupStructureNotes.length > 0 && (
+                        <div className="text-[11px] leading-relaxed text-muted-foreground">
+                          <span className="font-semibold text-foreground/80">결혼 적합도 삼합/방합 근거: </span>
+                          {fit.marriageGroupStructureNotes.join(" · ")}
+                        </div>
+                      )}
                     </div>
                   </div>
                 );

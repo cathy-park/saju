@@ -303,7 +303,10 @@ function pushCrossGroupStructures(
     const touchesB = r.branch1 === b.dayBranch || r.branch2 === b.dayBranch;
     if (!(touchesA || touchesB)) continue; // 두 원국 배우자궁 중 하나를 가로지르는 구조만 채택
     const isPartial = r.description.includes("흐름");
-    const magnitude = isPartial ? 6 : 10;
+    // 흐름(2지 부분 구조)은 완성 합국보다 훨씬 낮게 — 완성의 30% 수준. 흐름 여러 개가 겹쳐도
+    // 완성 하나만큼의 영향력을 내지 못하도록 한다(김혁 negative-control 케이스에서 흐름 2개가
+    // 합쳐 완성급 조화·안정 상승을 만들던 문제 수정).
+    const magnitude = isPartial ? 3 : 10;
     if (hasNatalRelation) {
       factors.push({
         label: `${a.name}·${b.name} 배우자궁 교차 기존 구조 강화 (${r.description})`,
@@ -339,6 +342,12 @@ export function computeRelationshipInteractionForYear(
   year: number,
   aSpouseYear: SpouseActivationYearEntry | undefined,
   bSpouseYear: SpouseActivationYearEntry | undefined,
+  /**
+   * 기본 궁합(compatibilityScore.ts의 finalType, 원국 기반 구조 적합성)에서 도출한 감쇠 계수(0~1).
+   * timing은 원국 궁합을 일시적으로 보정할 수는 있어도 구조적 적합성을 완전히 덮어쓰면 안 되므로,
+   * 기본 궁합이 약할수록(예: 노력형·주의) 이 해의 조화·안정 변동폭 자체를 줄인다. 기본값 1(감쇠 없음).
+   */
+  baseCompatibilityDampening = 1,
 ): RelationshipInteractionResult {
   const factors: RelationshipInteractionFactor[] = [];
 
@@ -366,12 +375,27 @@ export function computeRelationshipInteractionForYear(
   // 천간·지지를 한데 묶어 "오행이"라고만 쓰면, 천간은 희신을 지지는 기신을 건드리는 경우
   // 같은 대운에 대해 "희신 보완"과 "기신 강화"가 동시에 떠서 모순처럼 보인다 — 어느 글자가
   // 원인인지 천간/지지를 나눠 명시한다.
-  for (const [source, target] of [[a, b], [b, a]] as const) {
-    const points = source === a ? aPoints : bPoints;
-    for (const p of points) {
-      pushYongshinGisinForChar(factors, source.name, target, p.label, "천간", p.stem);
-      pushYongshinGisinForChar(factors, source.name, target, p.label, "지지", p.branch);
-    }
+  // 일방향 용희신 보완(한쪽만 상대를 보완하고 반대 방향은 없는 경우)은 "관계 자체의 상호
+  // 안정"과 같지 않으므로, 양방향 모두 우호적인 신호가 있을 때만 100% 인정하고 한쪽만
+  // 우호적이면 할인한다(김혁 negative-control 케이스: 김혁→박소연만 용희신 보완, 역방향 없음).
+  const aToB: RelationshipInteractionFactor[] = [];
+  const bToA: RelationshipInteractionFactor[] = [];
+  for (const p of aPoints) {
+    pushYongshinGisinForChar(aToB, a.name, b, p.label, "천간", p.stem);
+    pushYongshinGisinForChar(aToB, a.name, b, p.label, "지지", p.branch);
+  }
+  for (const p of bPoints) {
+    pushYongshinGisinForChar(bToA, b.name, a, p.label, "천간", p.stem);
+    pushYongshinGisinForChar(bToA, b.name, a, p.label, "지지", p.branch);
+  }
+  const aToBFavorable = aToB.some((f) => f.direction === "우호");
+  const bToAFavorable = bToA.some((f) => f.direction === "우호");
+  const mutualFavorable = aToBFavorable && bToAFavorable;
+  const ONE_WAY_DISCOUNT = 0.55;
+  for (const f of [...aToB, ...bToA]) {
+    // 비우호(기신 강화) 신호는 할인하지 않는다 — 경고 신호는 일방향이어도 그대로 유지.
+    const magnitude = f.direction === "우호" && !mutualFavorable ? Math.round(f.magnitude * ONE_WAY_DISCOUNT) : f.magnitude;
+    factors.push({ ...f, magnitude });
   }
 
   // ⑤ 두 사람의 개인별 배우자·결혼 활성도가 동시에 높은지 — activation 축에만 반영(harmony 자동 가산 금지)
@@ -404,14 +428,19 @@ export function computeRelationshipInteractionForYear(
   }
 
   // ── category cap 적용 후 axis별 합산 ──────────────────────────────
+  // activation(사건 크기)은 기본 궁합과 무관하게 그대로 둔다 — "이 해에 뭔가 크게 움직인다"는
+  // 사실 자체는 원국 궁합 등급과 별개다. harmony·stability는 기본 궁합 감쇠를 적용한다.
   const activationRaw = axisTotal(factors, "activation", false);
   const activationScore = clamp100(15 + activationRaw);
 
-  const harmonyRaw = axisTotal(factors, "harmony", true);
+  const harmonyRaw = axisTotal(factors, "harmony", true) * baseCompatibilityDampening;
   const harmonyScore = clamp100(50 + harmonyRaw);
 
-  const stabilityRaw = axisTotal(factors, "stability", true);
-  const stabilityScore = clamp100((aStab + bStab) / 2 + stabilityRaw * 0.5);
+  // 안정도 base: 두 사람 개인 안정도의 단순 평균이 아니라 weak-link 가중(약한 쪽 65% + 강한 쪽 35%).
+  // 한쪽이 크게 불안정하면 합·구조 몇 개로는 쉽게 상쇄되지 않도록 한다.
+  const stabilityWeakLinkBase = Math.min(aStab, bStab) * 0.65 + Math.max(aStab, bStab) * 0.35;
+  const stabilityRaw = axisTotal(factors, "stability", true) * baseCompatibilityDampening;
+  const stabilityScore = clamp100(stabilityWeakLinkBase + stabilityRaw * 0.5);
 
   const activationLevel = activationLevelFromScore(activationScore);
   const harmonyDirection = harmonyDirectionFromScore(harmonyScore);
@@ -438,6 +467,8 @@ export function computeRelationshipInteractionForYear(
     bName: b.name,
     aActLevel,
     bActLevel,
+    aActScore: aSpouseYear?.activation.activationScore ?? 0,
+    bActScore: bSpouseYear?.activation.activationScore ?? 0,
   });
 
   return {
@@ -502,10 +533,12 @@ function deriveProgressReadiness(args: {
   bName: string;
   aActLevel: InteractionLevel;
   bActLevel: InteractionLevel;
+  aActScore: number;
+  bActScore: number;
 }): { level: ProgressReadinessLevel; reasons: string[]; isLowActivityPeriod: boolean; note: string } {
   const {
     activationScore, activationLevel, harmonyScore, harmonyDirection,
-    stabilityScore, stabilityLevel, aName, bName, aActLevel, bActLevel,
+    stabilityScore, stabilityLevel, aName, bName, aActLevel, bActLevel, aActScore, bActScore,
   } = args;
 
   let score = harmonyScore * 0.45 + stabilityScore * 0.35 + activationScore * 0.2;
@@ -518,6 +551,14 @@ function deriveProgressReadiness(args: {
   // 충돌 방향 + 커플 활성도 높음 = 사건은 강하지만 진전 여건으로는 위험한 조합 → 상한
   if (harmonyDirection === "충돌" && activationLevel === "높음") {
     score = Math.min(score, 55);
+  }
+
+  // 개인 활성도 ceiling: 두 사람 중 한쪽이라도 개인 배우자·결혼 활성도가 30점 미만이면,
+  // 조화·안정이 아무리 좋아도 "매우 높음"까지는 주지 않는다 — 한쪽이 관계 테마 자체에 거의
+  // 반응하지 않는 시기인데 커플 지표만으로 "진전 여건 최고"라고 읽히는 걸 막는 안전장치.
+  const minPersonalActivation = Math.min(aActScore, bActScore);
+  if (minPersonalActivation < 30) {
+    score = Math.min(score, 77);
   }
   score = clamp100(score);
 
@@ -532,6 +573,7 @@ function deriveProgressReadiness(args: {
   reasons.push(`커플 관계 활성도 ${activationLevel}`);
   reasons.push(`커플 관계 조화도 ${harmonyDirection}`);
   reasons.push(`커플 관계 안정도 ${stabilityLevel}`);
+  if (minPersonalActivation < 30) reasons.push(`개인 활성도 최저치 ${Math.round(minPersonalActivation)}점 — "매우 높음" 상한 적용`);
 
   const isLowActivityPeriod = aActLevel === "낮음" && bActLevel === "낮음" && activationLevel === "낮음";
 
@@ -598,6 +640,8 @@ export interface RelationshipInteractionYearRangeContext {
   bSpouseCtx: Omit<SpouseActivationYearRangeContext, "fromYear" | "count">;
   fromYear: number;
   count?: number;
+  /** 기본 궁합(compatibilityScore.ts) 기반 감쇠 계수(0~1). 미전달 시 1(감쇠 없음). */
+  baseCompatibilityDampening?: number;
 }
 
 export interface RelationshipInteractionYearEntry {
@@ -614,7 +658,19 @@ export function computeRelationshipInteractionByYearRange(
 
   return aSpouseByYear.map((aYear) => {
     const bYear = bSpouseByYear.find((y) => y.year === aYear.year);
-    const result = computeRelationshipInteractionForYear(ctx.a, ctx.b, aYear.year, aYear, bYear);
+    const result = computeRelationshipInteractionForYear(ctx.a, ctx.b, aYear.year, aYear, bYear, ctx.baseCompatibilityDampening ?? 1);
     return { year: aYear.year, result };
   });
+}
+
+/** compatibilityScore.ts의 CompatibilityTone(기본 궁합 등급)을 감쇠 계수로 변환한다. */
+export function dampeningFromCompatibilityTone(tone: string | undefined): number {
+  const TABLE: Record<string, number> = {
+    "이상적 궁합": 1,
+    "좋은 궁합": 0.9,
+    "노력형 궁합": 0.75,
+    "긴장형 궁합": 0.6,
+    "주의 궁합": 0.45,
+  };
+  return tone ? (TABLE[tone] ?? 1) : 1;
 }

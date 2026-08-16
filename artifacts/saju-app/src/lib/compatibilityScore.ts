@@ -190,6 +190,30 @@ export interface CompatibilityResult {
    * 두 사람 각각의 결혼·배우자 테마 활성도 연도별 표 + TOP3(개인 사주 화면과 동일 계산 함수 재사용).
    */
   spouseActivationTiming: SpouseActivationTimingBlock | null;
+
+  /**
+   * 연애 적합도 / 결혼 적합도 — 원국 기반 두 사람 자체의 구조 적합성(0~100). 기존 7조정
+   * delta를 서로 다른 가중치로 재조합한 값이며, 연도별 timing(활성/조화/안정)과는 완전히
+   * 분리된다. 통계적 확률이 아니라 구조적 여건을 나타내는 해석용 지표.
+   */
+  romanceMarriageFit: RomanceMarriageFit;
+}
+
+export type RelationshipTypeLabel =
+  | "연애·결혼 모두 적합"
+  | "연애 우세 · 결혼 조율 필요"
+  | "연애는 천천히 · 결혼 적합 우세"
+  | "연애·결혼 모두 난이도 높음"
+  | "조건부 적합(양쪽 다 무난)";
+
+export interface RomanceMarriageFit {
+  romanceScore: number;
+  marriageScore: number;
+  relationshipType: RelationshipTypeLabel;
+  romanceNote: string;
+  marriageNote: string;
+  /** 결혼 적합도에 반영된 삼합/방합 교차 결속 근거(있을 때만) */
+  marriageGroupStructureNotes: string[];
 }
 
 export interface SpouseAxisComparisonSentences {
@@ -955,6 +979,121 @@ function buildSpouseActivationYearsForPerson(
   return { years, top: topSpouseActivationYears(years, 3) };
 }
 
+// ── 연애 적합도 / 결혼 적합도 (원국 기반, 연도별 timing과 분리) ────────────
+// 삼합·방합 그룹의 대표 오행(원국 삼합/방합 이론의 표준 배속).
+const GROUP_ELEMENT: Record<string, FiveElKey> = {
+  인오술: "화", 사유축: "금", 신자진: "수", 해묘미: "목", // 삼합
+  인묘진: "목", 사오미: "화", 신유술: "금", 해자축: "수", // 방합
+};
+
+/**
+ * 결혼 적합도의 삼합/방합 가산 — 있다는 사실만으로 무조건 +5를 주지 않는다.
+ * 1) 두 사람 지지를 가로질러 실제로 교차 형성되는 구조만 인정(한 사람 원국 내부 완결은 제외)
+ * 2) 완성(3지) vs 흐름(2지 부분)을 구분해 흐름은 훨씬 낮은 가중치
+ * 3) 그 합국 오행이 각자의 용신·희신인지 기신인지 확인해서, 한쪽 기신을 강하게 만드는
+ *    합국이면 가산을 줄이거나(한쪽만 기신) 아예 주지 않는다(양쪽 다 기신)
+ */
+function marriageGroupStructureBonus(
+  br1: string[], br2: string[],
+  y1: FiveElKey, h1: FiveElKey | undefined, g1: FiveElKey,
+  y2: FiveElKey, h2: FiveElKey | undefined, g2: FiveElKey,
+): { bonus: number; notes: string[] } {
+  const combined = [...new Set([...br1, ...br2])];
+  const rels = computeBranchRelations(combined);
+  let bonus = 0;
+  const notes: string[] = [];
+  for (const r of rels) {
+    if (r.type !== "지지삼합" && r.type !== "지지방합") continue;
+    const b1InP1 = br1.includes(r.branch1), b1InP2 = br2.includes(r.branch1);
+    const b2InP1 = br1.includes(r.branch2), b2InP2 = br2.includes(r.branch2);
+    const crossFormed = (b1InP1 && b2InP2) || (b1InP2 && b2InP1);
+    if (!crossFormed) continue; // 한 사람 원국 내부에서만 완결되는 구조는 "두 사람 사이" 결속이 아님
+
+    const groupKey = r.description.split(" ")[0];
+    const el = GROUP_ELEMENT[groupKey];
+    if (!el) continue;
+    const isPartial = r.description.includes("흐름");
+    const baseWeight = isPartial ? 2 : 5;
+
+    const p1Fav = el === y1 || (!!h1 && el === h1);
+    const p2Fav = el === y2 || (!!h2 && el === h2);
+    const p1Gi = el === g1;
+    const p2Gi = el === g2;
+
+    let weight: number;
+    let tag: string;
+    if (p1Gi && p2Gi) {
+      weight = 0;
+      tag = "양쪽 모두 기신 강화 — 가산 없음";
+    } else if (p1Gi || p2Gi) {
+      weight = baseWeight * 0.4;
+      tag = "한쪽 기신 부담 — 가산 축소";
+    } else if (p1Fav || p2Fav) {
+      weight = baseWeight;
+      tag = "용신·희신 우호";
+    } else {
+      weight = baseWeight * 0.5;
+      tag = "중립(용희신·기신 무관)";
+    }
+    if (weight > 0) {
+      bonus += weight;
+      notes.push(`${r.description}(${el}행) — ${tag}`);
+    }
+  }
+  return { bonus: Math.min(8, bonus), notes: [...new Set(notes)] };
+}
+
+function classifyRelationshipType(romance: number, marriage: number): RelationshipTypeLabel {
+  const romanceHigh = romance >= 65;
+  const marriageHigh = marriage >= 65;
+  const romanceLow = romance < 45;
+  const marriageLow = marriage < 45;
+  if (romanceHigh && marriageHigh) return "연애·결혼 모두 적합";
+  if (romanceLow && marriageLow) return "연애·결혼 모두 난이도 높음";
+  if (romanceHigh && !marriageHigh) return "연애 우세 · 결혼 조율 필요";
+  if (!romanceHigh && marriageHigh) return "연애는 천천히 · 결혼 적합 우세";
+  return "조건부 적합(양쪽 다 무난)";
+}
+
+function buildRomanceMarriageFit(
+  dmDelta: number, spDelta: number, mbDelta: number, biDelta: number,
+  ecDelta: number, tgDelta: number, yongDelta: number,
+  avgSpousePalaceStability: number,
+  br1: string[], br2: string[],
+  y1: FiveElKey, h1: FiveElKey | undefined, g1: FiveElKey,
+  y2: FiveElKey, h2: FiveElKey | undefined, g2: FiveElKey,
+): RomanceMarriageFit {
+  const romanceRaw =
+    dmDelta * 1.2 + tgDelta * 1.2 + biDelta * 1.3 + yongDelta * 1.1 +
+    ecDelta * 1.0 + mbDelta * 0.8 + spDelta * 0.4;
+  const romanceScore = Math.max(0, Math.min(100, Math.round(50 + romanceRaw)));
+
+  const { bonus: groupBonus, notes: marriageGroupStructureNotes } = marriageGroupStructureBonus(
+    br1, br2, y1, h1, g1, y2, h2, g2,
+  );
+  // netDelta는 sp/bi/mb/dm에서 이미 파생된 boolean 요약이라 별도로 더하면 같은 근거를
+  // 중복 가산하게 되므로 사용하지 않는다(투명성 보고 참고).
+  const marriageRaw =
+    spDelta * 1.8 + (avgSpousePalaceStability - 50) * 0.3 + yongDelta * 1.3 + mbDelta * 1.1 +
+    biDelta * 0.9 + dmDelta * 0.5 + ecDelta * 0.5 + tgDelta * 0.3 + groupBonus;
+  const marriageScore = Math.max(0, Math.min(100, Math.round(50 + marriageRaw)));
+
+  const relationshipType = classifyRelationshipType(romanceScore, marriageScore);
+
+  const romanceNote = romanceScore >= 65
+    ? "연인으로서 서로 끌리고 관계를 형성·유지하기 쉬운 구조입니다."
+    : romanceScore < 45
+      ? "연애 감정의 자연스러운 형성·유지에는 서로 조율이 필요한 구조입니다."
+      : "연애 적합도는 무난한 중간 수준입니다.";
+  const marriageNote = marriageScore >= 65
+    ? "장기 배우자로서 생활·책임·갈등을 운영하기 비교적 수월한 구조입니다."
+    : marriageScore < 45
+      ? "장기 배우자 관계에서는 생활·책임·갈등 운영에 조율이 더 필요한 구조입니다."
+      : "결혼 적합도는 무난한 중간 수준입니다.";
+
+  return { romanceScore, marriageScore, relationshipType, romanceNote, marriageNote, marriageGroupStructureNotes };
+}
+
 // ── Main export ──────────────────────────────────────────────────────────
 
 export function calculateCompatibilityScore(
@@ -1052,6 +1191,25 @@ export function calculateCompatibilityScore(
   const keywords = buildKeywords(baseScore, s1, s2, hasHarmonyStructure, hasConflictStructure, bi.clashCount);
   const domains = buildDomains(el1, el2, s1, s2);
 
+  const romanceMarriageFit: RomanceMarriageFit = (() => {
+    if (!pipe1 || !pipe2) {
+      return buildRomanceMarriageFit(
+        dm.delta, sp.delta, mb.delta, bi.delta, ec.delta, tg.delta, yong.delta,
+        50, br1, br2, "목", undefined, "금", "목", undefined, "금",
+      );
+    }
+    const y1v = pipe1.adjusted.effectiveYongshin;
+    const y2v = pipe2.adjusted.effectiveYongshin;
+    const avgSpousePalaceStability =
+      (pipe1.evaluations.spousePalaceStability.score + pipe2.evaluations.spousePalaceStability.score) / 2;
+    return buildRomanceMarriageFit(
+      dm.delta, sp.delta, mb.delta, bi.delta, ec.delta, tg.delta, yong.delta,
+      avgSpousePalaceStability, br1, br2,
+      y1v, pipe1.adjusted.effectiveYongshinSecondary, getController(y1v),
+      y2v, pipe2.adjusted.effectiveYongshinSecondary, getController(y2v),
+    );
+  })();
+
   const details: CompatibilityResult["details"] = [
     { title: "일간 분석",  description: dm.note,   isPositive: dm.delta >= 0 },
     { title: "배우자궁",   description: sp.note,   isPositive: sp.delta >= 0 },
@@ -1110,6 +1268,7 @@ export function calculateCompatibilityScore(
     },
     spouseStructureAxisComparison,
     spouseActivationTiming,
+    romanceMarriageFit,
   };
 }
 

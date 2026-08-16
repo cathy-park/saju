@@ -59,6 +59,10 @@ import {
   computeCareerActivation,
   type CareerActivationResult,
 } from "./evaluations/careerActivation";
+import {
+  computeWealthActivation,
+  type WealthActivationResult,
+} from "./evaluations/wealthActivation";
 
 // ── 지장간 오행 증폭 (地藏干 Augmentation) ────────────────────────
 // Adds hidden stem elements to a five-element count with fractional weights.
@@ -470,6 +474,9 @@ export interface SajuPipelineResult {
   spouseActivation?: SpouseActivationResult;
   /** 커리어 활성도 — 관성 활성도(officerActivationNow)와 별개로 식상·관성·인성 3축을 종합한 timing 지표 */
   careerActivation: CareerActivationResult;
+  /** 재물 timing 3축(유입도·활성도·안정축적도) — wealthActivationNow(원국+델타 혼합)와 별개로,
+   * 원국 축적력은 제한된 calibration으로만 쓰고 이 해의 재물 지지 충형을 직접 반영한다 */
+  wealthActivation: WealthActivationResult;
 }
 
 /**
@@ -586,6 +593,22 @@ export function computeSajuPipeline(input: PipelineInput): SajuPipelineResult {
     console.log("[careerActivation]", careerActivation);
   }
 
+  const wealthActivation = computeWealthActivation({
+    dayStem: input.dayStem,
+    allBranches: input.allBranches,
+    daewoonHangul: input.timingDaewoonHangul,
+    saeunHangul: input.timingSeunHangul,
+    yongshin: adjusted.effectiveYongshin,
+    heesin: adjusted.effectiveYongshinSecondary,
+    gisin: getController(adjusted.effectiveYongshin),
+    natalAccumulationScore: structureDomains.wealth.wealthAxes?.accumulationScore ?? 50,
+  });
+
+  if (isDevRuntime()) {
+    // eslint-disable-next-line no-console
+    console.log("[wealthActivation]", wealthActivation);
+  }
+
   const diagnostics: EngineDiagnostics = {
     strength: {
       source: "interpretSchema.computeStrengthResult",
@@ -619,5 +642,5 @@ export function computeSajuPipeline(input: PipelineInput): SajuPipelineResult {
       reason: interpretation.seasonalNote,
     },
   };
-  return { input, base, adjusted, interpretation, diagnostics, evaluations, structureDomains, timingActivation, spouseActivation, careerActivation };
+  return { input, base, adjusted, interpretation, diagnostics, evaluations, structureDomains, timingActivation, spouseActivation, careerActivation, wealthActivation };
 }
