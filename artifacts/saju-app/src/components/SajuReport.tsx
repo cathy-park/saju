@@ -127,6 +127,8 @@ import {
   STRUCTURE_TYPE_COLOR,
   BRANCH_HANJA,
 } from "@/lib/gukguk";
+import type { SpecialGukgukCandidate } from "@/lib/specialGukguk";
+import type { LatentGukgukResult } from "@/lib/latentGukguk";
 import {
   getSpousePalaceInfo,
   getComplementaryInfo,
@@ -1864,6 +1866,8 @@ function GukgukSection({
   allBranches,
   pipelineGukguk,
   pipelinePatterns,
+  pipelineSpecialPatterns,
+  pipelineLatentGukguk,
 }: {
   dayStem: string;
   monthBranch?: string;
@@ -1871,12 +1875,21 @@ function GukgukSection({
   allBranches: string[];
   pipelineGukguk?: ReturnType<typeof determineGukguk> | null;
   pipelinePatterns?: ReturnType<typeof detectStructurePatterns>;
+  pipelineSpecialPatterns?: SpecialGukgukCandidate[];
+  pipelineLatentGukguk?: LatentGukgukResult | null;
 }) {
   if (!dayStem || !monthBranch) return null;
   // Single source of truth: prefer pipeline-computed results to avoid divergent logic across sections.
   const gukguk = pipelineGukguk ?? determineGukguk(dayStem, monthBranch, allStems);
   const patterns = pipelinePatterns ?? detectStructurePatterns(dayStem, allStems, allBranches, monthBranch);
-  if (!gukguk && patterns.length === 0) {
+  // 특별격은 pipeline 결과에서만 온다(strengthResult가 필요해 클라이언트 재계산 fallback을 두지 않음).
+  // 내격(gukguk)은 절대 덮어쓰지 않으며, 특별격은 항상 별도 병렬 카드로만 노출한다.
+  const specialCandidates = pipelineSpecialPatterns ?? [];
+  const highSpecial = specialCandidates.find((c) => c.confidence === "high") ?? null;
+  const visibleSpecialCandidates = specialCandidates.filter((c) => c.confidence !== "low");
+  // 월령 후보(B): gukguk이 null일 때만 파이프라인이 채워준다. 읽기 전용 설명 정보 — downstream 계산 없음.
+  const latentGukguk = pipelineLatentGukguk ?? null;
+  if (!gukguk && patterns.length === 0 && visibleSpecialCandidates.length === 0 && !latentGukguk) {
     return (
       <div className="space-y-3">
         <div className="rounded-2xl border px-4 py-4 space-y-2 bg-muted/20 border-border/60">
@@ -1960,6 +1973,93 @@ function GukgukSection({
         </div>
       )}
 
+      {/* 월령 후보(B) — 내격(gukguk)이 미확정일 때만 노출되는 읽기 전용 설명 카드.
+          강약·용신 등 어떤 계산에도 영향을 주지 않으며, 내격 판정을 대체하지 않는다. */}
+      {!gukguk && latentGukguk && (
+        <div className="rounded-2xl border px-4 py-4 space-y-2 bg-sky-50/50 border-sky-200/70 dark:bg-sky-950/20 dark:border-sky-900/50">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-bold text-sky-800 dark:text-sky-300">월령 후보: {latentGukguk.name} 성향</span>
+              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-sky-200/70 text-sky-800 dark:bg-sky-800/50 dark:text-sky-200">미투출</span>
+            </div>
+          </div>
+          <p className="text-[12px] leading-relaxed text-sky-900/80 dark:text-sky-200/80">{latentGukguk.description}</p>
+          <div className="ds-inline-detail-nested space-y-1">
+            <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide">근거</p>
+            <ul className="text-[12px] text-foreground/90 list-disc pl-4 space-y-0.5">
+              {latentGukguk.explanation.map((line, i) => (
+                <li key={i}>{line}</li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
+
+      {/* 특별격(전왕격·종격) 검토 — 내격(gukguk)을 대체하지 않는 별도 병렬 카드.
+          high 확정 시에만 상단으로 올려 강조하되, 주격(내격) 표시는 그대로 유지한다. */}
+      {visibleSpecialCandidates.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide px-1">
+            특별격 검토
+          </p>
+          {highSpecial && (
+            <p className="text-[12px] text-muted-foreground px-1">
+              주격: {gukguk ? gukguk.name : "격국 없음"} (내격) · 용신은 특별격 순세 취용이 적용되었습니다
+            </p>
+          )}
+          {visibleSpecialCandidates.map((c) => {
+            const isHigh = c.confidence === "high";
+            const confidenceLabel = c.confidence === "high" ? "high" : c.confidence === "medium" ? "medium" : "low";
+            return (
+              <div
+                key={c.name}
+                className={
+                  isHigh
+                    ? "rounded-2xl border-2 border-violet-300 bg-violet-50 px-4 py-4 space-y-3 dark:border-violet-800 dark:bg-violet-950/30"
+                    : "rounded-xl border border-violet-200/70 bg-violet-50/40 px-3 py-2.5 space-y-2 dark:border-violet-900/50 dark:bg-violet-950/15"
+                }
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className={isHigh ? "text-lg font-black tracking-tight text-violet-800 dark:text-violet-200" : "text-sm font-bold text-violet-700 dark:text-violet-300"}>
+                      {isHigh ? `특별격: ${c.name}` : `특별격 후보: ${c.name}`}
+                    </span>
+                    <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-violet-200/80 text-violet-800 dark:bg-violet-800/50 dark:text-violet-200">
+                      {confidenceLabel}
+                    </span>
+                  </div>
+                  <span className="text-[11px] text-violet-700/70 dark:text-violet-300/70">{c.category}</span>
+                </div>
+                {isHigh && (
+                  <p className="text-[12px] font-semibold text-violet-800 dark:text-violet-200">
+                    용신(순세 취용): {c.recommendedYongshin}
+                    {c.secondaryYongshin ? ` / 보조 ${c.secondaryYongshin}` : ""} — {c.yongshinReason}
+                  </p>
+                )}
+                <div className="ds-inline-detail-nested space-y-1">
+                  <p className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400">성립 근거</p>
+                  <ul className="text-[12px] text-foreground/90 list-disc pl-4 space-y-0.5">
+                    {c.supportingEvidence.map((line, i) => (
+                      <li key={i}>{line}</li>
+                    ))}
+                  </ul>
+                </div>
+                {c.opposingEvidence.length > 0 && (
+                  <div className="ds-inline-detail-nested space-y-1">
+                    <p className="text-[11px] font-bold text-rose-700 dark:text-rose-400">방해 근거</p>
+                    <ul className="text-[12px] text-foreground/90 list-disc pl-4 space-y-0.5">
+                      {c.opposingEvidence.map((line, i) => (
+                        <li key={i}>{line}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
       {/* 구조 분석 */}
       {patterns.length > 0 && (
         <div className="space-y-2">
@@ -1987,7 +2087,7 @@ function GukgukSection({
 
 // ── Fortune Calendar (일운 monthly view) ──────────────────────────
 
-function FortuneCalendar({ record, dayStem, birthYear, adjustedDaewoon, viewYear, viewMonth, onViewYearChange, onViewMonthChange }: {
+function FortuneCalendar({ record, dayStem, birthYear, adjustedDaewoon, viewYear, viewMonth, onViewYearChange, onViewMonthChange, onSelectedDayChange }: {
   record: PersonRecord;
   dayStem: string;
   birthYear: number;
@@ -1996,11 +2096,18 @@ function FortuneCalendar({ record, dayStem, birthYear, adjustedDaewoon, viewYear
   viewMonth: number;
   onViewYearChange: (year: number) => void;
   onViewMonthChange: (month: number) => void;
+  /** 하단 "구조·운 가중" 카드가 일운 탭에서도 선택된 날짜로 계산되도록 상위로 알려준다 */
+  onSelectedDayChange?: (day: number | null) => void;
 }) {
   const today = new Date();
   const [selectedDay, setSelectedDay] = useState<number | null>(
     viewYear === today.getFullYear() && viewMonth === today.getMonth() + 1 ? today.getDate() : null
   );
+
+  useEffect(() => {
+    onSelectedDayChange?.(selectedDay);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDay]);
 
   const daysInMonth = new Date(viewYear, viewMonth, 0).getDate();
   const firstDayOfWeek = new Date(viewYear, viewMonth - 1, 1).getDay();
@@ -2303,6 +2410,9 @@ function LuckFlowTabs({
   record,
   selectedSeunYear,
   onSelectedSeunYearChange,
+  onTabChange,
+  onWolunSelectionChange,
+  onIlunDayChange,
 }: {
   luckCycles: ReturnType<typeof calculateLuckCycles>;
   dayStem: string;
@@ -2310,6 +2420,10 @@ function LuckFlowTabs({
   record: PersonRecord;
   selectedSeunYear: number;
   onSelectedSeunYearChange: (year: number) => void;
+  /** 하단 "구조·운 가중" 카드가 지금 보고 있는 탭(대운/세운/월운/일운) 기준으로 계산되도록 알려준다 */
+  onTabChange?: (tab: LuckTabKey) => void;
+  onWolunSelectionChange?: (year: number, month: number) => void;
+  onIlunDayChange?: (day: number | null) => void;
 }) {
   const [tab, setTab] = useState<LuckTabKey>(() => {
     const saved = sessionStorage.getItem("openLuckTab") as LuckTabKey | null;
@@ -2376,6 +2490,18 @@ function LuckFlowTabs({
   useEffect(() => {
     setSelectedWolunYear(selectedSeunYear);
   }, [selectedSeunYear]);
+
+  // 지금 보고 있는 탭 · 월운 선택을 상위(SajuReport)로 알려서, 하단 "구조·운 가중" 카드가
+  // 항상 세운(연도) 단위로만 고정되지 않고 대운/세운/월운/일운 중 실제 보고 있는 탭 기준으로
+  // 계산되게 한다.
+  useEffect(() => {
+    onTabChange?.(tab);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab]);
+  useEffect(() => {
+    onWolunSelectionChange?.(selectedWolunYear, selectedWolunMonth);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedWolunYear, selectedWolunMonth]);
 
   // Read-only: 대운수는 엔진 자동 계산값만 표시합니다.
 
@@ -2664,6 +2790,7 @@ function LuckFlowTabs({
           viewMonth={selectedWolunMonth}
           onViewYearChange={setSelectedWolunYear}
           onViewMonthChange={setSelectedWolunMonth}
+          onSelectedDayChange={onIlunDayChange}
         />
       )}
     </div>
@@ -4685,9 +4812,11 @@ export function SajuReport({ record, showSaveStatus = false, hourMode: parentHou
 
   // ── Computed values (read-only results) ─────────────────────────
   // Results are engine-derived and must remain read-only.
-  // Ignore any legacy manual override fields (manualPillars/manualFiveElements/etc).
+  // manualPillars(사주 직접 수정)가 있으면 항상 그 값이 최종 사주값이다 — getFinalPillars()가
+  // PersonDetail.tsx 등 다른 화면과 동일한 단일 소스로 병합한다. localProfile은 fortuneOpts
+  // 토글 시 즉시 반영되는 로컬 반응형 미러이므로, record.profile 대신 여기에 병합한다.
   const profile = localProfile;
-  const pillars = profile.computedPillars;
+  const pillars = getFinalPillars({ ...record, profile });
   const input = record.birthInput;
   const isManuallyEdited = false;
 
@@ -4722,6 +4851,14 @@ export function SajuReport({ record, showSaveStatus = false, hourMode: parentHou
   // 세운 탭에서 선택한 연도. LuckFlowTabs와 공유해서, 아래 "구조·운 가중" 섹션이
   // 항상 실제 올해가 아니라 사용자가 위에서 고른 연도 기준으로 계산되게 한다.
   const [selectedSeunYear, setSelectedSeunYear] = useState<number>(() => luckCycles.wolun.year);
+  // 대운/세운/월운/일운 중 지금 보고 있는 탭과 월운·일운 선택 — LuckFlowTabs가 올려주는 값을
+  // 그대로 받아서, 아래 "구조·운 가중" 카드가 탭을 옮길 때마다 그 탭 기준으로 다시 계산되게 한다.
+  const [selectedLuckTab, setSelectedLuckTab] = useState<LuckTabKey>("대운");
+  const [selectedWolun, setSelectedWolun] = useState<{ year: number; month: number }>(() => ({
+    year: luckCycles.wolun.year,
+    month: luckCycles.wolun.month,
+  }));
+  const [selectedIlunDay, setSelectedIlunDay] = useState<number | null>(null);
 
   // ── 4-Layer Saju Pipeline (auto-recomputes when any input changes) ──
   // 오행·십성·신강약·조후·용신·규칙 해석을 한 번에 재계산합니다.
@@ -4748,6 +4885,12 @@ export function SajuReport({ record, showSaveStatus = false, hourMode: parentHou
     }));
     const curDw = adjustedDw.find((e) => age >= e.startAge && age <= e.endAge);
     const seunEntry = luckCycles.seun.find((e) => e.year === refYear) ?? luckCycles.seun[2];
+    // 월운·일운 탭에 있을 때만 그 층까지 가중에 포함한다(대운 탭에 있을 때 일운까지
+    // 끼어들면 오히려 혼란스러우므로, 지금 보고 있는 탭까지만 누적해서 반영).
+    const includeWolun = selectedLuckTab === "월운" || selectedLuckTab === "일운";
+    const includeIlun = selectedLuckTab === "일운" && selectedIlunDay != null;
+    const wolunGZ = includeWolun ? getMonthGanZhi(selectedWolun.year, selectedWolun.month) : null;
+    const ilunGZ = includeIlun ? getDayGanZhi(selectedWolun.year, selectedWolun.month, selectedIlunDay as number) : null;
     return computeSajuPipeline({
       dayStem: dayStemNow,
       monthBranch: effectivePillars.month?.hangul?.[1],
@@ -4763,9 +4906,11 @@ export function SajuReport({ record, showSaveStatus = false, hourMode: parentHou
       },
       timingDaewoonHangul: curDw?.ganZhi.hangul,
       timingSeunHangul: seunEntry?.ganZhi.hangul,
+      timingWolunHangul: wolunGZ?.hangul,
+      timingIlunHangul: ilunGZ?.hangul,
       gender: input.gender,
     });
-  }, [effectiveFiveElements, effectivePillars, luckCycles, input.year, input.gender, selectedSeunYear, record.manualStrengthLevel, record.manualYongshinData, fortuneOpts?.seasonalAdjustmentOff]);
+  }, [effectiveFiveElements, effectivePillars, luckCycles, input.year, input.gender, selectedSeunYear, selectedLuckTab, selectedWolun, selectedIlunDay, record.manualStrengthLevel, record.manualYongshinData, fortuneOpts?.seasonalAdjustmentOff]);
 
   /**
    * 결혼운 시기 힌트용 — 앞으로 10년(세운 기준)의 배우자·결혼 테마 활성도/안정도를 연도별로 계산.
@@ -5606,6 +5751,8 @@ export function SajuReport({ record, showSaveStatus = false, hourMode: parentHou
                 allBranches={allBranches}
                 pipelineGukguk={sajuPipelineResult?.interpretation.gukguk ?? null}
                 pipelinePatterns={sajuPipelineResult?.interpretation.structurePatterns ?? []}
+                pipelineSpecialPatterns={sajuPipelineResult?.interpretation.specialPatterns ?? []}
+                pipelineLatentGukguk={sajuPipelineResult?.interpretation.latentGukguk ?? null}
               />
               {seasonalNote ? (
                 <div className="mt-4 rounded-xl border border-sky-200/80 bg-sky-50/40 p-3 shadow-none dark:border-sky-900/50 dark:bg-sky-950/25">
@@ -6165,6 +6312,9 @@ export function SajuReport({ record, showSaveStatus = false, hourMode: parentHou
                 record={record}
                 selectedSeunYear={selectedSeunYear}
                 onSelectedSeunYearChange={setSelectedSeunYear}
+                onTabChange={setSelectedLuckTab}
+                onWolunSelectionChange={(year, month) => setSelectedWolun({ year, month })}
+                onIlunDayChange={setSelectedIlunDay}
               />
             </div>
           </div>
@@ -6172,10 +6322,17 @@ export function SajuReport({ record, showSaveStatus = false, hourMode: parentHou
             <div className="ds-card overflow-hidden shadow-none border-border/80">
               <div className="border-b border-border px-4 pb-2 pt-4">
                 <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                  {selectedSeunYear}년 구조·운 가중 (timingActivation)
+                  {selectedLuckTab === "일운" && selectedIlunDay != null
+                    ? `${selectedWolun.year}년 ${selectedWolun.month}월 ${selectedIlunDay}일`
+                    : selectedLuckTab === "월운"
+                      ? `${selectedWolun.year}년 ${selectedWolun.month}월`
+                      : `${selectedSeunYear}년`}{" "}
+                  구조·운 가중 (timingActivation)
                 </h3>
                 <p className="mt-1 text-[11px] text-muted-foreground leading-relaxed">
-                  원국 점수는 그대로 두고, 위 세운 탭에서 선택한 {selectedSeunYear}년의 대운·세운 간지로 활성도만 가중한 값입니다.
+                  원국 점수는 그대로 두고, 위에서 지금 보고 있는 탭({selectedLuckTab}) 기준 시점의 대운·세운
+                  {selectedLuckTab === "월운" || selectedLuckTab === "일운" ? "·월운" : ""}
+                  {selectedLuckTab === "일운" ? "·일운" : ""} 간지로 활성도만 가중한 값입니다.
                 </p>
               </div>
               <div className="ds-card-pad space-y-2 text-[13px] leading-relaxed">
@@ -6257,11 +6414,111 @@ export function SajuReport({ record, showSaveStatus = false, hourMode: parentHou
               </div>
             </div>
           )}
+          {sajuPipelineResult?.examCareerActivation && (
+            <div className="ds-card overflow-hidden shadow-none border-border/80">
+              <div className="border-b border-border px-4 pb-2 pt-4">
+                <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                  {selectedLuckTab === "일운" && selectedIlunDay != null
+                    ? `${selectedWolun.year}년 ${selectedWolun.month}월 ${selectedIlunDay}일`
+                    : selectedLuckTab === "월운"
+                      ? `${selectedWolun.year}년 ${selectedWolun.month}월`
+                      : `${selectedSeunYear}년`}{" "}
+                  🎯 합격운
+                </h3>
+                <p className="mt-1 text-[11px] text-muted-foreground leading-relaxed">
+                  시험·자격 / 채용·임용·조직 선발 / 공모·심사·발표형 선발을 서로 다른 구조로 나눠 계산합니다. 활성도가 높다고 해서 "합격 가능성 높음"을 뜻하지 않습니다 — 사건이 얼마나 부각되는지와 그 방향(우호/부담)을 함께 참고하세요.
+                </p>
+              </div>
+              <div className="ds-card-pad space-y-2 text-[13px] leading-relaxed">
+                {([
+                  ["examCert", "📖 시험·자격"],
+                  ["hiring", "🏢 채용·임용·조직 선발"],
+                  ["competition", "🏆 공모·심사·발표형 선발"],
+                ] as const).map(([key, label]) => {
+                  const sub = sajuPipelineResult.examCareerActivation[key];
+                  return (
+                    <div key={key} className="rounded-lg border border-border/60 bg-muted/10 px-3 py-2 space-y-1.5">
+                      <div className={cn("flex items-center justify-between rounded-md px-2 py-1", toneClassesNeutral(sub.activationLevel).box)}>
+                        <span className={cn("font-semibold", toneClassesNeutral(sub.activationLevel).text)}>{label} 활성도</span>
+                        <span className={cn("font-bold", toneClassesNeutral(sub.activationLevel).text)}>
+                          {sub.activationScore}점 · {sub.activationLevel}
+                        </span>
+                      </div>
+                      <div className={cn("flex items-center justify-between rounded-md px-2 py-1", toneClasses(toneTierFromLevel(sub.directionLevel)).box)}>
+                        <span className={cn("font-semibold", toneClasses(toneTierFromLevel(sub.directionLevel)).text)}>방향</span>
+                        <span className={cn("font-bold", toneClasses(toneTierFromLevel(sub.directionLevel)).text)}>
+                          {sub.directionScore}점 · {sub.directionLevel}
+                        </span>
+                      </div>
+                      <p className="text-[11px] leading-relaxed text-muted-foreground pt-0.5 border-t border-border/50">
+                        {sub.interpretation}
+                      </p>
+                    </div>
+                  );
+                })}
+                <p className="text-[11px] text-muted-foreground pl-0.5">
+                  {sajuPipelineResult.examCareerActivation.dayMasterCapacityNote}
+                </p>
+              </div>
+            </div>
+          )}
+          {sajuPipelineResult?.contractActivation && (
+            <div className="ds-card overflow-hidden shadow-none border-border/80">
+              <div className="border-b border-border px-4 pb-2 pt-4">
+                <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                  {selectedLuckTab === "일운" && selectedIlunDay != null
+                    ? `${selectedWolun.year}년 ${selectedWolun.month}월 ${selectedIlunDay}일`
+                    : selectedLuckTab === "월운"
+                      ? `${selectedWolun.year}년 ${selectedWolun.month}월`
+                      : `${selectedSeunYear}년`}{" "}
+                  📝 계약운
+                </h3>
+                <p className="mt-1 text-[11px] text-muted-foreground leading-relaxed">
+                  식상(제안·협상)·재성(거래·대가)·관성(공식성·책임)·인성(계약서·문서·승인) 네 축을 함께 봅니다. 활성도가 높다는 이유만으로 "계약 성사"를 뜻하지 않으며, 체결운과 수익성은 서로 다른 축이라 방향이 어긋날 수 있습니다.
+                </p>
+              </div>
+              <div className="ds-card-pad space-y-2 text-[13px] leading-relaxed">
+                <div className="rounded-lg border border-border/60 bg-muted/10 px-3 py-2 space-y-1.5">
+                  <div className={cn("flex items-center justify-between rounded-md px-2 py-1", toneClassesNeutral(sajuPipelineResult.contractActivation.activationLevel).box)}>
+                    <span className={cn("font-semibold", toneClassesNeutral(sajuPipelineResult.contractActivation.activationLevel).text)}>📝 계약 체결운 활성도</span>
+                    <span className={cn("font-bold", toneClassesNeutral(sajuPipelineResult.contractActivation.activationLevel).text)}>
+                      {sajuPipelineResult.contractActivation.activationScore}점 · {sajuPipelineResult.contractActivation.activationLevel}
+                    </span>
+                  </div>
+                  <div className={cn("flex items-center justify-between rounded-md px-2 py-1", toneClasses(toneTierFromLevel(sajuPipelineResult.contractActivation.directionLevel)).box)}>
+                    <span className={cn("font-semibold", toneClasses(toneTierFromLevel(sajuPipelineResult.contractActivation.directionLevel)).text)}>체결 방향</span>
+                    <span className={cn("font-bold", toneClasses(toneTierFromLevel(sajuPipelineResult.contractActivation.directionLevel)).text)}>
+                      {sajuPipelineResult.contractActivation.directionScore}점 · {sajuPipelineResult.contractActivation.directionLevel}
+                    </span>
+                  </div>
+                  <div className={cn("flex items-center justify-between rounded-md px-2 py-1", toneClasses(toneTierFromLevel(sajuPipelineResult.contractActivation.profitabilityLevel)).box)}>
+                    <span className={cn("font-semibold", toneClasses(toneTierFromLevel(sajuPipelineResult.contractActivation.profitabilityLevel)).text)}>💰 계약 수익성</span>
+                    <span className={cn("font-bold", toneClasses(toneTierFromLevel(sajuPipelineResult.contractActivation.profitabilityLevel)).text)}>
+                      {sajuPipelineResult.contractActivation.profitabilityScore}점 · {sajuPipelineResult.contractActivation.profitabilityLevel}
+                    </span>
+                  </div>
+                  <p className="text-[11px] leading-relaxed text-muted-foreground pt-0.5 border-t border-border/50">
+                    {sajuPipelineResult.contractActivation.interpretation}
+                  </p>
+                </div>
+                {!sajuPipelineResult.contractActivation.hasDocumentationEvidence && (
+                  <p className="text-[11px] text-amber-700 pl-0.5">
+                    ⚠️ 이 시기에는 인성(문서·검토·승인) 근거가 뚜렷하지 않습니다 — 식상·재성·관성만으로 계약 체결을 단정하지 마세요.
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
           {sajuPipelineResult?.spouseActivation && (
             <div className="ds-card overflow-hidden shadow-none border-rose-200/70">
               <div className="border-b border-border px-4 pb-2 pt-4">
                 <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                  {selectedSeunYear}년 배우자·결혼 테마 활성도
+                  {selectedLuckTab === "일운" && selectedIlunDay != null
+                    ? `${selectedWolun.year}년 ${selectedWolun.month}월 ${selectedIlunDay}일`
+                    : selectedLuckTab === "월운"
+                      ? `${selectedWolun.year}년 ${selectedWolun.month}월`
+                      : `${selectedSeunYear}년`}{" "}
+                  배우자·결혼 테마 활성도
                 </h3>
                 <p className="mt-1 text-[11px] text-muted-foreground leading-relaxed">
                   위 "배우자궁 안정" 점수(관계 운영 난이도)와는 다른 축입니다. 활성도는 이 시기에 배우자·연애·결혼 문제가 얼마나 강하게 전면화되는지를 보여줍니다 — 안정도가 낮다고 활성도까지 낮은 건 아니에요.

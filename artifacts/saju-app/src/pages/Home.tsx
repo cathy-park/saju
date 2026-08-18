@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { getMyProfile } from "@/lib/storage";
+import { getMyProfile, getFinalPillars } from "@/lib/storage";
 import { getTodayFortuneCard, getTenGodFortune } from "@/lib/todayFortune";
 import { buildLifeFlowInsights } from "@/lib/lifeFlowInsight";
 import type { PersonRecord } from "@/lib/storage";
@@ -136,7 +136,7 @@ function Dashboard({ record }: { record: PersonRecord }) {
   const months = now.getMonth() + 1;
   const dateStr = `${now.getFullYear()}년 ${months}월 ${now.getDate()}일`;
 
-  const zodiac: ZodiacInfo = getZodiacFromDayPillar(record.profile.computedPillars.day.hangul) ?? DEFAULT_ZODIAC;
+  const zodiac: ZodiacInfo = getZodiacFromDayPillar(getFinalPillars(record).day?.hangul ?? "") ?? DEFAULT_ZODIAC;
   const guidance = fortune.guidance ?? "오늘도 나답게 흘러가는 하루예요.";
   const keywords = fortune.keywords?.slice(0, 3) ?? [];
 

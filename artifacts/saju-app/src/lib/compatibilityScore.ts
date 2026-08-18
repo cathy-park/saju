@@ -1059,7 +1059,8 @@ function buildSpouseActivationYearsForPerson(
     exactSolarTermBoundaryOn: record.fortuneOptions?.exactSolarTermBoundaryOn ?? true,
     trueSolarTimeOn: record.fortuneOptions?.trueSolarTimeOn ?? false,
   };
-  const luckCycles = calculateLuckCycles(record.birthInput, record.profile.computedPillars, daewoonSuOpts);
+  // manualPillars 반영을 위해 raw computedPillars가 아니라 getFinalPillars()로 병합한 값을 사용한다.
+  const luckCycles = calculateLuckCycles(record.birthInput, getFinalPillars(record), daewoonSuOpts);
   const yongshin = pipe.adjusted.effectiveYongshin;
   const years = computeSpouseActivationByYearRange({
     dayStem: pipe.input.dayStem,

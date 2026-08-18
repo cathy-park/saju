@@ -39,6 +39,12 @@ import {
   type StructurePattern,
 } from "./gukguk";
 import {
+  detectSpecialPatterns,
+  pickHighConfidenceCandidate,
+  type SpecialGukgukCandidate,
+} from "./specialGukguk";
+import { determineLatentGukguk, type LatentGukgukResult } from "./latentGukguk";
+import {
   computeSpousePalaceStability,
   type RelationshipWealthEvaluations,
 } from "./evaluations/relationshipWealthEvaluation";
@@ -67,6 +73,14 @@ import {
   computeOfficerActivation,
   type OfficerActivationResult,
 } from "./evaluations/officerActivation";
+import {
+  computeExamCareerActivation,
+  type ExamCareerActivationResult,
+} from "./evaluations/examCareerActivation";
+import {
+  computeContractActivation,
+  type ContractActivationResult,
+} from "./evaluations/contractActivation";
 
 // ── 지장간 오행 증폭 (地藏干 Augmentation) ────────────────────────
 // Adds hidden stem elements to a five-element count with fractional weights.
@@ -133,6 +147,10 @@ export interface PipelineInput {
   timingDaewoonHangul?: string;
   /** 현재 세운 간지(한글 2글자). 없으면 timing 가중치 0 */
   timingSeunHangul?: string;
+  /** 선택된 월운 간지(한글 2글자, 월운 탭 이상에서만). 대운·세운의 절반 가중으로 반영 */
+  timingWolunHangul?: string;
+  /** 선택된 일운 간지(한글 2글자, 일운 탭에서만). 대운·세운보다 더 낮은 가중으로 반영 */
+  timingIlunHangul?: string;
   /** 일주 한글(예: 정미). 없으면 dayStem+dayBranch로 자동 구성 */
   dayPillarHangul?: string;
   /** 배우자·결혼 테마 활성도(spouseActivation) 계산에만 쓰인다. 없으면 이 지표는 생략됨 */
@@ -250,6 +268,12 @@ export interface AdjustedStructure extends BaseStructure {
   isStrengthOverridden: boolean;
   isYongshinOverridden: boolean;
   seasonalAdjustment: SeasonalAdjustment;
+  /**
+   * high confidence 특별격 후보가 있어 억부용신 대신 순세 취용을 적용한 경우에만 채워진다.
+   * 수동 재정의(manualYongshinData)가 있으면 항상 null — 사용자의 수동 지정이 우선한다.
+   * null이면 기존과 동일하게 억부용신(computeYongshinFull) 경로를 그대로 사용한 것이다.
+   */
+  appliedSpecialGukguk: SpecialGukgukCandidate | null;
 }
 
 export interface SeasonalAdjustment {
@@ -297,6 +321,7 @@ function computeSeasonalAdjustment(
 function computeAdjustedStructure(
   input: PipelineInput,
   base: BaseStructure,
+  specialPatterns: SpecialGukgukCandidate[],
 ): AdjustedStructure {
   const isStrengthOverridden = !!(input.manualStrengthLevel);
   const isYongshinOverridden = !!(input.manualYongshinData && input.manualYongshinData.length > 0);
@@ -325,6 +350,18 @@ function computeAdjustedStructure(
   let effectiveYongshin = recalcYongshin.primary;
   let effectiveYongshinSecondary = recalcYongshin.secondary;
 
+  // ── 특별격(전왕격·종격) 순세 취용 분기 ────────────────────────────
+  // high confidence 특별격 후보가 있고 사용자가 수동으로 용신을 지정하지 않은 경우에만,
+  // 기존 억부용신(computeYongshinFull) 결과를 특별격의 순세 취용으로 대체한다.
+  // medium/low 후보만 있거나 후보가 없으면 이 분기는 전혀 타지 않고 위의 억부용신 결과가 그대로 유지된다.
+  const appliedSpecialGukguk = !isYongshinOverridden
+    ? pickHighConfidenceCandidate(specialPatterns)
+    : null;
+  if (appliedSpecialGukguk) {
+    effectiveYongshin = appliedSpecialGukguk.recommendedYongshin;
+    effectiveYongshinSecondary = appliedSpecialGukguk.secondaryYongshin;
+  }
+
   const seasonalAdjustment = computeSeasonalAdjustment(input.monthBranch, input.effectiveFiveElements);
 
   // ── 조후용신 연결 (調候用神) ──────────────────────────────────────
@@ -338,7 +375,9 @@ function computeAdjustedStructure(
   // We only ADD the 조후 element as secondary if it isn't already present.
   // If the 억부용신 already agrees with 조후, no change is needed.
   // Expert option: can be disabled via seasonalAdjustmentOff.
-  if (!isYongshinOverridden && !input.expertOptions?.seasonalAdjustmentOff) {
+  // 특별격 순세 취용이 적용된 경우, 억부용신 체계를 위한 조후 보정은 함께 적용하지 않는다
+  // (순세 취용은 억부와 다른 원리이므로 억부 전용 보정을 얹으면 의미가 섞인다).
+  if (!isYongshinOverridden && !appliedSpecialGukguk && !input.expertOptions?.seasonalAdjustmentOff) {
     if (seasonalAdjustment.needsFireBoost) {
       // 조후: 화(火) 필요
       if (effectiveYongshin !== "화") {
@@ -366,6 +405,7 @@ function computeAdjustedStructure(
     isStrengthOverridden,
     isYongshinOverridden,
     seasonalAdjustment,
+    appliedSpecialGukguk,
   };
 }
 
@@ -375,10 +415,14 @@ function computeAdjustedStructure(
 export interface InterpretationResult {
   rulesApplied: RuleResult[];
   ruleInsights: string[];          // 규칙에서 생성된 핵심 통찰
-  /** Single source of truth for 格局 (격국) */
+  /** Single source of truth for 格局 (격국) — determineGukguk()의 내격 판정, 특별격으로 대체되지 않음 */
   gukguk: GukgukResult | null;
   /** 구조 패턴 (식신생재/관인상생 등) */
   structurePatterns: StructurePattern[];
+  /** 특별격(전왕격·종격) 후보 목록 — gukguk을 덮어쓰지 않는 별도 보조 정보 */
+  specialPatterns: SpecialGukgukCandidate[];
+  /** 월령(월지 본기) 기반 미투출 내격 후보 — gukguk이 null일 때만 채워지는 읽기 전용 보조 정보 */
+  latentGukguk: LatentGukgukResult | null;
   /** UI short label (derived from gukguk only) */
   structureType: string;
   yongshinCharacterKey: string;    // 용신 오행 한글
@@ -388,6 +432,7 @@ export interface InterpretationResult {
 function buildInterpretationResult(
   input: PipelineInput,
   adjusted: AdjustedStructure,
+  specialPatterns: SpecialGukgukCandidate[],
 ): InterpretationResult {
   const { tenGodGroups, effectiveStrengthLevel, effectiveYongshin, seasonalAdjustment } = adjusted;
   const total = Object.values(tenGodGroups).reduce((a, b) => a + b, 0) || 1;
@@ -412,6 +457,11 @@ function buildInterpretationResult(
   const gukguk = (input.monthBranch
     ? determineGukguk(input.dayStem, input.monthBranch, input.allStems)
     : null);
+  // 내격이 미확정(null)일 때만 월령 후보를 계산한다 — 내격이 이미 확정된 경우 latent 후보는 의미가 없다(중복 표시 방지).
+  // 이 값은 강약·용신 등 어떤 downstream 계산에도 입력되지 않는 순수 설명용 보조 정보다.
+  const latentGukguk = (!gukguk && input.monthBranch)
+    ? determineLatentGukguk(input.dayStem, input.monthBranch, input.allStems)
+    : null;
   const structurePatterns = detectStructurePatterns(input.dayStem, input.allStems, input.allBranches, input.monthBranch);
   const structureType = gukguk?.name ?? "격국 없음";
 
@@ -420,6 +470,8 @@ function buildInterpretationResult(
     ruleInsights,
     gukguk,
     structurePatterns,
+    specialPatterns,
+    latentGukguk,
     structureType,
     yongshinCharacterKey: effectiveYongshin,
     seasonalNote: seasonalAdjustment.adjustmentNote,
@@ -442,9 +494,15 @@ export interface EngineDiagnostics {
     name: string;
     reason: string[];
   };
+  specialGukguk: {
+    source: "specialGukguk.detectSpecialPatterns";
+    method: "전왕격 5종·종격 4종 — 격별 독립 필수조건/가감조건/파격조건";
+    candidates: { name: string; confidence: string }[];
+    applied: string | null;
+  };
   yongshin: {
     source: "interpretSchema.computeYongshinFull";
-    method: "강도 기반(억부) + 지장간 가중(용신 계산에만) + 조후 secondary 주입(조건부)";
+    method: string;
     primary: FiveElKey;
     secondary?: FiveElKey;
     countsBasis: {
@@ -484,6 +542,10 @@ export interface SajuPipelineResult {
   /** 관성(조직·책임) 활성도/작동방향 2축 — officerActivationNow(원국+델타 혼합, 방향 미반영)와
    * 별개로, 크기(activation)와 방향(direction, 용희신·기신 포함)을 분리한다 */
   officerActivation: OfficerActivationResult;
+  /** 🎯 합격운(시험·자격/채용·임용·조직 선발/공모·심사·발표형 선발) — 인성·관성(·식상) 축, 서브타입별 별도 계산 */
+  examCareerActivation: ExamCareerActivationResult;
+  /** 📝 계약운(체결운·수익성) — 식상·재성·관성·인성 4축 + 대운·세운 상호 합/충형파해 */
+  contractActivation: ContractActivationResult;
 }
 
 /**
@@ -504,8 +566,15 @@ export interface SajuPipelineResult {
  */
 export function computeSajuPipeline(input: PipelineInput): SajuPipelineResult {
   const base        = computeBaseStructure(input);
-  const adjusted    = computeAdjustedStructure(input, base);
-  const interpretation = buildInterpretationResult(input, adjusted);
+  const specialPatterns = detectSpecialPatterns(
+    input.dayStem,
+    input.monthBranch,
+    input.allStems,
+    input.allBranches,
+    base.strengthResult,
+  );
+  const adjusted    = computeAdjustedStructure(input, base, specialPatterns);
+  const interpretation = buildInterpretationResult(input, adjusted, specialPatterns);
   const strength = adjusted.strengthResult;
 
   const structureDomains = computeStructureDomainScores({
@@ -557,6 +626,8 @@ export function computeSajuPipeline(input: PipelineInput): SajuPipelineResult {
     adjusted.effectiveYongshin,
     adjusted.effectiveYongshinSecondary,
     getController(adjusted.effectiveYongshin),
+    input.timingWolunHangul,
+    input.timingIlunHangul,
   );
 
   if (isDevRuntime()) {
@@ -572,6 +643,8 @@ export function computeSajuPipeline(input: PipelineInput): SajuPipelineResult {
         gender: input.gender,
         daewoonHangul: input.timingDaewoonHangul,
         saeunHangul: input.timingSeunHangul,
+        wolunHangul: input.timingWolunHangul,
+        ilunHangul: input.timingIlunHangul,
         yongshin: adjusted.effectiveYongshin,
         heesin: adjusted.effectiveYongshinSecondary,
         gisin: getController(adjusted.effectiveYongshin),
@@ -630,6 +703,37 @@ export function computeSajuPipeline(input: PipelineInput): SajuPipelineResult {
     console.log("[officerActivation]", officerActivation);
   }
 
+  const examCareerActivation = computeExamCareerActivation({
+    dayStem: input.dayStem,
+    daewoonHangul: input.timingDaewoonHangul,
+    saeunHangul: input.timingSeunHangul,
+    wolunHangul: input.timingWolunHangul,
+    yongshin: adjusted.effectiveYongshin,
+    heesin: adjusted.effectiveYongshinSecondary,
+    gisin: getController(adjusted.effectiveYongshin),
+    strengthLevel: adjusted.effectiveStrengthLevel,
+  });
+
+  if (isDevRuntime()) {
+    // eslint-disable-next-line no-console
+    console.log("[examCareerActivation]", examCareerActivation);
+  }
+
+  const contractActivation = computeContractActivation({
+    dayStem: input.dayStem,
+    daewoonHangul: input.timingDaewoonHangul,
+    saeunHangul: input.timingSeunHangul,
+    wolunHangul: input.timingWolunHangul,
+    yongshin: adjusted.effectiveYongshin,
+    heesin: adjusted.effectiveYongshinSecondary,
+    gisin: getController(adjusted.effectiveYongshin),
+  });
+
+  if (isDevRuntime()) {
+    // eslint-disable-next-line no-console
+    console.log("[contractActivation]", contractActivation);
+  }
+
   const diagnostics: EngineDiagnostics = {
     strength: {
       source: "interpretSchema.computeStrengthResult",
@@ -646,9 +750,17 @@ export function computeSajuPipeline(input: PipelineInput): SajuPipelineResult {
       name: interpretation.gukguk?.name ?? "격국 없음",
       reason: interpretation.gukguk?.explanation ?? ["투출이 확인되지 않아 격국을 확정하지 않았습니다."],
     },
+    specialGukguk: {
+      source: "specialGukguk.detectSpecialPatterns",
+      method: "전왕격 5종·종격 4종 — 격별 독립 필수조건/가감조건/파격조건",
+      candidates: interpretation.specialPatterns.map((c) => ({ name: c.name, confidence: c.confidence })),
+      applied: adjusted.appliedSpecialGukguk?.name ?? null,
+    },
     yongshin: {
       source: "interpretSchema.computeYongshinFull",
-      method: "강도 기반(억부) + 지장간 가중(용신 계산에만) + 조후 secondary 주입(조건부)",
+      method: adjusted.appliedSpecialGukguk
+        ? `특별격 순세 취용(${adjusted.appliedSpecialGukguk.name}, high) — 억부용신 미적용`
+        : "강도 기반(억부) + 지장간 가중(용신 계산에만) + 조후 secondary 주입(조건부)",
       primary: adjusted.effectiveYongshin,
       secondary: adjusted.effectiveYongshinSecondary,
       countsBasis: {
@@ -663,5 +775,5 @@ export function computeSajuPipeline(input: PipelineInput): SajuPipelineResult {
       reason: interpretation.seasonalNote,
     },
   };
-  return { input, base, adjusted, interpretation, diagnostics, evaluations, structureDomains, timingActivation, spouseActivation, careerActivation, wealthActivation, officerActivation };
+  return { input, base, adjusted, interpretation, diagnostics, evaluations, structureDomains, timingActivation, spouseActivation, careerActivation, wealthActivation, officerActivation, examCareerActivation, contractActivation };
 }

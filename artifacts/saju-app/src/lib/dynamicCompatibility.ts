@@ -201,7 +201,8 @@ export function computePersonCurrentFlow(
   const wolwoon = getMonthGanZhi(yr, mo);
   const ilwoon = getDayGanZhi(yr, mo, dy);
 
-  const daewoonList = calculateDaewoon(record.birthInput, record.profile.computedPillars);
+  // manualPillars 반영을 위해 raw computedPillars가 아니라 위에서 이미 병합한 pillars를 사용한다.
+  const daewoonList = calculateDaewoon(record.birthInput, pillars);
   const age = yr - record.birthInput.year;
   const daywoon = daewoonList.find((d) => age >= d.startAge && age <= d.endAge) ?? null;
 

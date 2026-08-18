@@ -867,7 +867,8 @@ export default function Compatibility() {
   const myDayBranch2 = myPillarsFull?.day?.hangul?.[1] ?? "";
   const myDayStem2   = myPillarsFull?.day?.hangul?.[0] ?? "";
   const mySpousePalace = myDayBranch2 ? getSpousePalaceInfo(myDayBranch2) : null;
-  const myLC = ep1 ? calculateLuckCycles(ep1.birthInput, ep1.profile.computedPillars) : null;
+  // manualPillars 반영을 위해 raw computedPillars가 아니라 위에서 이미 병합한 myPillarsFull을 사용한다.
+  const myLC = ep1 && myPillarsFull ? calculateLuckCycles(ep1.birthInput, myPillarsFull) : null;
   const myMarriageTiming = (ep1 && myDayStem2 && myLC && myLC.daewoon.length > 0)
     ? getMarriageTimingHint(ep1.birthInput.gender as "남" | "여", myDayStem2, myLC.daewoon)
     : null;
@@ -876,8 +877,9 @@ export default function Compatibility() {
   const otherDayBranch2 = otherPillarsFull?.day?.hangul?.[1] ?? "";
   const otherDayStem2   = otherPillarsFull?.day?.hangul?.[0] ?? "";
   const otherSpousePalace = otherDayBranch2 ? getSpousePalaceInfo(otherDayBranch2) : null;
-  const otherLC = ep2
-    ? calculateLuckCycles(ep2.birthInput, ep2.profile.computedPillars)
+  // manualPillars 반영을 위해 raw computedPillars가 아니라 위에서 이미 병합한 otherPillarsFull을 사용한다.
+  const otherLC = ep2 && otherPillarsFull
+    ? calculateLuckCycles(ep2.birthInput, otherPillarsFull)
     : null;
   const otherMarriageTiming = (ep2 && otherDayStem2 && otherLC && otherLC.daewoon.length > 0)
     ? getMarriageTimingHint(ep2.birthInput.gender as "남" | "여", otherDayStem2, otherLC.daewoon)

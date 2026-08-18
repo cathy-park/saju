@@ -697,7 +697,8 @@ export function buildLifeFlowInsights(
   const dayGZ = getDayGanZhi(year, month, day);
   const monthGZ = getMonthGanZhi(year, month);
   const yearGZ = getYearGanZhi(year);
-  const daewoon = calculateDaewoon(record.birthInput, record.profile.computedPillars);
+  // manualPillars 반영을 위해 raw computedPillars가 아니라 위에서 이미 병합한 pillars를 사용한다.
+  const daewoon = calculateDaewoon(record.birthInput, pillars);
   const age = year - record.birthInput.year;
   const currentDW = daewoon.find((d) => age >= d.startAge && age <= d.endAge);
 

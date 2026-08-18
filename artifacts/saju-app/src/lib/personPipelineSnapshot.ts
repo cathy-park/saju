@@ -28,7 +28,8 @@ export function computePersonPipelineSnapshot(
       trueSolarTimeOn: record.fortuneOptions?.trueSolarTimeOn ?? false,
     };
 
-  const luckCycles = calculateLuckCycles(input, record.profile.computedPillars, daewoonSuOpts);
+  // manualPillars 반영을 위해 raw computedPillars가 아니라 위에서 이미 병합한 pillars를 사용한다.
+  const luckCycles = calculateLuckCycles(input, pillars as ComputedPillars, daewoonSuOpts);
   const refYear = luckCycles.wolun.year;
   const seunEntry = luckCycles.seun.find((e) => e.year === refYear) ?? luckCycles.seun[2];
 

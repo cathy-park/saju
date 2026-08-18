@@ -94,9 +94,12 @@ calculateSaju(year, month, day, hour?, minute?, options?) → SajuResult
 | Layer 4 (해석) | `sajuPipeline.ts: buildInterpretationResult()` + `interpretationRules.ts` | 규칙 기반 해석 텍스트 자동 생성 |
 
 - **`sajuPipeline.ts`**: `computeSajuPipeline()` 단일 함수로 전체 파이프라인 실행  
+- **특별격 레이어 삽입 위치**: Layer 2(`computeBaseStructure`) 직후, Layer 3(`computeAdjustedStructure`) 진입 전에 `detectSpecialPatterns()`를 실행. 다음 두 조건을 모두 만족할 때만 Layer 3의 `effectiveYongshin`이 억부용신 대신 순세 취용으로 대체됨: (1) high confidence 특별격 후보가 존재 (2) 수동 용신 재정의(`manualYongshinData`)가 없음. 두 조건 중 하나라도 어긋나면(후보가 없거나, medium/low만 있거나, 수동 재정의가 있으면) 기존 억부용신 로직이 그대로 유지됨  
 - **`interpretationRules.ts`**: if-then 규칙 배열 (R01~R11). 규칙 추가 = RULES 배열에 항목 추가  
 - **자동 재계산**: `SajuReport.tsx`에서 `useMemo` 기반으로 오행/신강약/용신 변경 시 즉시 재실행  
-- **격국 판정**: 월지 십성 기반 단순 판정 (건록격·식신격·재격·관격·인수격·잡격)
+- **격국 판정(내격)**: `gukguk.ts: determineGukguk()` — 월지 지장간의 천간 투출(透出) 여부를 기준으로 판정(strict: 투출이 없으면 `null` = 격국 없음). 일간과 투출 천간의 십성 관계로 10격 결정: 건록격·양인격(비견/겁재 구분)·식신격·상관격·편재격·정재격·편관격·정관격·편인격·정인격. "잡격"은 미구현.
+- **특별격 후보(전왕격·종격)**: `specialGukguk.ts: detectSpecialPatterns()` — 내격이 다루지 못하는 극단적 편중 명식을 위한 별도 추가 레이어(내격 판정을 대체하지 않음). 전왕격 5종(곡직격·염상격·가색격·종혁격·윤하격), 종격 4종(종왕격·종강격·종재격·종살격) 후보를 격별 독립 규칙(필수조건·가감조건·파격조건)으로 판정해 confidence(high/medium/low)와 성립/방해 근거를 함께 반환. high confidence일 때만 `sajuPipeline.ts`의 용신이 억부용신 대신 해당 격의 순세 취용으로 분기되며, medium/low는 보조 참고 정보로만 표시된다.
+- **월령 후보(미투출 내격, B레이어)**: `latentGukguk.ts: determineLatentGukguk()` — `determineGukguk()`이 투출 미확인으로 `null`을 반환한 경우에만 계산되는 읽기 전용 보조 레이어. 월지 지장간 본기(本氣)와 일간의 십성 관계로 "월령 후보" 격명을 산출해 "천간 미투출로 확정은 아님"을 함께 표시한다. 강약·용신·구조 도메인·activation 등 어떤 downstream 계산에도 입력되지 않으며, 오직 UI 설명 텍스트로만 소비된다. 화면 구성은 A(내격 확정) → B(월령 후보, 내격 미확정 시에만) → C(특별격 후보) 3층 구조로 표시된다.
 
 #### 정확도 개선 (2026-03-31)
 

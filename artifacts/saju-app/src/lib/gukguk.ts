@@ -1,10 +1,13 @@
 /**
  * gukguk.ts — 格局 (격국) 판별 + 구조 분석
  *
- * 격국 판별 순서:
- *   1. 월지 지장간 중 四柱 천간에 透出한 간을 찾아 일간과의 十星으로 格局 결정
- *   2. 透出이 없으면 월지 본기(本氣)와 일간의 十星으로 결정
+ * 격국(내격) 판별 순서 — strict, 透出 기준만 사용:
+ *   1. 월지 지장간 중 四柱 천간(연/월/시, 일간 제외)에 透出한 간을 찾아 일간과의 十星으로 格局 결정
+ *   2. 透出이 없으면 격국을 확정하지 않음(null 반환 — "격국 없음")
  *   3. 비견/겁재면 → 건록격(建祿格) 또는 양인격(羊刃格) 구분
+ *
+ * 透出이 없어 null이 반환된 경우, 월지 본기(本氣) 기준의 "월령 후보"는
+ * 이 함수를 대체하지 않는 별도의 읽기 전용 레이어(`latentGukguk.ts`)에서 다룬다.
  */
 
 import { getTenGod } from "./tenGods";
@@ -12,7 +15,7 @@ import type { TenGod } from "./tenGods";
 
 // ── 지장간 (地藏干) ──────────────────────────────────────────────
 // [여기, (중기,) 본기]  — 본기는 마지막 원소
-const JIJANGGAN: Record<string, string[]> = {
+export const JIJANGGAN: Record<string, string[]> = {
   자: ["임", "계"],
   축: ["계", "신", "기"],
   인: ["무", "병", "갑"],
@@ -28,12 +31,12 @@ const JIJANGGAN: Record<string, string[]> = {
 };
 
 // 양인격을 판별하기 위한 양인 지지 (일간별)
-const YANGIN_BRANCH: Record<string, string> = {
+export const YANGIN_BRANCH: Record<string, string> = {
   갑: "묘", 병: "오", 무: "오", 경: "유", 임: "자",
 };
 
 // 격국명 매핑 (십성 → 격국명)
-const TG_TO_GUKGUK: Record<TenGod, string> = {
+export const TG_TO_GUKGUK: Record<TenGod, string> = {
   비견: "건록격",
   겁재: "양인격",
   식신: "식신격",
@@ -47,7 +50,7 @@ const TG_TO_GUKGUK: Record<TenGod, string> = {
 };
 
 // 격국 설명
-const GUKGUK_DESC: Record<string, string> = {
+export const GUKGUK_DESC: Record<string, string> = {
   식신격:  "식신이 격을 이루어 재능과 표현력이 풍부하며, 의식주 복록이 두텁습니다. 창작·예술·음식 분야와 인연이 깊습니다.",
   상관격:  "상관이 격을 이루어 창의력과 언변이 뛰어나며, 틀을 깨는 능력이 강합니다. 예술·언론·기술 분야에 강합니다.",
   편재격:  "편재가 격을 이루어 사업 감각과 활동력이 뛰어나며, 재물 운용 능력이 강합니다. 무역·사업·금융과 인연이 깊습니다.",
@@ -61,14 +64,14 @@ const GUKGUK_DESC: Record<string, string> = {
 };
 
 // 격국 레벨 (길격/흉격/중성)
-const GUKGUK_TONE: Record<string, "길" | "흉" | "중"> = {
+export const GUKGUK_TONE: Record<string, "길" | "흉" | "중"> = {
   식신격: "길", 정재격: "길", 정관격: "길", 정인격: "길", 건록격: "길",
   상관격: "중", 편재격: "중", 양인격: "중",
   편관격: "흉", 편인격: "중",
 };
 
 // 格局 색상
-const GUKGUK_COLOR: Record<string, string> = {
+export const GUKGUK_COLOR: Record<string, string> = {
   길: "bg-emerald-50 text-emerald-700 border-emerald-200",
   흉: "bg-rose-50 text-rose-700 border-rose-200",
   중: "bg-amber-50 text-amber-700 border-amber-200",

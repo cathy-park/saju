@@ -1,4 +1,4 @@
-import type { PersonRecord } from "@/lib/storage";
+import { getFinalPillars, type PersonRecord } from "@/lib/storage";
 import { getFortuneForDate } from "@/lib/todayFortune";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Sparkles } from "lucide-react";
@@ -33,7 +33,7 @@ export function TodayFortuneCard({ record, year, month, day }: TodayFortuneCardP
   const m = month ?? now.getMonth() + 1;
   const d = day ?? now.getDate();
 
-  const dayStem = record.profile.computedPillars?.day?.hangul?.[0] ?? "";
+  const dayStem = getFinalPillars(record).day?.hangul?.[0] ?? "";
   const fortune = getFortuneForDate(record, y, m, d);
 
   return (

@@ -8,11 +8,16 @@ import { computeBranchRelations } from "./branchRelations";
 import {
   calculateLuckCycles,
   calculateShinsalFull,
+  getMonthGanZhi,
+  getYearGanZhi,
   type DaewoonSuOpts,
+  type DaewoonEntry,
 } from "./luckCycles";
 import { getTenGod } from "./tenGods";
 import { getTenGodGroup, getController, type FiveElKey } from "./element-color";
 import { computeSpouseActivationByYearRange, topSpouseActivationYears } from "./evaluations/spouseActivation";
+import { computeExamCareerActivation } from "./evaluations/examCareerActivation";
+import { computeContractActivation } from "./evaluations/contractActivation";
 import {
   computeRelationshipInteractionByYearRange,
   dampeningFromCompatibilityTone,
@@ -193,12 +198,12 @@ export function buildPersonClipboardText(
     .filter((s): s is string => !!s);
   const monthBranch = pillars.month?.hangul?.[1] ?? "";
 
-  const cp = record.profile.computedPillars;
   const daewoonSuOpts: DaewoonSuOpts = {
     exactSolarTermBoundaryOn: record.fortuneOptions?.exactSolarTermBoundaryOn ?? true,
     trueSolarTimeOn: record.fortuneOptions?.trueSolarTimeOn ?? false,
   };
-  const luckCycles = calculateLuckCycles(input, cp, daewoonSuOpts);
+  // manualPillars 반영을 위해 raw computedPillars가 아니라 위에서 이미 병합한 pillars를 사용한다.
+  const luckCycles = calculateLuckCycles(input, pillars, daewoonSuOpts);
   /** 월운·일운과 동일한 기준일( calculateLuckCycles 내부의 올해 ) */
   const refYear = luckCycles.wolun.year;
   // seun[i].year = refYear - 2 + i 이므로 올해 항목은 항상 인덱스 2
@@ -494,9 +499,82 @@ export function buildPersonClipboardText(
       lines.push(`(${timingActivation.wealthActivationTrend})`);
       lines.push("");
     }
+    const examCareerActivation = pipelineSnapshot?.examCareerActivation;
+    if (examCareerActivation) {
+      lines.push(`현재 🎯 합격운(시험·자격 / 채용·임용·조직 선발 / 공모·심사·발표형 선발을 서로 다른 구조로 계산 — 활성도가 높다고 "합격 가능성 높음"을 뜻하지 않음):`);
+      for (const [key, label] of [
+        ["examCert", "📖 시험·자격"],
+        ["hiring", "🏢 채용·임용·조직 선발"],
+        ["competition", "🏆 공모·심사·발표형 선발"],
+      ] as const) {
+        const sub = examCareerActivation[key];
+        lines.push(`  ${label} — 활성도 ${sub.activationScore}점(${sub.activationLevel}) / 방향 ${sub.directionScore}점(${sub.directionLevel})`);
+        lines.push(`    해석: ${sub.interpretation}`);
+      }
+      lines.push(`  일간 감당력: ${examCareerActivation.dayMasterCapacityNote}`);
+      lines.push("");
+    }
+    const contractActivation = pipelineSnapshot?.contractActivation;
+    if (contractActivation) {
+      lines.push(`현재 📝 계약운(식상·재성·관성·인성 4축 — 인성이 없으면 체결로 단정하지 않음, 체결운≠수익성):`);
+      lines.push(`  📝 계약 체결운 활성도(방향 무관 사건 크기): ${contractActivation.activationScore}점 (${contractActivation.activationLevel})`);
+      lines.push(`  체결 방향: ${contractActivation.directionScore}점 (${contractActivation.directionLevel})`);
+      lines.push(`  💰 계약 수익성(재성 축 방향만): ${contractActivation.profitabilityScore}점 (${contractActivation.profitabilityLevel})`);
+      lines.push(`  인성(문서·검토·승인) 근거 확인됨: ${contractActivation.hasDocumentationEvidence ? "예" : "아니오 — 체결 단정 금지"}`);
+      lines.push(`  해석: ${contractActivation.interpretation}`);
+      if (contractActivation.factors.length > 0) {
+        lines.push(`  근거: ${contractActivation.factors.map((f) => f.label).join(" / ")}`);
+      }
+      lines.push("");
+    }
     lines.push(`현재 배우자궁 안정도:`);
     lines.push(`${fmt2(timingActivation.spousePalaceStabilityNow)}`);
     lines.push(`(${timingActivation.spouseActivationTrend})`);
+    lines.push("");
+  }
+
+  // 🎯 합격운 · 📝 계약운 월별 조견표 — 작년·올해·내년(3개년) × 12개월, 대운·세운·월운을
+  // 각 달 기준으로 새로 계산해서 표로 제공한다. computeExamCareerActivation/computeContractActivation은
+  // 화면(SajuReport.tsx)과 동일한 순수 함수를 그대로 재사용하고 여기서 새로 계산식을 만들지 않는다.
+  if (pipelineSnapshot && dayStem) {
+    const yongshinForTable = pipelineSnapshot.adjusted.effectiveYongshin;
+    const heesinForTable = pipelineSnapshot.adjusted.effectiveYongshinSecondary;
+    const gisinForTable = getController(yongshinForTable);
+    const strengthForTable = pipelineSnapshot.adjusted.effectiveStrengthLevel;
+
+    const findDaewoonForYear = (year: number): DaewoonEntry | undefined =>
+      luckCycles.daewoon.find((d) => year >= birthYear + d.startAge && year <= birthYear + d.endAge);
+
+    lines.push(`[🎯 합격운 · 📝 계약운 월별 조견표] (작년·올해·내년 3개년 × 12개월 — 화면과 동일한 계산식, 대운·세운·월운 종합)`);
+    lines.push("");
+    for (const year of [refYear - 1, refYear, refYear + 1]) {
+      const dw = findDaewoonForYear(year);
+      const daewoonHangulForYear = dw ? `${dw.ganZhi.stem}${dw.ganZhi.branch}` : undefined;
+      const seYear = getYearGanZhi(year);
+      const saeunHangulForYear = `${seYear.stem}${seYear.branch}`;
+      lines.push(`■ ${year}년 (대운 ${daewoonHangulForYear ?? "-"} · 세운 ${saeunHangulForYear})`);
+      for (let month = 1; month <= 12; month++) {
+        const mo = getMonthGanZhi(year, month);
+        const wolunHangulForMonth = `${mo.stem}${mo.branch}`;
+        const exam = computeExamCareerActivation({
+          dayStem, daewoonHangul: daewoonHangulForYear, saeunHangul: saeunHangulForYear,
+          wolunHangul: wolunHangulForMonth,
+          yongshin: yongshinForTable, heesin: heesinForTable, gisin: gisinForTable,
+          strengthLevel: strengthForTable,
+        });
+        const contract = computeContractActivation({
+          dayStem, daewoonHangul: daewoonHangulForYear, saeunHangul: saeunHangulForYear,
+          wolunHangul: wolunHangulForMonth,
+          yongshin: yongshinForTable, heesin: heesinForTable, gisin: gisinForTable,
+        });
+        lines.push(
+          `  ${month}월(${wolunHangulForMonth}) — 합격운[시험 ${exam.examCert.activationScore}/${exam.examCert.directionLevel} · 채용 ${exam.hiring.activationScore}/${exam.hiring.directionLevel} · 공모 ${exam.competition.activationScore}/${exam.competition.directionLevel}] ` +
+          `계약운[체결 ${contract.activationScore}/${contract.directionLevel} · 수익성 ${contract.profitabilityLevel}]`,
+        );
+      }
+      lines.push("");
+    }
+    lines.push(`※ 위 표의 점수는 활성도(사건 크기)/방향(우호·부담)이며, 숫자가 높다고 "합격/체결"을 뜻하지 않습니다 — 방향과 함께 해석하세요.`);
     lines.push("");
   }
 
@@ -587,10 +665,42 @@ export function buildPersonClipboardText(
   lines.push(`  오행 균형 해석: ${getElementBalanceSummary(counts)}`);
   lines.push(`  성격 기질 분석 요약: ${schema.strengthDesc} · 대표 오행(${domEl}) 성향이 비교적 또렷하게 드러납니다.`);
   lines.push(`  격국 해석 설명: 앱 파이프라인 격국(${geokguk})을 참고합니다.`);
-  lines.push(`  격국 기준(anchor): ${geokguk}`);
+  lines.push(`  격국 기준(anchor): ${geokguk} (내격 확정 결과 — determineGukguk)`);
   lines.push(`  격국 판단 방식(anchor): 월지 지장간 투출 기준(determineGukguk)`);
-  lines.push(`  용신 해석 설명: 일간 강약(${strengthLevel}) 흐름에 맞춰 ${yongshinEl}${heeshinEl ? `(+${heeshinEl})` : ""} 쪽을 우선으로 봅니다. (신뢰도: ${schema.yongshinConfidence})`);
-  lines.push(`  용신 판단 기준(anchor): 일간 강약 기반 자동 계산`);
+
+  // 월령 후보(latentGukguk) — 내격이 미확정(격국 없음)일 때만 채워지는 설명용 보조 정보.
+  // 재계산 없이 파이프라인이 이미 산출한 값만 옮겨 적는다. 내격 판정을 대체하지 않는다.
+  const latentGukguk = pipelineSnapshot?.interpretation.latentGukguk;
+  if (latentGukguk) {
+    lines.push(`  월령 후보(내격 미확정 보조, latentGukguk): ${latentGukguk.name} — 천간 미투출로 내격 확정 아님`);
+    lines.push(`    근거: ${latentGukguk.explanation.join(" / ")}`);
+  }
+
+  // 특별격 후보(전왕격·종격, specialPatterns) — 내격을 대체하지 않는 병렬 설명용 보조 정보.
+  // 재계산 없이 파이프라인이 이미 산출한 confidence/근거를 그대로 옮겨 적는다.
+  const specialPatterns = pipelineSnapshot?.interpretation.specialPatterns ?? [];
+  const appliedSpecial = pipelineSnapshot?.adjusted.appliedSpecialGukguk ?? null;
+  if (specialPatterns.length > 0) {
+    lines.push(`  특별격 후보(전왕격·종격, 내격과 병렬 표시, specialPatterns):`);
+    for (const c of specialPatterns) {
+      const appliedTag = appliedSpecial?.name === c.name ? " [적용됨 — 용신 순세 취용]" : " [미적용]";
+      lines.push(`    ${c.name} [${c.category}] confidence=${c.confidence}${appliedTag}`);
+      lines.push(`      성립 근거(supportingEvidence): ${c.supportingEvidence.join(" / ")}`);
+      if (c.opposingEvidence.length > 0) {
+        lines.push(`      방해 근거(opposingEvidence): ${c.opposingEvidence.join(" / ")}`);
+      }
+    }
+  }
+
+  // 용신 판단 기준: high confidence 특별격이 적용된 경우 순세 취용임을 명시.
+  // yongshinEl/heeshinEl 등 기존 계산값은 그대로 두고, 설명 문구만 분기한다(재계산 없음).
+  if (appliedSpecial) {
+    lines.push(`  용신 해석 설명: 특별격(${appliedSpecial.name}, high) 순세 취용이 적용되어, 일간 강약 기반 억부용신 대신 ${yongshinEl}${heeshinEl ? `(+${heeshinEl})` : ""}을(를) 용신으로 봅니다. ${appliedSpecial.yongshinReason}`);
+    lines.push(`  용신 판단 기준(anchor): 특별격 순세 취용(${appliedSpecial.name}, high) — 일간 강약 기반 억부용신 아님`);
+  } else {
+    lines.push(`  용신 해석 설명: 일간 강약(${strengthLevel}) 흐름에 맞춰 ${yongshinEl}${heeshinEl ? `(+${heeshinEl})` : ""} 쪽을 우선으로 봅니다. (신뢰도: ${schema.yongshinConfidence})`);
+    lines.push(`  용신 판단 기준(anchor): 일간 강약 기반 자동 계산`);
+  }
   lines.push("");
 
   // 오행 분포
@@ -702,6 +812,55 @@ export function buildPersonClipboardText(
   }
   lines.push("");
 
+  // 대운 전체 목록 — "현재 대운"만으로는 다른 연도·나이를 물어봐도 어느 구간인지
+  // AI가 알 수 없으므로, 10개 구간 전체를 나이·연도와 함께 제공한다.
+  if (luckCycles.daewoon.length > 0) {
+    lines.push(`[대운 전체 목록] (10년 단위 총 ${luckCycles.daewoon.length}개 구간, 각 구간의 시작 연도부터 유효)`);
+    for (const d of luckCycles.daewoon) {
+      const dStart = birthYear + d.startAge;
+      const dEnd = birthYear + d.endAge;
+      const isCurrent = currentDaewoon && d.startAge === currentDaewoon.startAge;
+      lines.push(
+        `  ${d.startAge}~${d.endAge}세 (${dStart}~${dEnd}년): ${d.ganZhi.stem}${d.ganZhi.branch}` +
+        (isCurrent ? "  ← 현재" : ""),
+      );
+    }
+    lines.push("");
+  }
+
+  // 세운(연간지) 자동 계산 규칙 — 매 연도를 표로 나열하는 대신, 60갑자 순환 규칙과
+  // 기준점(1984=갑자년)을 알려줘서 AI가 임의 연도의 세운을 직접 계산하게 한다.
+  lines.push(`[세운(연간지) 자동 계산 규칙]`);
+  lines.push(`아래 규칙으로 임의 연도 Y의 세운 간지를 직접 계산할 수 있습니다. 사용자가 올해가 아닌 다른 연도·나이를 물으면 이 규칙과 위 [대운 전체 목록]을 함께 사용해 답변하세요.`);
+  lines.push(`  기준점: 1984년 = 갑자(甲子)년`);
+  lines.push(`  천간 순서(10개, 0부터): 갑,을,병,정,무,기,경,신,임,계`);
+  lines.push(`  지지 순서(12개, 0부터): 자,축,인,묘,진,사,오,미,신,유,술,해`);
+  lines.push(`  계산: d = Y - 1984  (d가 음수면 천간은 10을, 지지는 12를 더해 양수 나머지로 맞춘다)`);
+  lines.push(`    천간 = 천간순서[ d mod 10 ]`);
+  lines.push(`    지지 = 지지순서[ d mod 12 ]`);
+  lines.push(`  검증 예시: 2024년 → d=40 → 40 mod 10=0(갑) · 40 mod 12=4(진) → 갑진(甲辰)년`);
+  lines.push(`  검증 예시: ${seunForCurrentYear?.year ?? refYear}년(올해, 위 [운 흐름]의 세운 값과 반드시 일치해야 함) → ${seunForCurrentYear ? `${seunForCurrentYear.ganZhi.stem}${seunForCurrentYear.ganZhi.branch}` : "위 값 참고"}`);
+  lines.push("");
+
+  // 월운(월간지) 조견표 — 절기 경계가 껴 있어 AI가 공식만으로 계산하면 틀리기 쉬우므로,
+  // 직접 계산시키지 않고 근시일 범위를 표로 통째로 제공한다.
+  {
+    const wolunMonths: { year: number; month: number; ganZhi: { stem: string; branch: string } }[] = [];
+    let wy = refYear;
+    let wm = luckCycles.wolun.month;
+    for (let i = 0; i < 24; i++) {
+      wolunMonths.push({ year: wy, month: wm, ganZhi: getMonthGanZhi(wy, wm) });
+      wm += 1;
+      if (wm > 12) { wm = 1; wy += 1; }
+    }
+    lines.push(`[월운(월간지) 조견표] (이번 달부터 24개월치 — 이 범위 밖의 월은 계산하지 말고 "제공되지 않은 범위"라고 답하세요)`);
+    for (const w of wolunMonths) {
+      const mark = w.year === luckCycles.wolun.year && w.month === luckCycles.wolun.month ? "  ← 이번 달" : "";
+      lines.push(`  ${w.year}년 ${w.month}월: ${w.ganZhi.stem}${w.ganZhi.branch}${mark}`);
+    }
+    lines.push("");
+  }
+
   // 화면(운세 탭)의 "결혼운 시기 힌트" 카드와 동일한 데이터 — 새 계산식 없이 위에서 이미
   // 구한 spouseActivationByYear(computeSpouseActivationByYearRange)를 그대로 나열한다.
   if (spouseActivationByYear.length > 0) {
@@ -785,7 +944,7 @@ export function buildPersonClipboardText(
     lines.push("당신은 20년 경력의 통찰력 있고 따뜻한 명리학 전문가입니다.");
     lines.push("위의 사주 구조 데이터를 바탕으로, 내담자에게 직접 말하듯 다정하고 이해하기 쉬운 현대적인 언어로 다음 목차에 따라 사주를 해석해 주세요.");
     lines.push("");
-    lines.push("1. 🔮 지금 당장의 운세 (현재 대운과 올해 세운을 중심으로 '지금 내 운의 흐름이 어떤지' 가장 먼저 브리핑해 주세요. 월운·일운 데이터는 제공되지 않으니 언급하지 마세요.)");
+    lines.push("1. 🔮 지금 당장의 운세 (현재 대운과 올해 세운을 중심으로 '지금 내 운의 흐름이 어떤지' 가장 먼저 브리핑해 주세요. 사용자가 다른 연도·나이를 물으면 위 [대운 전체 목록]과 [세운(연간지) 자동 계산 규칙]을 사용해 그 해의 세운을 직접 계산해서 답하고, 다른 달을 물으면 [월운(월간지) 조견표]에서 찾아 답하세요 — 표 범위 밖의 월과 일 단위(일운)는 데이터가 없으니 계산하지 말고 모른다고 답하세요.)");
     lines.push("2. 💼 돈과 커리어 (어떤 일을 해야 돈을 벌기 좋은지, 내 사주의 재물 그릇과 재물 축적 방식에 대해 상세히 풀어주세요.)");
     lines.push("3. 💕 연애와 결혼운 (어떤 사람과 잘 맞는지, 나의 연애 성향과 다가오는 좋은 연애/결혼 타이밍에 대해 조언해 주세요.)");
     lines.push("4. 🌟 타고난 본성과 무기 (가장 강한 오행과 십성을 바탕으로 내가 가진 가장 강력한 무기와 잠재력을 알려주세요.)");
@@ -892,8 +1051,9 @@ export function buildCompatibilityClipboardText(
   {
     const pipe1 = computePersonPipelineSnapshot(person1);
     const pipe2 = computePersonPipelineSnapshot(person2);
-    const lc1 = calculateLuckCycles(person1.birthInput, person1.profile.computedPillars);
-    const lc2 = calculateLuckCycles(person2.birthInput, person2.profile.computedPillars);
+    // manualPillars 반영을 위해 raw computedPillars가 아니라 getFinalPillars()로 병합한 값을 사용한다.
+    const lc1 = calculateLuckCycles(person1.birthInput, getFinalPillars(person1));
+    const lc2 = calculateLuckCycles(person2.birthInput, getFinalPillars(person2));
     if (pipe1?.evaluations && pipe2?.evaluations) {
       const y1 = pipe1.adjusted.effectiveYongshin;
       const y2 = pipe2.adjusted.effectiveYongshin;

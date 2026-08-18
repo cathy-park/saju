@@ -88,6 +88,11 @@ function pillarElements(hangul: string | undefined): FiveElKey[] {
   return out;
 }
 
+// 월운·일운은 대운(10년)·세운(1년)보다 영향 지속 기간이 훨씬 짧아, 같은 가중치를 그대로
+// 쓰면 과대평가된다 — luckTimingActivation.ts와 같은 비율로 깎아서 반영한다.
+const WOLUN_SCALE = 0.5;
+const ILUN_SCALE = 0.3;
+
 export interface SpouseActivationContext {
   dayStem: string;
   dayBranch?: string;
@@ -96,6 +101,10 @@ export interface SpouseActivationContext {
   gender: "남" | "여";
   daewoonHangul?: string;
   saeunHangul?: string;
+  /** 선택된 월운 간지(한글 2글자, 월운 탭 이상에서만). 대운·세운의 절반 가중 */
+  wolunHangul?: string;
+  /** 선택된 일운 간지(한글 2글자, 일운 탭에서만). 대운·세운보다 더 낮은 가중 */
+  ilunHangul?: string;
   yongshin: FiveElKey;
   heesin?: FiveElKey;
   gisin?: FiveElKey;
@@ -122,11 +131,18 @@ export function computeSpouseActivation(ctx: SpouseActivationContext): SpouseAct
   const spouseStarEl: FiveElKey = ctx.gender === "여" ? getController(dmEl) : CONTROLS[dmEl];
   const { branch: dwBranch, stem: dwStem } = parsePillar(ctx.daewoonHangul);
   const { branch: seBranch, stem: seStem } = parsePillar(ctx.saeunHangul);
+  const { branch: woBranch, stem: woStem } = parsePillar(ctx.wolunHangul);
+  const { branch: ilBranch, stem: ilStem } = parsePillar(ctx.ilunHangul);
 
-  // 1) 배우자궁(일지) 직접 자극 — 대운·세운 지지와 합·충·형·파·해·원진
+  // 1) 배우자궁(일지) 직접 자극 — 대운·세운(·월운·일운) 지지와 합·충·형·파·해·원진
   if (ctx.dayBranch) {
-    const luckBranches: [string, string | undefined][] = [["대운", dwBranch], ["세운", seBranch]];
-    for (const [luckLabel, lb] of luckBranches) {
+    const luckBranches: [string, string | undefined, number][] = [
+      ["대운", dwBranch, 1],
+      ["세운", seBranch, 1],
+      ["월운", woBranch, WOLUN_SCALE],
+      ["일운", ilBranch, ILUN_SCALE],
+    ];
+    for (const [luckLabel, lb, scale] of luckBranches) {
       if (!lb) continue;
       const rels = computeBranchRelations([ctx.dayBranch, lb]);
       for (const r of rels) {
@@ -135,22 +151,22 @@ export function computeSpouseActivation(ctx: SpouseActivationContext): SpouseAct
         if (other !== lb) continue;
         switch (r.type) {
           case "지지충":
-            factors.push({ label: `배우자궁 ${luckLabel} 충 (${ctx.dayBranch}·${lb})`, magnitude: 16, direction: "비우호" });
+            factors.push({ label: `배우자궁 ${luckLabel} 충 (${ctx.dayBranch}·${lb})`, magnitude: 16 * scale, direction: "비우호" });
             break;
           case "형":
-            factors.push({ label: `배우자궁 ${luckLabel} 형 (${ctx.dayBranch}·${lb})`, magnitude: 9, direction: "비우호" });
+            factors.push({ label: `배우자궁 ${luckLabel} 형 (${ctx.dayBranch}·${lb})`, magnitude: 9 * scale, direction: "비우호" });
             break;
           case "파":
-            factors.push({ label: `배우자궁 ${luckLabel} 파 (${ctx.dayBranch}·${lb})`, magnitude: 6, direction: "비우호" });
+            factors.push({ label: `배우자궁 ${luckLabel} 파 (${ctx.dayBranch}·${lb})`, magnitude: 6 * scale, direction: "비우호" });
             break;
           case "해":
-            factors.push({ label: `배우자궁 ${luckLabel} 해 (${ctx.dayBranch}·${lb})`, magnitude: 5, direction: "비우호" });
+            factors.push({ label: `배우자궁 ${luckLabel} 해 (${ctx.dayBranch}·${lb})`, magnitude: 5 * scale, direction: "비우호" });
             break;
           case "원진":
-            factors.push({ label: `배우자궁 ${luckLabel} 원진 (${ctx.dayBranch}·${lb})`, magnitude: 5, direction: "비우호" });
+            factors.push({ label: `배우자궁 ${luckLabel} 원진 (${ctx.dayBranch}·${lb})`, magnitude: 5 * scale, direction: "비우호" });
             break;
           case "지지육합":
-            factors.push({ label: `배우자궁 ${luckLabel} 합 (${ctx.dayBranch}·${lb})`, magnitude: 8, direction: "우호" });
+            factors.push({ label: `배우자궁 ${luckLabel} 합 (${ctx.dayBranch}·${lb})`, magnitude: 8 * scale, direction: "우호" });
             break;
           default:
             break;
@@ -159,9 +175,9 @@ export function computeSpouseActivation(ctx: SpouseActivationContext): SpouseAct
     }
   }
 
-  // 2) 배우자궁 + 대운 + 세운 삼합·방합 형성
+  // 2) 배우자궁 + 대운 + 세운(+월운+일운) 삼합·방합 형성
   if (ctx.dayBranch && dwBranch && seBranch) {
-    const trio = [...new Set([ctx.dayBranch, dwBranch, seBranch])];
+    const trio = [...new Set([ctx.dayBranch, dwBranch, seBranch, woBranch, ilBranch].filter((b): b is string => !!b))];
     if (trio.length >= 2) {
       const rels3 = computeBranchRelations(trio);
       for (const r of rels3) {
@@ -173,35 +189,45 @@ export function computeSpouseActivation(ctx: SpouseActivationContext): SpouseAct
     }
   }
 
-  // 3) 배우자성(여: 관성 / 남: 재성) 대운·세운 출현·생조
+  // 3) 배우자성(여: 관성 / 남: 재성) 대운·세운·월운·일운 출현·생조
   const starLabel = ctx.gender === "여" ? "관성" : "재성";
   const isFavorableStarEl = spouseStarEl === ctx.yongshin || spouseStarEl === ctx.heesin;
   const isUnfavorableStarEl = ctx.gisin != null && spouseStarEl === ctx.gisin;
-  for (const [luckLabel, pillarHangul] of [["대운", ctx.daewoonHangul], ["세운", ctx.saeunHangul]] as const) {
+  for (const [luckLabel, pillarHangul, scale] of [
+    ["대운", ctx.daewoonHangul, 1],
+    ["세운", ctx.saeunHangul, 1],
+    ["월운", ctx.wolunHangul, WOLUN_SCALE],
+    ["일운", ctx.ilunHangul, ILUN_SCALE],
+  ] as const) {
     const els = pillarElements(pillarHangul);
     if (els.length === 0) continue;
     if (els.includes(spouseStarEl)) {
       factors.push({
         label: `배우자성(${starLabel}) ${luckLabel} 출현`,
-        magnitude: 10,
+        magnitude: 10 * scale,
         direction: isFavorableStarEl ? "우호" : isUnfavorableStarEl ? "비우호" : "중립",
       });
     } else if (els.includes(getGenerator(spouseStarEl))) {
-      factors.push({ label: `배우자성(${starLabel})을 생조하는 기운 ${luckLabel} 유입`, magnitude: 5, direction: "우호" });
+      factors.push({ label: `배우자성(${starLabel})을 생조하는 기운 ${luckLabel} 유입`, magnitude: 5 * scale, direction: "우호" });
     }
   }
 
-  // 4) 원국 배우자성 글자와 대운·세운 천간의 합·충
+  // 4) 원국 배우자성 글자와 대운·세운·월운·일운 천간의 합·충
   const spouseStemsInNatal = ctx.allStems.filter((s) => STEM_TO_ELEMENT[s] === spouseStarEl);
   for (const nStem of spouseStemsInNatal) {
-    for (const [luckLabel, lStem] of [["대운", dwStem], ["세운", seStem]] as const) {
+    for (const [luckLabel, lStem, scale] of [
+      ["대운", dwStem, 1],
+      ["세운", seStem, 1],
+      ["월운", woStem, WOLUN_SCALE],
+      ["일운", ilStem, ILUN_SCALE],
+    ] as const) {
       if (!lStem || lStem === nStem) continue;
       const rels = computeStemRelations([nStem, lStem]);
       for (const r of rels) {
         if (r.type === "천간합") {
-          factors.push({ label: `원국 배우자성(${nStem}) ${luckLabel} 천간합`, magnitude: 9, direction: "우호" });
+          factors.push({ label: `원국 배우자성(${nStem}) ${luckLabel} 천간합`, magnitude: 9 * scale, direction: "우호" });
         } else if (r.type === "천간충") {
-          factors.push({ label: `원국 배우자성(${nStem}) ${luckLabel} 천간충`, magnitude: 9, direction: "비우호" });
+          factors.push({ label: `원국 배우자성(${nStem}) ${luckLabel} 천간충`, magnitude: 9 * scale, direction: "비우호" });
         }
       }
     }
