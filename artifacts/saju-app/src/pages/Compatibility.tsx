@@ -845,6 +845,13 @@ export default function Compatibility() {
   const myGender = p1?.birthInput.gender ?? "";
   const otherGender = p2?.birthInput.gender ?? "";
 
+  // 관계유형을 연인/배우자/썸으로 지정하지 않았어도, 두 사람의 성별이 서로 다르면
+  // 연애·결혼 적합도 점수는 함께 보여준다(대표 요청, 2026-09-03). isPersonalLove 자체는
+  // 궁합 온도계 문구·배우자궁 비교 등 다른 연인 전용 UI에도 쓰이므로 그대로 두고,
+  // 연애·결혼 적합도 카드 노출 조건만 별도로 넓힌다.
+  const genderDiffers = !!myGender && !!otherGender && myGender !== otherGender;
+  const showRomanceMarriageScores = isPersonalLove || genderDiffers;
+
   function adaptTextForRelType(text: string): string {
     if (!text) return text;
     // For non-romantic relations, remove romantic framing where possible.
@@ -1284,7 +1291,7 @@ export default function Compatibility() {
                 );
               })()}
 
-              {isPersonalLove && result.romanceMarriageFit && (() => {
+              {showRomanceMarriageScores && result.romanceMarriageFit && (() => {
                 const fit = result.romanceMarriageFit;
                 const scoreColor = (score: number) => toneClasses(toneTierFromScore(score)).text;
                 return (
