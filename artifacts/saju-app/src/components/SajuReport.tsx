@@ -4590,9 +4590,6 @@ export function SajuReport({ record, showSaveStatus = false, hourMode: parentHou
     }
   }, [reportTab]);
 
-  const reportMainTabsAnchorRef = useRef<HTMLDivElement>(null);
-  const [reportMainTabsPinned, setReportMainTabsPinned] = useState(false);
-
   const scrollToYuanAnchor = useCallback((id: string) => {
     requestAnimationFrame(() => {
       document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -5415,22 +5412,6 @@ export function SajuReport({ record, showSaveStatus = false, hourMode: parentHou
   );
   const anyDiffBase = hasAnyHourDiff(fiveElDiffBase, shinsalDiffBase);
 
-  useEffect(() => {
-    const anchor = reportMainTabsAnchorRef.current;
-    if (!anchor) return;
-    const updatePinned = () => {
-      const top = anchor.getBoundingClientRect().top;
-      setReportMainTabsPinned(top < APP_HEADER_OFFSET_PX);
-    };
-    updatePinned();
-    window.addEventListener("scroll", updatePinned, { passive: true });
-    window.addEventListener("resize", updatePinned);
-    return () => {
-      window.removeEventListener("scroll", updatePinned);
-      window.removeEventListener("resize", updatePinned);
-    };
-  }, [hasHourPillar, hourMode, record.id]);
-
   // ── 시주 천간/지지 십성 ────────────────────────────────────────
   const hourStem = pillars.hour?.hangul?.[0] ?? null;
   const hourBranch = pillars.hour?.hangul?.[1] ?? null;
@@ -5511,39 +5492,29 @@ export function SajuReport({ record, showSaveStatus = false, hourMode: parentHou
         </div>
       )}
 
-      <div ref={reportMainTabsAnchorRef}>
-        {reportMainTabsPinned && (
-          <div
-            className="shrink-0 border-b border-transparent"
-            style={{ height: "calc(1rem + 2.75rem + 1px)" }}
-            aria-hidden
-          />
-        )}
-        <div
-          className={cn(
-            "z-30 border-b border-border/50 bg-background supports-[backdrop-filter]:bg-background/95 backdrop-blur-sm",
-            reportMainTabsPinned
-              ? "fixed top-14 left-0 right-0 py-2"
-              : "-mx-4 px-4 py-2 supports-[backdrop-filter]:bg-background/85",
-          )}
-        >
-          <div className={cn(reportMainTabsPinned && "mx-auto max-w-lg px-4")}>
-            <div className="ds-segment-list min-h-11 rounded-xl border border-border shadow-none">
-              {REPORT_MAIN_TABS.map((tab) => (
-                <button
-                  key={tab}
-                  type="button"
-                  onClick={() => setReportTab(tab)}
-                  className={cn(
-                    "ds-segment-item text-sm shadow-none",
-                    reportTab === tab ? "ds-segment-item-active" : "ds-segment-item-inactive",
-                  )}
-                >
-                  {REPORT_TAB_LABEL[tab]}
-                </button>
-              ))}
-            </div>
-          </div>
+      {/* 스크롤 시 화면 상단에 붙는 탭 — 브라우저 네이티브 position:sticky를 쓴다(2026-09-03).
+          이전엔 스크롤/리사이즈 이벤트로 JS가 직접 fixed 전환 여부를 계산했는데, 모바일 사파리에서
+          주소창이 접히고 펴지며 뷰포트 높이가 실시간으로 바뀔 때 그 계산이 한 박자 늦어 탭이
+          튀거나 깜빡이는 문제가 있었다. sticky는 이런 재계산이 아예 필요 없어 그 문제 자체가
+          생기지 않는다(수동 여백 보정용 placeholder도 필요 없어져 함께 제거). */}
+      <div
+        className="sticky z-30 -mx-4 border-b border-border/50 bg-background/95 px-4 py-2 backdrop-blur-sm"
+        style={{ top: APP_HEADER_OFFSET_PX }}
+      >
+        <div className="ds-segment-list min-h-11 rounded-xl border border-border shadow-none">
+          {REPORT_MAIN_TABS.map((tab) => (
+            <button
+              key={tab}
+              type="button"
+              onClick={() => setReportTab(tab)}
+              className={cn(
+                "ds-segment-item text-sm shadow-none",
+                reportTab === tab ? "ds-segment-item-active" : "ds-segment-item-inactive",
+              )}
+            >
+              {REPORT_TAB_LABEL[tab]}
+            </button>
+          ))}
         </div>
       </div>
 
