@@ -25,7 +25,7 @@ import { getTenGod } from "../tenGods";
 export function generateLoverReport(
   p1: PersonRecord,
   p2: PersonRecord,
-  relType: "lover" | "spouse"
+  relType: "lover" | "spouse" | "interest"
 ): LoverCompatibilityReport {
   const pillars1 = getFinalPillars(p1);
   const pillars2 = getFinalPillars(p2);

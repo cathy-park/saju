@@ -45,7 +45,7 @@ export interface BaseCompatibilityReport {
 }
 
 export interface LoverCompatibilityReport extends BaseCompatibilityReport {
-  type: "lover" | "spouse";
+  type: "lover" | "spouse" | "interest";
   
   branchComp: {
     myBranch: string;
