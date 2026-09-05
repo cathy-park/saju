@@ -81,7 +81,7 @@ function pairMatch(a: string, b: string, pairs: [string, string][]): boolean {
   return pairs.some(([x, y]) => (a === x && b === y) || (a === y && b === x));
 }
 
-function getBranchRels(b1: string, b2: string): string[] {
+export function getBranchRels(b1: string, b2: string): string[] {
   const rels: string[] = [];
   if (pairMatch(b1, b2, SIX_HAP))   rels.push("합");
   if (pairMatch(b1, b2, CHUNG_PAIRS)) rels.push("충");
@@ -89,9 +89,17 @@ function getBranchRels(b1: string, b2: string): string[] {
   if (pairMatch(b1, b2, PA_PAIRS))   rels.push("파");
   if (pairMatch(b1, b2, HAE_PAIRS))  rels.push("해");
   if (pairMatch(b1, b2, WONJIN_PAIRS)) rels.push("원진");
-  const halfTriad = HALF_TRIAD_GROUPS.some(g => g.includes(b1) && g.includes(b2));
+  // 2026-09-03 버그 수정: 반합(半合)은 삼합국 중 서로 다른 두 지지가 만났을 때만 성립한다.
+  // b1 !== b2 체크가 없으면 두 사람이 우연히 같은 지지를 하나씩 가진 것(예: 둘 다 해)도
+  // "같은 삼합 그룹에 속한다"는 이유만으로 반합으로 잘못 잡혔다.
+  const halfTriad = b1 !== b2 && HALF_TRIAD_GROUPS.some(g => g.includes(b1) && g.includes(b2));
   if (halfTriad && !rels.includes("합")) rels.push("반합");
   return rels;
+}
+
+/** 지지 b가 속한 삼합/반합 그룹의 인덱스(HALF_TRIAD_GROUPS 기준). 없으면 -1. */
+function halfTriadGroupIndexOf(b: string): number {
+  return HALF_TRIAD_GROUPS.findIndex((g) => g.includes(b));
 }
 
 // ── Tone (5등급) ──────────────────────────────────────────────────────────
@@ -575,51 +583,132 @@ const PILLAR_WEIGHTS: Record<PillarKey, number> = {
   hour: 0.8
 };
 
-function scoreBranchInteractionDelta(
+// 반합 그룹 2번째 이후 중복 매칭에 적용하는 감쇠율(diminishing return). 0으로 두면 "최초 1회만
+// 100% 인정, 그 외 전액 무시"가 되고, 이 값을 쓰면 "그래도 같은 구조가 여러 위치에서 반복
+// 확인됐다"는 신호 자체는 아주 약하게 남긴다 — Positive Aux Gate와 같은 "연속적 감쇠" 철학을
+// 따른 것이며, 두 방식(0% vs 30%)을 실제 합성 케이스로 비교한 결과는 감사 보고서 참고.
+const HALF_TRIAD_REPEAT_DECAY = 0.3;
+
+// 같은 위치쌍(k1,k2)에서 같은 부호(positive/negative)의 관계가 2개 이상 동시에 성립할 때
+// (예: 축·미=충+형, 자·미=원진+해) 적용하는 감쇠율. 절댓값이 가장 큰 관계가 1번째(100%),
+// 그다음이 2번째(REPEAT_DECAY_2ND), 3번째 이후는 REPEAT_DECAY_3RD_PLUS. 관계 자체는 절대
+// 지우지 않고(evidence·note에 전부 남김) 점수 기여만 줄인다 — "복합 관계가 단일 관계보다
+// 약간 더 강하게 작동할 수는 있지만 거의 2배 페널티가 되지는 않는다"는 설계 결정.
+const COMPOUND_REPEAT_DECAY_2ND = 0.3;
+const COMPOUND_REPEAT_DECAY_3RD_PLUS = 0.15;
+
+const RELATION_BASE_SCORE: Record<string, number> = {
+  합: 4, 충: -5, 형: -4, 파: -3, 해: -3, 원진: -4,
+};
+
+// 절댓값이 같은 관계끼리(형=원진=-4, 파=해=-3) 감쇠 순서를 정할 고정 tiebreak 우선순위.
+// getBranchRels의 반환 순서나 테이블 나열 순서가 바뀌어도 이 배열의 인덱스만으로 순서가
+// 정해지므로 항상 deterministic하다.
+const RELATION_TIEBREAK_ORDER = ["합", "충", "형", "원진", "해", "파"];
+
+/** 절댓값 내림차순 → 동률이면 RELATION_TIEBREAK_ORDER 순으로 정렬(완전히 deterministic). */
+export function sortBySeverityDesc(group: { r: string; base: number }[]): { r: string; base: number }[] {
+  return [...group].sort((a, b) => {
+    const diff = Math.abs(b.base) - Math.abs(a.base);
+    if (diff !== 0) return diff;
+    return RELATION_TIEBREAK_ORDER.indexOf(a.r) - RELATION_TIEBREAK_ORDER.indexOf(b.r);
+  });
+}
+
+/**
+ * 지지 전체 교차(Aux 후보). 버그 수정 반영:
+ *  1) (day,day)/(month,month) 쌍은 배우자궁(scoreSpousePalaceDelta)·월지(scoreMonthBranchDelta)가
+ *     이미 전담하므로 여기서는 제외한다(안 그러면 같은 관계가 최대 가중치로 다시 가산됨).
+ *  2) 같은 삼합/방합 구조(예: 해묘미)가 여러 (k1,k2) 위치 조합으로 쪼개져 반복 가산되지 않도록,
+ *     반합만 그룹 단위로 모아서 그룹당 가장 비중 높은 조합 1개는 100%, 나머지는
+ *     HALF_TRIAD_REPEAT_DECAY 비율만 반영한다.
+ *  3) [2026-09-05] compound-relation overcounting: 같은 위치쌍에서 서로 다른 관계 유형이
+ *     동시에 성립하는 경우(예: 신·인=충+형, 사·신=합+형)가 지지 관계 테이블 구조상 실제로
+ *     존재한다(감사 결과 자미·축오=해+원진, 인사·술미=형+해/파, 축미·인신=충+형, 사신=합+형
+ *     7개 지지쌍 확인). 이걸 "중복 버그"로 보고 관계 하나를 지우면 명리 해석상 실제로 동시에
+ *     성립하는 복합 작용(예: 충이면서 동시에 형)을 잃어버리므로, 관계는 전부 보존하되 같은
+ *     부호 그룹 안에서만 위 감쇠율로 점수 기여를 줄인다. 반대 부호(합+파 등)는 서로의 감쇠에
+ *     영향을 주지 않고 각자 그룹에서 계산 후 합산 — "좋은 연결과 불편함이 동시에 있다"는
+ *     의미를 보존한다.
+ */
+export function scoreBranchInteractionDelta(
   p1: ReturnType<typeof getFinalPillars>, p2: ReturnType<typeof getFinalPillars>
-): { delta: number; note: string; clashCount: number } {
+): { delta: number; note: string; clashCount: number; compoundEvidence: string[] } {
   let raw = 0;
   let clashCount = 0;
-  const seen = new Set<string>();
+  const halfTriadCandidatesByGroup = new Map<number, { weight: number }[]>();
+  const compoundEvidence: string[] = [];
 
   const keys: PillarKey[] = ["year", "month", "day", "hour"];
-  
+
   for (const k1 of keys) {
     const b1 = p1[k1]?.hangul?.[1];
     if (!b1) continue;
     for (const k2 of keys) {
+      // 배우자궁(day↔day)·월지(month↔month)는 이미 별도 채점 — 여기서 다시 전액 가산하지 않는다.
+      if (k1 === "day" && k2 === "day") continue;
+      if (k1 === "month" && k2 === "month") continue;
       const b2 = p2[k2]?.hangul?.[1];
       if (!b2) continue;
 
       const rels = getBranchRels(b1, b2);
-      const w1 = PILLAR_WEIGHTS[k1];
-      const w2 = PILLAR_WEIGHTS[k2];
-      const weight = w1 * w2;
+      const weight = PILLAR_WEIGHTS[k1] * PILLAR_WEIGHTS[k2];
 
-      for (const r of rels) {
-        const rk = `${r}|${k1}|${k2}`;
-        if (seen.has(rk)) continue;
-        seen.add(rk);
+      // 반합은 cross-position 그룹 dedup 대상이라 별도 수집한다(halfTriadCandidatesByGroup).
+      // 지지 관계 테이블 전수 검사 결과 반합 그룹과 합/충/형/파/해/원진이 겹치는 지지쌍은
+      // 없으므로(halfTriad는 항상 단독으로만 나타남) 두 처리 경로는 서로 배타적이다.
+      if (rels.includes("반합")) {
+        const gIdx = halfTriadGroupIndexOf(b1);
+        const list = halfTriadCandidatesByGroup.get(gIdx) ?? [];
+        list.push({ weight });
+        halfTriadCandidatesByGroup.set(gIdx, list);
+      }
 
-        let baseScore = 0;
-        if (r === "합")   baseScore = 4;
-        else if (r === "반합") baseScore = 5;
-        else if (r === "충")   { baseScore = -5; clashCount++; }
-        else if (r === "형")   baseScore = -4;
-        else if (r === "파")   baseScore = -3;
-        else if (r === "해")   baseScore = -3;
-        else if (r === "원진") baseScore = -4;
+      // exact duplicate만 제거(getBranchRels는 위치쌍당 관계 문자열을 최대 1회만 반환하므로
+      // 현재로선 no-op이지만, 명세대로 방어적 dedup을 유지한다).
+      const compoundRels = [...new Set(rels.filter((r) => r !== "반합"))];
+      if (compoundRels.length === 0) continue;
 
-        raw += baseScore * weight;
+      // clashCount는 "충 태그 개수"가 아니라 "충이 성립한 위치쌍 개수"다 — 위치쌍 하나에서
+      // 충+형이 함께 나와도 이 위치쌍은 1건으로만 센다(화면의 "충돌 N회" 문구와 의미가 맞음).
+      if (compoundRels.includes("충")) clashCount++;
+
+      const scored = compoundRels.map((r) => ({ r, base: RELATION_BASE_SCORE[r] ?? 0 }));
+      const positives = sortBySeverityDesc(scored.filter((x) => x.base > 0));
+      const negatives = sortBySeverityDesc(scored.filter((x) => x.base < 0));
+
+      const attenuatedSum = (group: { r: string; base: number }[]) =>
+        group.reduce((sum, x, idx) => {
+          const factor = idx === 0 ? 1 : idx === 1 ? COMPOUND_REPEAT_DECAY_2ND : COMPOUND_REPEAT_DECAY_3RD_PLUS;
+          return sum + x.base * weight * factor;
+        }, 0);
+
+      raw += attenuatedSum(positives) + attenuatedSum(negatives);
+
+      if (compoundRels.length >= 2) {
+        compoundEvidence.push(
+          `${k1}×${k2}(${b1}·${b2}): ${compoundRels.join("+")} 동시 성립(점수는 감쇠, 관계는 모두 보존)`
+        );
       }
     }
   }
 
+  let halfTriadGroupCount = 0;
+  for (const candidates of halfTriadCandidatesByGroup.values()) {
+    if (candidates.length === 0) continue;
+    halfTriadGroupCount++;
+    candidates.sort((a, b) => b.weight - a.weight);
+    candidates.forEach((c, idx) => {
+      const factor = idx === 0 ? 1 : HALF_TRIAD_REPEAT_DECAY;
+      raw += 5 * c.weight * factor;
+    });
+  }
+
   const delta = Math.max(-15, Math.min(15, Math.round(raw)));
   const note = raw !== 0
-    ? `지지 교차: 위치 가중치 적용 총합 ${raw > 0 ? "+" : ""}${Math.round(raw * 10) / 10}점 (충 ${clashCount}회, 최종 캡 ±15)`
+    ? `지지 교차: 위치 가중치 적용 총합 ${raw > 0 ? "+" : ""}${Math.round(raw * 10) / 10}점 (충 ${clashCount}회, 반합구조 ${halfTriadGroupCount}종, 복합관계 ${compoundEvidence.length}건, 최종 캡 ±15)`
     : "지지 교차 관계 없음";
-  return { delta, note, clashCount };
+  return { delta, note, clashCount, compoundEvidence };
 }
 
 // ═══════════════════════════════════════════════════════════════════════
