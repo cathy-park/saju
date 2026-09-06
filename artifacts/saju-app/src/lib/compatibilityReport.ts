@@ -292,7 +292,47 @@ export function getElementComplement(el1: FiveElementCount, el2: FiveElementCoun
 }
 
 // ── Marriage viewpoint ────────────────────────────────────────────
+// [Phase 3 P0 재작업, 2026-09] 최초 시도는 getMarriageView(baseScore,...)를
+// getMarriageView(marriageCompatibility.final,...)로 score input만 바꾸는 것이었으나,
+// 이는 legacy baseScore 분포로 만든 78/65/60/50 threshold에 분포가 완전히 다른 신규
+// Phase 3 점수를 그대로 넣는 calibration 오류였다. 아래에서 조건을 감사해 분리했다:
+//  - "자극·성장형"(dayBranchRel==="충")은 점수 없이 dayBranchRel만으로 100% 결정된다
+//    → 구조 evidence 전용 helper(getMarriageStructuralView)로 분리해 보존.
+//  - 나머지("장기 안정형"/"정서적 결합형"/"보완 성장형"/"노력형 결합"/"도전형 결합")는
+//    전부 score>=78/65/60/50 중 하나를 반드시 통과해야 하고, 심지어 같은 구조 조건
+//    (isHap)에서도 점수 크기만으로 "장기 안정형"과 "정서적 결합형"을 나눈다 — 즉 라벨
+//    선택 자체가 legacy score calibration 없이는 불가능하다. 새 threshold를 만들지
+//    않는다는 원칙에 따라 이 5개 라벨은 Phase 3 UI에 연결하지 않고 P1(marriageCompatibility
+//    분포 기준 새 calibration 설계) 대상으로 남겨둔다.
+// getMarriageView 자체는 backward compatibility로 그대로 유지하지만 Phase 3 신규 UI
+// (LoverReportGenerator.ts)는 더 이상 호출하지 않는다.
 
+/** [Phase 3 P0] elRel/dayBranchRel 구조 evidence만으로 결정 가능한 결혼 관점 라벨.
+ * 점수를 받지 않는다 — legacy/신규 어떤 score threshold와도 결합하지 않는다.
+ * 구조만으로 결정 가능한 라벨이 없으면 null(= 이번 P0에서는 라벨을 보류/숨김). */
+export function getMarriageStructuralView(elRel: StemElRel, dayBranchRel: string): {
+  type: string; typeColor: string; desc: string;
+} | null {
+  if (dayBranchRel === "충") {
+    return {
+      type: "자극·성장형",
+      typeColor: "text-amber-600",
+      desc: "배우자궁의 충(衝)이 관계를 역동적으로 만듭니다. 서로를 자극하고 성장시키는 힘이 있지만, 충돌과 변화가 잦아 안정을 찾기까지 시간이 필요합니다. 서로의 차이를 인정하면 오히려 강한 결합력이 됩니다.",
+    };
+  }
+  // elRel(상생/피생) 단독 조건은 legacy 함수에서 항상 score>=60~78과 결합돼야만
+  // "장기 안정형/정서적 결합형/보완 성장형" 중 하나로 갈렸으므로, 구조만으로는
+  // 어떤 라벨도 정당화할 수 없다 — 새 threshold를 만들지 않고 보류한다(P1 대상).
+  return null;
+}
+
+/**
+ * @deprecated [Phase 3 P0] legacy score threshold(78/65/60/50) 기반 결혼 관점 해석 —
+ * baseScore(Phase 2 관계형 종합 점수) 분포를 전제로 calibration된 함수다. Phase 3
+ * marriageCompatibility 점수는 분포가 달라 이 threshold에 넣으면 안 된다(legacy
+ * calibration을 새 점수에 강제 적용하는 오류). 신규 Phase 3 UI는 getMarriageStructuralView를
+ * 쓰고, 이 함수는 backward compatibility 목적으로만 남겨둔다(원본 로직 변경 없음).
+ */
 export function getMarriageView(score: number, elRel: StemElRel, dayBranchRel: string): {
   type: string; typeColor: string; desc: string;
 } {

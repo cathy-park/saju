@@ -24,6 +24,7 @@ import {
   type PersonInteractionContext,
 } from "./evaluations/relationshipInteractionActivation";
 import type { CompatibilityResult } from "./compatibilityScore";
+import { getCompatibilityCardPolicy } from "./compatibilityDisplayPolicy";
 import {
   countFiveElements,
   type ComputedPillars,
@@ -965,7 +966,7 @@ function pushInterpretationConsistencyRules(lines: string[]): void {
   lines.push("제공된 계산 점수·등급·관계 유형·evidence를 최우선 anchor로 사용한다.");
   lines.push("이미 계산된 점수를 AI가 임의로 재계산하거나 상향·하향하지 않는다.");
   lines.push("동일 데이터라면 핵심 결론이 달라지지 않도록 한다.");
-  lines.push("표현 방식은 달라질 수 있으나 좋음/보통/주의, 활성/조화/안정, 연애/결혼 적합도의 방향을 뒤집지 않는다.");
+  lines.push("표현 방식은 달라질 수 있으나 좋음/보통/주의, 활성/조화/안정, 인간관계/연애/결혼 궁합의 방향을 뒤집지 않는다.");
   lines.push("evidence가 상충할 경우 한쪽을 임의로 삭제하지 않고 \"우호 요인과 긴장 요인이 공존한다\"고 설명한다.");
   lines.push("코드 결과와 일반 명리 지식이 충돌하면 코드에서 제공된 구조 데이터를 우선하고, 필요하면 한계를 별도로 설명한다.");
 }
@@ -987,28 +988,24 @@ export function buildCompatibilityClipboardText(
   lines.push(`${n1} ↔ ${n2}`);
   lines.push("");
 
-  // 궁합 점수
-  lines.push(`[궁합 점수]`);
-  lines.push(`  총점: ${result.totalScore}/100 — ${result.grade}`);
+  // [Phase 3 P0] 화면(Compatibility.tsx)과 동일한 source of truth(getCompatibilityCardPolicy)로
+  // 목적별 궁합만 노출한다. legacy totalScore/romanceMarriageFit은 "궁합 점수" 사용자 export
+  // 라벨로 쓰지 않는다(내부 API 필드 자체는 CompatibilityResult에 backward compat로 유지됨).
+  const cardPolicy = getCompatibilityCardPolicy(person2.relationshipType);
+  lines.push(`[궁합 점수 (목적별 모델)]`);
+  lines.push(`  🤝 인간관계 궁합: ${result.humanCompatibility.final}점 — ${result.humanCompatibility.tone}`);
+  if (cardPolicy.showRomance) {
+    lines.push(`  💕 연애 궁합: ${result.romanceCompatibility.final}점 — ${result.romanceCompatibility.tone}`);
+  }
+  if (cardPolicy.showMarriage) {
+    lines.push(`  💍 결혼 궁합: ${result.marriageCompatibility.final}점 — ${result.marriageCompatibility.tone}`);
+  }
   lines.push(`  충(충돌) 횟수: ${result.clashCount}`);
   if (result.keywords.length > 0) {
     lines.push(`  키워드: ${result.keywords.join("  ")}`);
   }
+  lines.push(`  (세 점수는 서로 다른 산식이며 평균/합산 값이 아닙니다.)`);
   lines.push("");
-
-  // 💕 연애 적합도 / 💍 결혼 적합도 — 두 사람 원국 자체의 구조 적합성(연도별 timing과 분리)
-  if (result.romanceMarriageFit) {
-    const fit = result.romanceMarriageFit;
-    lines.push(`[연애 적합도 / 결혼 적합도 (원국 기반, 연도별 timing과 분리)]`);
-    lines.push(`  💕 연애 적합도: ${fit.romanceScore}점 — ${fit.romanceNote}`);
-    lines.push(`  💍 결혼 적합도: ${fit.marriageScore}점 — ${fit.marriageNote}`);
-    lines.push(`  🧭 관계 유형: ${fit.relationshipType}`);
-    if (fit.marriageGroupStructureNotes.length > 0) {
-      lines.push(`  결혼 적합도 삼합/방합 근거: ${fit.marriageGroupStructureNotes.join(" / ")}`);
-    }
-    lines.push(`  (확률이 아니라 구조적 여건을 나타내는 해석용 점수입니다.)`);
-    lines.push("");
-  }
 
   // 세부 조정 항목
   lines.push(`[세부 점수 (기준점 50 + 조정)]`);
@@ -1171,15 +1168,24 @@ export function buildCompatibilityClipboardText(
   lines.push("5. 🧩 합·충·형·파·해·원진 종합 해석: 각 작용이 실제 관계에서 어떤 장면으로 나타나는지 예시를 들고, 좋은 작용은 살리고 불편한 건 어떻게 조율할지 알려주세요.");
   lines.push("6. 🌳 삼합국 / 반합 구조 해석: 해묘미, 사유축 등 합국이 있다면 그게 감정적인지 현실적인지 구분하고, 서로의 용신/기신 여부를 반영해주세요.");
   lines.push("7. 💡 용신·희신·기신 보완 관계: 상대가 내 용희신을 채워주는지, 기신을 자극해 부담을 주는지 체감되는 선에서 설명해주세요.");
-  lines.push("8. 💕 연애 궁합: 연애 초반의 끌림, 설렘, 서운함이 생길 수 있는 포인트를 짚어주세요.");
-  lines.push("9. 💍 결혼 궁합: 일, 생활 리듬, 가족관계 등 장기 배우자로서의 가능성과 꼭 필요한 조율 조건을 알려주세요.");
+  // [Phase 3 P0] 연애/결혼 궁합 데이터가 실제로 export되는 relType(showRomance)에서만
+  // 해당 항목을 프롬프트에 포함한다 — 데이터 없는 항목을 해석하라고 지시하면 안 됨.
+  if (cardPolicy.showRomance) {
+    lines.push("8. 💕 연애 궁합: 연애 초반의 끌림, 설렘, 서운함이 생길 수 있는 포인트를 짚어주세요.");
+    lines.push("9. 💍 결혼 궁합: 일, 생활 리듬, 가족관계 등 장기 배우자로서의 가능성과 꼭 필요한 조율 조건을 알려주세요.");
+  }
   lines.push("10. ⏰ 현실 운영 궁합: 장거리, 바쁜 일정, 연락 텀, 만남 주기 등 독립성과 안정성을 유지할 꿀팁을 주세요.");
   lines.push("11. ⚠️ 갈등 패턴: 두 사람이 다툴 때 생기는 오해 패턴, 대화법, 서운함 표현의 주의점을 알려주세요.");
   lines.push("12. 🌱 관계를 좋게 만드는 실전 조언: 서운함을 말하는 방식, 장기 관계로 가기 위한 습관을 구체적으로 제안해주세요.");
   lines.push("13. 🔮 최종 전망: 무조건 좋다/나쁘다 단정하지 말고, 어떤 조건이 충족되면 좋아질지 현실적으로 전망해주세요.");
   lines.push("14. 💒 대운·세운의 배우자/결혼 활성 흐름: 두 사람 각각의 결혼·배우자 테마 활성도와 배우자궁 안정도를 구분해서 해석하고, 현재 대운 안에서 관계·결혼 이슈가 특히 강하게 움직이는 연도를 비교해주세요. 활성도가 높다고 결혼 적기로 단정하지 말고, 활성도 × 안정도 조합에 따라 안정적 발전인지, 관계 변화·재편·결단이 강한 시기인지 구분해주세요.");
   lines.push("15. 💕 연도별 커플 관계 상호작용 흐름: [커플 관계 상호작용도(연도별)]의 관계 활성도·조화도·안정도를 반드시 함께 해석해주세요. 개인별 배우자 활성도/안정도와 커플 자체의 상호작용 지표를 혼동하지 말고, 관계 활성도(그 해 두 사람 사이의 사건·감정·결정이 얼마나 강하게 움직이는가) / 관계 조화도(그 움직임이 연결·보완 방향인지 충돌·소모 방향인지) / 관계 안정도(관계가 실제 성립했을 때 얼마나 안정적으로 유지되기 쉬운지)를 구분해주세요. 활성도가 높다는 이유만으로 재회·결혼·연애 성사를 단정하지 말고, 세 축과 두 사람 각각의 배우자·결혼 활성도/안정도, 그리고 '관계 진전 여건' 등급을 함께 종합해서 해석해주세요.");
-  lines.push("16. 💕💍 연애 적합도 · 결혼 적합도: [연애 적합도 / 결혼 적합도] 데이터는 두 사람 원국 자체의 구조 적합성이며, 연도별 timing과는 완전히 분리된 값입니다. 연애 적합도는 '연인으로서 끌리고 관계가 형성·유지되기 쉬운가'를, 결혼 적합도는 '장기 배우자로 생활·책임·갈등을 운영하기 쉬운가'를 뜻합니다. 두 점수와 관계 유형을 함께 언급하되, 확률이 아니라 구조적 여건이라는 점을 분명히 하고, 위 연도별 timing 항목(14·15번)과 섞어서 하나로 뭉뚱그리지 말아주세요.");
+  if (cardPolicy.showRomance) {
+    // [Phase 3 P0] 데이터 섹션 이름이 [연애 적합도 / 결혼 적합도]에서 [궁합 점수 (목적별
+    // 모델)]로 바뀌었으므로 참조도 함께 갱신한다(더 이상 존재하지 않는 섹션명을 가리키면
+    // AI가 근거 없이 지어낼 위험이 있음).
+    lines.push("16. 💕💍 연애 궁합 · 결혼 궁합: [궁합 점수 (목적별 모델)]의 연애 궁합·결혼 궁합 값은 두 사람 원국 자체의 구조 적합성이며, 연도별 timing과는 완전히 분리된 값입니다. 연애 궁합은 '연인으로서 끌리고 관계가 형성·유지되기 쉬운가'를, 결혼 궁합은 '장기 배우자로 생활·책임·갈등을 운영하기 쉬운가'를 뜻합니다. 두 점수와 관계 유형을 함께 언급하되, 확률이 아니라 구조적 여건이라는 점을 분명히 하고, 위 연도별 timing 항목(14·15번)과 섞어서 하나로 뭉뚱그리지 말아주세요.");
+  }
   lines.push("");
   lines.push("────────────────────");
   lines.push("[누락 방지 규칙]");

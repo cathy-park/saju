@@ -11,7 +11,7 @@ import {
   checkStemClash,
   getCrossBranchAnalysis,
   getElementComplement,
-  getMarriageView,
+  getMarriageStructuralView,
   getConflictPoints,
   getHarmonyPoints,
   getRelationshipTips,
@@ -91,7 +91,11 @@ export function generateLoverReport(
   const elemComp = getElementComplement(el1, el2);
   const styleInfo1 = getRelationshipPattern(s1, b1, el1);
   const styleInfo2 = getRelationshipPattern(s2, b2, el2);
-  const marriageView = getMarriageView(scoreResult.baseScore, elRel, dayBranchRelLabel);
+  // [Phase 3 P0 재작업] legacy getMarriageView(score, ...)는 baseScore 분포로 calibration된
+  // 78/65/60/50 threshold를 쓰므로 marriageCompatibility.final을 넣지 않는다(legacy
+  // calibration을 새 점수에 강제 적용하는 오류). 구조 evidence(dayBranchRel)만으로 결정
+  // 가능한 라벨만 반환하는 getMarriageStructuralView를 쓴다 — 결정 불가하면 null(P1 보류).
+  const marriageView = getMarriageStructuralView(elRel, dayBranchRelLabel);
   const conflictPoints = getConflictPoints(elRel, dayBranchRelLabel, el1, el2);
   const harmonyPoints = getHarmonyPoints(elRel, dayBranchRelLabel, el1, el2);
   const tips = getRelationshipTips(styleInfo1.style, styleInfo2.style, tone);

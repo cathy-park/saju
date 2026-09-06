@@ -64,11 +64,13 @@ export interface LoverCompatibilityReport extends BaseCompatibilityReport {
     dynamicsDesc: string;
   };
   
+  // [Phase 3 P0] getMarriageStructuralView가 구조 evidence만으로 라벨을 결정하지 못하면
+  // null을 반환한다(legacy score threshold를 신규 점수에 강제 적용하지 않기 위함, P1 보류).
   marriageView: {
     type: string;
     typeColor: string;
     desc: string;
-  };
+  } | null;
 }
 
 export interface CoworkerCompatibilityReport extends BaseCompatibilityReport {

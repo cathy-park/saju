@@ -7,6 +7,7 @@ import type { CompatibilityResult, CompatibilityTone } from "@/lib/compatibility
 import type { AnyCompatibilityReport } from "@/lib/reports";
 import { getCompatibilityReport } from "@/lib/reports";
 import { COMPAT_TONE_COLOR } from "@/lib/compatibilityScore";
+import { getCompatibilityCardPolicy } from "@/lib/compatibilityDisplayPolicy";
 import { toneClasses, toneTierFromScore, toneTierFromLevel, toneClassesNeutral, type ToneTier } from "@/lib/toneColors";
 
 const PROGRESS_READINESS_TONE: Record<"매우 낮음" | "낮음" | "보통" | "높음" | "매우 높음", ToneTier> = {
@@ -838,19 +839,19 @@ export default function Compatibility() {
     ? getCompatibilityReport(p1, p2, relType)
     : null;
   const resultBase: CompatibilityResult | null = fullReportBase?.scoreResult ?? null;
-  // Derive all colors from result.finalType — single source of truth
+  // Derive all colors from result.finalType — single source of truth (legacy Phase 2
+  // 관계형 종합 점수 전용. Phase 3 3축 히어로 카드는 아래 cardPolicy/heroPalette를 쓴다.)
   const palette = result ? (GRADE_PALETTE[result.finalType] ?? GRADE_PALETTE["노력형 궁합"]) : null;
   const myName = p1?.birthInput.name ?? "";
   const otherName = p2?.birthInput.name ?? "";
   const myGender = p1?.birthInput.gender ?? "";
   const otherGender = p2?.birthInput.gender ?? "";
 
-  // 관계유형을 연인/배우자/썸으로 지정하지 않았어도, 두 사람의 성별이 서로 다르면
-  // 연애·결혼 적합도 점수는 함께 보여준다(대표 요청, 2026-09-03). isPersonalLove 자체는
-  // 궁합 온도계 문구·배우자궁 비교 등 다른 연인 전용 UI에도 쓰이므로 그대로 두고,
-  // 연애·결혼 적합도 카드 노출 조건만 별도로 넓힌다.
-  const genderDiffers = !!myGender && !!otherGender && myGender !== otherGender;
-  const showRomanceMarriageScores = isPersonalLove || genderDiffers;
+  // [Phase 3 P0] 화면/클립보드 export가 공유하는 단일 source of truth. lover/spouse/
+  // interest만 연애·결혼 궁합을 노출하고, 그 외(family/friend/coworker/other/undefined)는
+  // 인간관계 궁합만 노출한다 — 예전에 "성별이 다르면 family/coworker에도 연애·결혼
+  // 카드를 보여준다"던 genderDiffers 확장 정책은 이번 전환에서 명시적으로 폐기했다.
+  const cardPolicy = getCompatibilityCardPolicy(relType);
 
   function adaptTextForRelType(text: string): string {
     if (!text) return text;
@@ -1111,14 +1112,21 @@ export default function Compatibility() {
               {(() => {
                 const isLoveType = relType === "lover" || relType === "spouse" || relType === "interest";
                 const isFamilyType = relType === "family";
-                const score = result.score;
+                // [Phase 3 P0] romantic relType(cardPolicy.showRomance)에서는 totalScore 단일
+                // 히어로 대신 아래 3축 동일 위계 블록을 렌더링하므로 여기서는 score를 null로
+                // 둔다. 비-romantic에서는 Human Compatibility를 대표 점수로 쓴다(totalScore를
+                // Human으로 이름만 바꾸는 게 아니라 실제 humanCompatibility.final을 사용).
+                const score = cardPolicy.showRomance ? null : result.humanCompatibility.final;
+                const heroTone = cardPolicy.showRomance ? null : result.humanCompatibility.tone;
+                const heroPalette = heroTone ? (GRADE_PALETTE[heroTone] ?? GRADE_PALETTE["노력형 궁합"]) : null;
 
-                // 별점 계산 (5점 만점)
-                const starCount = score >= 85 ? 5 : score >= 70 ? 4 : score >= 55 ? 3 : score >= 40 ? 2 : 1;
+                // 별점/분위기 라벨은 Human 단독 대표 모드(비연애 관계유형)에서만 사용한다.
+                const starCount = score === null ? 0 : score >= 85 ? 5 : score >= 70 ? 4 : score >= 55 ? 3 : score >= 40 ? 2 : 1;
                 const stars = Array.from({ length: 5 }, (_, i) => i < starCount ? "★" : "☆");
 
-                // 관계 분위기 라벨
-                const moodLabel = score >= 85
+                // 관계 분위기 라벨(비연애 관계유형에서만 사용 — isLoveType 분기는 이 경로에서
+                // 도달하지 않지만 기존 문구를 그대로 보존해 둔다)
+                const moodLabel = score === null ? "" : score >= 85
                   ? isLoveType ? "💞 천생연분에 가까운 인연" : "⚡ 완벽한 시너지 파트너"
                   : score >= 70
                   ? isLoveType ? "🌸 설렘과 안정이 공존하는 관계" : "🌿 서로 잘 맞는 좋은 파트너"
@@ -1193,52 +1201,86 @@ export default function Compatibility() {
                           />
                         </div>
 
-                        {/* ★ 점수 영역: 별점 + 분위기 라벨 + 숫자 */}
-                        <div className="rounded-2xl border border-border/40 bg-white/70 backdrop-blur-sm px-4 py-4 space-y-3">
-                          <div className="flex items-center justify-between gap-3">
-                            <div className="space-y-1">
-                              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">궁합 점수</p>
-                              <div className="flex items-baseline gap-2">
-                                <span className={`text-4xl font-extrabold tracking-tight ${accentClass}`}>{score}</span>
-                                <span className="text-base text-muted-foreground font-semibold">/100</span>
+                        {cardPolicy.showRomance ? (
+                          /* [Phase 3 P0] romantic relType — 🤝/💕/💍 3축을 동일 위계로 표시.
+                             새 종합/평균 점수는 만들지 않는다(C안). */
+                          <div className="rounded-2xl border border-border/40 bg-white/70 backdrop-blur-sm px-4 py-4 space-y-3">
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">목적별 궁합 점수</p>
+                            <div className="grid grid-cols-3 gap-2">
+                              {([
+                                { emoji: "🤝", label: "인간관계 궁합", final: result.humanCompatibility.final, tone: result.humanCompatibility.tone },
+                                { emoji: "💕", label: "연애 궁합", final: result.romanceCompatibility.final, tone: result.romanceCompatibility.tone },
+                                { emoji: "💍", label: "결혼 궁합", final: result.marriageCompatibility.final, tone: result.marriageCompatibility.tone },
+                              ] as const).map((axis) => {
+                                const axisPalette = GRADE_PALETTE[axis.tone] ?? GRADE_PALETTE["노력형 궁합"];
+                                return (
+                                  <div key={axis.label} className="rounded-xl border border-border/60 bg-background/80 p-3 text-center">
+                                    <p className="text-[11px] text-muted-foreground">{axis.emoji} {axis.label}</p>
+                                    <p className="mt-1 text-2xl font-extrabold tracking-tight" style={{ color: axisPalette.badgeText }}>{axis.final}</p>
+                                    <span
+                                      className="mt-1 inline-block ds-badge border px-2 py-0.5 text-[10px] font-bold shadow-none"
+                                      style={{ background: axisPalette.pastel, borderColor: axisPalette.border, color: axisPalette.badgeText }}
+                                    >
+                                      {axis.tone}
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                            <p className="text-[11px] leading-relaxed text-muted-foreground border-t border-border/40 pt-2">
+                              세 점수는 서로 다른 산식(핵심축 가중치·보조 신호 구성이 다름)입니다 — 사람 대 사람 상성, 연애 상성, 결혼 상성을 각각 나타내며 평균이나 합산으로 만든 값이 아닙니다.
+                            </p>
+                          </div>
+                        ) : (
+                          /* 비연애 관계유형 — Human Compatibility를 대표 점수로 사용(totalScore를
+                             이름만 바꾼 것이 아니라 실제 humanCompatibility.final). */
+                          <div className="rounded-2xl border border-border/40 bg-white/70 backdrop-blur-sm px-4 py-4 space-y-3">
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="space-y-1">
+                                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">인간관계 궁합</p>
+                                <div className="flex items-baseline gap-2">
+                                  <span className={`text-4xl font-extrabold tracking-tight ${accentClass}`}>{score}</span>
+                                  <span className="text-base text-muted-foreground font-semibold">/100</span>
+                                </div>
+                                <div className="flex items-center gap-0.5">
+                                  {stars.map((s, i) => (
+                                    <span key={i} className={`text-xl ${s === "★" ? accentClass : "text-muted-foreground/30"}`}>{s}</span>
+                                  ))}
+                                </div>
                               </div>
-                              <div className="flex items-center gap-0.5">
-                                {stars.map((s, i) => (
-                                  <span key={i} className={`text-xl ${s === "★" ? accentClass : "text-muted-foreground/30"}`}>{s}</span>
-                                ))}
+                              <div className="shrink-0">
+                                <ScoreArc score={score ?? 0} accentColor={heroPalette!.strong} />
                               </div>
                             </div>
-                            <div className="shrink-0">
-                              <ScoreArc score={score} accentColor={palette.strong} />
+
+                            {/* 분위기 라벨 */}
+                            <div className={`rounded-xl px-3 py-2.5 border ${
+                              (score ?? 0) >= 70 ? "bg-emerald-50/80 border-emerald-200/60 text-emerald-800"
+                              : (score ?? 0) >= 50 ? "bg-amber-50/80 border-amber-200/60 text-amber-800"
+                              : "bg-orange-50/80 border-orange-200/60 text-orange-800"
+                            }`}>
+                              <p className="text-[13px] font-bold">{moodLabel}</p>
+                            </div>
+
+                            {/* 관계 타입 배지 */}
+                            <div>
+                              <span
+                                className="ds-badge border px-3 py-1.5 text-[13px] font-bold shadow-none"
+                                style={{ background: heroPalette!.pastel, borderColor: heroPalette!.border, color: heroPalette!.badgeText }}
+                              >
+                                {heroTone}
+                              </span>
                             </div>
                           </div>
+                        )}
 
-                          {/* 분위기 라벨 */}
-                          <div className={`rounded-xl px-3 py-2.5 border ${
-                            score >= 70 ? "bg-emerald-50/80 border-emerald-200/60 text-emerald-800"
-                            : score >= 50 ? "bg-amber-50/80 border-amber-200/60 text-amber-800"
-                            : "bg-orange-50/80 border-orange-200/60 text-orange-800"
-                          }`}>
-                            <p className="text-[13px] font-bold">{moodLabel}</p>
+                        {/* 온도계 및 게이지 — 인간관계 궁합 단독 대표 모드에서만(3축 동시 표시와 의미 충돌 방지) */}
+                        {!cardPolicy.showRomance && (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                            <RelationThermometer score={score!} isPersonalLove={false} />
+                            <RelationBattery score={score!} isPersonalLove={false} isFamily={relType === "family"} />
                           </div>
-
-                          {/* 관계 타입 배지 + 요약 */}
-                          <div>
-                            <span
-                              className="ds-badge border px-3 py-1.5 text-[13px] font-bold shadow-none"
-                              style={{ background: palette.pastel, borderColor: palette.border, color: palette.badgeText }}
-                            >
-                              {result.finalType}
-                            </span>
-                            <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">{result.summary}</p>
-                          </div>
-                        </div>
-
-                        {/* 온도계 및 게이지 */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                          <RelationThermometer score={result.score} isPersonalLove={isPersonalLove} />
-                          <RelationBattery score={result.score} isPersonalLove={isPersonalLove} isFamily={relType === "family"} />
-                        </div>
+                        )}
 
                         {/* Give & Take 에너지 흐름 카드 */}
                         {fullReport.elementComp && (() => {
@@ -1291,44 +1333,11 @@ export default function Compatibility() {
                 );
               })()}
 
-              {showRomanceMarriageScores && result.romanceMarriageFit && (() => {
-                const fit = result.romanceMarriageFit;
-                const scoreColor = (score: number) => toneClasses(toneTierFromScore(score)).text;
-                return (
-                  <div className="ds-card overflow-hidden shadow-none border-fuchsia-200/60 bg-fuchsia-50/25 dark:border-fuchsia-900/35 dark:bg-fuchsia-950/15">
-                    <div className="border-b border-border bg-muted/20 px-4 py-3">
-                      <h2 className="text-sm font-bold text-foreground">연애 적합도 · 결혼 적합도</h2>
-                      <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">
-                        두 사람 원국 자체의 구조 적합성입니다(연도별 커플 활성/조화/안정 timing과는 별개). 확률이 아니라 구조적 여건을 나타내는 해석용 점수입니다.
-                      </p>
-                    </div>
-                    <div className="space-y-3 p-4">
-                      <div className="grid grid-cols-2 gap-2">
-                        <div className="rounded-lg border border-border/60 bg-background/80 p-3 text-center">
-                          <p className="text-[11px] text-muted-foreground">💕 연애 적합도</p>
-                          <p className={cn("text-2xl font-bold tabular-nums", scoreColor(fit.romanceScore))}>{fit.romanceScore}</p>
-                          <p className="mt-1 text-[11px] leading-relaxed text-foreground/80">{fit.romanceNote}</p>
-                        </div>
-                        <div className="rounded-lg border border-border/60 bg-background/80 p-3 text-center">
-                          <p className="text-[11px] text-muted-foreground">💍 결혼 적합도</p>
-                          <p className={cn("text-2xl font-bold tabular-nums", scoreColor(fit.marriageScore))}>{fit.marriageScore}</p>
-                          <p className="mt-1 text-[11px] leading-relaxed text-foreground/80">{fit.marriageNote}</p>
-                        </div>
-                      </div>
-                      <div className="rounded-md border border-fuchsia-200/60 bg-fuchsia-100/40 px-3 py-2 text-center dark:border-fuchsia-800/40 dark:bg-fuchsia-950/30">
-                        <span className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">🧭 관계 유형</span>
-                        <p className="mt-0.5 text-[14px] font-bold text-foreground">{fit.relationshipType}</p>
-                      </div>
-                      {fit.marriageGroupStructureNotes.length > 0 && (
-                        <div className="text-[11px] leading-relaxed text-muted-foreground">
-                          <span className="font-semibold text-foreground/80">결혼 적합도 삼합/방합 근거: </span>
-                          {fit.marriageGroupStructureNotes.join(" · ")}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })()}
+              {/* [Phase 3 P0] legacy "연애 적합도 · 결혼 적합도"(romanceMarriageFit) 카드는
+                  제거했다 — 위 히어로 카드의 💕/💍 3축과 이름이 겹쳐 "같은 이름, 다른 산식"
+                  중복 노출을 만들었기 때문(감사 [3] 참고). romanceMarriageFit 필드 자체는
+                  backward compatibility로 CompatibilityResult에 남아 있으나 이 화면에서는
+                  더 이상 소비하지 않는다. */}
 
               {/* 요약 타일 (일간 관계 / 배우자궁 혹은 월지) — 궁합 한눈에보기 카드 아래로 이동 */}
               <div className="grid grid-cols-2 gap-3">
@@ -1883,7 +1892,10 @@ export default function Compatibility() {
                 {mode === "me_other" && (() => {
                   const rel = (p2 as (PersonRecord & { relationshipType?: RelationshipType }) | null)?.relationshipType;
                   const show = rel === "lover" || rel === "spouse" || rel === "interest";
-                  if (!show) return null;
+                  // [Phase 3 P0 재작업] marriageView는 이제 구조 evidence(dayBranchRel)만으로
+                  // 결정 가능할 때만 값을 가진다 — legacy score threshold로 억지 라벨을
+                  // 만들지 않으므로 null이면 섹션 자체를 숨긴다(P1에서 새 calibration 설계).
+                  if (!show || !(fullReport as any).marriageView) return null;
                   return (
                     <div className="ds-card overflow-hidden shadow-none">
                       <div className="border-b border-border bg-muted/20 px-4 py-3">
