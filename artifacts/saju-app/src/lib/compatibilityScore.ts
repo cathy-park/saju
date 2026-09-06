@@ -205,6 +205,13 @@ export interface CompatibilityResult {
    * 분리된다. 통계적 확률이 아니라 구조적 여건을 나타내는 해석용 지표.
    */
   romanceMarriageFit: RomanceMarriageFit;
+
+  /**
+   * [Phase 2, 개발자/내부 감사용] Core(dm+sp+mb)/Aux(bi+stem+ec+tg+yong) 2계층 산출
+   * breakdown. 사용자 노출용 note/summary와는 분리된 디버그 데이터이며, UI에 그대로
+   * 노출하기보다는 감사·QA·향후 해석 문구 작성 시 참고용으로 쓴다.
+   */
+  coreAux: CoreAuxBreakdown;
 }
 
 export type RelationshipTypeLabel =
@@ -480,8 +487,8 @@ export function scoreDayMasterDelta(s1: string, s2: string, relType?: Relationsh
 // ═══════════════════════════════════════════════════════════════════════
 //  2. 배우자궁(일지) delta  (−18 ~ +18)
 // ═══════════════════════════════════════════════════════════════════════
-function scoreSpousePalaceDelta(b1: string, b2: string, relType?: RelationshipType): { delta: number; note: string; spousePalaceClash: boolean; spousePalaceTensions: string[] } {
-  if (!b1 || !b2) return { delta: 0, note: "일지 정보 없음", spousePalaceClash: false, spousePalaceTensions: [] };
+function scoreSpousePalaceDelta(b1: string, b2: string, relType?: RelationshipType): { delta: number; note: string; spousePalaceTensions: string[] } {
+  if (!b1 || !b2) return { delta: 0, note: "일지 정보 없음", spousePalaceTensions: [] };
   const rels = getBranchRels(b1, b2);
   const tensions: string[] = rels.filter(r => ["형","해","원진"].includes(r));
   const hasClash = rels.includes("충");
@@ -527,7 +534,6 @@ function scoreSpousePalaceDelta(b1: string, b2: string, relType?: RelationshipTy
   return {
     delta: finalDelta,
     note,
-    spousePalaceClash: hasClash,
     spousePalaceTensions: tensions
   };
 }
@@ -535,13 +541,12 @@ function scoreSpousePalaceDelta(b1: string, b2: string, relType?: RelationshipTy
 // ═══════════════════════════════════════════════════════════════════════
 //  3. 월지 교차 delta  (−12 ~ +12)
 // ═══════════════════════════════════════════════════════════════════════
-function scoreMonthBranchDelta(m1: string, m2: string, relType?: RelationshipType): { delta: number; note: string; monthClash: boolean } {
-  if (!m1 || !m2) return { delta: 0, note: "월지 정보 없음", monthClash: false };
+function scoreMonthBranchDelta(m1: string, m2: string, relType?: RelationshipType): { delta: number; note: string } {
+  if (!m1 || !m2) return { delta: 0, note: "월지 정보 없음" };
   const rels = getBranchRels(m1, m2);
   const isWorkOrFriend = relType === "friend" || relType === "coworker";
 
   let rawDelta = 0;
-  let hasClash = false;
   let noteSuffix = "";
 
   if (rels.includes("합")) {
@@ -552,7 +557,6 @@ function scoreMonthBranchDelta(m1: string, m2: string, relType?: RelationshipTyp
     noteSuffix = "반합";
   } else if (rels.includes("충")) {
     rawDelta = isWorkOrFriend ? -18 : -12;
-    hasClash = true;
     noteSuffix = "충";
   } else if (rels.some(r => ["형","해","원진"].includes(r))) {
     rawDelta = isWorkOrFriend ? -10 : -6;
@@ -568,7 +572,6 @@ function scoreMonthBranchDelta(m1: string, m2: string, relType?: RelationshipTyp
   return {
     delta: rawDelta,
     note: `월지 ${m1}·${m2} ${noteSuffix}`,
-    monthClash: hasClash
   };
 }
 
@@ -979,19 +982,155 @@ function buildStructureCompatDetails(
 }
 
 // ═══════════════════════════════════════════════════════════════════════
+//  Phase 2: Core/Aux 2계층 종합 궁합 점수
+// ═══════════════════════════════════════════════════════════════════════
+// 배경: Phase 1까지는 8개 조정값(dm/sp/mb/bi/stem/ec/tg/yong)을 flat하게 더해
+// baseScore = 50 + sum이었다. 이 방식은 "핵심축(일간·배우자궁·월지)"과 "보조축(지지/천간
+// 교차·오행보완·십성·용신)"을 숫자상 완전히 동등하게 취급해서, 핵심축끼리 서로 충돌해도
+// 보조축이 누적되면 총점이 그대로 90점대까지 올라갈 수 있었다(예: 일간이 상극이어도
+// 배우자궁·보조축이 좋으면 고득점). Phase 2는 이를 Core(dm+sp+mb, 개별 정규화 후 명시적
+// weight로 합산)와 Aux(나머지 5개, positive/negative 분리 정규화 + Core 상태에 따른
+// 연속 gate)로 분리한다.
+//
+// "Core 우선"의 정확한 의미(중요 — 오독 방지용으로 반드시 이 정의를 기준으로 판단할 것):
+//  1) Core의 이론상 최대 영향(±CORE_MAX_INFLUENCE=35)이 Aux(±AUX_MAX_INFLUENCE=15)보다
+//     크다 — 두 축의 "영향력 상한" 자체가 다르게 설계되어 있다.
+//  2) positive Aux는 coreNorm에 따라 20%~95% 사이로 연속적으로 gate된다(hard cutoff
+//     없음) — Core가 나쁠수록 Aux가 아무리 좋아도 인정폭이 줄어, 나쁜 Core를 좋은
+//     Aux만으로 상위권 궁합으로 뒤집기 어렵게 만드는 것이 목적이다.
+//  3) 이것이 "개별 사례마다 |coreContribution| > |auxContribution|이어야 한다"는 뜻은
+//     아니다. Core가 중립(coreNorm≈0)인 사례에서는 coreContribution 자체가 작아지는
+//     게 정상이고, 그 경우 auxContribution이 최종 점수 변화량의 주요 원인이 될 수
+//     있다(실측 예: 박소연↔현욱 coreContribution≈+1.5, auxContribution≈+5.3 — 이건
+//     Aux가 Core를 이긴 게 아니라 Core가 "중립 판정"을 내렸을 뿐이다). Core 우선은
+//     "최대 영향력 상한 차이 + gate를 통한 역전 제한"으로 구현되는 개념이지, 매
+//     케이스의 절댓값 비교로 강제되는 개념이 아니다.
+//  4) negative Aux는 gate 없이 100% 그대로 반영한다(A안, 아래 참고) — Core가 나쁘다는
+//     이유로 명리적 근거(나쁜 Aux) 자체를 임의로 희석하지 않기 위함이다.
+
+/** dm 코드상 range(lover 기준, scoreDayMasterDelta): 상생 +15 / 피극 -12 */
+export const CORE_DM_POS_MAX = 15;
+export const CORE_DM_NEG_MIN = 12;
+/** sp 코드상 range(lover 기준, scoreSpousePalaceDelta): 합 +18 / 충 -18 */
+export const CORE_SP_POS_MAX = 18;
+export const CORE_SP_NEG_MIN = 18;
+/** mb 코드상 range(lover 기준, scoreMonthBranchDelta): 합 +12 / 충 -12 */
+export const CORE_MB_POS_MAX = 12;
+export const CORE_MB_NEG_MIN = 12;
+/** Aux 5개 컴포넌트(bi/stem/ec/tg/yong) 코드상 하드 clamp의 positive 합 / negative(절댓값) 합 */
+export const AUX_POS_MAX = 15 + 15 + 12 + 12 + 10; // bi15 + stem15 + ec12 + tg12 + yong10 = 64
+export const AUX_NEG_MAX = 15 + 15 + 8 + 8 + 5; // bi15 + stem15 + ec8 + tg8 + yong5 = 51
+
+/** Core weight: 종합 궁합에서는 세 핵심축을 거의 동급으로 본다(배우자궁 과대가중 지양). */
+export const CORE_WEIGHT_DM = 0.35;
+export const CORE_WEIGHT_SP = 0.35;
+export const CORE_WEIGHT_MB = 0.30;
+
+export const CORE_MAX_INFLUENCE = 35;
+export const AUX_MAX_INFLUENCE = 15;
+
+export function clampRange(v: number, lo: number, hi: number): number {
+  return Math.max(lo, Math.min(hi, v));
+}
+
+export function normalizeCoreAxis(raw: number, posMax: number, negMin: number): number {
+  return clampRange(raw >= 0 ? raw / posMax : raw / negMin, -1, 1);
+}
+
+/**
+ * positive Aux gate — coreNorm -1→20%, 0→65%, +1→95%를 잇는 구간선형(연속, hard cutoff
+ * 없음). "core가 중립이면 보조 장점의 65%를 인정한다"처럼 그대로 해석 문구로 옮길 수
+ * 있도록 piecewise-linear를 baseline으로 채택했다(감사 결과 sigmoid 대비 N=4,000 분포·
+ * 5인 회귀 차이가 1%p/1점 안팎으로 미미해, 더 단순하고 설명 가능한 쪽을 택함).
+ */
+export function positiveAuxGate(coreNorm: number): number {
+  return coreNorm <= 0
+    ? 0.20 + (0.65 - 0.20) * (coreNorm + 1)
+    : 0.65 + (0.95 - 0.65) * coreNorm;
+}
+
+/** 개발자/내부 감사용 Core·Aux 세부 breakdown. 사용자 노출 note/summary와는 분리해서 다룬다. */
+export interface CoreAuxBreakdown {
+  dmNorm: number;
+  spNorm: number;
+  mbNorm: number;
+  coreBase: number;
+  synergy: number;
+  coreNorm: number;
+  auxPosRaw: number;
+  auxNegRaw: number;
+  auxPosNorm: number;
+  auxNegNorm: number;
+  gatePos: number;
+  coreContribution: number;
+  auxContribution: number;
+}
+
+export function computeCoreAuxBreakdown(
+  dm: number,
+  sp: number,
+  mb: number,
+  auxDeltas: readonly number[], // [bi, stem, ec, tg, yong]
+): CoreAuxBreakdown {
+  const dmNorm = normalizeCoreAxis(dm, CORE_DM_POS_MAX, CORE_DM_NEG_MIN);
+  const spNorm = normalizeCoreAxis(sp, CORE_SP_POS_MAX, CORE_SP_NEG_MIN);
+  const mbNorm = normalizeCoreAxis(mb, CORE_MB_POS_MAX, CORE_MB_NEG_MIN);
+
+  const coreBase = dmNorm * CORE_WEIGHT_DM + spNorm * CORE_WEIGHT_SP + mbNorm * CORE_WEIGHT_MB;
+
+  // dm×sp continuous synergy — dm/sp 자체를 다시 채점하지 않는 아주 작은 interaction term.
+  // sign-only 고정값(±0.05)이 아니라 강도(sqrt)에 비례시켜 "아주 약한 우호도 최대 보너스"
+  // 같은 불연속을 없앴다.
+  let synergy = 0;
+  if (dmNorm > 0 && spNorm > 0) synergy = 0.05 * Math.sqrt(dmNorm * spNorm);
+  else if (dmNorm < 0 && spNorm < 0) synergy = -0.05 * Math.sqrt(Math.abs(dmNorm * spNorm));
+
+  const coreNorm = clampRange(coreBase + synergy, -1, 1);
+
+  const auxPosRaw = auxDeltas.filter((x) => x > 0).reduce((a, b) => a + b, 0);
+  const auxNegRaw = auxDeltas.filter((x) => x < 0).reduce((a, b) => a + b, 0);
+  const auxPosNorm = clampRange(auxPosRaw / AUX_POS_MAX, 0, 1);
+  const auxNegNorm = clampRange(Math.abs(auxNegRaw) / AUX_NEG_MAX, 0, 1);
+
+  const gatePos = positiveAuxGate(coreNorm);
+
+  const coreContribution = CORE_MAX_INFLUENCE * coreNorm;
+  // negative Aux = A안(100% 반영, gate 없음). Phase 1에서 발견된 branchInteraction 음수
+  // 편향은 별도 구조 문제로 관리하며, negative gate를 분포 보정 장치로 쓰지 않는다.
+  const auxContribution = AUX_MAX_INFLUENCE * (auxPosNorm * gatePos - auxNegNorm * 1);
+
+  return {
+    dmNorm, spNorm, mbNorm, coreBase, synergy, coreNorm,
+    auxPosRaw, auxNegRaw, auxPosNorm, auxNegNorm, gatePos,
+    coreContribution, auxContribution,
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════════
 //  구조적 등급 조정 (tier shift)
 // ═══════════════════════════════════════════════════════════════════════
+// [2026-09 Phase 2 감사] 기존 5개 구조 플래그를 Core/Aux 구조와 대조한 결과:
+//  - "일간상생 + 배우자궁 비충"(up), "배우자궁 충"(down), "월지 충"(down)은 각각 dm>0,
+//    sp=충, mb=충을 그대로 다시 감지하는 것이라 이제 coreNorm(dm/sp/mb 정규화+가중합)에
+//    이미 전액 반영된 신호의 중복 가산이다. 실측(N=4,000, 무작위 유효 사주): 이 3개를
+//    포함한 기존 방식은 tier-up 42.1%·tier-down 46.8%라는 비정상적으로 높은 발동률을
+//    보였다(거의 매번 한쪽이 발동) — 코드에서 제거했다.
+//  - "지지 충 2회 이상"(down, bi.clashCount 기반)도 bi는 이미 Aux negative에 포함돼
+//    gate까지 거치는데, 그 위에 또 한 번 하드컷 성격의 -1을 얹는 구조였다. 실측 결과
+//    "복합 긴장" 플래그만 남긴 경우 대비 발동률이 4.0%→36.4%로 9배 뛰어(=바로 이
+//    플래그가 대부분의 발동을 차지) 사실상 "드문 예외 신호"가 아니라 상시 노이즈에
+//    가까웠다. Phase 1~2 전반의 "hard cutoff 금지" 원칙과도 맞지 않아 제거했다.
+//  - "배우자궁 복합 긴장(원진·해·형 중복)"만 유지한다: sp의 raw delta는 if/else 우선순위로
+//    가장 강한 관계 1개만 반영하므로(Phase 1의 compound-relation 감쇠가 branchInteraction
+//    에만 적용되고 배우자궁 자체에는 적용되지 않음), 배우자궁에 형/해/원진이 동시에
+//    2개 이상 성립하는 경우는 coreNorm(spNorm)에 없는 정보다. 실측 발동률 4.0%로
+//    "드물지만 의미 있는 예외"에 해당해 유지 근거가 있다고 판단했다.
 interface StructuralFlags {
-  dayMasterSupportive: boolean;
-  spousePalaceClash: boolean;
   spousePalaceMultiTension: boolean;
-  branchClashCount: number;
-  monthBranchClash: boolean;
 }
 
 function computeStructuralSteps(
   flags: StructuralFlags,
-  spouseDelta: number,
   relType?: RelationshipType,
 ): { steps: StructuralTierStep[]; netDelta: number } {
   const steps: StructuralTierStep[] = [];
@@ -999,29 +1138,9 @@ function computeStructuralSteps(
 
   const isPersonalLove = relType === "lover" || relType === "spouse" || relType === "interest" || !relType || relType === "other";
 
-  // +1 up: dayMasterSupportive + spouse palace is not negative
-  if (flags.dayMasterSupportive && spouseDelta >= 0) {
-    steps.push({ label: "일간상생 + 배우자궁 비충", direction: "up" });
-    net += 1;
-  }
-  // −1: spouse palace clash
-  if (flags.spousePalaceClash && isPersonalLove) {
-    steps.push({ label: "배우자궁 충", direction: "down" });
-    net -= 1;
-  }
-  // −1: spouse palace has multiple tension relations (원진/해/형 ≥2)
+  // −1: spouse palace has multiple tension relations (원진/해/형 ≥2) — Core에 없는 유일한 잔존 신호.
   if (flags.spousePalaceMultiTension && isPersonalLove) {
     steps.push({ label: "배우자궁 복합 긴장(원진·해·형 중복)", direction: "down" });
-    net -= 1;
-  }
-  // −1: 2+ cross branch clashes
-  if (flags.branchClashCount >= 2) {
-    steps.push({ label: `지지 충 ${flags.branchClashCount}회`, direction: "down" });
-    net -= 1;
-  }
-  // −1: month branch clash
-  if (flags.monthBranchClash) {
-    steps.push({ label: "월지 충", direction: "down" });
     net -= 1;
   }
 
@@ -1468,20 +1587,21 @@ export function calculateCompatibilityScore(
     { category: "용신 보완",      delta: yong.delta, note: yong.note },
   ];
 
-  const totalDelta = adjustmentSteps.reduce((acc, s) => acc + s.delta, 0);
-  const baseScore = Math.max(0, Math.min(100, 50 + totalDelta));
+  // ── Phase 2: Core(dm+sp+mb)/Aux(bi+stem+ec+tg+yong) 2계층 ──
+  const coreAux = computeCoreAuxBreakdown(dm.delta, sp.delta, mb.delta, [
+    bi.delta, stem.delta, ec.delta, tg.delta, yong.delta,
+  ]);
+  const baseScore = Math.round(
+    clampRange(50 + coreAux.coreContribution + coreAux.auxContribution, 0, 100),
+  );
 
-  // ── Structural flags ──
+  // ── Structural flags ── (Core/Aux와 중복되는 4개 플래그는 감사 후 제거 — computeStructuralSteps 주석 참고)
   const flags: StructuralFlags = {
-    dayMasterSupportive: dm.delta > 0,
-    spousePalaceClash: sp.spousePalaceClash,
     spousePalaceMultiTension: sp.spousePalaceTensions.length >= 2,
-    branchClashCount: bi.clashCount,
-    monthBranchClash: mb.monthClash,
   };
 
   const baseType = gradeFromScore(baseScore);
-  const { steps: structuralSteps, netDelta } = computeStructuralSteps(flags, sp.delta, relType);
+  const { steps: structuralSteps, netDelta } = computeStructuralSteps(flags, relType);
   const finalType = shiftTier(baseType, netDelta);
   const finalColor = COMPAT_TONE_COLOR[finalType];
 
@@ -1603,6 +1723,7 @@ export function calculateCompatibilityScore(
     spouseStructureAxisComparison,
     spouseActivationTiming,
     romanceMarriageFit,
+    coreAux,
   };
 }
 

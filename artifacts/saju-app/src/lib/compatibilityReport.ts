@@ -681,7 +681,12 @@ export function buildFullCompatibilityReport(
   const toneDesc = getToneDesc(tone, relType);
 
   // ── Structural flags (derived from scoreResult) ─────────────────
-  const spousePalaceClash = scoreResult.structuralSteps.some(s => s.label === "배우자궁 충");
+  // [2026-09 Phase 2] structuralSteps에서 "배우자궁 충" 라벨을 직접 찾지 않는다 — Phase 2
+  // 감사 결과 이 tier-shift 룰 자체가 Core(dm+sp+mb)와 중복이라 제거됐고, 게다가 원래도
+  // isPersonalLove(relType) 조건에 걸려 있어 완전히 동일한 정보는 아니었다. dayBranchRels는
+  // 배우자궁(일지) 두 지지의 관계를 compatibilityScore.ts와 별개로 직접 계산하므로, 이걸
+  // 그대로 쓰는 게 tier-shift 존재 여부와 무관하게 항상 정확하다.
+  const spousePalaceClash = dayBranchRels.includes("충");
   const spousePalaceMultiTension = scoreResult.structuralSteps.some(s => s.label.includes("복합 긴장"));
   const dayMasterSupportive = scoreResult.adjustmentSteps[0].delta > 0;
   const crossClashCount = scoreResult.clashCount;

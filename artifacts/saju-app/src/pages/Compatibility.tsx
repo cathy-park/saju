@@ -2464,11 +2464,7 @@ export default function Compatibility() {
                 <h3 className="text-[13px] font-bold text-foreground mb-2">③ 구조적 등급 조정</h3>
                 <div className="rounded-xl border border-border overflow-hidden text-[12px]">
                   {[
-                    { cond: "일간 상생 + 배우자궁 긍정", delta: "1단계 상향", color: "text-green-700" },
-                    { cond: "배우자궁 충",               delta: "1단계 하향", color: "text-red-600" },
-                    { cond: "배우자궁 복합 긴장 (≥2)",   delta: "1단계 하향", color: "text-red-600" },
-                    { cond: "지지 충 2개 이상",           delta: "1단계 하향", color: "text-red-600" },
-                    { cond: "월지 충",                   delta: "1단계 하향", color: "text-red-600" },
+                    { cond: "배우자궁 복합 긴장 (원진·해·형 중복)", delta: "1단계 하향", color: "text-red-600" },
                   ].map(({ cond, delta, color }) => (
                     <div key={cond} className="flex items-start gap-2 px-3 py-2 border-b border-border last:border-b-0">
                       <span className="text-muted-foreground flex-1">{cond}</span>
@@ -2476,7 +2472,9 @@ export default function Compatibility() {
                     </div>
                   ))}
                 </div>
-                <p className="text-[11px] text-muted-foreground mt-1.5">조정은 최대 ±2단계까지 적용됩니다.</p>
+                <p className="text-[11px] text-muted-foreground mt-1.5">
+                  일간·배우자궁·월지는 이제 기준 합산 점수 자체(Core)에 직접 반영되어 있어, 여기서 다시 등급을 조정하지 않습니다. 조정은 최대 1단계까지 적용됩니다.
+                </p>
               </section>
 
               {/* 섹션 4: 현재 쌍 적용 */}
@@ -2507,7 +2505,10 @@ export default function Compatibility() {
                     );
                   })}
 
-                  {/* 기준 합산 점수 (base_score = 50 + 조정 합계) */}
+                  {/* 기준 합산 점수 — Phase 2부터 baseScore는 위 8개 항목의 flat 합산이 아니라
+                      Core(일간·배우자궁·월지)/Aux(나머지 5개) 2계층 가중합이다. 위에 나열된
+                      8개 delta 값은 각 항목 자체의 해석용 수치이며, 단순히 더한다고 이 점수가
+                      나오지 않는다(상세 breakdown은 CompatibilityResult.coreAux 참고). */}
                   <div className="flex items-center gap-2 px-3 py-2 border-t-2 border-border bg-muted/40">
                     <span className="text-muted-foreground flex-1">기준 합산 점수</span>
                     <span className="font-bold text-foreground">{result.baseScore}점</span>
