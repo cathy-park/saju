@@ -8,6 +8,7 @@ import type { AnyCompatibilityReport } from "@/lib/reports";
 import { getCompatibilityReport } from "@/lib/reports";
 import { COMPAT_TONE_COLOR } from "@/lib/compatibilityScore";
 import { getCompatibilityCardPolicy } from "@/lib/compatibilityDisplayPolicy";
+import { getPurposeCompatibilityInterpretation } from "@/lib/compatibilityInterpretation";
 import { toneClasses, toneTierFromScore, toneTierFromLevel, toneClassesNeutral, type ToneTier } from "@/lib/toneColors";
 
 const PROGRESS_READINESS_TONE: Record<"매우 낮음" | "낮음" | "보통" | "높음" | "매우 높음", ToneTier> = {
@@ -1119,22 +1120,27 @@ export default function Compatibility() {
                 const score = cardPolicy.showRomance ? null : result.humanCompatibility.final;
                 const heroTone = cardPolicy.showRomance ? null : result.humanCompatibility.tone;
                 const heroPalette = heroTone ? (GRADE_PALETTE[heroTone] ?? GRADE_PALETTE["노력형 궁합"]) : null;
+                // [Phase 3 P1] 별점/분위기/배지 텍스트는 더 이상 score 원값에 대한 자체 threshold를
+                // 두지 않고, CDF 기반 referencePercentile 5구간 등급(percentileGrade)을 단일
+                // source로 사용한다(구 85/70/55/40, 70/50 threshold는 여기서 제거됨).
+                const heroInterpretation = score === null ? null : getPurposeCompatibilityInterpretation("human", score);
 
-                // 별점/분위기 라벨은 Human 단독 대표 모드(비연애 관계유형)에서만 사용한다.
-                const starCount = score === null ? 0 : score >= 85 ? 5 : score >= 70 ? 4 : score >= 55 ? 3 : score >= 40 ? 2 : 1;
+                const starCount = heroInterpretation === null ? 0 : (
+                  { "매우 좋은 편": 5, "좋은 편": 4, "보통": 3, "다소 낮은 편": 2, "주의 필요": 1 } as const
+                )[heroInterpretation.grade];
                 const stars = Array.from({ length: 5 }, (_, i) => i < starCount ? "★" : "☆");
 
                 // 관계 분위기 라벨(비연애 관계유형에서만 사용 — isLoveType 분기는 이 경로에서
                 // 도달하지 않지만 기존 문구를 그대로 보존해 둔다)
-                const moodLabel = score === null ? "" : score >= 85
-                  ? isLoveType ? "💞 천생연분에 가까운 인연" : "⚡ 완벽한 시너지 파트너"
-                  : score >= 70
-                  ? isLoveType ? "🌸 설렘과 안정이 공존하는 관계" : "🌿 서로 잘 맞는 좋은 파트너"
-                  : score >= 55
-                  ? isLoveType ? "🌊 끌리지만 조율이 필요한 관계" : "🌀 보완하며 성장하는 관계"
-                  : score >= 40
-                  ? isLoveType ? "🔥 긴장과 자극이 공존하는 관계" : "⚙️ 다름을 인정하며 조율하는 관계"
-                  : isLoveType ? "⚡ 차이가 크지만 성장할 수 있는 관계" : "🧩 서로 다른 에너지의 관계";
+                const moodLabel = heroInterpretation === null ? "" : (
+                  {
+                    "매우 좋은 편": isLoveType ? "💞 천생연분에 가까운 인연" : "⚡ 완벽한 시너지 파트너",
+                    "좋은 편": isLoveType ? "🌸 설렘과 안정이 공존하는 관계" : "🌿 서로 잘 맞는 좋은 파트너",
+                    "보통": isLoveType ? "🌊 끌리지만 조율이 필요한 관계" : "🌀 보완하며 성장하는 관계",
+                    "다소 낮은 편": isLoveType ? "🔥 긴장과 자극이 공존하는 관계" : "⚙️ 다름을 인정하며 조율하는 관계",
+                    "주의 필요": isLoveType ? "⚡ 차이가 크지만 성장할 수 있는 관계" : "🧩 서로 다른 에너지의 관계",
+                  } as const
+                )[heroInterpretation.grade];
 
                 // 관계 유형별 헤더 아이콘/색상
                 const typeEmoji = isLoveType ? (relType === "interest" ? "💫" : "💕") : isFamilyType ? "🏠" : "🤝";
@@ -1208,20 +1214,24 @@ export default function Compatibility() {
                             <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">목적별 궁합 점수</p>
                             <div className="grid grid-cols-3 gap-2">
                               {([
-                                { emoji: "🤝", label: "인간관계 궁합", final: result.humanCompatibility.final, tone: result.humanCompatibility.tone },
-                                { emoji: "💕", label: "연애 궁합", final: result.romanceCompatibility.final, tone: result.romanceCompatibility.tone },
-                                { emoji: "💍", label: "결혼 궁합", final: result.marriageCompatibility.final, tone: result.marriageCompatibility.tone },
+                                { emoji: "🤝", label: "인간관계 궁합", final: result.humanCompatibility.final, tone: result.humanCompatibility.tone, model: "human" },
+                                { emoji: "💕", label: "연애 궁합", final: result.romanceCompatibility.final, tone: result.romanceCompatibility.tone, model: "romance" },
+                                { emoji: "💍", label: "결혼 궁합", final: result.marriageCompatibility.final, tone: result.marriageCompatibility.tone, model: "marriage" },
                               ] as const).map((axis) => {
                                 const axisPalette = GRADE_PALETTE[axis.tone] ?? GRADE_PALETTE["노력형 궁합"];
+                                // [Phase 3 P1] 표시 텍스트는 legacy tone이 아니라 모델별 CDF
+                                // percentile 등급 · 상위 약 X%(안 3 하이브리드 포맷)를 쓴다.
+                                // 색상만 기존 axis.tone(legacy, 계산 자체는 그대로)을 재사용한다.
+                                const interp = getPurposeCompatibilityInterpretation(axis.model, axis.final);
                                 return (
                                   <div key={axis.label} className="rounded-xl border border-border/60 bg-background/80 p-3 text-center">
                                     <p className="text-[11px] text-muted-foreground">{axis.emoji} {axis.label}</p>
-                                    <p className="mt-1 text-2xl font-extrabold tracking-tight" style={{ color: axisPalette.badgeText }}>{axis.final}</p>
+                                    <p className="mt-1 text-2xl font-extrabold tracking-tight" style={{ color: axisPalette.badgeText }}>{axis.final}점</p>
                                     <span
                                       className="mt-1 inline-block ds-badge border px-2 py-0.5 text-[10px] font-bold shadow-none"
                                       style={{ background: axisPalette.pastel, borderColor: axisPalette.border, color: axisPalette.badgeText }}
                                     >
-                                      {axis.tone}
+                                      {interp.grade} · 상위 {interp.topPercentDisplay}
                                     </span>
                                   </div>
                                 );
@@ -1255,20 +1265,22 @@ export default function Compatibility() {
 
                             {/* 분위기 라벨 */}
                             <div className={`rounded-xl px-3 py-2.5 border ${
-                              (score ?? 0) >= 70 ? "bg-emerald-50/80 border-emerald-200/60 text-emerald-800"
-                              : (score ?? 0) >= 50 ? "bg-amber-50/80 border-amber-200/60 text-amber-800"
+                              heroInterpretation?.grade === "매우 좋은 편" || heroInterpretation?.grade === "좋은 편"
+                                ? "bg-emerald-50/80 border-emerald-200/60 text-emerald-800"
+                              : heroInterpretation?.grade === "보통" ? "bg-amber-50/80 border-amber-200/60 text-amber-800"
                               : "bg-orange-50/80 border-orange-200/60 text-orange-800"
                             }`}>
                               <p className="text-[13px] font-bold">{moodLabel}</p>
                             </div>
 
-                            {/* 관계 타입 배지 */}
+                            {/* 관계 타입 배지 — [Phase 3 P1] legacy tone 문자열 대신
+                                percentile 기반 등급 · 상위 약 X% (안 3 하이브리드 포맷) */}
                             <div>
                               <span
                                 className="ds-badge border px-3 py-1.5 text-[13px] font-bold shadow-none"
                                 style={{ background: heroPalette!.pastel, borderColor: heroPalette!.border, color: heroPalette!.badgeText }}
                               >
-                                {heroTone}
+                                {heroInterpretation!.grade} · 상위 {heroInterpretation!.topPercentDisplay}
                               </span>
                             </div>
                           </div>

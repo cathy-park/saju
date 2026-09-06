@@ -478,36 +478,54 @@ export function buildSpouseAxisComparisonNarrative(
 // ═══════════════════════════════════════════════════════════════════════
 //  1. 일간 관계 delta  (−12 ~ +15)
 // ═══════════════════════════════════════════════════════════════════════
-export function scoreDayMasterDelta(s1: string, s2: string, relType?: RelationshipType): { delta: number; note: string } {
+/**
+ * [Phase 3 P1] 일간 관계의 relType-무관 raw delta. lover/spouse/interest/family/other/
+ * undefined("personal" 6종)가 실제로 이미 공유하던 계수를 그대로 추출한 것이며, 새 명리
+ * 규칙을 추가한 것이 아니다. Human Compatibility는 이 함수를 직접 쓴다(friend/coworker
+ * 전용 증폭을 우회) — 관계유형과 무관한 "사람 대 사람" 기본 상성이라는 설계를 만족하기
+ * 위함이다. scoreDayMasterDelta(하단)는 legacy backward-compat wrapper로 유지된다.
+ */
+export function computeDayMasterRelationRaw(s1: string, s2: string): { delta: number; note: string } {
   if (!s1 || !s2) return { delta: 0, note: "일간 정보 없음" };
   const e1 = STEM_ELEMENT[s1];
   const e2 = STEM_ELEMENT[s2];
   if (!e1 || !e2) return { delta: 0, note: "오행 미상" };
 
-  const isWorkOrFriend = relType === "friend" || relType === "coworker";
-
   if (GENERATING.some(([a, b]) => a === e1 && b === e2)) {
-    const delta = isWorkOrFriend ? +18 : +15;
-    return { delta, note: `${s1}(${e1}) → ${s2}(${e2}) 상생` };
+    return { delta: +15, note: `${s1}(${e1}) → ${s2}(${e2}) 상생` };
   }
   if (GENERATING.some(([a, b]) => a === e2 && b === e1)) {
-    const delta = isWorkOrFriend ? +14 : +12;
-    return { delta, note: `${s2}(${e2}) → ${s1}(${e1}) 상생 (피생)` };
+    return { delta: +12, note: `${s2}(${e2}) → ${s1}(${e1}) 상생 (피생)` };
   }
   if (e1 === e2) {
-    const delta = isWorkOrFriend ? +10 : +8;
-    return { delta, note: `${s1}·${s2} 동일 오행 (비화)` };
+    return { delta: +8, note: `${s1}·${s2} 동일 오행 (비화)` };
   }
   if (CONTROLLING.some(([a, b]) => a === e1 && b === e2)) {
-    const delta = isWorkOrFriend ? -14 : -10;
-    return { delta, note: `${s1}(${e1}) → ${s2}(${e2}) 상극` };
+    return { delta: -10, note: `${s1}(${e1}) → ${s2}(${e2}) 상극` };
   }
   if (CONTROLLING.some(([a, b]) => a === e2 && b === e1)) {
-    const delta = isWorkOrFriend ? -16 : -12;
-    return { delta, note: `${s2}(${e2}) → ${s1}(${e1}) 상극 (피극)` };
+    return { delta: -12, note: `${s2}(${e2}) → ${s1}(${e1}) 상극 (피극)` };
   }
 
   return { delta: +4, note: `${s1}·${s2} 간접 관계` };
+}
+
+/** legacy backward-compat wrapper. friend/coworker에서만 기존 증폭 계수로 override한다. */
+export function scoreDayMasterDelta(s1: string, s2: string, relType?: RelationshipType): { delta: number; note: string } {
+  const raw = computeDayMasterRelationRaw(s1, s2);
+  if (!s1 || !s2 || !STEM_ELEMENT[s1] || !STEM_ELEMENT[s2]) return raw;
+
+  const isWorkOrFriend = relType === "friend" || relType === "coworker";
+  if (!isWorkOrFriend) return raw;
+
+  const e1 = STEM_ELEMENT[s1];
+  const e2 = STEM_ELEMENT[s2];
+  if (GENERATING.some(([a, b]) => a === e1 && b === e2)) return { delta: +18, note: raw.note };
+  if (GENERATING.some(([a, b]) => a === e2 && b === e1)) return { delta: +14, note: raw.note };
+  if (e1 === e2) return { delta: +10, note: raw.note };
+  if (CONTROLLING.some(([a, b]) => a === e1 && b === e2)) return { delta: -14, note: raw.note };
+  if (CONTROLLING.some(([a, b]) => a === e2 && b === e1)) return { delta: -16, note: raw.note };
+  return raw; // 간접 관계는 personal/work 동일(+4)
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -617,31 +635,34 @@ export function scoreDayBranchAffinityDelta(b1: string, b2: string): { delta: nu
 // ═══════════════════════════════════════════════════════════════════════
 //  3. 월지 교차 delta  (−12 ~ +12)
 // ═══════════════════════════════════════════════════════════════════════
-function scoreMonthBranchDelta(m1: string, m2: string, relType?: RelationshipType): { delta: number; note: string } {
+/**
+ * [Phase 3 P1] 월지 교차의 relType-무관 raw delta. computeDayMasterRelationRaw와 동일한
+ * 이유로 personal 6종이 이미 공유하던 계수를 추출했다. Human Compatibility 전용.
+ */
+export function computeMonthBranchRelationRaw(m1: string, m2: string): { delta: number; note: string } {
   if (!m1 || !m2) return { delta: 0, note: "월지 정보 없음" };
   const rels = getBranchRels(m1, m2);
-  const isWorkOrFriend = relType === "friend" || relType === "coworker";
 
   let rawDelta = 0;
   let noteSuffix = "";
 
   if (rels.includes("합")) {
-    rawDelta = isWorkOrFriend ? +18 : +12;
+    rawDelta = +12;
     noteSuffix = "합";
   } else if (rels.includes("반합")) {
-    rawDelta = isWorkOrFriend ? +12 : +8;
+    rawDelta = +8;
     noteSuffix = "반합";
   } else if (rels.includes("충")) {
-    rawDelta = isWorkOrFriend ? -18 : -12;
+    rawDelta = -12;
     noteSuffix = "충";
   } else if (rels.some(r => ["형","해","원진"].includes(r))) {
-    rawDelta = isWorkOrFriend ? -10 : -6;
+    rawDelta = -6;
     noteSuffix = rels.filter(r => ["형","해","원진"].includes(r)).join("·");
   } else if (rels.includes("파")) {
-    rawDelta = isWorkOrFriend ? -6 : -4;
+    rawDelta = -4;
     noteSuffix = "파";
   } else {
-    rawDelta = isWorkOrFriend ? +6 : +4;
+    rawDelta = +4;
     noteSuffix = "무관";
   }
 
@@ -649,6 +670,26 @@ function scoreMonthBranchDelta(m1: string, m2: string, relType?: RelationshipTyp
     delta: rawDelta,
     note: `월지 ${m1}·${m2} ${noteSuffix}`,
   };
+}
+
+/** legacy backward-compat wrapper. friend/coworker에서만 기존 증폭 계수로 override한다. */
+function scoreMonthBranchDelta(m1: string, m2: string, relType?: RelationshipType): { delta: number; note: string } {
+  const raw = computeMonthBranchRelationRaw(m1, m2);
+  if (!m1 || !m2) return raw;
+
+  const isWorkOrFriend = relType === "friend" || relType === "coworker";
+  if (!isWorkOrFriend) return raw;
+
+  const rels = getBranchRels(m1, m2);
+  let delta = raw.delta;
+  if (rels.includes("합")) delta = +18;
+  else if (rels.includes("반합")) delta = +12;
+  else if (rels.includes("충")) delta = -18;
+  else if (rels.some(r => ["형","해","원진"].includes(r))) delta = -10;
+  else if (rels.includes("파")) delta = -6;
+  else delta = +6;
+
+  return { delta, note: raw.note };
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -1914,6 +1955,11 @@ export function calculateCompatibilityScore(
   // 아니다 — 순수 함수를 서로 다른 두 결과 필드에 각각 쓰는 것뿐이다.)
   const dba = scoreDayBranchAffinityDelta(b1, b2);
   const spousePalaceMultiTension = sp.spousePalaceTensions.length >= 2;
+  // [Phase 3 P1] Human Compatibility 전용 relType-무관 입력. legacy dm/mb(위, relType 반영)는
+  // totalScore/finalType/Romance/Marriage에 계속 그대로 쓰인다 — 여기서 새로 만드는 값은
+  // Human 계산 경로에만 주입한다.
+  const dmNeutral = computeDayMasterRelationRaw(s1, s2);
+  const mbNeutral = computeMonthBranchRelationRaw(m1, m2);
 
   const marriageGroupBonusValue = (() => {
     if (!pipe1 || !pipe2) return 0;
@@ -1927,7 +1973,7 @@ export function calculateCompatibilityScore(
   })();
 
   const humanCompatibility = computeHumanCompatibility(
-    dm.delta, mb.delta, dba.delta,
+    dmNeutral.delta, mbNeutral.delta, dba.delta,
     [bi.delta, stem.delta, ec.delta, yong.delta],
   );
   const romanceCompatibility = computeRomanceCompatibility(

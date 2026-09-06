@@ -25,6 +25,7 @@ import {
 } from "./evaluations/relationshipInteractionActivation";
 import type { CompatibilityResult } from "./compatibilityScore";
 import { getCompatibilityCardPolicy } from "./compatibilityDisplayPolicy";
+import { getPurposeCompatibilityInterpretation } from "./compatibilityInterpretation";
 import {
   countFiveElements,
   type ComputedPillars,
@@ -992,13 +993,18 @@ export function buildCompatibilityClipboardText(
   // 목적별 궁합만 노출한다. legacy totalScore/romanceMarriageFit은 "궁합 점수" 사용자 export
   // 라벨로 쓰지 않는다(내부 API 필드 자체는 CompatibilityResult에 backward compat로 유지됨).
   const cardPolicy = getCompatibilityCardPolicy(person2.relationshipType);
+  // [Phase 3 P1] legacy tone("노력형 궁합" 등) 대신 CDF percentile 기반 등급 · 상위 약 X%를
+  // 노출한다. UI(Compatibility.tsx)의 "안 3" 하이브리드 포맷과 동일한 정보를 담는다.
+  const humanInterp = getPurposeCompatibilityInterpretation("human", result.humanCompatibility.final);
   lines.push(`[궁합 점수 (목적별 모델)]`);
-  lines.push(`  🤝 인간관계 궁합: ${result.humanCompatibility.final}점 — ${result.humanCompatibility.tone}`);
+  lines.push(`  🤝 인간관계 궁합: ${result.humanCompatibility.final}점 · ${humanInterp.grade} · 기준 분포 상위 ${humanInterp.topPercentDisplay}`);
   if (cardPolicy.showRomance) {
-    lines.push(`  💕 연애 궁합: ${result.romanceCompatibility.final}점 — ${result.romanceCompatibility.tone}`);
+    const romanceInterp = getPurposeCompatibilityInterpretation("romance", result.romanceCompatibility.final);
+    lines.push(`  💕 연애 궁합: ${result.romanceCompatibility.final}점 · ${romanceInterp.grade} · 기준 분포 상위 ${romanceInterp.topPercentDisplay}`);
   }
   if (cardPolicy.showMarriage) {
-    lines.push(`  💍 결혼 궁합: ${result.marriageCompatibility.final}점 — ${result.marriageCompatibility.tone}`);
+    const marriageInterp = getPurposeCompatibilityInterpretation("marriage", result.marriageCompatibility.final);
+    lines.push(`  💍 결혼 궁합: ${result.marriageCompatibility.final}점 · ${marriageInterp.grade} · 기준 분포 상위 ${marriageInterp.topPercentDisplay}`);
   }
   lines.push(`  충(충돌) 횟수: ${result.clashCount}`);
   if (result.keywords.length > 0) {

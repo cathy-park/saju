@@ -93,9 +93,9 @@ describe("7~8. clipboard export: legacy 라벨 제거 + 신규 라벨 정확히 
     // "연애 궁합:"은 데이터 라인(💕 연애 궁합: N점 —)과 AI 프롬프트 안내 항목(8번) 둘 다에
     // 나타날 수 있으므로, 여기서는 실제 "점수 데이터 라인"만 정확히 1회인지 확인한다.
     const text = clipboardTextFor(박소연, 현욱Base, "lover");
-    expect((text.match(/💕 연애 궁합: \d+점 —/g) ?? []).length).toBe(1);
-    expect((text.match(/💍 결혼 궁합: \d+점 —/g) ?? []).length).toBe(1);
-    expect((text.match(/🤝 인간관계 궁합: \d+점 —/g) ?? []).length).toBe(1);
+    expect((text.match(/💕 연애 궁합: \d+점 · /g) ?? []).length).toBe(1);
+    expect((text.match(/💍 결혼 궁합: \d+점 · /g) ?? []).length).toBe(1);
+    expect((text.match(/🤝 인간관계 궁합: \d+점 · /g) ?? []).length).toBe(1);
     expect(text).not.toMatch(/연애 적합도/);
     expect(text).not.toMatch(/결혼 적합도/);
     expect(text).not.toMatch(/총점:/);
@@ -104,8 +104,8 @@ describe("7~8. clipboard export: legacy 라벨 제거 + 신규 라벨 정확히 
   it("spouse/interest도 lover와 동일하게 세 축 모두 노출한다", () => {
     for (const t of ["spouse", "interest"] as const) {
       const text = clipboardTextFor(박소연, 현욱Base, t);
-      expect((text.match(/💕 연애 궁합: \d+점 —/g) ?? []).length).toBe(1);
-      expect((text.match(/💍 결혼 궁합: \d+점 —/g) ?? []).length).toBe(1);
+      expect((text.match(/💕 연애 궁합: \d+점 · /g) ?? []).length).toBe(1);
+      expect((text.match(/💍 결혼 궁합: \d+점 · /g) ?? []).length).toBe(1);
     }
   });
 
