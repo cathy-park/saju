@@ -1228,10 +1228,11 @@ export default function Compatibility() {
                                     <p className="text-[11px] text-muted-foreground">{axis.emoji} {axis.label}</p>
                                     <p className="mt-1 text-2xl font-extrabold tracking-tight" style={{ color: axisPalette.badgeText }}>{axis.final}점</p>
                                     <span
-                                      className="mt-1 inline-block ds-badge border px-2 py-0.5 text-[10px] font-bold shadow-none"
+                                      className="mt-1 ds-badge rounded-xl border px-2 py-1 text-[10px] font-bold leading-tight shadow-none flex-col whitespace-normal"
                                       style={{ background: axisPalette.pastel, borderColor: axisPalette.border, color: axisPalette.badgeText }}
                                     >
-                                      {interp.grade} · 상위 {interp.topPercentDisplay}
+                                      <span>{interp.grade}</span>
+                                      <span>상위 {interp.topPercentDisplay}</span>
                                     </span>
                                   </div>
                                 );
@@ -1277,7 +1278,7 @@ export default function Compatibility() {
                                 percentile 기반 등급 · 상위 약 X% (안 3 하이브리드 포맷) */}
                             <div>
                               <span
-                                className="ds-badge border px-3 py-1.5 text-[13px] font-bold shadow-none"
+                                className="ds-badge rounded-xl border px-3 py-1.5 text-[13px] font-bold leading-tight shadow-none whitespace-normal"
                                 style={{ background: heroPalette!.pastel, borderColor: heroPalette!.border, color: heroPalette!.badgeText }}
                               >
                                 {heroInterpretation!.grade} · 상위 {heroInterpretation!.topPercentDisplay}
