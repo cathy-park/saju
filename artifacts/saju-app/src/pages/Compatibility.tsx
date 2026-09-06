@@ -14,6 +14,15 @@ import { toneClasses, toneTierFromScore, toneTierFromLevel, toneClassesNeutral, 
 const PROGRESS_READINESS_TONE: Record<"매우 낮음" | "낮음" | "보통" | "높음" | "매우 높음", ToneTier> = {
   "매우 낮음": 4, "낮음": 3, "보통": 2, "높음": 1, "매우 높음": 0,
 };
+
+// 월별 그리드의 작은 미니 점(활성/조화/안정 요약용) — toneClasses/toneClassesNeutral에는
+// 카드·배지용 클래스만 있어, 12개월 그리드처럼 아주 작은 점 표시용 색상만 별도로 둔다.
+const TONE_TIER_DOT: Record<ToneTier, string> = {
+  0: "bg-purple-400", 1: "bg-emerald-400", 2: "bg-blue-400", 3: "bg-orange-400", 4: "bg-red-400",
+};
+function neutralIntensityDot(level: "높음" | "보통" | "낮음"): string {
+  return level === "높음" ? "bg-amber-500" : level === "보통" ? "bg-amber-300" : "bg-muted-foreground/30";
+}
 import { Switch } from "@/components/ui/switch";
 import {
   getMyProfile,
@@ -50,6 +59,7 @@ import { computePersonPipelineSnapshot } from "@/lib/personPipelineSnapshot";
 import { getController } from "@/lib/element-color";
 import {
   computeRelationshipInteractionByYearRange,
+  computeMonthlyRelationshipInteractions,
   dampeningFromCompatibilityTone,
   type PersonInteractionContext,
 } from "@/lib/evaluations/relationshipInteractionActivation";
@@ -987,6 +997,77 @@ export default function Compatibility() {
       baseCompatibilityDampening: dampeningFromCompatibilityTone(result?.finalType),
     });
   }, [ep1, ep2, myLC, otherLC, myPipelineForInteraction, otherPipelineForInteraction, myDayStem2, otherDayStem2, myDayBranch2, otherDayBranch2, result?.finalType]);
+
+  // ── 💕 커플 관계 상호작용도(월별) ────────────────────────────────
+  // 연도별과 완전히 동일한 core(computeRelationshipInteractionCore)를 쓰는
+  // computeMonthlyRelationshipInteractions만 추가로 호출한다 — 새 공식 없음.
+  // 연도별 카드가 relType과 무관하게 노출되는 것과 동일한 정책을 따른다(별도 제한 없음).
+  const [selectedMonthlyYear, setSelectedMonthlyYear] = useState(() => myLC?.wolun.year ?? new Date().getFullYear());
+  const relationshipInteractionByMonth = useMemo(() => {
+    if (
+      !ep1 || !ep2 || !myLC || !otherLC ||
+      !myPipelineForInteraction?.evaluations || !otherPipelineForInteraction?.evaluations ||
+      !myDayStem2 || !otherDayStem2
+    ) {
+      return [];
+    }
+    const aYongshin = myPipelineForInteraction.adjusted.effectiveYongshin;
+    const bYongshin = otherPipelineForInteraction.adjusted.effectiveYongshin;
+    const aCtx: PersonInteractionContext = {
+      name: ep1.birthInput.name,
+      dayStem: myDayStem2,
+      dayBranch: myDayBranch2,
+      yongshin: aYongshin,
+      heesin: myPipelineForInteraction.adjusted.effectiveYongshinSecondary,
+      gisin: getController(aYongshin),
+      birthYear: ep1.birthInput.year,
+      daewoon: myLC.daewoon,
+    };
+    const bCtx: PersonInteractionContext = {
+      name: ep2.birthInput.name,
+      dayStem: otherDayStem2,
+      dayBranch: otherDayBranch2,
+      yongshin: bYongshin,
+      heesin: otherPipelineForInteraction.adjusted.effectiveYongshinSecondary,
+      gisin: getController(bYongshin),
+      birthYear: ep2.birthInput.year,
+      daewoon: otherLC.daewoon,
+    };
+    return computeMonthlyRelationshipInteractions({
+      a: aCtx,
+      b: bCtx,
+      aSpouseCtx: {
+        dayStem: myDayStem2,
+        dayBranch: myDayBranch2,
+        allStems: myPipelineForInteraction.input.allStems,
+        gender: ep1.birthInput.gender as "남" | "여",
+        evaluations: myPipelineForInteraction.evaluations,
+        yongshin: aYongshin,
+        heesin: myPipelineForInteraction.adjusted.effectiveYongshinSecondary,
+        gisin: getController(aYongshin),
+        birthYear: ep1.birthInput.year,
+        daewoon: myLC.daewoon,
+        seunEntries: myLC.seun,
+      },
+      bSpouseCtx: {
+        dayStem: otherDayStem2,
+        dayBranch: otherDayBranch2,
+        allStems: otherPipelineForInteraction.input.allStems,
+        gender: ep2.birthInput.gender as "남" | "여",
+        evaluations: otherPipelineForInteraction.evaluations,
+        yongshin: bYongshin,
+        heesin: otherPipelineForInteraction.adjusted.effectiveYongshinSecondary,
+        gisin: getController(bYongshin),
+        birthYear: ep2.birthInput.year,
+        daewoon: otherLC.daewoon,
+        seunEntries: otherLC.seun,
+      },
+      year: selectedMonthlyYear,
+      baseCompatibilityDampening: dampeningFromCompatibilityTone(result?.finalType),
+    });
+  }, [ep1, ep2, myLC, otherLC, myPipelineForInteraction, otherPipelineForInteraction, myDayStem2, otherDayStem2, myDayBranch2, otherDayBranch2, result?.finalType, selectedMonthlyYear]);
+  const [selectedMonthlyMonth, setSelectedMonthlyMonth] = useState(() => new Date().getMonth() + 1);
+  const selectedMonthlyEntry = relationshipInteractionByMonth.find((m) => m.month === selectedMonthlyMonth) ?? relationshipInteractionByMonth[0];
 
   const canUsePairMode = people.length >= 2;
 
@@ -2283,6 +2364,121 @@ export default function Compatibility() {
                       </div>
                     ))}
                   </div>
+                </CardAccordion>
+              )}
+
+              {relationshipInteractionByMonth.length > 0 && (
+                <CardAccordion title="💕 커플 관계 상호작용도(월별)" defaultOpen={false}>
+                  <p className="text-[11px] leading-relaxed text-muted-foreground mb-2">
+                    위 연도별과 같은 계산(대운·세운)에 그 달의 월운만 더해 12개월로 나눠 봅니다.
+                    월운은 대운·세운보다 영향이 짧아 절반 비중(0.5배)으로 반영됩니다.
+                  </p>
+                  <div className="flex items-center justify-between mb-2">
+                    <button
+                      onClick={() => setSelectedMonthlyYear((y) => y - 1)}
+                      className="px-3 py-1.5 rounded-lg border border-border bg-muted/20 text-sm font-bold active:scale-95"
+                    >
+                      ‹
+                    </button>
+                    <span className="text-[13px] font-bold text-foreground">{selectedMonthlyYear}년 월별 흐름</span>
+                    <button
+                      onClick={() => setSelectedMonthlyYear((y) => y + 1)}
+                      className="px-3 py-1.5 rounded-lg border border-border bg-muted/20 text-sm font-bold active:scale-95"
+                    >
+                      ›
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-3 gap-1.5 mb-3">
+                    {relationshipInteractionByMonth.map((m) => {
+                      const isSelected = m.month === selectedMonthlyMonth;
+                      const isNow = selectedMonthlyYear === now.getFullYear() && m.month === now.getMonth() + 1;
+                      return (
+                        <button
+                          key={m.month}
+                          onClick={() => setSelectedMonthlyMonth(m.month)}
+                          className={cn(
+                            "rounded-lg border p-2 flex flex-col items-center gap-1 transition-all active:scale-95",
+                            isSelected ? "border-teal-400 bg-teal-50 dark:bg-teal-950/30" : isNow ? "border-amber-400 bg-amber-50 dark:bg-amber-950/20" : "border-border bg-muted/20",
+                          )}
+                        >
+                          <span className="text-[11px] text-muted-foreground font-semibold">{m.month}월{isNow ? " ●" : ""}</span>
+                          <span className="text-[13px] font-bold text-foreground">{m.monthPillar}</span>
+                          <div className="flex items-center gap-1">
+                            <span className={cn("h-1.5 w-1.5 rounded-full", neutralIntensityDot(m.result.activationLevel))} title={`활성 ${m.result.activationScore}`} />
+                            <span className={cn("h-1.5 w-1.5 rounded-full", TONE_TIER_DOT[toneTierFromLevel(m.result.harmonyDirection)])} title={`조화 ${m.result.harmonyScore}`} />
+                            <span className={cn("h-1.5 w-1.5 rounded-full", TONE_TIER_DOT[toneTierFromLevel(m.result.stabilityLevel)])} title={`안정 ${m.result.stabilityScore}`} />
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {selectedMonthlyEntry && (() => {
+                    const r = selectedMonthlyEntry.result;
+                    return (
+                      <div className="rounded-lg border border-border p-3 bg-white dark:bg-neutral-900">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-[13px] font-bold text-foreground">
+                            {selectedMonthlyEntry.year}년 {selectedMonthlyEntry.month}월 ({selectedMonthlyEntry.monthPillar})
+                          </span>
+                          <span className={cn("text-[11px] font-semibold rounded-full border px-2 py-0.5", toneClassesNeutral(r.activationLevel).badge)}>
+                            관계 활성 {r.activationScore} ({r.activationLevel})
+                          </span>
+                          <span className={cn("text-[11px] font-semibold rounded-full border px-2 py-0.5", toneClasses(toneTierFromLevel(r.harmonyDirection)).badge)}>
+                            조화 {r.harmonyScore} ({r.harmonyDirection})
+                          </span>
+                          <span className={cn("text-[11px] font-semibold rounded-full border px-2 py-0.5", toneClasses(toneTierFromLevel(r.stabilityLevel)).badge)}>
+                            안정 {r.stabilityScore} ({r.stabilityLevel})
+                          </span>
+                        </div>
+                        <p className="mt-1.5 text-[12px] leading-relaxed text-foreground/85">{r.interpretation}</p>
+                        <div
+                          className={cn(
+                            "mt-2 rounded-md border px-2.5 py-2",
+                            toneClasses(PROGRESS_READINESS_TONE[r.progressReadinessLevel]).box,
+                          )}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-[11px] font-bold text-foreground/90">💕 관계 진전 여건</span>
+                            <span
+                              className={cn(
+                                "text-[11px] font-bold rounded-full border px-2 py-0.5",
+                                toneClasses(PROGRESS_READINESS_TONE[r.progressReadinessLevel]).badge,
+                              )}
+                            >
+                              {r.progressReadinessLevel}
+                            </span>
+                          </div>
+                          <p className="mt-1 text-[11px] leading-relaxed text-foreground/80">{r.progressReadinessNote}</p>
+                          <p className="mt-1 text-[10px] leading-relaxed text-muted-foreground">근거: {r.progressReadinessReasons.join(" · ")}</p>
+                        </div>
+                        {r.isLowActivityPeriod && (
+                          <div className="mt-1.5 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-[11px] text-muted-foreground dark:border-slate-800 dark:bg-slate-900/40">
+                            💤 관계 저활성 구간 — 두 사람 모두 배우자 테마와 커플 상호작용이 조용한 시기입니다. 인연이 없다는 뜻은 아니며, 특별한 사건 없이 지나갈 가능성이 상대적으로 높다는 의미입니다.
+                          </div>
+                        )}
+                        {r.factors.length > 0 && (
+                          <ul className="mt-1.5 space-y-0.5">
+                            {r.factors.map((f, i) => (
+                              <li key={i} className="flex items-start gap-1.5 text-[11px] text-muted-foreground">
+                                <span
+                                  className={cn(
+                                    "mt-1 h-1.5 w-1.5 shrink-0 rounded-full",
+                                    f.direction === "우호" ? "bg-emerald-400" : f.direction === "비우호" ? "bg-red-400" : "bg-gray-300",
+                                  )}
+                                />
+                                {f.label}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    );
+                  })()}
+
+                  <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground/60">
+                    ※ 운 흐름은 규칙 기반 간략 추정으로, 절대적 예언이 아닙니다.
+                  </p>
                 </CardAccordion>
               )}
 

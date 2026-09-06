@@ -283,7 +283,13 @@ export function getYearGanZhi(year: number): GanZhi {
 }
 
 export function getMonthGanZhi(year: number, solarMonth: number): GanZhi {
-  const yearStemIdx = ((year - 4) % 10 + 10) % 10;
+  // 1월(축월)은 인월(2월)보다 시간상 앞서지만, 오호둔 표는 인월을 기준점으로 삼아
+  // "그 해 인월로부터 순행한 달"만 표현한다. 축월을 year 그대로 계산하면 인월 기준
+  // 11칸을 더 간 값(=사실상 다음 해 1월의 축월)이 나와 1→2월 사이 천간이 역행하는
+  // 오류가 생긴다. 축월은 항상 직전 명리년(입춘 전 해, year-1)의 오호둔 표를 써야
+  // 2월(인월)의 바로 앞 달로 정상 연결된다. 2~12월은 원래도 그 해 인월 이후라 영향 없음.
+  const stemTableYear = solarMonth === 1 ? year - 1 : year;
+  const yearStemIdx = ((stemTableYear - 4) % 10 + 10) % 10;
   // Jan=축(1), Feb=인(2), Mar=묘(3), ..., Dec=자(0)
   const monthBranchIdx = solarMonth % 12;
   // Starting stem for 인월 per year stem

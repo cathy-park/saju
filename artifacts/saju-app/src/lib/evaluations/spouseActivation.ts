@@ -35,6 +35,7 @@ import { computeBranchRelations, computeStemRelations } from "../branchRelations
 import { computeLuckTimingActivation } from "./luckTimingActivation";
 import type { RelationshipWealthEvaluations } from "./relationshipWealthEvaluation";
 import type { DaewoonEntry } from "../luckCycles";
+import { getYearGanZhi, getMonthGanZhi } from "../luckCycles";
 
 export type ActivationLevel = "높음" | "보통" | "낮음";
 export type StabilityLevel = "안정" | "보통" | "불안정";
@@ -370,6 +371,58 @@ export function computeSpouseActivationByYearRange(
       });
       return { year: e.year, ganZhiHangul: e.ganZhi.hangul, daewoonHangul: dw?.ganZhi.hangul, activation };
     });
+}
+
+export interface SpouseActivationMonthContext extends Omit<SpouseActivationYearRangeContext, "fromYear" | "count"> {
+  year: number;
+  month: number;
+}
+
+/**
+ * 선택한 연도·월 한 쌍에 대해 개인별 배우자·결혼 활성도를 계산한다. 연도별 표
+ * (computeSpouseActivationByYearRange)와 동일한 computeLuckTimingActivation/
+ * computeSpouseActivation을 그대로 재사용하고, 그 달의 월운(getMonthGanZhi)만
+ * wolunHangul/currentWolun으로 추가 전달한다 — 새 개인 활성도 공식을 만들지 않는다.
+ */
+export function computeSpouseActivationForMonth(
+  ctx: SpouseActivationMonthContext,
+): SpouseActivationResult {
+  const dw0 = ctx.daewoon[0]?.startAge ?? 0;
+  const adjustedDw = ctx.daewoon.map((entry, i) => ({
+    ...entry,
+    startAge: dw0 + i * 10,
+    endAge: dw0 + i * 10 + 9,
+  }));
+  const age = ctx.year - ctx.birthYear;
+  const dw = adjustedDw.find((d) => age >= d.startAge && age <= d.endAge);
+  const seYear = getYearGanZhi(ctx.year);
+  const woYear = getMonthGanZhi(ctx.year, ctx.month);
+
+  const timing = computeLuckTimingActivation(
+    ctx.evaluations,
+    dw?.ganZhi.hangul,
+    seYear.hangul,
+    ctx.dayStem,
+    ctx.dayBranch,
+    ctx.yongshin,
+    ctx.heesin,
+    ctx.gisin,
+    woYear.hangul,
+  );
+
+  return computeSpouseActivation({
+    dayStem: ctx.dayStem,
+    dayBranch: ctx.dayBranch,
+    allStems: ctx.allStems,
+    gender: ctx.gender,
+    daewoonHangul: dw?.ganZhi.hangul,
+    saeunHangul: seYear.hangul,
+    wolunHangul: woYear.hangul,
+    yongshin: ctx.yongshin,
+    heesin: ctx.heesin,
+    gisin: ctx.gisin,
+    spousePalaceStabilityNow: timing.spousePalaceStabilityNow,
+  });
 }
 
 /** 활성도 기준 내림차순 상위 N개 연도만 뽑는다(랭킹 표시용). */
