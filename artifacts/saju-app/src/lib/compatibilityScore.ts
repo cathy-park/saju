@@ -200,18 +200,44 @@ export interface CompatibilityResult {
   spouseActivationTiming: SpouseActivationTimingBlock | null;
 
   /**
-   * 연애 적합도 / 결혼 적합도 — 원국 기반 두 사람 자체의 구조 적합성(0~100). 기존 7조정
-   * delta를 서로 다른 가중치로 재조합한 값이며, 연도별 timing(활성/조화/안정)과는 완전히
-   * 분리된다. 통계적 확률이 아니라 구조적 여건을 나타내는 해석용 지표.
+   * [Legacy — Phase 3 3-모델과 별개로 유지, 삭제/rename 없음] 연애 적합도 / 결혼 적합도 —
+   * 원국 기반 두 사람 자체의 구조 적합성(0~100). 기존 7조정 delta를 서로 다른 가중치로
+   * 재조합한 값이며, 연도별 timing(활성/조화/안정)과는 완전히 분리된다. 통계적 확률이
+   * 아니라 구조적 여건을 나타내는 해석용 지표. Phase 3의 romanceCompatibility/
+   * marriageCompatibility는 이것을 대체하는 게 아니라 별도 목적별 모델이다.
    */
   romanceMarriageFit: RomanceMarriageFit;
 
   /**
-   * [Phase 2, 개발자/내부 감사용] Core(dm+sp+mb)/Aux(bi+stem+ec+tg+yong) 2계층 산출
-   * breakdown. 사용자 노출용 note/summary와는 분리된 디버그 데이터이며, UI에 그대로
-   * 노출하기보다는 감사·QA·향후 해석 문구 작성 시 참고용으로 쓴다.
+   * [Legacy — Phase 2, 개발자/내부 감사용] Core(dm+sp+mb)/Aux(bi+stem+ec+tg+yong) 2계층
+   * 산출 breakdown(=현재 baseScore/totalScore의 근거). 사용자 노출용 note/summary와는
+   * 분리된 디버그 데이터. Phase 3부터는 이 값 자체를 "관계형 종합 점수"로 계속 쓰되,
+   * Human/Romance/Marriage 목적별 breakdown은 아래 3개 필드를 따로 참고한다.
    */
   coreAux: CoreAuxBreakdown;
+
+  /**
+   * [Phase 3, 신규] 연애·결혼을 전제하지 않은 "사람 대 사람" 상성. Core=dm40%+mb35%+
+   * dayBranchAffinity25%(배우자궁 아님, relType 무관), Aux=bi+stem+ec+yong(tenGod 제외).
+   * tier shift 없음(배우자궁 모델이 아니므로). 개발자용 breakdown 포함, 사용자 노출
+   * note/summary와는 분리해서 다룬다.
+   */
+  humanCompatibility: HumanCompatibilityBreakdown;
+
+  /**
+   * [Phase 3, 신규] 연애 목적 적합도. Core=dm40%+spousePalace35%+mb25%(dm×sp synergy),
+   * Aux=bi+stem+ec+tenGod+yong+spouseStarModifier, spousePalaceMultiTension tier shift
+   * 적용. 기존 romanceMarriageFit(legacy)과는 별개의 독립 계산이며 서로 더해지지 않는다.
+   */
+  romanceCompatibility: RomanceCompatibilityBreakdown;
+
+  /**
+   * [Phase 3, 신규] 결혼 목적 적합도. Core=spousePalace42.5%+mb32.5%+dm25%(dm×sp synergy,
+   * Phase 2 승계), Aux=bi+stem+ec+tenGod+yong+marriageGroupStructureBonus,
+   * spousePalaceMultiTension tier shift 적용. 기존 romanceMarriageFit(legacy)과는 별개의
+   * 독립 계산이며 서로 더해지지 않는다.
+   */
+  marriageCompatibility: MarriageCompatibilityBreakdown;
 }
 
 export type RelationshipTypeLabel =
@@ -487,7 +513,7 @@ export function scoreDayMasterDelta(s1: string, s2: string, relType?: Relationsh
 // ═══════════════════════════════════════════════════════════════════════
 //  2. 배우자궁(일지) delta  (−18 ~ +18)
 // ═══════════════════════════════════════════════════════════════════════
-function scoreSpousePalaceDelta(b1: string, b2: string, relType?: RelationshipType): { delta: number; note: string; spousePalaceTensions: string[] } {
+export function scoreSpousePalaceDelta(b1: string, b2: string, relType?: RelationshipType): { delta: number; note: string; spousePalaceTensions: string[] } {
   if (!b1 || !b2) return { delta: 0, note: "일지 정보 없음", spousePalaceTensions: [] };
   const rels = getBranchRels(b1, b2);
   const tensions: string[] = rels.filter(r => ["형","해","원진"].includes(r));
@@ -536,6 +562,56 @@ function scoreSpousePalaceDelta(b1: string, b2: string, relType?: RelationshipTy
     note,
     spousePalaceTensions: tensions
   };
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+//  [Phase 3] 일지 일반상성 — Human Compatibility 전용, scoreSpousePalaceDelta
+//  wrapper가 아니라 getBranchRels를 직접 사용하는 독립 함수 (−18 ~ +18)
+// ═══════════════════════════════════════════════════════════════════════
+// scoreSpousePalaceDelta를 감사한 결과, 관계 하나를 "결정"하는 방식은 합/반합/충/원진/
+// 형/해/파/무관 순서의 고정 우선순위 if/else 체인이다(동시에 여러 관계가 검출돼도 가장
+// 앞선 하나만 채택 — 예: 축·미처럼 충+형이 동시에 성립해도 충만 채택됨). 이 우선순위
+// 자체는 애매하지 않고 명시적이므로 그대로 승계한다. Human용으로 가져올 때 바꾸는 것은
+// relType 배율(0.3/0.5/1.0) 하나뿐이다 — 그 배율이 "배우자/연애 관계에서만 일지가
+// 원래 세기로 의미 있다"는 가정이라 Human(관계 유형 불문)에는 맞지 않기 때문이다.
+// getBranchRels가 반환하는 관계 목록을 전부 합산하지 않는 이유: 축·미(충+형), 자·미
+// (원진+해) 같은 compound 지지쌍을 단순 합산하면 Phase 1에서 branchInteraction에서
+// 제거했던 "같은 위치쌍 관계 과대가산" 문제가 이 축에서 다시 생긴다. 우선순위 방식은
+// 이미 그 문제에서 자유롭다(관계 종류 수와 무관하게 항상 정확히 1개의 delta만 나옴).
+export function scoreDayBranchAffinityDelta(b1: string, b2: string): { delta: number; note: string } {
+  if (!b1 || !b2) return { delta: 0, note: "일지 정보 없음" };
+  const rels = getBranchRels(b1, b2);
+
+  let delta = 0;
+  let noteSuffix = "";
+
+  if (rels.includes("합")) {
+    delta = +18;
+    noteSuffix = " 지지합";
+  } else if (rels.includes("반합")) {
+    delta = +12;
+    noteSuffix = " 반합";
+  } else if (rels.includes("충")) {
+    delta = -18;
+    noteSuffix = " 충";
+  } else if (rels.includes("원진")) {
+    delta = -9;
+    noteSuffix = " 원진";
+  } else if (rels.includes("형")) {
+    delta = -8;
+    noteSuffix = " 형";
+  } else if (rels.includes("해")) {
+    delta = -7;
+    noteSuffix = " 해";
+  } else if (rels.includes("파")) {
+    delta = -6;
+    noteSuffix = " 파";
+  } else {
+    delta = +6;
+    noteSuffix = " 무관";
+  }
+
+  return { delta, note: `일지 일반상성 ${b1}·${b2}${noteSuffix}` };
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -1049,6 +1125,18 @@ export function positiveAuxGate(coreNorm: number): number {
     : 0.65 + (0.95 - 0.65) * coreNorm;
 }
 
+/**
+ * 두 정규화된(-1~+1) core 축 사이의 연속 synergy. sign-only 고정값(±0.05)이 아니라
+ * 강도(sqrt)에 비례시켜 "아주 약한 우호도 최대 보너스" 같은 불연속을 없앤다. dm/sp
+ * 자체를 다시 채점하지 않는 아주 작은 interaction term이며, Phase 2(dm×sp)와
+ * Phase 3(Human dm×dayBranchAffinity, Marriage dm×spousePalace)가 공유한다.
+ */
+export function continuousSynergy(a: number, b: number): number {
+  if (a > 0 && b > 0) return 0.05 * Math.sqrt(a * b);
+  if (a < 0 && b < 0) return -0.05 * Math.sqrt(Math.abs(a * b));
+  return 0;
+}
+
 /** 개발자/내부 감사용 Core·Aux 세부 breakdown. 사용자 노출 note/summary와는 분리해서 다룬다. */
 export interface CoreAuxBreakdown {
   dmNorm: number;
@@ -1077,14 +1165,7 @@ export function computeCoreAuxBreakdown(
   const mbNorm = normalizeCoreAxis(mb, CORE_MB_POS_MAX, CORE_MB_NEG_MIN);
 
   const coreBase = dmNorm * CORE_WEIGHT_DM + spNorm * CORE_WEIGHT_SP + mbNorm * CORE_WEIGHT_MB;
-
-  // dm×sp continuous synergy — dm/sp 자체를 다시 채점하지 않는 아주 작은 interaction term.
-  // sign-only 고정값(±0.05)이 아니라 강도(sqrt)에 비례시켜 "아주 약한 우호도 최대 보너스"
-  // 같은 불연속을 없앴다.
-  let synergy = 0;
-  if (dmNorm > 0 && spNorm > 0) synergy = 0.05 * Math.sqrt(dmNorm * spNorm);
-  else if (dmNorm < 0 && spNorm < 0) synergy = -0.05 * Math.sqrt(Math.abs(dmNorm * spNorm));
-
+  const synergy = continuousSynergy(dmNorm, spNorm);
   const coreNorm = clampRange(coreBase + synergy, -1, 1);
 
   const auxPosRaw = auxDeltas.filter((x) => x > 0).reduce((a, b) => a + b, 0);
@@ -1145,6 +1226,203 @@ function computeStructuralSteps(
   }
 
   return { steps, netDelta: Math.max(-2, Math.min(2, net)) };
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+//  [Phase 3] Human / Romance / Marriage 목적별 3-모델
+// ═══════════════════════════════════════════════════════════════════════
+// 배경: Phase 2의 totalScore(dm35/sp35/mb30)는 "관계 유형 불문 종합 궁합"이 아니라
+// 이미 배우자궁이 낀 "연인/배우자 관계형" 점수에 가깝다. Phase 3는 이를 대체하지 않고
+// (totalScore·romanceMarriageFit은 legacy로 그대로 유지) 목적이 다른 3개 점수를 추가한다.
+//  - Human: "연애·결혼을 전제하지 않았을 때 사람 대 사람으로 얼마나 자연스럽게 맞는가".
+//    배우자궁(scoreSpousePalaceDelta)의 relType 가중 대신 scoreDayBranchAffinityDelta
+//    (일지 일반상성, 관계 유형 무관)를 쓰고, 배우자성/결혼전용 신호(십성 MAP의 정재·정관
+//    편향, spouseStarModifier, marriageGroupStructureBonus)는 전부 제외한다.
+//  - Romance: 기존 dm×sp Core에 연애 전용 신호(십성, spouseStarModifier)를 Aux로 포함.
+//  - Marriage: 배우자궁 비중을 가장 높게(42.5%) 두고 결혼 전용 신호
+//    (marriageGroupStructureBonus)를 Aux로 포함.
+// 세 모델 모두 Phase 2와 동일한 정규화(-1~+1)·synergy·piecewise gate·
+// finalScore=50+coreContribution+auxContribution 골격을 공유하되, Core 구성/가중치와
+// Aux 구성(따라서 AUX_POS_MAX/NEG_MAX)만 모델별로 다르다.
+
+export const HUMAN_CORE_WEIGHT_DM = 0.40;
+export const HUMAN_CORE_WEIGHT_MB = 0.35;
+export const HUMAN_CORE_WEIGHT_DBA = 0.25;
+export const DBA_POS_MAX = 18; // scoreDayBranchAffinityDelta 코드상 range: 합 +18
+export const DBA_NEG_MIN = 18; // scoreDayBranchAffinityDelta 코드상 range: 충 -18
+// Human Aux = bi + stem + ec + yong (tenGod 제외 — MAP이 정재/정관 등 배우자성과 결부돼
+// "사람 대 사람의 중립적 상성" 모델에 그대로 쓰기엔 개념적으로 편향 소지가 있다는 감사
+// 결과에 따라 baseline에서 제외. 필요 시 별도 scoreHumanTenGodCompatibility로 재설계 가능).
+export const HUMAN_AUX_POS_MAX = 15 + 15 + 12 + 10; // bi15+stem15+ec12+yong10 = 52
+export const HUMAN_AUX_NEG_MAX = 15 + 15 + 8 + 5; // bi15+stem15+ec8+yong5 = 43
+
+export const ROMANCE_CORE_WEIGHT_DM = 0.40;
+export const ROMANCE_CORE_WEIGHT_SP = 0.35;
+export const ROMANCE_CORE_WEIGHT_MB = 0.25;
+// Romance Aux = bi+stem+ec+tg+yong + spouseStarModifier. scoreSpouseStarModifier 코드상
+// `Math.max(-5, Math.min(5, raw))`로 범위가 정확히 [-5,+5]임을 확인하고 반영했다.
+export const ROMANCE_AUX_POS_MAX = 15 + 15 + 12 + 12 + 10 + 5; // = 69
+export const ROMANCE_AUX_NEG_MAX = 15 + 15 + 8 + 8 + 5 + 5; // = 56
+
+export const MARRIAGE_CORE_WEIGHT_SP = 0.425;
+export const MARRIAGE_CORE_WEIGHT_MB = 0.325;
+export const MARRIAGE_CORE_WEIGHT_DM = 0.25; // 합계 0.425+0.325+0.25 = 1.0
+// Marriage Aux = bi+stem+ec+tg+yong + marriageGroupStructureBonus. marriageGroupStructureBonus
+// 코드상 bonus는 0에서 시작해 항상 비음수 가중치만 누적되고 `Math.min(8, bonus)`로 캡되므로
+// 범위는 정확히 [0,+8]이며 NEG_MAX에는 기여하지 않는다(항상 순수 positive-only 보너스).
+export const MARRIAGE_AUX_POS_MAX = 15 + 15 + 12 + 12 + 10 + 8; // = 72
+export const MARRIAGE_AUX_NEG_MAX = 15 + 15 + 8 + 8 + 5; // = 51 (Phase2 AUX_NEG_MAX와 동일)
+
+export interface HumanCompatibilityBreakdown {
+  dmRaw: number; dmNorm: number;
+  mbRaw: number; mbNorm: number;
+  dayBranchAffinityRaw: number; dayBranchAffinityNorm: number;
+  coreBase: number; synergy: number; coreNorm: number; coreContribution: number;
+  auxPosRaw: number; auxNegRaw: number; auxPosNorm: number; auxNegNorm: number;
+  gatePos: number; auxContribution: number;
+  final: number; tone: CompatibilityTone;
+}
+
+/** Human Compatibility(연애/결혼 전제 없는 사람 대 사람 상성). tier shift 없음(배우자궁 모델 아님). */
+export function computeHumanCompatibility(
+  dm: number, mb: number, dba: number,
+  auxDeltas: readonly number[], // [bi, stem, ec, yong]
+): HumanCompatibilityBreakdown {
+  const dmNorm = normalizeCoreAxis(dm, CORE_DM_POS_MAX, CORE_DM_NEG_MIN);
+  const mbNorm = normalizeCoreAxis(mb, CORE_MB_POS_MAX, CORE_MB_NEG_MIN);
+  const dbaNorm = normalizeCoreAxis(dba, DBA_POS_MAX, DBA_NEG_MIN);
+
+  const coreBase = dmNorm * HUMAN_CORE_WEIGHT_DM + mbNorm * HUMAN_CORE_WEIGHT_MB + dbaNorm * HUMAN_CORE_WEIGHT_DBA;
+  const synergy = continuousSynergy(dmNorm, dbaNorm);
+  const coreNorm = clampRange(coreBase + synergy, -1, 1);
+
+  const auxPosRaw = auxDeltas.filter((x) => x > 0).reduce((a, b) => a + b, 0);
+  const auxNegRaw = auxDeltas.filter((x) => x < 0).reduce((a, b) => a + b, 0);
+  const auxPosNorm = clampRange(auxPosRaw / HUMAN_AUX_POS_MAX, 0, 1);
+  const auxNegNorm = clampRange(Math.abs(auxNegRaw) / HUMAN_AUX_NEG_MAX, 0, 1);
+
+  const gatePos = positiveAuxGate(coreNorm);
+  const coreContribution = CORE_MAX_INFLUENCE * coreNorm;
+  const auxContribution = AUX_MAX_INFLUENCE * (auxPosNorm * gatePos - auxNegNorm * 1);
+  const final = Math.round(clampRange(50 + coreContribution + auxContribution, 0, 100));
+
+  return {
+    dmRaw: dm, dmNorm, mbRaw: mb, mbNorm, dayBranchAffinityRaw: dba, dayBranchAffinityNorm: dbaNorm,
+    coreBase, synergy, coreNorm, coreContribution,
+    auxPosRaw, auxNegRaw, auxPosNorm, auxNegNorm, gatePos, auxContribution,
+    final, tone: gradeFromScore(final),
+  };
+}
+
+export interface RomanceCompatibilityBreakdown {
+  dmRaw: number; dmNorm: number;
+  spousePalaceRaw: number; spousePalaceNorm: number;
+  mbRaw: number; mbNorm: number;
+  coreBase: number; synergy: number; coreNorm: number; coreContribution: number;
+  auxPosRaw: number; auxNegRaw: number; auxPosNorm: number; auxNegNorm: number;
+  gatePos: number; auxContribution: number;
+  spouseStarModifier: number;
+  structuralSteps: StructuralTierStep[]; structuralNetDelta: number;
+  final: number; baseType: CompatibilityTone; tone: CompatibilityTone;
+}
+
+/** Romance Compatibility. spousePalaceMultiTension tier shift 적용. */
+export function computeRomanceCompatibility(
+  dm: number, sp: number, mb: number,
+  auxDeltas: readonly number[], // [bi, stem, ec, tg, yong]
+  spouseStarModifier: number,
+  spousePalaceMultiTension: boolean,
+  relType?: RelationshipType,
+): RomanceCompatibilityBreakdown {
+  const dmNorm = normalizeCoreAxis(dm, CORE_DM_POS_MAX, CORE_DM_NEG_MIN);
+  const spNorm = normalizeCoreAxis(sp, CORE_SP_POS_MAX, CORE_SP_NEG_MIN);
+  const mbNorm = normalizeCoreAxis(mb, CORE_MB_POS_MAX, CORE_MB_NEG_MIN);
+
+  const coreBase = dmNorm * ROMANCE_CORE_WEIGHT_DM + spNorm * ROMANCE_CORE_WEIGHT_SP + mbNorm * ROMANCE_CORE_WEIGHT_MB;
+  const synergy = continuousSynergy(dmNorm, spNorm);
+  const coreNorm = clampRange(coreBase + synergy, -1, 1);
+
+  const auxAll = [...auxDeltas, spouseStarModifier];
+  const auxPosRaw = auxAll.filter((x) => x > 0).reduce((a, b) => a + b, 0);
+  const auxNegRaw = auxAll.filter((x) => x < 0).reduce((a, b) => a + b, 0);
+  const auxPosNorm = clampRange(auxPosRaw / ROMANCE_AUX_POS_MAX, 0, 1);
+  const auxNegNorm = clampRange(Math.abs(auxNegRaw) / ROMANCE_AUX_NEG_MAX, 0, 1);
+
+  const gatePos = positiveAuxGate(coreNorm);
+  const coreContribution = CORE_MAX_INFLUENCE * coreNorm;
+  const auxContribution = AUX_MAX_INFLUENCE * (auxPosNorm * gatePos - auxNegNorm * 1);
+  const final = Math.round(clampRange(50 + coreContribution + auxContribution, 0, 100));
+
+  const baseType = gradeFromScore(final);
+  const { steps: structuralSteps, netDelta: structuralNetDelta } = computeStructuralSteps(
+    { spousePalaceMultiTension }, relType,
+  );
+  const tone = shiftTier(baseType, structuralNetDelta);
+
+  return {
+    dmRaw: dm, dmNorm, spousePalaceRaw: sp, spousePalaceNorm: spNorm, mbRaw: mb, mbNorm,
+    coreBase, synergy, coreNorm, coreContribution,
+    auxPosRaw, auxNegRaw, auxPosNorm, auxNegNorm, gatePos, auxContribution,
+    spouseStarModifier, structuralSteps, structuralNetDelta,
+    final, baseType, tone,
+  };
+}
+
+export interface MarriageCompatibilityBreakdown {
+  spousePalaceRaw: number; spousePalaceNorm: number;
+  mbRaw: number; mbNorm: number;
+  dmRaw: number; dmNorm: number;
+  coreBase: number; synergy: number; coreNorm: number; coreContribution: number;
+  auxPosRaw: number; auxNegRaw: number; auxPosNorm: number; auxNegNorm: number;
+  gatePos: number; auxContribution: number;
+  marriageGroupStructureBonus: number;
+  structuralSteps: StructuralTierStep[]; structuralNetDelta: number;
+  final: number; baseType: CompatibilityTone; tone: CompatibilityTone;
+}
+
+/** Marriage Compatibility. spousePalaceMultiTension tier shift 적용. */
+export function computeMarriageCompatibility(
+  sp: number, mb: number, dm: number,
+  auxDeltas: readonly number[], // [bi, stem, ec, tg, yong]
+  marriageBonus: number,
+  spousePalaceMultiTension: boolean,
+  relType?: RelationshipType,
+): MarriageCompatibilityBreakdown {
+  const spNorm = normalizeCoreAxis(sp, CORE_SP_POS_MAX, CORE_SP_NEG_MIN);
+  const mbNorm = normalizeCoreAxis(mb, CORE_MB_POS_MAX, CORE_MB_NEG_MIN);
+  const dmNorm = normalizeCoreAxis(dm, CORE_DM_POS_MAX, CORE_DM_NEG_MIN);
+
+  const coreBase = spNorm * MARRIAGE_CORE_WEIGHT_SP + mbNorm * MARRIAGE_CORE_WEIGHT_MB + dmNorm * MARRIAGE_CORE_WEIGHT_DM;
+  // Marriage synergy: sp×mb(장기 공동생활 전용 신규 규칙)로 바꾸는 안을 검토했으나 기존
+  // 코드/Phase 1~2에 선례가 없는 임의 규칙이 되므로, 근거가 약해 Phase 2와 동일한 dm×sp를
+  // 그대로 승계한다(신규 규칙 임의 도입 금지 원칙 — 2026-09 설계 결정).
+  const synergy = continuousSynergy(dmNorm, spNorm);
+  const coreNorm = clampRange(coreBase + synergy, -1, 1);
+
+  const auxAll = [...auxDeltas, marriageBonus];
+  const auxPosRaw = auxAll.filter((x) => x > 0).reduce((a, b) => a + b, 0);
+  const auxNegRaw = auxAll.filter((x) => x < 0).reduce((a, b) => a + b, 0);
+  const auxPosNorm = clampRange(auxPosRaw / MARRIAGE_AUX_POS_MAX, 0, 1);
+  const auxNegNorm = clampRange(Math.abs(auxNegRaw) / MARRIAGE_AUX_NEG_MAX, 0, 1);
+
+  const gatePos = positiveAuxGate(coreNorm);
+  const coreContribution = CORE_MAX_INFLUENCE * coreNorm;
+  const auxContribution = AUX_MAX_INFLUENCE * (auxPosNorm * gatePos - auxNegNorm * 1);
+  const final = Math.round(clampRange(50 + coreContribution + auxContribution, 0, 100));
+
+  const baseType = gradeFromScore(final);
+  const { steps: structuralSteps, netDelta: structuralNetDelta } = computeStructuralSteps(
+    { spousePalaceMultiTension }, relType,
+  );
+  const tone = shiftTier(baseType, structuralNetDelta);
+
+  return {
+    spousePalaceRaw: sp, spousePalaceNorm: spNorm, mbRaw: mb, mbNorm, dmRaw: dm, dmNorm,
+    coreBase, synergy, coreNorm, coreContribution,
+    auxPosRaw, auxNegRaw, auxPosNorm, auxNegNorm, gatePos, auxContribution,
+    marriageGroupStructureBonus: marriageBonus, structuralSteps, structuralNetDelta,
+    final, baseType, tone,
+  };
 }
 
 // ── 도메인 점수 (보조 지표) ────────────────────────────────────────────
@@ -1630,6 +1908,43 @@ export function calculateCompatibilityScore(
     );
   })();
 
+  // ── [Phase 3] Human / Romance / Marriage 목적별 3-모델 ── (독립 계산, legacy
+  // totalScore·romanceMarriageFit은 변경하지 않음. marriageGroupStructureBonus는
+  // romanceMarriageFit 내부에서도 별도로 계산되므로 여기서 다시 호출해도 이중 가산이
+  // 아니다 — 순수 함수를 서로 다른 두 결과 필드에 각각 쓰는 것뿐이다.)
+  const dba = scoreDayBranchAffinityDelta(b1, b2);
+  const spousePalaceMultiTension = sp.spousePalaceTensions.length >= 2;
+
+  const marriageGroupBonusValue = (() => {
+    if (!pipe1 || !pipe2) return 0;
+    const y1v = pipe1.adjusted.effectiveYongshin;
+    const y2v = pipe2.adjusted.effectiveYongshin;
+    return marriageGroupStructureBonus(
+      br1, br2,
+      y1v, pipe1.adjusted.effectiveYongshinSecondary, getController(y1v),
+      y2v, pipe2.adjusted.effectiveYongshinSecondary, getController(y2v),
+    ).bonus;
+  })();
+
+  const humanCompatibility = computeHumanCompatibility(
+    dm.delta, mb.delta, dba.delta,
+    [bi.delta, stem.delta, ec.delta, yong.delta],
+  );
+  const romanceCompatibility = computeRomanceCompatibility(
+    dm.delta, sp.delta, mb.delta,
+    [bi.delta, stem.delta, ec.delta, tg.delta, yong.delta],
+    spouseStarResult.modifier,
+    spousePalaceMultiTension,
+    relType,
+  );
+  const marriageCompatibility = computeMarriageCompatibility(
+    sp.delta, mb.delta, dm.delta,
+    [bi.delta, stem.delta, ec.delta, tg.delta, yong.delta],
+    marriageGroupBonusValue,
+    spousePalaceMultiTension,
+    relType,
+  );
+
   const romanceMarriageFit: RomanceMarriageFit = (() => {
     if (!pipe1 || !pipe2) {
       return buildRomanceMarriageFit(
@@ -1724,6 +2039,9 @@ export function calculateCompatibilityScore(
     spouseActivationTiming,
     romanceMarriageFit,
     coreAux,
+    humanCompatibility,
+    romanceCompatibility,
+    marriageCompatibility,
   };
 }
 
