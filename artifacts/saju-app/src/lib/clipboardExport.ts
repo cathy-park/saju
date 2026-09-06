@@ -20,6 +20,7 @@ import { computeExamCareerActivation } from "./evaluations/examCareerActivation"
 import { computeContractActivation } from "./evaluations/contractActivation";
 import {
   computeRelationshipInteractionByYearRange,
+  computeMonthlyRelationshipInteractions,
   dampeningFromCompatibilityTone,
   type PersonInteractionContext,
 } from "./evaluations/relationshipInteractionActivation";
@@ -1132,6 +1133,56 @@ export function buildCompatibilityClipboardText(
         }
         lines.push("");
       }
+
+      // 💕 커플 관계 상호작용도(월별) — 화면(Compatibility.tsx)과 동일한
+      // computeMonthlyRelationshipInteractions를 그대로 재사용한다(새 계산식 없음).
+      // 위 aCtx/bCtx/aSpouseCtx/bSpouseCtx 구성과 완전히 동일한 값을 그대로 넘긴다.
+      const interactionByMonth = computeMonthlyRelationshipInteractions({
+        a: aCtx,
+        b: bCtx,
+        aSpouseCtx: {
+          dayStem: pipe1.input.dayStem,
+          dayBranch: pipe1.input.dayBranch,
+          allStems: pipe1.input.allStems,
+          gender: person1.birthInput.gender,
+          evaluations: pipe1.evaluations,
+          yongshin: y1,
+          heesin: pipe1.adjusted.effectiveYongshinSecondary,
+          gisin: getController(y1),
+          birthYear: person1.birthInput.year,
+          daewoon: lc1.daewoon,
+          seunEntries: lc1.seun,
+        },
+        bSpouseCtx: {
+          dayStem: pipe2.input.dayStem,
+          dayBranch: pipe2.input.dayBranch,
+          allStems: pipe2.input.allStems,
+          gender: person2.birthInput.gender,
+          evaluations: pipe2.evaluations,
+          yongshin: y2,
+          heesin: pipe2.adjusted.effectiveYongshinSecondary,
+          gisin: getController(y2),
+          birthYear: person2.birthInput.year,
+          daewoon: lc2.daewoon,
+          seunEntries: lc2.seun,
+        },
+        year: lc1.wolun.year,
+        baseCompatibilityDampening: dampeningFromCompatibilityTone(result.finalType),
+      });
+      if (interactionByMonth.length > 0) {
+        lines.push(`[커플 관계 상호작용도(월별)]`);
+        lines.push(`  위 연도별과 동일한 계산(대운·세운)에 그 달의 월운만 추가해 ${lc1.wolun.year}년 1~12월로 나눠 봅니다. 월운은 대운·세운보다 영향이 짧아 절반 비중(0.5배)으로 반영됩니다.`);
+        for (const m of interactionByMonth) {
+          const r = m.result;
+          lines.push(
+            `  ${m.year}년 ${m.month}월(${m.monthPillar}) — 관계 활성 ${r.activationScore}점(${r.activationLevel}) / 조화 ${r.harmonyScore}점(${r.harmonyDirection}) / 안정 ${r.stabilityScore}점(${r.stabilityLevel})`,
+          );
+          if (r.factors.length > 0) {
+            lines.push(`    핵심 evidence: ${r.factors.slice(0, 3).map((f) => f.label).join(" / ")}`);
+          }
+        }
+        lines.push("");
+      }
     }
   }
 
@@ -1186,11 +1237,12 @@ export function buildCompatibilityClipboardText(
   lines.push("13. 🔮 최종 전망: 무조건 좋다/나쁘다 단정하지 말고, 어떤 조건이 충족되면 좋아질지 현실적으로 전망해주세요.");
   lines.push("14. 💒 대운·세운의 배우자/결혼 활성 흐름: 두 사람 각각의 결혼·배우자 테마 활성도와 배우자궁 안정도를 구분해서 해석하고, 현재 대운 안에서 관계·결혼 이슈가 특히 강하게 움직이는 연도를 비교해주세요. 활성도가 높다고 결혼 적기로 단정하지 말고, 활성도 × 안정도 조합에 따라 안정적 발전인지, 관계 변화·재편·결단이 강한 시기인지 구분해주세요.");
   lines.push("15. 💕 연도별 커플 관계 상호작용 흐름: [커플 관계 상호작용도(연도별)]의 관계 활성도·조화도·안정도를 반드시 함께 해석해주세요. 개인별 배우자 활성도/안정도와 커플 자체의 상호작용 지표를 혼동하지 말고, 관계 활성도(그 해 두 사람 사이의 사건·감정·결정이 얼마나 강하게 움직이는가) / 관계 조화도(그 움직임이 연결·보완 방향인지 충돌·소모 방향인지) / 관계 안정도(관계가 실제 성립했을 때 얼마나 안정적으로 유지되기 쉬운지)를 구분해주세요. 활성도가 높다는 이유만으로 재회·결혼·연애 성사를 단정하지 말고, 세 축과 두 사람 각각의 배우자·결혼 활성도/안정도, 그리고 '관계 진전 여건' 등급을 함께 종합해서 해석해주세요.");
+  lines.push("16. 💕 월별 커플 관계 흐름: [커플 관계 상호작용도(월별)]은 15번(연도별)과 같은 계산에 그 달의 월운만 더한 것입니다. 연도별 흐름과 뭉뚱그리지 말고 구분해서, 그 해 안에서도 어느 달에 관계 활성·조화·안정이 특히 강해지거나 약해지는지처럼 더 세밀한 시기 감각을 보여주는 보조 지표로만 해석해주세요.");
   if (cardPolicy.showRomance) {
     // [Phase 3 P0] 데이터 섹션 이름이 [연애 적합도 / 결혼 적합도]에서 [궁합 점수 (목적별
     // 모델)]로 바뀌었으므로 참조도 함께 갱신한다(더 이상 존재하지 않는 섹션명을 가리키면
     // AI가 근거 없이 지어낼 위험이 있음).
-    lines.push("16. 💕💍 연애 궁합 · 결혼 궁합: [궁합 점수 (목적별 모델)]의 연애 궁합·결혼 궁합 값은 두 사람 원국 자체의 구조 적합성이며, 연도별 timing과는 완전히 분리된 값입니다. 연애 궁합은 '연인으로서 끌리고 관계가 형성·유지되기 쉬운가'를, 결혼 궁합은 '장기 배우자로 생활·책임·갈등을 운영하기 쉬운가'를 뜻합니다. 두 점수와 관계 유형을 함께 언급하되, 확률이 아니라 구조적 여건이라는 점을 분명히 하고, 위 연도별 timing 항목(14·15번)과 섞어서 하나로 뭉뚱그리지 말아주세요.");
+    lines.push("17. 💕💍 연애 궁합 · 결혼 궁합: [궁합 점수 (목적별 모델)]의 연애 궁합·결혼 궁합 값은 두 사람 원국 자체의 구조 적합성이며, 연도별 timing과는 완전히 분리된 값입니다. 연애 궁합은 '연인으로서 끌리고 관계가 형성·유지되기 쉬운가'를, 결혼 궁합은 '장기 배우자로 생활·책임·갈등을 운영하기 쉬운가'를 뜻합니다. 두 점수와 관계 유형을 함께 언급하되, 확률이 아니라 구조적 여건이라는 점을 분명히 하고, 위 연도별·월별 timing 항목(14·15·16번)과 섞어서 하나로 뭉뚱그리지 말아주세요.");
   }
   lines.push("");
   lines.push("────────────────────");
