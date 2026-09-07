@@ -216,12 +216,17 @@ describe("6. Human relType invariant — deterministic N>=1000 감사", () => {
 });
 
 describe("7~11. canonical 5인 lover 회귀 — Romance/Marriage/totalScore/finalType 불변", () => {
+  // 2026-09 강약(computeStrengthResult) 감사 반영 — 식상·재성이 득지/득세와
+  // leakagePenalty(설기)에서 이중 차감되던 문제를 제거(1단계)하고, 강약 경계 ±0.2
+  // 완충(2단계, buffer=YONGSHIN_STRENGTH_BUFFER)을 적용한 이후의 실측값으로 갱신.
+  // 등급(finalType)은 5명 전원 그대로이며, 값 변동은 최대 ±1점(현욱 human/totalScore,
+  // 최명진 human/romance/marriage, 이동훈 human/totalScore)에 그친다.
   it.each([
-    ["현욱", 현욱, 54, 54, 61, 57, "노력형 궁합"],
+    ["현욱", 현욱, 53, 54, 61, 56, "노력형 궁합"],
     ["박주성", 박주성, 63, 68, 64, 66, "노력형 궁합"],
     ["조용민", 조용민, 67, 58, 56, 59, "노력형 궁합"],
-    ["최명진", 최명진, 61, 56, 50, 56, "노력형 궁합"],
-    ["이동훈", 이동훈, 37, 36, 42, 38, "주의 궁합"],
+    ["최명진", 최명진, 62, 57, 51, 56, "노력형 궁합"],
+    ["이동훈", 이동훈, 38, 36, 42, 39, "주의 궁합"],
   ] as const)("%s: lover 기준 Human/Romance/Marriage/totalScore/finalType이 baseline과 동일하다", (_name, partner, human, romance, marriage, totalScore, finalType) => {
     const person2 = withRelType(partner, "lover");
     const result = calculateCompatibilityScore(박소연, person2, "lover");

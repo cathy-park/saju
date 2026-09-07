@@ -63,8 +63,9 @@ const 박소연 = buildPerson("박소연", { gender: "여", year: 1989, month: 2
 const 현욱Base = buildPerson("현욱", { gender: "남", year: 1995, month: 3, day: 21, hour: 14, pillars: { year: "을해", month: "기묘", day: "신해", hour: "을미" } });
 const 박주성Base = buildPerson("박주성", { gender: "남", year: 1989, month: 5, day: 15, timeUnknown: true, pillars: { year: "기사", month: "기사", day: "을해", hour: null } });
 // canonical fixture(대표 지정, 2026-09): 임시 fixture가 아니라 Phase 3 baseline 재현에 쓰는
-// 실제 입력. Human 61/Romance 56/Marriage 50 (최명진), Human 37/Romance 36/Marriage 42(이동훈)
+// 실제 입력. Human 62/Romance 57/Marriage 51 (최명진), Human 38/Romance 36/Marriage 42(이동훈)
 // 이 이 입력으로 재현됨을 아래 "17. canonical fixture" describe에서 고정 회귀로 검증한다.
+// (2026-09 강약 이중차감 제거 + 경계 완충 반영값)
 const 최명진Canonical = buildPerson("최명진", { gender: "남", year: 1999, month: 7, day: 12, hour: 13, pillars: { year: "기묘", month: "신미", day: "을축", hour: "임오" } });
 const 이동훈Canonical = buildPerson("이동훈", { gender: "남", year: 1986, month: 3, day: 19, hour: 23, pillars: { year: "병인", month: "신묘", day: "임술", hour: "신해" } });
 
@@ -293,18 +294,19 @@ describe("16. UI/clipboard에 '상위 0%'가 절대 출력되지 않는다", () 
 });
 
 describe("17. canonical fixture Phase 3 score 불변 회귀(최명진/이동훈)", () => {
+  // 2026-09 강약 이중차감 제거(1단계) + 경계 완충(2단계) 반영값으로 갱신.
   it("canonical 최명진(1999-07-12 13:29, 기묘/신미/을축/임오)의 Phase3 score가 baseline과 동일하다", () => {
     const person2 = withRelType(최명진Canonical, "lover");
     const result = calculateCompatibilityScore(박소연, person2, "lover");
-    expect(result.humanCompatibility.final).toBe(61);
-    expect(result.romanceCompatibility.final).toBe(56);
-    expect(result.marriageCompatibility.final).toBe(50);
+    expect(result.humanCompatibility.final).toBe(62);
+    expect(result.romanceCompatibility.final).toBe(57);
+    expect(result.marriageCompatibility.final).toBe(51);
   });
 
   it("canonical 이동훈(1986-03-19 23:30, 병인/신묘/임술/신해)의 Phase3 score가 baseline과 동일하다", () => {
     const person2 = withRelType(이동훈Canonical, "lover");
     const result = calculateCompatibilityScore(박소연, person2, "lover");
-    expect(result.humanCompatibility.final).toBe(37);
+    expect(result.humanCompatibility.final).toBe(38);
     expect(result.romanceCompatibility.final).toBe(36);
     expect(result.marriageCompatibility.final).toBe(42);
   });

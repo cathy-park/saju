@@ -29,6 +29,7 @@ import {
   computeStrengthLevel,
   computeStrengthScore,
   computeYongshinFull,
+  computeStrengthBoundaryConfidence,
   STRENGTH_SHORT_DESC,
 } from "./interpretSchema";
 import { applyInterpretationRules, type RuleResult } from "./interpretationRules";
@@ -47,6 +48,7 @@ import { determineLatentGukguk, type LatentGukgukResult } from "./latentGukguk";
 import {
   computeSpousePalaceStability,
   type RelationshipWealthEvaluations,
+  type ActivationGrade,
 } from "./evaluations/relationshipWealthEvaluation";
 import {
   computeStructureDomainScores,
@@ -274,6 +276,16 @@ export interface AdjustedStructure extends BaseStructure {
    * null이면 기존과 동일하게 억부용신(computeYongshinFull) 경로를 그대로 사용한 것이다.
    */
   appliedSpecialGukguk: SpecialGukgukCandidate | null;
+  /**
+   * 강약 경계 완충(2단계, YONGSHIN_STRENGTH_BUFFER=±0.2) — confidence=1이면 경계에서
+   * 충분히 멀거나(또는 수동재정의·특별격 적용 중이라 완충 대상이 아니거나) 해서 기존과
+   * 100% 동일하게 취급한다. confidence<1일 때만 하위 소비처(재물·배우자궁 등 실제로
+   * 용신을 참조하는 경로)가 effectiveYongshin과 adjacentYongshin을 confidence 비율로
+   * 섞는다 — 용신 "표시" 라벨(effectiveYongshin)은 이 완충과 무관하게 그대로 유지된다.
+   */
+  yongshinBoundaryConfidence: number;
+  adjacentYongshin: FiveElKey;
+  adjacentYongshinSecondary?: FiveElKey;
 }
 
 export interface SeasonalAdjustment {
@@ -396,6 +408,21 @@ function computeAdjustedStructure(
     }
   }
 
+  // ── 강약 경계 완충(2단계) ────────────────────────────────────────
+  // 수동 강약/용신 재정의나 특별격 순세 취용이 적용된 경우, 그 결과는 연속 점수에서
+  // 자연스럽게 나온 게 아니라 별도 규칙으로 확정된 것이므로 완충 대상에서 제외한다
+  // (confidence=1, 기존과 동일). 그 외의 "평범한 억부용신" 케이스에서만, 원점수가
+  // 경계 ±0.2 안에 있으면 인접 단계의 억부용신도 함께 계산해둔다(조후·특별격 보정은
+  // 인접 단계 쪽에는 적용하지 않음 — 드문 보정까지 완충 대상에 넣으면 검증 범위를
+  // 벗어난다).
+  const skipBoundaryBuffer = isStrengthOverridden || isYongshinOverridden || !!appliedSpecialGukguk;
+  const boundaryConfidence = skipBoundaryBuffer
+    ? { confidence: 1, adjacentLevel: effectiveStrengthLevel }
+    : computeStrengthBoundaryConfidence(base.strengthResult.score);
+  const adjacentYongshinResult = skipBoundaryBuffer || boundaryConfidence.confidence >= 1
+    ? { primary: effectiveYongshin, secondary: effectiveYongshinSecondary }
+    : computeYongshinFull(input.dayStem, boundaryConfidence.adjacentLevel, _augForRecalc);
+
   return {
     ...base,
     strengthResult: effectiveStrengthResult,
@@ -406,6 +433,9 @@ function computeAdjustedStructure(
     isYongshinOverridden,
     seasonalAdjustment,
     appliedSpecialGukguk,
+    yongshinBoundaryConfidence: boundaryConfidence.confidence,
+    adjacentYongshin: adjacentYongshinResult.primary,
+    adjacentYongshinSecondary: adjacentYongshinResult.secondary,
   };
 }
 
@@ -564,6 +594,17 @@ export interface SajuPipelineResult {
  *   5. recalculateYongshin       (computeAdjustedStructure)
  *   6. generateInterpretation    (buildInterpretationResult)
  */
+// relationshipWealthEvaluation.ts/structureDomainScores.ts의 gradeFromScore와 동일한
+// 임계값(80/65/50/35) — 강약 경계 완충으로 재계산된 blended score의 등급을 다시 매길 때
+// 두 파일과 어긋나지 않도록 여기서도 같은 기준을 쓴다.
+function activationGradeFromScore(score: number): ActivationGrade {
+  if (score >= 80) return "강함";
+  if (score >= 65) return "양호";
+  if (score >= 50) return "보통";
+  if (score >= 35) return "약함";
+  return "매우약함";
+}
+
 export function computeSajuPipeline(input: PipelineInput): SajuPipelineResult {
   const base        = computeBaseStructure(input);
   const specialPatterns = detectSpecialPatterns(
@@ -595,14 +636,69 @@ export function computeSajuPipeline(input: PipelineInput): SajuPipelineResult {
     yongshinPrimary: adjusted.effectiveYongshin,
     yongshinSecondary: adjusted.effectiveYongshinSecondary,
   });
-  const deltaPalace = spousePalaceCanonical.score - romanceDomainSurrogateScore;
+
+  // ── 강약 경계 완충(2단계) — 재물·배우자궁만 적용 ──────────────────
+  // confidence=1(경계 밖이거나 수동재정의·특별격 적용 중)이면 이 블록은 전혀 관여하지
+  // 않고 기존 값을 그대로 쓴다(bit-identical). confidence<1일 때만 인접 단계 용신으로
+  // 다시 계산한 값과 confidence 비율로 섞는다 — 표시 라벨(effectiveYongshin)과 근거
+  // 텍스트(positives/negatives/summary)는 항상 "현재 단계" 기준을 그대로 쓰고, 점수만
+  // 부드럽게 만든다. 커리어(honor 도메인)는 애초에 용신을 참조하지 않으므로 이 완충과
+  // 무관하다.
+  const boundaryConfidence = adjusted.yongshinBoundaryConfidence;
+  let wealthActivationEval = evaluationsBase.wealthActivation;
+  let spousePalaceStabilityEval = spousePalaceCanonical;
+  if (boundaryConfidence < 1) {
+    const adjustedForAdjacent: AdjustedStructure = {
+      ...adjusted,
+      effectiveYongshin: adjusted.adjacentYongshin,
+      effectiveYongshinSecondary: adjusted.adjacentYongshinSecondary,
+    };
+    const structureDomainsAdjacent = computeStructureDomainScores({
+      input, base, adjusted: adjustedForAdjacent, interpretation,
+    });
+    const wealthAdjacentScore = deriveRelationshipWealthEvaluationsFromDomains(structureDomainsAdjacent).wealthActivation.score;
+    const spouseAdjacent = computeSpousePalaceStability({
+      dayBranch: input.dayBranch,
+      allBranches: input.allBranches,
+      dayPillarHangul,
+      yongshinPrimary: adjusted.adjacentYongshin,
+      yongshinSecondary: adjusted.adjacentYongshinSecondary,
+    });
+    const blendedWealthScore = Math.round(
+      boundaryConfidence * evaluationsBase.wealthActivation.score + (1 - boundaryConfidence) * wealthAdjacentScore,
+    );
+    const blendedSpouseScore = Math.round(
+      boundaryConfidence * spousePalaceCanonical.score + (1 - boundaryConfidence) * spouseAdjacent.score,
+    );
+    wealthActivationEval = {
+      ...evaluationsBase.wealthActivation,
+      score: blendedWealthScore,
+      grade: activationGradeFromScore(blendedWealthScore),
+      debug: [
+        ...evaluationsBase.wealthActivation.debug,
+        `강약 경계 완충 적용(confidence ${boundaryConfidence.toFixed(2)}): 현재 단계 ${evaluationsBase.wealthActivation.score}점 × ${boundaryConfidence.toFixed(2)} + 인접 단계(${adjusted.adjacentYongshin}) ${wealthAdjacentScore}점 × ${(1 - boundaryConfidence).toFixed(2)} = ${blendedWealthScore}점`,
+      ],
+    };
+    spousePalaceStabilityEval = {
+      ...spousePalaceCanonical,
+      score: blendedSpouseScore,
+      grade: activationGradeFromScore(blendedSpouseScore),
+      debug: [
+        ...spousePalaceCanonical.debug,
+        `강약 경계 완충 적용(confidence ${boundaryConfidence.toFixed(2)}): 현재 단계 ${spousePalaceCanonical.score}점 × ${boundaryConfidence.toFixed(2)} + 인접 단계(${adjusted.adjacentYongshin}) ${spouseAdjacent.score}점 × ${(1 - boundaryConfidence).toFixed(2)} = ${blendedSpouseScore}점`,
+      ],
+    };
+  }
+
+  const deltaPalace = spousePalaceStabilityEval.score - romanceDomainSurrogateScore;
   const deltaStr = deltaPalace >= 0 ? `+${deltaPalace}` : `${deltaPalace}`;
   const evaluations: RelationshipWealthEvaluations = {
     ...evaluationsBase,
+    wealthActivation: wealthActivationEval,
     spousePalaceStability: {
-      ...spousePalaceCanonical,
+      ...spousePalaceStabilityEval,
       debug: [
-        ...spousePalaceCanonical.debug,
+        ...spousePalaceStabilityEval.debug,
         "표준 출처: computeSpousePalaceStability",
         `비교: 연애 구조 도메인 점수(구 surrogate·scoreRomance 경로)=${romanceDomainSurrogateScore}점 (Δ ${deltaStr})`,
       ],

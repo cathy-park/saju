@@ -211,6 +211,10 @@ export function computeStrengthResult(
   }
 
   // 2) 득지: 지지 기여(본기)
+  // 식상·재성 약화는 6) 설기(leakagePenalty)가 전담한다 — 여기서 다시 음수로 반영하면
+  // 같은 근거(식상·재성 존재)가 득지와 설기 두 곳에서 중복 차감된다(감사 결과 확인,
+  // N=10,000 분포가 신약 쪽으로 크게 편향되는 주원인이었음). dmEl/genEl/gwaEl(비겁·인성·관성)
+  // 계수는 이번 수정 대상이 아니므로 그대로 둔다.
   let branchContrib = 0;
   for (const b of allBranches) {
     const bEl = STEM_ELEMENT[b] as FiveElKey | undefined;
@@ -219,12 +223,12 @@ export function computeStrengthResult(
       bEl === dmEl  ? 1.5
       : bEl === genEl ? 1.5
       : bEl === gwaEl ? -1.5
-      : bEl === sikEl ? -0.8
-      : bEl === jaeEl ? -0.5
       : 0;
   }
 
   // 3) 득세: 천간 기여 (일간 자체 1회 제외)
+  // 식상·재성 약화는 마찬가지로 6) 설기(leakagePenalty)가 전담 — 위 득지와 동일한 이유로
+  // 여기서는 중복 반영하지 않는다.
   let stemContrib = 0;
   for (const s of allStems) {
     if (s === dayStem) continue;
@@ -234,8 +238,6 @@ export function computeStrengthResult(
       sEl === dmEl  ? 1
       : sEl === genEl ? 1
       : sEl === gwaEl ? -1
-      : sEl === sikEl ? -0.5
-      : sEl === jaeEl ? -0.3
       : 0;
   }
 
@@ -257,7 +259,7 @@ export function computeStrengthResult(
     }
   }
 
-  // 4b) 일반 지지충: 득지에 반영
+  // 4b) 일반 지지충: 득지에 반영 (branchContrib와 동일하게 식상·재성 항은 제외 — 설기 전담)
   let nonMonthChungUndo = 0;
   for (const b of allBranches) {
     if (b === monthBranch) continue;
@@ -269,8 +271,6 @@ export function computeStrengthResult(
       bEl === dmEl  ? 1.5
       : bEl === genEl ? 1.5
       : bEl === gwaEl ? -1.5
-      : bEl === sikEl ? -0.8
-      : bEl === jaeEl ? -0.5
       : 0;
     nonMonthChungUndo += contrib * 0.4;
   }
@@ -289,12 +289,12 @@ export function computeStrengthResult(
       if (w === 0) continue;
       const hEl = STEM_ELEMENT[hiddens[j]] as FiveElKey | undefined;
       if (!hEl || hEl === mainEl) continue;
+      // 여기·중기 지장간의 식상·재성도 leakagePenalty(설기)의 LEAK_HIDDEN_* 항이 이미
+      // 별도로 차감하므로, 여기서는 비겁·인성·관성만 반영해 이중 차감을 피한다.
       hiddenOverlay +=
         hEl === dmEl ? w * 1.5
         : hEl === genEl ? w * 1.0
         : hEl === gwaEl ? -w * 1.0
-        : hEl === sikEl ? -w * 0.5
-        : hEl === jaeEl ? -w * 0.3
         : 0;
     }
   }
@@ -566,6 +566,51 @@ export function computeYongshinLabel(
   counts: FiveElementCount,
 ): string {
   return computeYongshin(dayStem, level, counts);
+}
+
+// ── 용신 hard-cliff 완충(2단계) ──────────────────────────────────────
+// 범주형 강약 판정(levelFromScore) 자체는 그대로 둔다 — 표시되는 용신 라벨은 항상
+// "현재 단계"의 computeYongshinFull 결과다. 다만 강약 경계(±5,±3,±1.5,1,3,5) 바로
+// 옆의 점수 0.01~0.02 차이가 재물·배우자궁 등 실제로 용신을 참조하는 하위 점수를
+// 완전히 다른 오행 기준으로 뒤집는 현상(감사 결과 확인: 0.02점 차이로 배우자궁 안정도가
+// 최대 18점까지 튐)을 줄이기 위해, "경계에서 얼마나 가까운가"를 나타내는 confidence만
+// 별도로 계산해 하위 소비처가 현재 단계/인접 단계 결과를 섞어 쓸 수 있게 한다.
+export const YONGSHIN_STRENGTH_BUFFER = 0.2;
+
+export interface StrengthBoundaryConfidence {
+  /** 1이면 경계에서 buffer 이상 떨어져 있다는 뜻 — 기존과 100% 동일하게 취급(하위 호환). */
+  confidence: number;
+  /** 가장 가까운 경계 바로 건너편의 단계(혼합 대상). confidence=1이면 의미 없음(사용 안 함). */
+  adjacentLevel: StrengthLevel;
+}
+
+/**
+ * 강약 원점수(score)가 6개 경계(-5,-3,-1.5,1,3,5) 중 가장 가까운 것으로부터 얼마나
+ * 떨어져 있는지로 confidence를 계산한다. buffer 이상 떨어져 있으면 항상 confidence=1
+ * (경계 밖에서는 bit-identical 보장). 경계 바로 위에서는 0.5(반반 혼합), 멀어질수록
+ * 선형으로 1까지 올라간다.
+ */
+export function computeStrengthBoundaryConfidence(
+  score: number,
+  buffer: number = YONGSHIN_STRENGTH_BUFFER,
+): StrengthBoundaryConfidence {
+  const boundaries = [-5, -3, -1.5, 1, 3, 5];
+  let nearestBoundary = boundaries[0];
+  let distance = Math.abs(score - nearestBoundary);
+  for (const b of boundaries) {
+    const d = Math.abs(score - b);
+    if (d < distance) {
+      distance = d;
+      nearestBoundary = b;
+    }
+  }
+  if (buffer <= 0 || distance >= buffer) {
+    return { confidence: 1, adjacentLevel: levelFromScore(score) };
+  }
+  const confidence = 0.5 + 0.5 * (distance / buffer);
+  const EPS = 1e-6;
+  const pushedAcross = score < nearestBoundary ? nearestBoundary + EPS : nearestBoundary - EPS;
+  return { confidence, adjacentLevel: levelFromScore(pushedAcross) };
 }
 
 // ── 대표 오행 (오행도·십성 분포·구조 요약 공통) ─────────────────────
