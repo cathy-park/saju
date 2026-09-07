@@ -110,6 +110,45 @@ export interface RelationshipInteractionResult {
   progressReadinessNote: string;
   /** 두 사람 모두 개인 활성도가 낮고 커플 활성도도 낮은 "관계 저활성" 시기인지 */
   isLowActivityPeriod: boolean;
+  /**
+   * 방향성 배우자궁 안정 기여도(보조지표) — 기존 stability 산식·점수는 전혀 바꾸지 않고,
+   * stability에 이미 쓰이는 evidence 중 방향이 명확한 spousePalaceStrike(배우자궁 직접
+   * 합·충·형)만 A→B/B→A로 갈라서 다시 합산한 값이다. 삼합·방합(existingCrossReinforced/
+   * newCrossFormed)과 personalStabilitySync는 두 사람이 함께 만드는 구조라 방향이 없으므로
+   * 포함하지 않고, 용신·희신·기신(yongshinGisinCross)은 애초에 stability axis가 아니므로
+   * 포함하지 않는다. stabilityScore/stabilityLevel과는 별개의 값이며 그 계산에 영향을 주지
+   * 않는다.
+   */
+  directionalStability: DirectionalStabilitySummary;
+}
+
+/** 방향성 배우자궁 안정 기여도 한 방향분(A→B 또는 B→A). */
+export interface DirectionalStabilityEvidence {
+  label: string;
+  /** category cap 적용 전 원래 크기(항상 양수) */
+  magnitude: number;
+  direction: "우호" | "비우호" | "중립";
+}
+
+export interface DirectionalStabilityContribution {
+  fromName: string;
+  toName: string;
+  /**
+   * −30~+30(CATEGORY_CAPS.spousePalaceStrike를 이 방향에 독립 적용). 0은 "관계에 영향이
+   * 없다"는 뜻이 아니라 "방향 분리 가능한 배우자궁 직접 자극(합·충·형) evidence가 이
+   * 시기엔 없다"는 뜻이다 — hasEvidence로 두 경우를 구분한다.
+   */
+  score: number;
+  /** false면 score는 항상 0이고, 이는 "근거 없음"을 뜻한다(중립적으로 안정적이라는 뜻이 아님). */
+  hasEvidence: boolean;
+  evidence: DirectionalStabilityEvidence[];
+}
+
+export interface DirectionalStabilitySummary {
+  aToB: DirectionalStabilityContribution;
+  bToA: DirectionalStabilityContribution;
+  /** "누가 누구를 더 안정시키는 관계인지"를 한 줄로 요약 — stability 점수 자체를 대신하지 않는다. */
+  summary: string;
 }
 
 // 근거군별 절댓값 상한 — 같은 구조가 여러 경로로 잡혀도 한 카테고리가 점수를 과도하게
@@ -362,6 +401,68 @@ function pushCrossGroupStructures(
 }
 
 /**
+ * 방향성 배우자궁 안정 기여도(보조지표) — pushSpousePalaceStrikes(①)가 이미
+ * `${fromName}${label}→${toName}배우자궁` 형태로 방향을 source에 인코딩해두므로, 새로
+ * 계산하지 않고 그 문자열을 정확히 재구성해 factors를 필터링만 한다. 삼합·방합(③/⑦)과
+ * personalStabilitySync(⑥)는 두 사람이 함께 만드는 evidence라 방향이 없어 제외하고,
+ * yongshinGisinCross(④)는 axis에 stability가 없어 애초에 대상이 아니다.
+ * cap은 기존 CATEGORY_CAPS.spousePalaceStrike(30)를 새로 만들지 않고 그대로, 다만 기존
+ * axisTotal처럼 두 방향을 합쳐서 한 번 캡핑하는 게 아니라 방향마다 독립적으로 적용한다.
+ */
+function computeDirectionalStabilityContribution(
+  factors: RelationshipInteractionFactor[],
+  fromName: string,
+  toName: string,
+): DirectionalStabilityContribution {
+  const sourceKeys = new Set(
+    (["대운", "세운", "월운"] as const).map((label) => `${fromName}${label}→${toName}배우자궁`),
+  );
+  const evidence = factors.filter(
+    (f) => f.category === "spousePalaceStrike" && f.axis.includes("stability") && sourceKeys.has(f.source),
+  );
+  let raw = 0;
+  for (const f of evidence) {
+    raw += f.direction === "우호" ? f.magnitude : f.direction === "비우호" ? -f.magnitude : 0;
+  }
+  const cap = CATEGORY_CAPS.spousePalaceStrike;
+  const score = Math.max(-cap, Math.min(cap, raw));
+  return {
+    fromName,
+    toName,
+    score,
+    hasEvidence: evidence.length > 0,
+    evidence: evidence.map((f) => ({ label: f.label, magnitude: f.magnitude, direction: f.direction })),
+  };
+}
+
+function buildDirectionalStabilitySummary(
+  aName: string,
+  bName: string,
+  aToB: DirectionalStabilityContribution,
+  bToA: DirectionalStabilityContribution,
+): string {
+  if (!aToB.hasEvidence && !bToA.hasEvidence) {
+    return `이 시기엔 ${aName}·${bName} 어느 쪽에서도 상대의 배우자궁을 직접 자극하는 합·충·형 근거가 없어, 방향성 안정 기여도를 판단할 근거가 없습니다(관계에 영향이 없다는 뜻은 아닙니다).`;
+  }
+  if (aToB.hasEvidence && !bToA.hasEvidence) {
+    return `이 시기엔 ${aName} 쪽 대운·세운만 ${bName}의 배우자궁에 직접 영향을 주고 있어(${aToB.score >= 0 ? "안정" : "불안정"} 방향 ${aToB.score}점), 이 부분의 관계 안정성 변화는 주로 ${aName} 쪽 기운에서 비롯됩니다.`;
+  }
+  if (!aToB.hasEvidence && bToA.hasEvidence) {
+    return `이 시기엔 ${bName} 쪽 대운·세운만 ${aName}의 배우자궁에 직접 영향을 주고 있어(${bToA.score >= 0 ? "안정" : "불안정"} 방향 ${bToA.score}점), 이 부분의 관계 안정성 변화는 주로 ${bName} 쪽 기운에서 비롯됩니다.`;
+  }
+  if (aToB.score === bToA.score) {
+    return `${aName}·${bName} 양쪽이 서로의 배우자궁에 비슷한 크기(${aToB.score}점)로 영향을 주고 있습니다.`;
+  }
+  const aToBLabel = `${aName}→${bName}`;
+  const bToALabel = `${bName}→${aName}`;
+  const strongerLabel = aToB.score > bToA.score ? aToBLabel : bToALabel;
+  const weakerLabel = aToB.score > bToA.score ? bToALabel : aToBLabel;
+  const strongerScore = Math.max(aToB.score, bToA.score);
+  const weakerScore = Math.min(aToB.score, bToA.score);
+  return `${strongerLabel} 방향(${strongerScore}점)이 ${weakerLabel} 방향(${weakerScore}점)보다 안정 쪽에 더 가깝습니다 — 배우자궁 직접 자극(합·충·형) 근거만 반영한 보조지표이며, 전체 안정도(stability) 점수와는 다른 값입니다.`;
+}
+
+/**
  * 커플 관계 상호작용 core engine — 연도별·월별 계산이 서로 다른 공식이 되지 않도록,
  * 시간층(대운·세운·선택적 월운)을 받는 이 함수 하나만 실제 계산을 담당한다.
  * `computeRelationshipInteractionForYear`(연도별, 기존 API 그대로)와
@@ -510,12 +611,24 @@ function computeRelationshipInteractionCore(
     bActScore: bActivation?.activationScore ?? 0,
   });
 
+  // 방향성 배우자궁 안정 기여도(보조지표) — activation/harmony/stability/progressReadiness
+  // 계산이 전부 끝난 뒤, 이미 만들어진 factors만 방향별로 다시 필터링한다. 위 stabilityScore
+  // 계산에는 전혀 관여하지 않는다.
+  const directionalAToB = computeDirectionalStabilityContribution(factors, a.name, b.name);
+  const directionalBToA = computeDirectionalStabilityContribution(factors, b.name, a.name);
+  const directionalStability: DirectionalStabilitySummary = {
+    aToB: directionalAToB,
+    bToA: directionalBToA,
+    summary: buildDirectionalStabilitySummary(a.name, b.name, directionalAToB, directionalBToA),
+  };
+
   return {
     activationScore, activationLevel, harmonyScore, harmonyDirection, stabilityScore, stabilityLevel, factors, interpretation,
     progressReadinessLevel: progressReadiness.level,
     progressReadinessReasons: progressReadiness.reasons,
     progressReadinessNote: progressReadiness.note,
     isLowActivityPeriod: progressReadiness.isLowActivityPeriod,
+    directionalStability,
   };
 }
 

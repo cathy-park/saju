@@ -221,6 +221,113 @@ describe("두 사람 순서(swap) 대칭성", () => {
   });
 });
 
+describe("방향성 배우자궁 안정 기여도(보조지표): 기존 stability와 독립적으로 검증", () => {
+  it("기존 a/b fixture(2026)에서 activation/harmony/stability는 이 보조지표 추가 전과 bit-identical이고, directionalStability는 별도 필드로만 존재한다", () => {
+    const result = computeRelationshipInteractionByYearRange({ a, b, aSpouseCtx, bSpouseCtx, fromYear: 2026, count: 1 })[0].result;
+    // §4의 골든 스냅샷과 동일한 값 — 이 describe 블록 추가가 기존 계산에 아무 영향도 주지 않았음을 재확인.
+    expect({
+      activationScore: result.activationScore,
+      activationLevel: result.activationLevel,
+      harmonyScore: result.harmonyScore,
+      harmonyDirection: result.harmonyDirection,
+      stabilityScore: result.stabilityScore,
+      stabilityLevel: result.stabilityLevel,
+    }).toEqual({
+      activationScore: 72,
+      activationLevel: "높음",
+      harmonyScore: 83,
+      harmonyDirection: "조화",
+      stabilityScore: 62,
+      stabilityLevel: "보통",
+    });
+    expect(result.directionalStability.aToB.fromName).toBe("A");
+    expect(result.directionalStability.bToA.fromName).toBe("B");
+  });
+
+  it("directionalStability에는 spousePalaceStrike 중 stability axis를 가진 factor만 들어가고, 파·해·원진·삼합방합·개인동조·용신기신교차는 절대 섞이지 않는다", () => {
+    const months = computeMonthlyRelationshipInteractions({ a, b, aSpouseCtx, bSpouseCtx, year: 2026 });
+    const allLabels = months.flatMap((m) => [
+      ...m.result.directionalStability.aToB.evidence.map((e) => e.label),
+      ...m.result.directionalStability.bToA.evidence.map((e) => e.label),
+    ]);
+    for (const label of allLabels) {
+      const relType = ["충", "형", "합", "파", "해", "원진"].find((k) => label.includes(` ${k} (`));
+      expect(relType, `라벨에서 관계 종류를 못 찾음: ${label}`).toBeTruthy();
+      expect(["충", "형", "합"]).toContain(relType);
+    }
+  });
+
+  it("비대칭: A만 B의 배우자궁을 직접 자극하면 A→B만 evidence를 갖고 B→A는 0/hasEvidence=false다", () => {
+    const asymA: PersonInteractionContext = { name: "A", dayStem: "갑", dayBranch: "사", yongshin: "화", birthYear: 1990, daewoon: daewoonFixed("경", "오") };
+    const asymB: PersonInteractionContext = { name: "B", dayStem: "무", dayBranch: "자", yongshin: "토", birthYear: 1988, daewoon: daewoonFixed("신", "묘") };
+    const asymASpouseCtx = { dayStem: asymA.dayStem, dayBranch: asymA.dayBranch, allStems: [asymA.dayStem], gender: "여" as const, evaluations, yongshin: asymA.yongshin, birthYear: asymA.birthYear, daewoon: asymA.daewoon, seunEntries };
+    const asymBSpouseCtx = { dayStem: asymB.dayStem, dayBranch: asymB.dayBranch, allStems: [asymB.dayStem], gender: "남" as const, evaluations, yongshin: asymB.yongshin, birthYear: asymB.birthYear, daewoon: asymB.daewoon, seunEntries };
+    const result = computeRelationshipInteractionByYearRange({
+      a: asymA, b: asymB, aSpouseCtx: asymASpouseCtx, bSpouseCtx: asymBSpouseCtx, fromYear: 2026, count: 1,
+    })[0].result;
+    const ds = result.directionalStability;
+    expect(ds.aToB.hasEvidence).toBe(true);
+    expect(ds.aToB.score).toBe(-30);
+    expect(ds.aToB.evidence.length).toBe(2);
+    expect(ds.aToB.evidence.every((e) => e.direction === "비우호")).toBe(true);
+    expect(ds.bToA.hasEvidence).toBe(false);
+    expect(ds.bToA.score).toBe(0);
+    expect(ds.bToA.evidence.length).toBe(0);
+    expect(ds.summary).toContain("A 쪽 대운·세운만");
+  });
+
+  it("양방향: A→B, B→A 모두 evidence를 가지면 두 방향 모두 독립적으로 채워진다", () => {
+    const biA: PersonInteractionContext = { name: "A", dayStem: "갑", dayBranch: "자", yongshin: "화", birthYear: 1990, daewoon: daewoonFixed("경", "오") };
+    const biB: PersonInteractionContext = { name: "B", dayStem: "무", dayBranch: "오", yongshin: "토", birthYear: 1988, daewoon: daewoonFixed("신", "자") };
+    const biASpouseCtx = { dayStem: biA.dayStem, dayBranch: biA.dayBranch, allStems: [biA.dayStem], gender: "여" as const, evaluations, yongshin: biA.yongshin, birthYear: biA.birthYear, daewoon: biA.daewoon, seunEntries };
+    const biBSpouseCtx = { dayStem: biB.dayStem, dayBranch: biB.dayBranch, allStems: [biB.dayStem], gender: "남" as const, evaluations, yongshin: biB.yongshin, birthYear: biB.birthYear, daewoon: biB.daewoon, seunEntries };
+    const result = computeRelationshipInteractionByYearRange({
+      a: biA, b: biB, aSpouseCtx: biASpouseCtx, bSpouseCtx: biBSpouseCtx, fromYear: 2026, count: 1,
+    })[0].result;
+    const ds = result.directionalStability;
+    expect(ds.aToB.hasEvidence).toBe(true);
+    expect(ds.aToB.score).toBe(-16);
+    expect(ds.bToA.hasEvidence).toBe(true);
+    expect(ds.bToA.score).toBe(-15);
+    // 두 방향의 evidence가 서로 다른 factor 집합에서 나왔는지(교차 오염 없음) 확인.
+    expect(ds.aToB.evidence.every((e) => e.label.startsWith("A ") && e.label.includes("B 배우자궁"))).toBe(true);
+    expect(ds.bToA.evidence.every((e) => e.label.startsWith("B ") && e.label.includes("A 배우자궁"))).toBe(true);
+    expect(ds.summary).toContain("방향");
+  });
+
+  it("0건: 방향 분리 가능한 배우자궁 직접 자극 evidence가 아예 없으면 두 방향 모두 0/hasEvidence=false이고, summary는 '영향 없음'이 아니라 '근거 없음'으로 표현한다", () => {
+    const zeroA: PersonInteractionContext = { name: "A", dayStem: "갑", dayBranch: "묘", yongshin: "화", birthYear: 1990, daewoon: daewoonFixed("경", "사") };
+    const zeroB: PersonInteractionContext = { name: "B", dayStem: "무", dayBranch: "진", yongshin: "토", birthYear: 1988, daewoon: daewoonFixed("신", "축") };
+    const zeroASpouseCtx = { dayStem: zeroA.dayStem, dayBranch: zeroA.dayBranch, allStems: [zeroA.dayStem], gender: "여" as const, evaluations, yongshin: zeroA.yongshin, birthYear: zeroA.birthYear, daewoon: zeroA.daewoon, seunEntries };
+    const zeroBSpouseCtx = { dayStem: zeroB.dayStem, dayBranch: zeroB.dayBranch, allStems: [zeroB.dayStem], gender: "남" as const, evaluations, yongshin: zeroB.yongshin, birthYear: zeroB.birthYear, daewoon: zeroB.daewoon, seunEntries };
+    const result = computeRelationshipInteractionByYearRange({
+      a: zeroA, b: zeroB, aSpouseCtx: zeroASpouseCtx, bSpouseCtx: zeroBSpouseCtx, fromYear: 2026, count: 1,
+    })[0].result;
+    const ds = result.directionalStability;
+    expect(ds.aToB).toEqual({ fromName: "A", toName: "B", score: 0, hasEvidence: false, evidence: [] });
+    expect(ds.bToA).toEqual({ fromName: "B", toName: "A", score: 0, hasEvidence: false, evidence: [] });
+    expect(ds.summary).toContain("근거가 없습니다");
+    expect(ds.summary).toContain("관계에 영향이 없다는 뜻은 아닙니다");
+  });
+
+  it("cap 초과: 대운+세운+월운이 모두 같은 방향으로 겹치면 raw 합(37.5)이 기존 CATEGORY_CAPS.spousePalaceStrike(30)로 클리핑되지만 evidence 항목은 누락 없이 전부 보존된다", () => {
+    const capA: PersonInteractionContext = { name: "A", dayStem: "갑", dayBranch: "사", yongshin: "화", birthYear: 1990, daewoon: daewoonFixed("경", "오") };
+    const capB: PersonInteractionContext = { name: "B", dayStem: "무", dayBranch: "자", yongshin: "토", birthYear: 1988, daewoon: daewoonFixed("신", "묘") };
+    const capASpouseCtx = { dayStem: capA.dayStem, dayBranch: capA.dayBranch, allStems: [capA.dayStem], gender: "여" as const, evaluations, yongshin: capA.yongshin, birthYear: capA.birthYear, daewoon: capA.daewoon, seunEntries };
+    const capBSpouseCtx = { dayStem: capB.dayStem, dayBranch: capB.dayBranch, allStems: [capB.dayStem], gender: "남" as const, evaluations, yongshin: capB.yongshin, birthYear: capB.birthYear, daewoon: capB.daewoon, seunEntries };
+    const months = computeMonthlyRelationshipInteractions({ a: capA, b: capB, aSpouseCtx: capASpouseCtx, bSpouseCtx: capBSpouseCtx, year: 2026 });
+    const june = months.find((m) => m.month === 6)!;
+    expect(june.monthPillar).toBe("갑오");
+    const ds = june.result.directionalStability;
+    expect(ds.aToB.hasEvidence).toBe(true);
+    expect(ds.aToB.score).toBe(-30); // raw -37.5(대운15+세운15+월운7.5)가 cap(30)에 걸려 클리핑됨
+    expect(ds.aToB.evidence.length).toBe(3);
+    const rawSum = ds.aToB.evidence.reduce((sum, e) => sum + e.magnitude, 0);
+    expect(rawSum).toBe(37.5); // evidence 자체는 클리핑 이전 원본 그대로 보존
+    expect(ds.bToA.hasEvidence).toBe(false);
+  });
+});
+
 describe("선택적 입력 누락(개인 배우자궁·희신 없음)에도 안전하다", () => {
   it("dayBranch·heesin이 없는 사람도 크래시 없이 0~100 범위 결과를 낸다", () => {
     const noBranch: PersonInteractionContext = { name: "C", dayStem: "무", yongshin: "수", birthYear: 1995, daewoon: daewoonFixed("기", "축") };
