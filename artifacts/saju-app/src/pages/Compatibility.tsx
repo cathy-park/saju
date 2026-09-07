@@ -288,6 +288,21 @@ function ScoreArc({ score, accentColor, size = "lg" }: { score: number; accentCo
   );
 }
 
+/** 화면에 표시되는 퍼센타일 등급(PercentileGrade)을 그대로 색상 기준으로 쓰기 위한 매핑 —
+    레거시 점수 구간(gradeFromScore: 80/68/55/40) 기반 axis.tone과 별개로, 카드에 실제로
+    찍히는 등급 텍스트와 색상이 항상 같은 기준을 보도록 한다(계산 로직/등급 산식은 무변경,
+    색상 매핑 키만 percentile 등급으로 통일). 5단계 → GRADE_PALETTE의 5단계 톤에 순서대로 대응. */
+const PERCENTILE_GRADE_TONE: Record<PercentileGrade, CompatibilityTone> = {
+  "매우 좋은 편": "이상적 궁합",
+  "좋은 편": "좋은 궁합",
+  "보통": "노력형 궁합",
+  "다소 낮은 편": "긴장형 궁합",
+  "주의 필요": "주의 궁합",
+};
+function paletteForPercentileGrade(grade: PercentileGrade) {
+  return GRADE_PALETTE[PERCENTILE_GRADE_TONE[grade]];
+}
+
 /** 등급(PercentileGrade) → 5단계 별점 표시(★/☆ 배열). 히어로 카드의 기존 인라인 매핑과 동일한 값. */
 function starsForGrade(grade: PercentileGrade): string[] {
   const starCount = (
@@ -1346,11 +1361,13 @@ export default function Compatibility() {
                                 { emoji: "💕", label: "연애 궁합", final: result.romanceCompatibility.final, tone: result.romanceCompatibility.tone, model: "romance" },
                                 { emoji: "💍", label: "결혼 궁합", final: result.marriageCompatibility.final, tone: result.marriageCompatibility.tone, model: "marriage" },
                               ] as const).map((axis) => {
-                                const axisPalette = GRADE_PALETTE[axis.tone] ?? GRADE_PALETTE["노력형 궁합"];
                                 // [Phase 3 P1] 표시 텍스트는 legacy tone이 아니라 모델별 CDF
                                 // percentile 등급 · 상위 약 X%(안 3 하이브리드 포맷)를 쓴다.
-                                // 색상만 기존 axis.tone(legacy, 계산 자체는 그대로)을 재사용한다.
+                                // 색상도 텍스트와 같은 기준(percentile 등급)으로 통일한다 — legacy
+                                // axis.tone(80/68/55/40 구간)은 더 이상 색상에 쓰지 않는다(계산
+                                // 자체는 무변경, 색상 매핑 키만 percentile 등급으로 교체).
                                 const interp = getPurposeCompatibilityInterpretation(axis.model, axis.final);
+                                const axisPalette = paletteForPercentileGrade(interp.grade);
                                 return (
                                   <div key={axis.label} className="rounded-xl border border-border/60 bg-background/80 p-3 text-center space-y-1.5">
                                     <p className="text-[11px] font-semibold text-muted-foreground">{axis.emoji} {axis.label}</p>
