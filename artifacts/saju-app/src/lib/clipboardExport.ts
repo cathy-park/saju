@@ -955,21 +955,34 @@ export function buildPersonClipboardText(
     lines.push("");
     lines.push("어려운 한자어는 최대한 피하거나 반드시 쉽게 풀어서 설명하고, 희망적이고 긍정적인 조언을 중심으로 작성해 주세요.");
     lines.push("");
-    pushInterpretationConsistencyRules(lines);
+    lines.push("[영역별 해석 규칙 — 위 목차를 해석할 때 반드시 지킬 것]");
+    lines.push("- 커리어: 커리어 활성도(방향 무관 사건 크기)와 전개 방향(확장·성과 ↔ 압박·축소)을 분리해서 해석한다. 활성도가 높다고 성과가 좋다는 뜻으로 해석하지 않는다.");
+    lines.push("- 관성: 조직·책임 활성도와 작동 방향을 분리해서 해석한다.");
+    lines.push("- 재물: 활성도 / 유입 기회도 / 안정·축적도 3축을 반드시 함께 해석하고, 서로 합산하거나 하나로 뭉뚱그리지 않는다.");
+    lines.push("- 합격운: 시험·자격 / 채용·임용 / 공모·심사 세 유형은 서로 다른 산식으로 계산된 값이니 각각 따로 해석하고, 활성도와 방향을 함께 짚어준다. 점수가 높다고 합격 확률이 높다는 뜻으로 표현하지 않는다.");
+    lines.push("- 계약운: 체결 활성도 / 체결 방향 / 계약 수익성을 구분해서 해석하고, 체결운이 좋다고 수익성도 좋다는 뜻으로 해석하지 않는다.");
+    lines.push("- 결혼·배우자: 배우자·결혼 테마 활성도와 배우자궁 안정도를 반드시 분리해서 해석하고, 활성도가 높다는 이유만으로 결혼 적기나 연애 성사로 단정하지 않는다.");
+    lines.push("- 원국 구조 점수(재물 구조 종합·커리어 구조·격국 등 타고난 그릇)와 현재 대운·세운의 timing 점수(활성도·방향·유입도 등 지금 흐름)를 혼동하지 않는다.");
+    lines.push("");
+    pushInterpretationConsistencyRules(
+      lines,
+      "표현 방식은 달라질 수 있으나 좋음/보통/주의, 활성도/방향 등 개인 사주 영역별 점수와 방향을 뒤집지 않는다.",
+    );
   }
 
   return lines.join("\n");
 }
 
-/** [해석 일관성 규칙] — 제공된 계산 결과를 anchor로 고정하고 AI가 임의로 재계산·역전하지 않도록 하는 공통 지시. 개인·궁합 프롬프트 하단에 동일하게 붙인다. */
-function pushInterpretationConsistencyRules(lines: string[]): void {
+/** [해석 일관성 규칙] — 제공된 계산 결과를 anchor로 고정하고 AI가 임의로 재계산·역전하지 않도록 하는 공통 지시. 개인·궁합 프롬프트 하단에 동일하게 붙인다.
+ * directionRuleLine만 프롬프트 성격(개인/궁합)에 따라 달라지고 나머지 anchor·재계산 금지 규칙은 완전히 동일하다. */
+function pushInterpretationConsistencyRules(lines: string[], directionRuleLine: string): void {
   lines.push("---");
   lines.push("[해석 일관성 규칙]");
   lines.push("제공된 계산 점수·등급·관계 유형·evidence를 최우선 anchor로 사용한다.");
   lines.push("개인 사주의 강약 단계, 격국, 용신·희신·기신은 payload에 제공된 계산 결과와 anchor를 그대로 사용하며 AI가 일반 명리 지식으로 재판정하거나 다른 결과로 교체하지 않는다.");
   lines.push("이미 계산된 점수를 AI가 임의로 재계산하거나 상향·하향하지 않는다.");
   lines.push("동일 데이터라면 핵심 결론이 달라지지 않도록 한다.");
-  lines.push("표현 방식은 달라질 수 있으나 좋음/보통/주의, 활성/조화/안정, 인간관계/연애/결혼 궁합의 방향을 뒤집지 않는다.");
+  lines.push(directionRuleLine);
   lines.push("evidence가 상충할 경우 한쪽을 임의로 삭제하지 않고 \"우호 요인과 긴장 요인이 공존한다\"고 설명한다.");
   lines.push("코드 결과와 일반 명리 지식이 충돌하면 코드에서 제공된 구조 데이터를 우선하고, 필요하면 한계를 별도로 설명한다.");
 }
@@ -1288,7 +1301,10 @@ export function buildCompatibilityClipboardText(
   lines.push("- 개인용 운세(오늘운세, 커리어, 개인적 개운법 등)는 절대 중복 삽입하지 말 것.");
   lines.push("- 따뜻하고 상담하듯 자연스러운 문장식(산문)으로 작성할 것 (표 남용 금지).");
   lines.push("");
-  pushInterpretationConsistencyRules(lines);
+  pushInterpretationConsistencyRules(
+    lines,
+    "표현 방식은 달라질 수 있으나 좋음/보통/주의, 활성/조화/안정, 인간관계/연애/결혼 궁합의 방향을 뒤집지 않는다.",
+  );
 
   return lines.join("\n");
 }
