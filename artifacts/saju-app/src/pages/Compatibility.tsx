@@ -8,7 +8,7 @@ import type { AnyCompatibilityReport } from "@/lib/reports";
 import { getCompatibilityReport } from "@/lib/reports";
 import { COMPAT_TONE_COLOR } from "@/lib/compatibilityScore";
 import { getCompatibilityCardPolicy } from "@/lib/compatibilityDisplayPolicy";
-import { getPurposeCompatibilityInterpretation } from "@/lib/compatibilityInterpretation";
+import { getPurposeCompatibilityInterpretation, type PercentileGrade } from "@/lib/compatibilityInterpretation";
 import { toneClasses, toneTierFromScore, toneTierFromLevel, toneClassesNeutral, type ToneTier } from "@/lib/toneColors";
 
 const PROGRESS_READINESS_TONE: Record<"매우 낮음" | "낮음" | "보통" | "높음" | "매우 높음", ToneTier> = {
@@ -260,28 +260,40 @@ const GRADE_PALETTE: Record<CompatibilityTone, { cardBg: string; pastel: string;
 
 // ── Score Arc ─────────────────────────────────────────────────────
 
-function ScoreArc({ score, accentColor }: { score: number; accentColor: string }) {
+function ScoreArc({ score, accentColor, size = "lg" }: { score: number; accentColor: string; size?: "lg" | "md" }) {
   const r = 36;
   const circ = 2 * Math.PI * r;
   const dash = (score / 100) * circ * 0.75;
   const gap = circ - dash;
+  const boxClass = size === "md" ? "w-16 h-16" : "w-24 h-24";
+  const numClass = size === "md" ? "text-base" : "text-2xl";
+  const unitClass = size === "md" ? "text-[10px]" : "text-[13px]";
+  const strokeWidth = size === "md" ? "9" : "7";
   return (
-    <div className="relative flex items-center justify-center w-24 h-24 mx-auto">
+    <div className={`relative flex items-center justify-center mx-auto ${boxClass}`}>
       <svg viewBox="0 0 88 88" className="w-full h-full -rotate-[135deg]">
-        <circle cx="44" cy="44" r={r} fill="none" stroke="rgba(0,0,0,0.07)" strokeWidth="7"
+        <circle cx="44" cy="44" r={r} fill="none" stroke="rgba(0,0,0,0.07)" strokeWidth={strokeWidth}
           strokeDasharray={`${circ * 0.75} ${circ * 0.25}`} strokeLinecap="round" />
         <circle cx="44" cy="44" r={r} fill="none"
           stroke={accentColor}
-          strokeWidth="7"
+          strokeWidth={strokeWidth}
           strokeDasharray={`${dash} ${gap + circ * 0.25}`}
           strokeLinecap="round" />
       </svg>
       <div className="absolute flex flex-col items-center">
-        <span className="text-2xl font-bold leading-none" style={{ color: accentColor }}>{score}</span>
-        <span className="text-[13px] text-muted-foreground">점</span>
+        <span className={`font-bold leading-none ${numClass}`} style={{ color: accentColor }}>{score}</span>
+        <span className={`text-muted-foreground ${unitClass}`}>점</span>
       </div>
     </div>
   );
+}
+
+/** 등급(PercentileGrade) → 5단계 별점 표시(★/☆ 배열). 히어로 카드의 기존 인라인 매핑과 동일한 값. */
+function starsForGrade(grade: PercentileGrade): string[] {
+  const starCount = (
+    { "매우 좋은 편": 5, "좋은 편": 4, "보통": 3, "다소 낮은 편": 2, "주의 필요": 1 } as const
+  )[grade];
+  return Array.from({ length: 5 }, (_, i) => (i < starCount ? "★" : "☆"));
 }
 
 // ── Korean grammar particle helper ───────────────────────────────
@@ -759,6 +771,41 @@ function RelationBattery({ score, isPersonalLove, isFamily }: { score: number; i
     </div>
   );
 }
+
+/** 파스텔 카드형 "관계 무드" 요약 — 기존 heroInterpretation/moodLabel과 같은 소스 데이터를
+    카드형으로 보여주는 순수 표시용 컴포넌트(새 점수·새 판정 없음). */
+function SynergyMoodCard({
+  title,
+  subtitle,
+  accentColor,
+  pastelBg,
+  borderColor,
+}: {
+  title: string;
+  subtitle: string;
+  accentColor: string;
+  pastelBg: string;
+  borderColor: string;
+}) {
+  return (
+    <div
+      className="rounded-2xl border px-4 py-3.5 flex items-center gap-3"
+      style={{ background: pastelBg, borderColor }}
+    >
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/70 text-xl">
+        💕
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-[14px] font-extrabold leading-snug" style={{ color: accentColor }}>{title}</p>
+        <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">{subtitle}</p>
+      </div>
+      <div className="shrink-0 text-lg opacity-40" aria-hidden="true">💗</div>
+    </div>
+  );
+}
+
+// ── 오행 → 이모지 (Give & Take 카드 표시용) ─────────────────────────
+const ELEMENT_EMOJI: Record<string, string> = { 목: "🌳", 화: "🔥", 토: "⛰️", 금: "⚙️", 수: "💧" };
 
 // ── Main Page ─────────────────────────────────────────────────────
 
@@ -1305,11 +1352,22 @@ export default function Compatibility() {
                                 // 색상만 기존 axis.tone(legacy, 계산 자체는 그대로)을 재사용한다.
                                 const interp = getPurposeCompatibilityInterpretation(axis.model, axis.final);
                                 return (
-                                  <div key={axis.label} className="rounded-xl border border-border/60 bg-background/80 p-3 text-center">
-                                    <p className="text-[11px] text-muted-foreground">{axis.emoji} {axis.label}</p>
-                                    <p className="mt-1 text-2xl font-extrabold tracking-tight" style={{ color: axisPalette.badgeText }}>{axis.final}점</p>
+                                  <div key={axis.label} className="rounded-xl border border-border/60 bg-background/80 p-3 text-center space-y-1.5">
+                                    <p className="text-[11px] font-semibold text-muted-foreground">{axis.emoji} {axis.label}</p>
+                                    <ScoreArc score={axis.final} accentColor={axisPalette.badgeText} size="md" />
+                                    <div className="flex items-center justify-center gap-0.5">
+                                      {starsForGrade(interp.grade).map((s, i) => (
+                                        <span
+                                          key={i}
+                                          className="text-[12px]"
+                                          style={{ color: s === "★" ? axisPalette.badgeText : undefined }}
+                                        >
+                                          <span className={s === "★" ? "" : "text-muted-foreground/25"}>{s}</span>
+                                        </span>
+                                      ))}
+                                    </div>
                                     <span
-                                      className="mt-1 ds-badge rounded-xl border px-2 py-1 text-[10px] font-bold leading-tight shadow-none flex-col whitespace-normal"
+                                      className="ds-badge inline-flex rounded-xl border px-2 py-1 text-[10px] font-bold leading-tight shadow-none flex-col whitespace-normal"
                                       style={{ background: axisPalette.pastel, borderColor: axisPalette.border, color: axisPalette.badgeText }}
                                     >
                                       <span>{interp.grade}</span>
@@ -1322,6 +1380,35 @@ export default function Compatibility() {
                             <p className="text-[11px] leading-relaxed text-muted-foreground border-t border-border/40 pt-2">
                               세 점수는 서로 다른 산식(핵심축 가중치·보조 신호 구성이 다름)입니다 — 사람 대 사람 상성, 연애 상성, 결혼 상성을 각각 나타내며 평균이나 합산으로 만든 값이 아닙니다.
                             </p>
+
+                            {/* 관계 온도계 / 시너지 — 인간관계 궁합(humanCompatibility)을 대표 축으로
+                                삼아, 비연애 관계유형에서 이미 쓰던 것과 동일한 컴포넌트·데이터를
+                                카드형으로 노출한다(새 점수·새 판정 없음). */}
+                            {(() => {
+                              const humanInterp = getPurposeCompatibilityInterpretation("human", result.humanCompatibility.final);
+                              const humanPalette = GRADE_PALETTE[result.humanCompatibility.tone] ?? GRADE_PALETTE["노력형 궁합"];
+                              const romanceMoodLabel = (
+                                {
+                                  "매우 좋은 편": "💞 천생연분에 가까운 인연",
+                                  "좋은 편": "🌸 설렘과 안정이 공존하는 관계",
+                                  "보통": "🌊 끌리지만 조율이 필요한 관계",
+                                  "다소 낮은 편": "🔥 긴장과 자극이 공존하는 관계",
+                                  "주의 필요": "⚡ 차이가 크지만 성장할 수 있는 관계",
+                                } as const
+                              )[humanInterp.grade];
+                              return (
+                                <div className="space-y-3 border-t border-border/40 pt-3">
+                                  <RelationThermometer score={result.humanCompatibility.final} isPersonalLove={isPersonalLove} />
+                                  <SynergyMoodCard
+                                    title={romanceMoodLabel}
+                                    subtitle={humanInterp.contextLine}
+                                    accentColor={humanPalette.badgeText}
+                                    pastelBg={humanPalette.pastel}
+                                    borderColor={humanPalette.border}
+                                  />
+                                </div>
+                              );
+                            })()}
                           </div>
                         ) : (
                           /* 비연애 관계유형 — Human Compatibility를 대표 점수로 사용(totalScore를
@@ -1382,11 +1469,17 @@ export default function Compatibility() {
                           const hasGive = p1Comps.length > 0 || p2Comps.length > 0;
                           if (!hasGive) return null;
                           return (
-                            <div className="rounded-2xl border border-border/40 bg-white/60 px-4 py-3 space-y-2">
-                              <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">⚡ Give & Take 에너지 흐름</p>
+                            <div className="rounded-2xl border border-border/40 bg-gradient-to-br from-violet-50/70 via-white to-white px-4 py-3 space-y-2.5">
+                              <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">⚡ Give &amp; Take 에너지 흐름</p>
                               <div className="space-y-2">
                                 {p1Comps.length > 0 && (
-                                  <div className="flex items-center gap-2">
+                                  <div className="flex items-center gap-2.5 rounded-xl bg-white/70 px-2.5 py-2">
+                                    <div
+                                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-base"
+                                      style={getElCardStyle(p1Comps[0])}
+                                    >
+                                      {ELEMENT_EMOJI[p1Comps[0]] ?? "✨"}
+                                    </div>
                                     <span className="text-[12px] font-bold text-foreground shrink-0">{myName}</span>
                                     <span className="text-muted-foreground text-[11px]">→→</span>
                                     <span className="text-[12px] text-muted-foreground flex-1">
@@ -1396,7 +1489,13 @@ export default function Compatibility() {
                                   </div>
                                 )}
                                 {p2Comps.length > 0 && (
-                                  <div className="flex items-center gap-2">
+                                  <div className="flex items-center gap-2.5 rounded-xl bg-white/70 px-2.5 py-2">
+                                    <div
+                                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-base"
+                                      style={getElCardStyle(p2Comps[0])}
+                                    >
+                                      {ELEMENT_EMOJI[p2Comps[0]] ?? "✨"}
+                                    </div>
                                     <span className="text-[12px] font-bold text-foreground shrink-0">{otherName}</span>
                                     <span className="text-muted-foreground text-[11px]">→→</span>
                                     <span className="text-[12px] text-muted-foreground flex-1">
@@ -1409,6 +1508,60 @@ export default function Compatibility() {
                               {fullReport.elementComp.desc && (
                                 <p className="text-[12px] text-muted-foreground leading-relaxed border-t border-border/40 pt-2 mt-1">{fullReport.elementComp.desc}</p>
                               )}
+                            </div>
+                          );
+                        })()}
+
+                        {/* 방향성 배우자궁 안정 기여도(보조지표) — 위 "관계 상호작용도"의 안정도
+                            (stability) 점수를 만드는 근거 중 방향이 명확한 것(배우자궁 직접
+                            합·충·형)만 A→B/B→A로 나눠 보여주는 카드형 보조지표. 새 점수·새 산식이
+                            아니라 relationshipInteractionByYear[0](올해)의 기존 계산 결과를
+                            그대로 표시만 한다. */}
+                        {(() => {
+                          const ds = relationshipInteractionByYear[0]?.result.directionalStability;
+                          if (!ds) return null;
+                          const DirectionRow = ({ d }: { d: typeof ds.aToB }) => {
+                            const pct = Math.round((Math.abs(d.score) / 30) * 100);
+                            const positive = d.score > 0;
+                            const barColor = !d.hasEvidence ? "bg-muted-foreground/25" : positive ? "bg-emerald-400" : "bg-rose-400";
+                            const textColor = !d.hasEvidence ? "text-muted-foreground" : positive ? "text-emerald-600" : "text-rose-600";
+                            return (
+                              <div className="rounded-xl bg-white/70 px-3 py-2.5 space-y-1.5">
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="text-[12px] font-bold text-foreground">{d.fromName} → {d.toName}</span>
+                                  <span className={cn("text-[13px] font-extrabold", textColor)}>
+                                    {d.hasEvidence ? `${d.score > 0 ? "+" : ""}${d.score}점` : "근거 없음"}
+                                  </span>
+                                </div>
+                                <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+                                  <div className={cn("h-full rounded-full transition-all", barColor)} style={{ width: `${Math.max(pct, d.hasEvidence ? 4 : 0)}%` }} />
+                                </div>
+                                {d.evidence.length > 0 && (
+                                  <div className="flex flex-wrap gap-1 pt-0.5">
+                                    {d.evidence.map((e, i) => (
+                                      <span
+                                        key={i}
+                                        className={cn(
+                                          "rounded-full border px-2 py-0.5 text-[10px] font-medium",
+                                          e.direction === "우호" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-rose-200 bg-rose-50 text-rose-700",
+                                        )}
+                                      >
+                                        {e.label} {e.direction === "비우호" ? "-" : "+"}{e.magnitude}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          };
+                          return (
+                            <div className="rounded-2xl border border-border/40 bg-gradient-to-br from-rose-50/70 via-white to-white px-4 py-3 space-y-2.5">
+                              <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">🧭 방향성 배우자궁 안정 기여도</p>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                <DirectionRow d={ds.aToB} />
+                                <DirectionRow d={ds.bToA} />
+                              </div>
+                              <p className="text-[11px] leading-relaxed text-muted-foreground border-t border-border/40 pt-2">{ds.summary}</p>
                             </div>
                           );
                         })()}
