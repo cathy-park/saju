@@ -5,7 +5,7 @@
 import type { EvidenceItem, ZiweiChart } from "../types";
 import { extractSpouseEvidence, type SpouseEvidenceBundle } from "../spouseEvidence";
 import { synthesizeText, type InterpretationFact } from "./interpretationFacts";
-import { romanceStyleFacts, attractionPointFacts, romanceCautionFacts, type RomanceDomain } from "./romanceFacts";
+import { attractionFacts, expressionFacts, conflictFacts, managementFacts, type RomanceDomain } from "./romanceFacts";
 import type { Confidence, SpouseStatement } from "./spouseReport";
 
 export type RomanceReportSectionKey = RomanceDomain | "finalProfile";
@@ -17,9 +17,10 @@ export interface RomanceReportSection {
 }
 
 const SECTION_TITLES: Record<RomanceReportSectionKey, string> = {
-  romanceStyle: "연애 스타일",
-  attractionPoint: "끌리는 포인트",
-  romanceCaution: "연애에서 주의할 점",
+  attraction: "끌리는 포인트",
+  expression: "표현 방식",
+  conflict: "갈등 대응",
+  management: "관계 운영",
   finalProfile: "최종 연애 프로필",
 };
 
@@ -38,6 +39,7 @@ function buildFinalProfile(evidence: SpouseEvidenceBundle): RomanceReportSection
   const majorEvidence: EvidenceItem[] = [
     ...mingGong.majorStars.map((s) => ({ type: "star" as const, value: `${s.name}@${mingGong.palace}` })),
     ...(fude ? fude.majorStars.map((s) => ({ type: "star" as const, value: `${s.name}@${fude.palace}` })) : []),
+    ...evidence.oppositePalace.majorStars.map((s) => ({ type: "star" as const, value: `${s.name}@${evidence.oppositePalace.palace}` })),
   ];
   const sihuaEvidence: EvidenceItem[] = evidence.sihuaInScope.map((s) => ({
     type: "transformation" as const, value: `${s.kind}(${s.star})@${s.palace}`,
@@ -47,7 +49,7 @@ function buildFinalProfile(evidence: SpouseEvidenceBundle): RomanceReportSection
     key: "finalProfile",
     title: SECTION_TITLES.finalProfile,
     statements: [{
-      text: "지금까지 살펴본 연애 스타일·끌리는 포인트·주의할 점은 모두 아래에 정리된 구조적 근거에서 나온 것입니다.",
+      text: "지금까지 살펴본 끌리는 포인트·표현 방식·갈등 대응·관계 운영은 모두 아래에 정리된 구조적 근거에서 나온 것입니다.",
       evidence: [{ type: "palace", value: mingGong.palace }, ...majorEvidence, ...sihuaEvidence],
       confidence: "high",
       facts: [],
@@ -64,9 +66,10 @@ export interface RomanceReport {
 export function buildRomanceReport(chart: ZiweiChart, personName: string): RomanceReport {
   const evidence = extractSpouseEvidence(chart);
   const sections: RomanceReportSection[] = [
-    { key: "romanceStyle", title: SECTION_TITLES.romanceStyle, statements: synthesizeStatements(romanceStyleFacts(evidence)) },
-    { key: "attractionPoint", title: SECTION_TITLES.attractionPoint, statements: synthesizeStatements(attractionPointFacts(evidence)) },
-    { key: "romanceCaution", title: SECTION_TITLES.romanceCaution, statements: synthesizeStatements(romanceCautionFacts(evidence)) },
+    { key: "attraction", title: SECTION_TITLES.attraction, statements: synthesizeStatements(attractionFacts(evidence)) },
+    { key: "expression", title: SECTION_TITLES.expression, statements: synthesizeStatements(expressionFacts(evidence)) },
+    { key: "conflict", title: SECTION_TITLES.conflict, statements: synthesizeStatements(conflictFacts(evidence)) },
+    { key: "management", title: SECTION_TITLES.management, statements: synthesizeStatements(managementFacts(evidence)) },
     buildFinalProfile(evidence),
   ];
   return { personName, spouseEvidence: evidence, sections };
