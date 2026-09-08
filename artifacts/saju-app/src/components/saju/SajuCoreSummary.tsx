@@ -2,101 +2,13 @@ import { useEffect, useMemo, useState } from "react";
 import type { SajuPipelineResult } from "@/lib/sajuPipeline";
 import type { BranchRelation } from "@/lib/branchRelations";
 import type { ShinsalInterpretationEntry } from "@/lib/shinsalInterpretation";
-import { buildSajuSummarySections, type SajuEvidenceItem, type SajuSummarySection } from "@/lib/sajuSummaryFacts";
+import { buildSajuSummarySections } from "@/lib/sajuSummaryFacts";
 import { createPolishRequestCache } from "@/lib/prosePolish";
+import { SajuSummaryBlock } from "@/components/saju/SajuSummaryUI";
 
 const PROSE_TOPIC = "sajuSummary";
 
-const CATEGORY_LABEL: Record<SajuEvidenceItem["category"], string> = {
-  strength: "강약",
-  gukguk: "격국",
-  yongshin: "용신·희신",
-  fiveElement: "오행",
-  tenGod: "십성",
-  interaction: "합충형파해원진",
-  shinsal: "신살",
-  ruleInsight: "규칙",
-  natal: "원국",
-  daewoon: "대운",
-  saeun: "세운",
-  wolun: "월운",
-  compatScore: "궁합 점수",
-  compatDetail: "궁합 세부",
-  compatAxis: "배우자 구조축",
-  compatMarriage: "결혼 관점",
-};
-
-function evidenceLabel(e: SajuEvidenceItem): string {
-  return `[${CATEGORY_LABEL[e.category]}] ${e.label}`;
-}
-
-const PREVIEW_COUNT = 8;
-
 const requestPolishedTexts = createPolishRequestCache(PROSE_TOPIC);
-
-/** 사주 전용 근거 토글 — 자미두수의 EvidenceToggle과 UI 톤은 맞추되, saju 쪽 evidence
- * 타입(SajuEvidenceItem)을 직접 쓴다(계산·타입 모두 자미두수 모듈에 의존하지 않기 위함 —
- * 12단계 UI 대정리 때 공용 컴포넌트로 합칠 수 있다). 10단계(월별운세 요약)부터 export해서
- * SajuMonthlySummary.tsx가 새 토글을 복제하지 않고 그대로 재사용한다 — factors[] 형태 차이는
- * 호출 쪽 adapter(sajuMonthlyFacts.ts)가 SajuEvidenceItem으로 변환해서 흡수한다. */
-export function SajuEvidenceToggle({ evidence }: { evidence: SajuEvidenceItem[] }) {
-  const [open, setOpen] = useState(false);
-  const [showAll, setShowAll] = useState(false);
-  if (evidence.length === 0) return null;
-
-  const hasMore = evidence.length > PREVIEW_COUNT;
-  const shown = showAll ? evidence : evidence.slice(0, PREVIEW_COUNT);
-
-  return (
-    <div className="mt-1.5">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="text-xs text-primary underline underline-offset-2"
-      >
-        {open ? "근거 숨기기" : "[왜 이런 결과인가요?]"}
-      </button>
-      {open && (
-        <div className="mt-2 rounded-lg border border-border/60 bg-muted/40 p-2.5">
-          <div className="flex flex-wrap gap-1.5">
-            {shown.map((e, i) => (
-              <span key={i} className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
-                {evidenceLabel(e)}
-              </span>
-            ))}
-          </div>
-          {hasMore && (
-            <button
-              type="button"
-              onClick={() => setShowAll((v) => !v)}
-              className="mt-2 text-[11px] font-semibold text-primary underline underline-offset-2"
-            >
-              {showAll
-                ? `근거 ${evidence.length}개 · 전체 표시 — 접기`
-                : `근거 ${evidence.length}개 · ${PREVIEW_COUNT}개 표시 — 전체보기`}
-            </button>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function SectionCard({ section, polishedText }: { section: SajuSummarySection; polishedText?: string }) {
-  return (
-    <div className="ds-card ds-card-pad shadow-none">
-      <h3 className="text-base font-bold text-foreground">{section.title}</h3>
-      {section.text ? (
-        <>
-          <p className="mt-2 text-sm text-foreground leading-relaxed">{polishedText ?? section.text}</p>
-          <SajuEvidenceToggle evidence={section.evidence} />
-        </>
-      ) : (
-        <p className="mt-2 text-sm text-muted-foreground">이 주제에 대한 근거가 부족합니다.</p>
-      )}
-    </div>
-  );
-}
 
 export function SajuCoreSummary({
   personId, pipeline, branchRelations, shinsalEntries,
@@ -145,14 +57,12 @@ export function SajuCoreSummary({
   }, [sectionsContentKey, personId]);
 
   return (
-    <div className="ds-stack-2">
-      <p className="ds-caption font-semibold uppercase tracking-wide">원국 핵심 요약</p>
-      {sections
-        // main fact가 0개인 섹션은 generic filler로 채우지 않고 카드 자체를 숨긴다(대표 지시).
-        .filter((section) => section.facts.length > 0)
-        .map((section) => (
-          <SectionCard key={section.key} section={section} polishedText={polishedTexts[section.key]} />
-        ))}
-    </div>
+    <SajuSummaryBlock
+      caption="원국 핵심 요약"
+      polishedTexts={polishedTexts}
+      sections={sections.map((s) => ({
+        key: s.key, title: s.title, text: s.text, evidence: s.evidence, hasFacts: s.facts.length > 0,
+      }))}
+    />
   );
 }

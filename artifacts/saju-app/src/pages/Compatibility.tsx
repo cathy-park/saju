@@ -9,6 +9,7 @@ import { getCompatibilityReport } from "@/lib/reports";
 import { COMPAT_TONE_COLOR } from "@/lib/compatibilityScore";
 import { getCompatibilityCardPolicy } from "@/lib/compatibilityDisplayPolicy";
 import { SajuCompatibilitySummary } from "@/components/saju/SajuCompatibilitySummary";
+import { CardAccordion } from "@/components/ui/section-accordion";
 import { getPurposeCompatibilityInterpretation, type PercentileGrade } from "@/lib/compatibilityInterpretation";
 import { toneClasses, toneTierFromScore, toneTierFromLevel, toneClassesNeutral, type ToneTier } from "@/lib/toneColors";
 
@@ -505,70 +506,6 @@ function ElementMirror({ name1, el1, dayStem1, name2, el2 }: {
           </div>
         );
       })}
-    </div>
-  );
-}
-
-// ── Accordion Section ─────────────────────────────────────────────
-
-function AccSection({
-  title,
-  defaultOpen = false,
-  children,
-}: {
-  title: string;
-  defaultOpen?: boolean;
-  children: React.ReactNode;
-}) {
-  const [open, setOpen] = useState(defaultOpen);
-  return (
-    <div className="scroll-mt-4 border-t border-border/40 pt-1">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between py-3 text-left group min-w-0"
-      >
-        <span className="text-[13px] font-bold uppercase tracking-widest text-muted-foreground transition-colors group-hover:text-foreground">
-          {title}
-        </span>
-        <ChevronDown
-          className={cn(
-            "ml-2 h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200",
-            open && "rotate-180",
-          )}
-        />
-      </button>
-      <div className={cn("space-y-4 pb-2", !open && "hidden")}>{children}</div>
-    </div>
-  );
-}
-
-function CardAccordion({
-  title,
-  defaultOpen = false,
-  children,
-}: {
-  title: string;
-  defaultOpen?: boolean;
-  children: React.ReactNode;
-}) {
-  const [open, setOpen] = useState(defaultOpen);
-  return (
-    <div className="rounded-xl border border-border overflow-hidden">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between px-4 py-3 bg-muted/20 hover:bg-muted/35 transition-colors"
-      >
-        <span className="text-sm font-bold text-foreground">{title}</span>
-        <ChevronDown
-          className={cn(
-            "h-4 w-4 text-muted-foreground transition-transform duration-200",
-            open && "rotate-180",
-          )}
-        />
-      </button>
-      {open && <div className="p-4 space-y-4">{children}</div>}
     </div>
   );
 }
@@ -1642,14 +1579,10 @@ export default function Compatibility() {
               )}
 
               {/* ── 2. 관계 구조 분석: 섹션 pastel → 카드/네스티드 white ── */}
-                <div className="ds-card overflow-hidden shadow-none">
-                  <div className="border-b border-border bg-muted/20 px-4 py-3">
-                    <h2 className="text-sm font-bold text-foreground">관계 구조 분석</h2>
-                    <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">
-                      천간·지지의 연결 고리, 오행 균형, 십성 시선(나→상대/상대→나)을 한 흐름으로 정리했습니다.
-                    </p>
-                  </div>
-                  <div className="space-y-4 p-4">
+                <CardAccordion title="관계 구조 분석" defaultOpen={false}>
+                  <p className="-mt-2 mb-2 text-[11px] leading-relaxed text-muted-foreground">
+                    천간·지지의 연결 고리, 오행 균형, 십성 시선(나→상대/상대→나)을 한 흐름으로 정리했습니다.
+                  </p>
                   <div>
                     <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">천간 관계</p>
                     <div className="ds-inline-detail-nested space-y-2">
@@ -1853,8 +1786,7 @@ export default function Compatibility() {
                       </div>
                     </div>
                   </div>
-                </div>
-                </div>
+                </CardAccordion>
 
               {/* ── 배우자 구조 비교: 스냅샷 3축 교차 해석(보조·메인 점수 미반영) ── */}
               {isPersonalLove && result.spouseStructureAxisComparison && (() => {
@@ -1868,14 +1800,14 @@ export default function Compatibility() {
                   return `${otherName}${ptcl(otherName, "이", "가")} 더 높음`;
                 };
                 return (
-                  <div className="ds-card overflow-hidden shadow-none border-rose-200/50 bg-rose-50/25 dark:border-rose-900/35 dark:bg-rose-950/20">
-                    <div className="border-b border-border bg-muted/20 px-4 py-3">
-                      <h2 className="text-sm font-bold text-foreground">배우자 구조 비교</h2>
-                      <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">
+                  <CardAccordion
+                    title="배우자 구조 비교"
+                    defaultOpen={false}
+                    className="border-rose-200/50 bg-rose-50/25 dark:border-rose-900/35 dark:bg-rose-950/20"
+                  >
+                      <p className="-mt-2 mb-2 text-[11px] leading-relaxed text-muted-foreground">
                         원국 스냅샷으로 각자의 현실·정서·매력 축을 뽑은 뒤, 갭·방향·유지/만족을 교차 해석한 보조 섹션입니다. 위 궁합 점수(기준 50+7조정)에는 반영되지 않습니다.
                       </p>
-                    </div>
-                    <div className="space-y-4 p-4">
                       {(
                         [
                           { axis: "practical" as const, label: "현실 궁합" },
@@ -1938,8 +1870,7 @@ export default function Compatibility() {
                           </p>
                         </div>
                       </div>
-                    </div>
-                  </div>
+                  </CardAccordion>
                 );
               })()}
 
@@ -1950,14 +1881,15 @@ export default function Compatibility() {
                   { name: otherName, data: timing.person2 },
                 ];
                 return (
-                  <div className="ds-card overflow-hidden shadow-none border-rose-200/50 bg-rose-50/25 dark:border-rose-900/35 dark:bg-rose-950/20">
-                    <div className="border-b border-border bg-muted/20 px-4 py-3">
-                      <h2 className="text-sm font-bold text-foreground">결혼운 시기 힌트 비교</h2>
-                      <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">
+                  <CardAccordion
+                    title="결혼운 시기 힌트 비교"
+                    defaultOpen={false}
+                    className="border-rose-200/50 bg-rose-50/25 dark:border-rose-900/35 dark:bg-rose-950/20"
+                  >
+                      <p className="-mt-2 mb-2 text-[11px] leading-relaxed text-muted-foreground">
                         각자의 현재 대운 안에서 세운별 배우자·결혼 테마 활성도를 계산했습니다. 활성도가 높다고 결혼 적기라는 뜻은 아니며, 활성도×안정도 조합으로 시기의 성격을 구분해서 봐야 합니다.
                       </p>
-                    </div>
-                    <div className="space-y-5 p-4">
+                      <div className="space-y-5">
                       {people.map(({ name, data }) => (
                         <div key={name} className="ds-inline-detail-nested space-y-2.5">
                           <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
@@ -1994,21 +1926,22 @@ export default function Compatibility() {
                           </div>
                         </div>
                       ))}
-                    </div>
-                  </div>
+                      </div>
+                  </CardAccordion>
                 );
               })()}
 
               {/* ── 시주 제외 비교 (중립 카드 + 흰 nested) ── */}
               {hasHourExcluded && resultBase && result && (
-                  <div className="ds-card overflow-hidden shadow-none border-violet-200/70 bg-violet-50/35 dark:border-violet-900/40 dark:bg-violet-950/20">
-                    <div className="border-b border-border bg-muted/20 px-4 py-3">
-                      <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">시주 포함·제외</p>
-                      <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">
-                        시주를 제외하면 점수가 달라질 수 있어요. 같은 기준에서 비교해 드립니다.
-                      </p>
-                    </div>
-                    <div className="ds-card-pad space-y-2">
+                  <CardAccordion
+                    title="시주 포함·제외"
+                    defaultOpen={false}
+                    className="border-violet-200/70 bg-violet-50/35 dark:border-violet-900/40 dark:bg-violet-950/20"
+                  >
+                    <p className="-mt-2 mb-2 text-[11px] leading-relaxed text-muted-foreground">
+                      시주를 제외하면 점수가 달라질 수 있어요. 같은 기준에서 비교해 드립니다.
+                    </p>
+                    <div className="space-y-2">
                       <div className="flex items-center gap-2">
                         <div className="ds-inline-detail-nested flex-1 space-y-0 py-2 text-center">
                           <p className="ds-caption">시주 포함</p>
@@ -2047,7 +1980,7 @@ export default function Compatibility() {
                         </div>
                       )}
                     </div>
-                  </div>
+                  </CardAccordion>
               )}
 
               {/* ── 3. 관계 해석 ── */}
@@ -2372,7 +2305,7 @@ export default function Compatibility() {
 
               {/* ── 현재 관계 흐름 (상세 이후) ── */}
               {flowA && flowB && combinedFlow && (
-                <CardAccordion title="현재 관계 흐름" defaultOpen={true}>
+                <CardAccordion title="현재 관계 흐름" defaultOpen={false}>
                   <div className="grid grid-cols-2 gap-2">
                     {([
                       { flow: flowA, gender: myGender },

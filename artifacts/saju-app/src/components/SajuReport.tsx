@@ -41,6 +41,7 @@ import { computePersonPipelineSnapshot } from "@/lib/personPipelineSnapshot";
 import { computeSajuPipeline } from "@/lib/sajuPipeline";
 import { SajuCoreSummary } from "@/components/saju/SajuCoreSummary";
 import { SajuMonthlySummary } from "@/components/saju/SajuMonthlySummary";
+import { AccSection, CardAccordion } from "@/components/ui/section-accordion";
 import {
   computeSpouseActivationByYearRange,
   type SpouseActivationYearEntry,
@@ -195,51 +196,6 @@ const BRANCH_SIGN: Record<string, string> = {
   진: "+토", 사: "+화", 오: "-화", 미: "-토",
   신: "+금", 유: "-금", 술: "+토", 해: "-수",
 };
-
-// ── AccSection ─────────────────────────────────────────────────────
-
-function AccSection({
-  title,
-  defaultOpen = false,
-  titleExtra,
-  children,
-  id,
-}: {
-  title: string;
-  defaultOpen?: boolean;
-  titleExtra?: React.ReactNode;
-  children: React.ReactNode;
-  /** 스크롤 앵커(핵심 한눈에 보기 등) */
-  id?: string;
-}) {
-  const [open, setOpen] = useState(defaultOpen);
-  return (
-    <div id={id} className="scroll-mt-4 border-t border-border/40 pt-1">
-      <div className="flex items-center">
-        <button
-          onClick={() => setOpen((v) => !v)}
-          className="flex-1 flex items-center justify-between py-3 group min-w-0"
-        >
-          <span className="text-[13px] font-bold text-muted-foreground uppercase tracking-widest group-hover:text-foreground transition-colors">
-            {title}
-          </span>
-          <ChevronDown
-            className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ml-2 shrink-0 ${
-              open ? "rotate-180" : ""
-            }`}
-          />
-        </button>
-        {titleExtra && (
-          <div className="pl-2 shrink-0" onClick={(e) => e.stopPropagation()}>
-            {titleExtra}
-          </div>
-        )}
-      </div>
-      <div className={`space-y-4 pb-2 ${open ? "" : "hidden"}`}>{children}</div>
-    </div>
-  );
-}
-
 
 // ── PillarTable ────────────────────────────────────────────────────
 
@@ -6136,7 +6092,7 @@ export function SajuReport({ record, showSaveStatus = false, hourMode: parentHou
 
           {/* 연애·관계 구조 (오늘운세 탭에서 이동) */}
           {(complementary || marriageTiming || relationshipPattern) && (
-            <AccSection title="연애·관계 구조" defaultOpen>
+            <AccSection title="연애·관계 구조" defaultOpen={false}>
               <div className="space-y-3">
                 {complementary && (
                   <Card className="border-pink-100">
@@ -6328,24 +6284,23 @@ export function SajuReport({ record, showSaveStatus = false, hourMode: parentHou
             />
           )}
 
+          {(() => {
+            const timingLabelPrefix =
+              selectedLuckTab === "일운" && selectedIlunDay != null
+                ? `${selectedWolun.year}년 ${selectedWolun.month}월 ${selectedIlunDay}일`
+                : selectedLuckTab === "월운"
+                  ? `${selectedWolun.year}년 ${selectedWolun.month}월`
+                  : `${selectedSeunYear}년`;
+            return (
+          <>
           {sajuPipelineResult?.timingActivation && sajuPipelineResult.evaluations && (
-            <div className="ds-card overflow-hidden shadow-none border-border/80">
-              <div className="border-b border-border px-4 pb-2 pt-4">
-                <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                  {selectedLuckTab === "일운" && selectedIlunDay != null
-                    ? `${selectedWolun.year}년 ${selectedWolun.month}월 ${selectedIlunDay}일`
-                    : selectedLuckTab === "월운"
-                      ? `${selectedWolun.year}년 ${selectedWolun.month}월`
-                      : `${selectedSeunYear}년`}{" "}
-                  구조·운 가중 (timingActivation)
-                </h3>
-                <p className="mt-1 text-[11px] text-muted-foreground leading-relaxed">
+            <CardAccordion title={`${timingLabelPrefix} 구조·운 가중 (timingActivation)`} defaultOpen={false}>
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
                   원국 점수는 그대로 두고, 위에서 지금 보고 있는 탭({selectedLuckTab}) 기준 시점의 대운·세운
                   {selectedLuckTab === "월운" || selectedLuckTab === "일운" ? "·월운" : ""}
                   {selectedLuckTab === "일운" ? "·일운" : ""} 간지로 활성도만 가중한 값입니다.
                 </p>
-              </div>
-              <div className="ds-card-pad space-y-2 text-[13px] leading-relaxed">
+              <div className="space-y-2 text-[13px] leading-relaxed">
                 <div className="rounded-lg border border-border/60 bg-muted/10 px-3 py-2 space-y-1.5">
                   <div className={cn("flex items-center justify-between rounded-md px-2 py-1", toneClassesNeutral(sajuPipelineResult.careerActivation.activationLevel).box)}>
                     <span className={cn("font-semibold", toneClassesNeutral(sajuPipelineResult.careerActivation.activationLevel).text)}>💼 커리어 활성도</span>
@@ -6422,24 +6377,14 @@ export function SajuReport({ record, showSaveStatus = false, hourMode: parentHou
                   </span>
                 </p>
               </div>
-            </div>
+            </CardAccordion>
           )}
           {sajuPipelineResult?.examCareerActivation && (
-            <div className="ds-card overflow-hidden shadow-none border-border/80">
-              <div className="border-b border-border px-4 pb-2 pt-4">
-                <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                  {selectedLuckTab === "일운" && selectedIlunDay != null
-                    ? `${selectedWolun.year}년 ${selectedWolun.month}월 ${selectedIlunDay}일`
-                    : selectedLuckTab === "월운"
-                      ? `${selectedWolun.year}년 ${selectedWolun.month}월`
-                      : `${selectedSeunYear}년`}{" "}
-                  🎯 합격운
-                </h3>
-                <p className="mt-1 text-[11px] text-muted-foreground leading-relaxed">
+            <CardAccordion title={`${timingLabelPrefix} 🎯 합격운`} defaultOpen={false}>
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
                   시험·자격 / 채용·임용·조직 선발 / 공모·심사·발표형 선발을 서로 다른 구조로 나눠 계산합니다. 활성도가 높다고 해서 "합격 가능성 높음"을 뜻하지 않습니다 — 사건이 얼마나 부각되는지와 그 방향(우호/부담)을 함께 참고하세요.
                 </p>
-              </div>
-              <div className="ds-card-pad space-y-2 text-[13px] leading-relaxed">
+              <div className="space-y-2 text-[13px] leading-relaxed">
                 {([
                   ["examCert", "📖 시험·자격"],
                   ["hiring", "🏢 채용·임용·조직 선발"],
@@ -6470,24 +6415,14 @@ export function SajuReport({ record, showSaveStatus = false, hourMode: parentHou
                   {sajuPipelineResult.examCareerActivation.dayMasterCapacityNote}
                 </p>
               </div>
-            </div>
+            </CardAccordion>
           )}
           {sajuPipelineResult?.contractActivation && (
-            <div className="ds-card overflow-hidden shadow-none border-border/80">
-              <div className="border-b border-border px-4 pb-2 pt-4">
-                <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                  {selectedLuckTab === "일운" && selectedIlunDay != null
-                    ? `${selectedWolun.year}년 ${selectedWolun.month}월 ${selectedIlunDay}일`
-                    : selectedLuckTab === "월운"
-                      ? `${selectedWolun.year}년 ${selectedWolun.month}월`
-                      : `${selectedSeunYear}년`}{" "}
-                  📝 계약운
-                </h3>
-                <p className="mt-1 text-[11px] text-muted-foreground leading-relaxed">
+            <CardAccordion title={`${timingLabelPrefix} 📝 계약운`} defaultOpen={false}>
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
                   식상(제안·협상)·재성(거래·대가)·관성(공식성·책임)·인성(계약서·문서·승인) 네 축을 함께 봅니다. 활성도가 높다는 이유만으로 "계약 성사"를 뜻하지 않으며, 체결운과 수익성은 서로 다른 축이라 방향이 어긋날 수 있습니다.
                 </p>
-              </div>
-              <div className="ds-card-pad space-y-2 text-[13px] leading-relaxed">
+              <div className="space-y-2 text-[13px] leading-relaxed">
                 <div className="rounded-lg border border-border/60 bg-muted/10 px-3 py-2 space-y-1.5">
                   <div className={cn("flex items-center justify-between rounded-md px-2 py-1", toneClassesNeutral(sajuPipelineResult.contractActivation.activationLevel).box)}>
                     <span className={cn("font-semibold", toneClassesNeutral(sajuPipelineResult.contractActivation.activationLevel).text)}>📝 계약 체결운 활성도</span>
@@ -6517,24 +6452,14 @@ export function SajuReport({ record, showSaveStatus = false, hourMode: parentHou
                   </p>
                 )}
               </div>
-            </div>
+            </CardAccordion>
           )}
           {sajuPipelineResult?.spouseActivation && (
-            <div className="ds-card overflow-hidden shadow-none border-rose-200/70">
-              <div className="border-b border-border px-4 pb-2 pt-4">
-                <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                  {selectedLuckTab === "일운" && selectedIlunDay != null
-                    ? `${selectedWolun.year}년 ${selectedWolun.month}월 ${selectedIlunDay}일`
-                    : selectedLuckTab === "월운"
-                      ? `${selectedWolun.year}년 ${selectedWolun.month}월`
-                      : `${selectedSeunYear}년`}{" "}
-                  배우자·결혼 테마 활성도
-                </h3>
-                <p className="mt-1 text-[11px] text-muted-foreground leading-relaxed">
+            <CardAccordion title={`${timingLabelPrefix} 배우자·결혼 테마 활성도`} defaultOpen={false} className="border-rose-200/70">
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
                   위 "배우자궁 안정" 점수(관계 운영 난이도)와는 다른 축입니다. 활성도는 이 시기에 배우자·연애·결혼 문제가 얼마나 강하게 전면화되는지를 보여줍니다 — 안정도가 낮다고 활성도까지 낮은 건 아니에요.
                 </p>
-              </div>
-              <div className="ds-card-pad space-y-3 text-[13px] leading-relaxed">
+              <div className="space-y-3 text-[13px] leading-relaxed">
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between rounded-lg bg-rose-50/60 border border-rose-100 px-3 py-2">
                     <span className="font-semibold text-rose-700">❤️ 배우자·결혼 활성도</span>
@@ -6582,8 +6507,11 @@ export function SajuReport({ record, showSaveStatus = false, hourMode: parentHou
                   ※ "결혼하기 좋은 해"를 판정하는 점수가 아니라, 배우자·연애·결혼 관련 사건·고민·결단이 얼마나 강하게 움직이는 시기인지를 보여주는 참고 지표입니다.
                 </p>
               </div>
-            </div>
+            </CardAccordion>
           )}
+          </>
+            );
+          })()}
         </div>
       )}
 
