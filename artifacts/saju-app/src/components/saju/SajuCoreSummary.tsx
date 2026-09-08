@@ -103,7 +103,7 @@ export function SajuCoreSummary({
   // 섹션당 정확히 1회, 총 6회만 호출한다. facts는 이미 deterministic하게 완성돼 있고, AI는
   // 자연어 표현만 다듬을 뿐 새 해석을 추가하지 않는다(서버 프롬프트가 이미 강제).
   // 원국 페이지는 초기 로드 중 여러 비동기 계산이 순차 완료되며 sections가 잠깐씩 여러 번
-  // 바뀔 수 있어, 값이 안정된 뒤(400ms 무변동) 한 번만 호출하도록 디바운스한다.
+  // 바뀔 수 있어, 값이 안정된 뒤(1200ms 무변동) 한 번만 호출하도록 디바운스한다.
   const [polishedTexts, setPolishedTexts] = useState<Record<string, string>>({});
   useEffect(() => {
     let cancelled = false;
@@ -116,7 +116,7 @@ export function SajuCoreSummary({
           setPolishedTexts((prev) => ({ ...prev, [section.key]: result.text }));
         });
       }
-    }, 400);
+    }, 1200);
     return () => { cancelled = true; clearTimeout(timer); };
   }, [sections, personId]);
 
