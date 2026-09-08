@@ -1,7 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { buildZiweiChart } from "../buildZiweiChart";
 import { zhongzhouV1 } from "../ruleSets/zhongzhouV1";
-import { yearToStem, derivePalaceBranch, computeRelationshipTimingSignals } from "../timingEngine";
+import {
+  yearToStem, derivePalaceBranch, computeRelationshipTimingSignals, computeTimingHighlights,
+} from "../timingEngine";
 import { PARK_SOYEON_BIRTH } from "./fixtures/parkSoyeon";
 
 const years = Array.from({ length: 10 }, (_, i) => 2024 + i);
@@ -80,6 +82,42 @@ describe("timingEngine — 근거 데이터만 산출(자연어 문장 없음)",
     const hongluan2027 = ev2027.match(/紅鸞\(流年\)@(.)/)?.[1];
     if (hongluan2026 && hongluan2027) {
       expect(hongluan2026).not.toBe(hongluan2027);
+    }
+  });
+
+  it("evidence의 source 태그는 표시용 metadata일 뿐 점수·판정 로직에 영향을 주지 않는다(2029=己년, 박소연 기준)", () => {
+    const [signal] = computeRelationshipTimingSignals(chart, zhongzhouV1, [2029]);
+    // 大限夫妻宮/삼방 중첩(stability)은 major, 流年 관련 근거(activation/formalization/volatility)는
+    // annual로 태깅된다 — 이 엔진은 natal 단독 근거를 만들지 않으므로 natal 태그는 등장하지 않는다.
+    for (const e of signal.stability.evidence) {
+      if (e.type === "period") expect(e.source).toBe("major");
+    }
+    for (const e of [...signal.activation.evidence, ...signal.formalization.evidence, ...signal.volatility.evidence]) {
+      expect(e.source === "annual" || e.source === undefined).toBe(true);
+    }
+    const allSources = [signal.activation, signal.stability, signal.formalization, signal.volatility]
+      .flatMap((axis) => axis.evidence.map((e) => e.source));
+    expect(allSources).not.toContain("natal");
+
+    // source 태그를 다 지워도 점수는 그대로다(순수 metadata라는 증거).
+    const stripped = JSON.parse(JSON.stringify(signal));
+    for (const axis of ["activation", "stability", "formalization", "volatility"] as const) {
+      for (const e of stripped[axis].evidence) delete e.source;
+    }
+    expect(stripped.activation.score).toBe(signal.activation.score);
+    expect(stripped.stability.score).toBe(signal.stability.score);
+  });
+
+  it("computeTimingHighlights: 임계치(1.5) 이상인 축만 해당 연도 목록에 들어간다", () => {
+    const signals = computeRelationshipTimingSignals(chart, zhongzhouV1, years);
+    const highlights = computeTimingHighlights(signals);
+    for (const year of highlights.activationYears) {
+      const s = signals.find((x) => x.year === year)!;
+      expect(s.activation.score).toBeGreaterThanOrEqual(1.5);
+    }
+    for (const year of highlights.stabilityYears) {
+      const s = signals.find((x) => x.year === year)!;
+      expect(s.stability.score).toBeGreaterThanOrEqual(1.5);
     }
   });
 });

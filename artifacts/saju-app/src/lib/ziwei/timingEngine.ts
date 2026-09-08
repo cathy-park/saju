@@ -111,21 +111,21 @@ function timingSignalForYear(chart: ZiweiChart, ruleSet: RuleSet, year: number):
 
   // 大限夫妻宮 — 直接 중첩 vs 三方四正 진입을 다른 weight로, stability 축에 반영.
   if (majorSpouseBranch === natalSpouseBranch) {
-    add(stability, WEIGHT.majorDirectOverlap, { type: "period", value: `大限夫妻宮=${majorSpouseBranch}(원국 夫妻宮 직접 중첩)` });
+    add(stability, WEIGHT.majorDirectOverlap, { type: "period", value: `大限夫妻宮=${majorSpouseBranch}(원국 夫妻宮 직접 중첩)`, source: "major" });
   } else if (sanfangBranches.has(majorSpouseBranch)) {
-    add(stability, WEIGHT.majorSanfangOverlap, { type: "period", value: `大限夫妻宮=${majorSpouseBranch}(원국 삼방사정 진입)` });
+    add(stability, WEIGHT.majorSanfangOverlap, { type: "period", value: `大限夫妻宮=${majorSpouseBranch}(원국 삼방사정 진입)`, source: "major" });
   }
 
   // 流年夫妻宮 — 直接 중첩 vs 三方四正 진입을 다른 weight로, activation 축에 반영.
   if (annualSpouseBranch === natalSpouseBranch) {
-    add(activation, WEIGHT.annualDirectOverlap, { type: "period", value: `流年夫妻宮=${annualSpouseBranch}(원국 夫妻宮 직접 중첩)` });
+    add(activation, WEIGHT.annualDirectOverlap, { type: "period", value: `流年夫妻宮=${annualSpouseBranch}(원국 夫妻宮 직접 중첩)`, source: "annual" });
   } else if (sanfangBranches.has(annualSpouseBranch)) {
-    add(activation, WEIGHT.annualSanfangOverlap, { type: "period", value: `流年夫妻宮=${annualSpouseBranch}(원국 삼방사정 진입)` });
+    add(activation, WEIGHT.annualSanfangOverlap, { type: "period", value: `流年夫妻宮=${annualSpouseBranch}(원국 삼방사정 진입)`, source: "annual" });
   }
 
   // 그 해의 流年宮 자체가 夫妻宮/官祿(對宮) 축과 같은 지지에 놓이는지 — formalization.
   if (annualPeriod.branch === natalSpouseBranch || annualPeriod.branch === spouseEvidence.oppositePalace.branch) {
-    add(formalization, WEIGHT.annualPalaceFormalization, { type: "period", value: `流年宮 branch=${annualPeriod.branch}(夫妻/官祿 축과 일치)` });
+    add(formalization, WEIGHT.annualPalaceFormalization, { type: "period", value: `流年宮 branch=${annualPeriod.branch}(夫妻/官祿 축과 일치)`, source: "annual" });
   }
 
   // 流年四化 — 化祿/化權/化科/化忌를 각각 다른 축에 개별 반영(하나로 합치지 않음).
@@ -138,7 +138,7 @@ function timingSignalForYear(chart: ZiweiChart, ruleSet: RuleSet, year: number):
     const branch = starToBranch[star];
     if (!branch || !sanfangBranches.has(branch)) continue;
     const natalPalace = chart.palaces.find((p) => p.branch === branch)!.palace;
-    const ev: EvidenceItem = { type: "transformation", value: `${kind}(${star})@${natalPalace}` };
+    const ev: EvidenceItem = { type: "transformation", value: `${kind}(${star})@${natalPalace}`, source: "annual" };
     if (kind === "化祿") {
       add(activation, WEIGHT.luActivation, ev);
       add(formalization, WEIGHT.luFormalization, ev);
@@ -157,7 +157,7 @@ function timingSignalForYear(chart: ZiweiChart, ruleSet: RuleSet, year: number):
   const annualSpousePalaceObj = chart.palaces.find((p) => p.branch === annualSpouseBranch)!;
   for (const star of annualSpousePalaceObj.minorStars) {
     if (star.name !== "擎羊" && star.name !== "陀羅") continue;
-    const ev: EvidenceItem = { type: "star", value: `${star.name}@${annualSpousePalaceObj.palace}(流年夫妻宮)` };
+    const ev: EvidenceItem = { type: "star", value: `${star.name}@${annualSpousePalaceObj.palace}(流年夫妻宮)`, source: "annual" };
     add(activation, WEIGHT.yangTuoActivation, ev);
     add(volatility, WEIGHT.yangTuoVolatility, ev);
     add(stability, -WEIGHT.yangTuoStabilityPenalty, ev);
@@ -167,7 +167,7 @@ function timingSignalForYear(chart: ZiweiChart, ruleSet: RuleSet, year: number):
   const annualHongluanTianxi = computeHongluanTianxi(yearToBranch(year));
   (Object.entries(annualHongluanTianxi) as [string, Branch][]).forEach(([name, branch]) => {
     if (branch === annualSpouseBranch || branch === natalSpouseBranch) {
-      add(activation, WEIGHT.hongluanTianxiActivation, { type: "star", value: `${name}(流年)@${branch}` });
+      add(activation, WEIGHT.hongluanTianxiActivation, { type: "star", value: `${name}(流年)@${branch}`, source: "annual" });
     }
   });
 
@@ -180,4 +180,34 @@ export function computeRelationshipTimingSignals(
   years: number[],
 ): RelationshipTimingSignal[] {
   return years.map((year) => timingSignalForYear(chart, ruleSet, year));
+}
+
+/** notableYears 단일 목록(활성·안정·공식화가 모두 양수인 해)을 폐기하고, 축의 "목적"별로
+ * 분류한다 — 활성도가 높다고 결혼 적기라는 뜻이 아니므로(대표 원칙 유지), 어떤 성격의 신호인지
+ * 구분해서 보여준다. 한 해가 여러 카테고리에 동시에 들어갈 수 있다. spouseReport.ts와
+ * marriageTimingReport.ts가 공유하는 순수 함수 — 리포트마다 이 로직을 다시 구현하지 않는다. */
+export interface TimingHighlights {
+  /** 활성도 점수가 뚜렷한 해 — 사건성/움직임이 있는 해(결혼과 무관할 수도 있음). */
+  activationYears: number[];
+  /** 안정도 점수가 뚜렷한 해 — 관계가 안정적으로 유지·지속되는 기반이 있는 해. */
+  stabilityYears: number[];
+  /** 공식화 점수가 뚜렷한 해 — 관계가 주변에 드러나거나 절차적으로 정리되는 신호가 있는 해. */
+  formalizationYears: number[];
+  /** 변곡점 — 변동성 점수가 높아 갈등·불안정 신호에 특히 주의가 필요한 해. */
+  volatilityYears: number[];
+}
+
+/** 가중치 설계상 "직접 신호 1개 이상"에 해당하는 최소 점수. */
+export const TIMING_HIGHLIGHT_THRESHOLD = 1.5;
+
+export function computeTimingHighlights(
+  signals: RelationshipTimingSignal[],
+  threshold: number = TIMING_HIGHLIGHT_THRESHOLD,
+): TimingHighlights {
+  return {
+    activationYears: signals.filter((s) => s.activation.score >= threshold).map((s) => s.year),
+    stabilityYears: signals.filter((s) => s.stability.score >= threshold).map((s) => s.year),
+    formalizationYears: signals.filter((s) => s.formalization.score >= threshold).map((s) => s.year),
+    volatilityYears: signals.filter((s) => s.volatility.score >= threshold).map((s) => s.year),
+  };
 }

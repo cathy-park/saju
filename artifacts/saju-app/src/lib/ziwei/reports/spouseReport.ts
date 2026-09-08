@@ -6,7 +6,10 @@
 // 재사용되지 않도록 domain ownership을 분리했다.
 import type { EvidenceItem, ZiweiChart } from "../types";
 import { extractSpouseEvidence, type SpouseEvidenceBundle } from "../spouseEvidence";
-import { computeRelationshipTimingSignals, type RelationshipTimingSignal } from "../timingEngine";
+import {
+  computeRelationshipTimingSignals, computeTimingHighlights,
+  type RelationshipTimingSignal, type TimingHighlights,
+} from "../timingEngine";
 import { zhongzhouV1 } from "../ruleSets/zhongzhouV1";
 import {
   synthesizeText,
@@ -90,22 +93,6 @@ function buildFinalProfile(evidence: SpouseEvidenceBundle): SpouseReportSection 
   };
 }
 
-/** notableYears 단일 목록(활성·안정·공식화가 모두 양수인 해)을 폐기하고, 축의 "목적"별로
- * 분류한다 — 활성도가 높다고 결혼 적기라는 뜻이 아니므로(대표 원칙 유지), 어떤 성격의 신호인지
- * 구분해서 보여준다. 한 해가 여러 카테고리에 동시에 들어갈 수 있다. */
-export interface TimingHighlights {
-  /** 활성도 점수가 뚜렷한 해 — 사건성/움직임이 있는 해(결혼과 무관할 수도 있음). */
-  activationYears: number[];
-  /** 안정도 점수가 뚜렷한 해 — 관계가 안정적으로 유지·지속되는 기반이 있는 해. */
-  stabilityYears: number[];
-  /** 공식화 점수가 뚜렷한 해 — 관계가 주변에 드러나거나 절차적으로 정리되는 신호가 있는 해. */
-  formalizationYears: number[];
-  /** 변곡점 — 변동성 점수가 높아 갈등·불안정 신호에 특히 주의가 필요한 해. */
-  volatilityYears: number[];
-}
-
-const HIGHLIGHT_THRESHOLD = 1.5; // 가중치 설계상 "직접 신호 1개 이상"에 해당하는 최소 점수
-
 export interface SpouseTimingSection {
   title: string;
   signals: RelationshipTimingSignal[];
@@ -123,12 +110,7 @@ export function spouseReportTimingYears(): number[] {
 function buildTimingSection(chart: ZiweiChart): SpouseTimingSection {
   const years = spouseReportTimingYears();
   const signals = computeRelationshipTimingSignals(chart, zhongzhouV1, years);
-  const highlights: TimingHighlights = {
-    activationYears: signals.filter((s) => s.activation.score >= HIGHLIGHT_THRESHOLD).map((s) => s.year),
-    stabilityYears: signals.filter((s) => s.stability.score >= HIGHLIGHT_THRESHOLD).map((s) => s.year),
-    formalizationYears: signals.filter((s) => s.formalization.score >= HIGHLIGHT_THRESHOLD).map((s) => s.year),
-    volatilityYears: signals.filter((s) => s.volatility.score >= HIGHLIGHT_THRESHOLD).map((s) => s.year),
-  };
+  const highlights: TimingHighlights = computeTimingHighlights(signals);
   return { title: "결혼 활성 시기(연도별 신호)", signals, highlights };
 }
 

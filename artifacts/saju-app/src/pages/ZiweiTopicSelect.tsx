@@ -9,7 +9,7 @@ const TOPICS: { key: string; label: string; ready: boolean; icon?: typeof Heart 
   { key: "wealth",        label: "재물",         ready: true  },
   { key: "career",        label: "커리어",       ready: true  },
   { key: "romance",       label: "연애",         ready: true  },
-  { key: "marriageTiming",label: "결혼시기",     ready: false },
+  { key: "marriageTiming",label: "결혼시기",     ready: true  },
 ];
 
 function findPerson(personId: string) {

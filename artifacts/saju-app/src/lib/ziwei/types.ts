@@ -96,6 +96,9 @@ export interface ZiweiChart {
 export interface EvidenceItem {
   type: "palace" | "star" | "transformation" | "period";
   value: string;
+  /** 이 근거가 어느 시간축에서 나왔는지(원국/大限/流年) — 판정·점수 로직과 무관한 표시용
+   * metadata다. timingEngine처럼 시기별 근거를 만드는 곳만 채우고, 나머지는 항상 undefined다. */
+  source?: "natal" | "major" | "annual";
 }
 
 export interface InterpretedStatement {
