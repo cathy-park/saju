@@ -17,7 +17,10 @@ export type InterpretationDomain =
 
 export interface InterpretationFact {
   id: string;
-  domain: InterpretationDomain;
+  /** 주제별 fact 생성기(spouse/wealth/...)가 자유롭게 정의하는 도메인 태그 — 이 파일은
+   * 夫妻宮 배우자 주제의 InterpretationDomain만 쓰지만, 다른 주제(재물 등)의 생성기도 같은
+   * InterpretationFact 타입과 synthesizeText를 재사용할 수 있도록 string으로 열어둔다. */
+  domain: string;
   meaning: string;
   polarity: Polarity;
   strength: number;
