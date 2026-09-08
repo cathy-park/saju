@@ -24,6 +24,35 @@ function evidenceLabel(e: SajuEvidenceItem): string {
 
 const PREVIEW_COUNT = 8;
 
+/** content key(섹션 텍스트 조합) → 다듬어진 문장 Promise. 모듈 스코프에 둬서, 컴포넌트가
+ * 언마운트·재마운트돼도(예: 로그인 직후 auth 동기화가 끝나며 상위에서 record 객체를 통째로
+ * 새로 만들어 리마운트가 한 번 발생하는 경우) 같은 내용에 대해 네트워크 요청을 다시 보내지
+ * 않는다. React state와 달리 언마운트로 사라지지 않는다. */
+const polishRequestCache = new Map<string, Promise<Record<string, string>>>();
+
+function requestPolishedTexts(
+  sections: SajuSummarySection[],
+  contentKey: string,
+): Promise<Record<string, string>> {
+  const cached = polishRequestCache.get(contentKey);
+  if (cached) return cached;
+
+  const promise = (async () => {
+    const results: Record<string, string> = {};
+    await Promise.all(
+      sections.map(async (section) => {
+        if (section.facts.length === 0) return;
+        const result = await polishStatementText(section.facts, section.text, PROSE_TOPIC, section.key);
+        if (result.source !== "fallback") results[section.key] = result.text;
+      }),
+    );
+    return results;
+  })();
+
+  polishRequestCache.set(contentKey, promise);
+  return promise;
+}
+
 /** 사주 전용 근거 토글 — 자미두수의 EvidenceToggle과 UI 톤은 맞추되, saju 쪽 evidence
  * 타입(SajuEvidenceItem)을 직접 쓴다(계산·타입 모두 자미두수 모듈에 의존하지 않기 위함 —
  * 12단계 UI 대정리 때 공용 컴포넌트로 합칠 수 있다). */
@@ -94,16 +123,6 @@ export function SajuCoreSummary({
   branchRelations: BranchRelation[];
   shinsalEntries: ShinsalInterpretationEntry[];
 }) {
-  // TEMP DEBUG (9단계 후속 audit, 검증 후 제거 예정)
-  useEffect(() => {
-    // eslint-disable-next-line no-console
-    console.log("[sajuSummaryDebug] MOUNT", Date.now());
-    return () => {
-      // eslint-disable-next-line no-console
-      console.log("[sajuSummaryDebug] UNMOUNT", Date.now());
-    };
-  }, []);
-
   const sections = useMemo(
     () => buildSajuSummarySections(pipeline, branchRelations, shinsalEntries),
     [pipeline, branchRelations, shinsalEntries],
@@ -120,25 +139,22 @@ export function SajuCoreSummary({
   );
 
   // AI 문장 다듬기 — 자미두수와 동일한 공통 구조(polishStatementText, sourceHash 캐시) 재사용.
-  // 섹션당 정확히 1회, 총 6회만 호출한다. facts는 이미 deterministic하게 완성돼 있고, AI는
-  // 자연어 표현만 다듬을 뿐 새 해석을 추가하지 않는다(서버 프롬프트가 이미 강제).
-  // 원국 페이지는 초기 로드 중 여러 비동기 계산이 순차 완료되며 sections가 잠깐씩 여러 번
-  // 바뀔 수 있어, 값이 안정된 뒤(1200ms 무변동) 한 번만 호출하도록 디바운스한다.
+  // facts는 이미 deterministic하게 완성돼 있고, AI는 자연어 표현만 다듬을 뿐 새 해석을
+  // 추가하지 않는다(서버 프롬프트가 이미 강제).
+  //
+  // 이 페이지는 로그인 직후 auth↔DB 동기화가 끝나는 시점(useAuth의 dbSynced)에 상위에서
+  // record 객체를 통째로 새로 만들어, 내용은 같아도 이 컴포넌트가 한 번 언마운트→재마운트된다
+  // (실측: SajuReport.tsx 리렌더가 아니라 진짜 마운트/언마운트 사이클). useEffect는 마운트마다
+  // 항상 한 번 실행되므로 내부 메모이제이션만으로는 막을 수 없어, 요청 자체를 모듈 스코프
+  // 캐시(polishRequestCache, content key 기준)로 중복 제거한다 — 언마운트를 넘어 유지된다.
+  // 1200ms 디바운스는 위 재마운트가 몰리는 짧은 구간 동안 화면이 깜빡이지 않도록 유지한다.
   const [polishedTexts, setPolishedTexts] = useState<Record<string, string>>({});
   useEffect(() => {
-    // TEMP DEBUG (9단계 후속 audit, 검증 후 제거 예정)
-    // eslint-disable-next-line no-console
-    console.log("[sajuSummaryDebug] effect fired", Date.now(), "personId=", personId, "keyLen=", sectionsContentKey.length, "keyFull=", sectionsContentKey);
     let cancelled = false;
     const timer = setTimeout(() => {
-      setPolishedTexts({});
-      for (const section of sections) {
-        if (section.facts.length === 0) continue;
-        polishStatementText(section.facts, section.text, PROSE_TOPIC, section.key).then((result) => {
-          if (cancelled || result.source === "fallback") return;
-          setPolishedTexts((prev) => ({ ...prev, [section.key]: result.text }));
-        });
-      }
+      requestPolishedTexts(sections, sectionsContentKey).then((results) => {
+        if (!cancelled) setPolishedTexts(results);
+      });
     }, 1200);
     return () => { cancelled = true; clearTimeout(timer); };
     // sections 참조가 아니라 sectionsContentKey(내용)로만 재실행 여부를 판단한다.
