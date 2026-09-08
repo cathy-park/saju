@@ -56,7 +56,9 @@ function synthesizeStatements(facts: InterpretationFact[]): SpouseStatement[] {
   const text = synthesizeText(facts);
   const evidence = facts.flatMap((f) => f.evidence);
   const borrowed = facts.some((f) => f.meaning.includes("借星"));
-  const confidence: Confidence = borrowed ? "low" : facts.length >= 3 ? "high" : "medium";
+  // 상위 패턴으로 압축된 fact는 evidence 개수가 fact 개수보다 훨씬 많을 수 있으므로(예: 만남 환경
+  // 2개 fact가 5개 별 evidence를 합친 것), fact 개수 대신 evidence 총량으로 신뢰도를 판단한다.
+  const confidence: Confidence = borrowed ? "low" : evidence.length >= 3 ? "high" : "medium";
   return [{ text, evidence, confidence, facts }];
 }
 
@@ -98,12 +100,26 @@ function buildFinalProfile(evidence: SpouseEvidenceBundle): SpouseReportSection 
   };
 }
 
+/** notableYears 단일 목록(활성·안정·공식화가 모두 양수인 해)을 폐기하고, 축의 "목적"별로
+ * 분류한다 — 활성도가 높다고 결혼 적기라는 뜻이 아니므로(대표 원칙 유지), 어떤 성격의 신호인지
+ * 구분해서 보여준다. 한 해가 여러 카테고리에 동시에 들어갈 수 있다. */
+export interface TimingHighlights {
+  /** 활성도 점수가 뚜렷한 해 — 사건성/움직임이 있는 해(결혼과 무관할 수도 있음). */
+  activationYears: number[];
+  /** 안정도 점수가 뚜렷한 해 — 관계가 안정적으로 유지·지속되는 기반이 있는 해. */
+  stabilityYears: number[];
+  /** 공식화 점수가 뚜렷한 해 — 관계가 주변에 드러나거나 절차적으로 정리되는 신호가 있는 해. */
+  formalizationYears: number[];
+  /** 변곡점 — 변동성 점수가 높아 갈등·불안정 신호에 특히 주의가 필요한 해. */
+  volatilityYears: number[];
+}
+
+const HIGHLIGHT_THRESHOLD = 1.5; // 가중치 설계상 "직접 신호 1개 이상"에 해당하는 최소 점수
+
 export interface SpouseTimingSection {
   title: string;
   signals: RelationshipTimingSignal[];
-  /** activation·stability·formalization 3축 점수가 모두 양수인 해만 "참고해볼 만한 해"로 표시
-   * (결혼 확정 예측 아님 — 대표 원칙 유지). */
-  notableYears: number[];
+  highlights: TimingHighlights;
 }
 
 /** buildZiweiChart(..., annualYears) 호출 시 넘겨야 하는 연도 범위 — 이 리포트의 결혼 활성
@@ -117,10 +133,13 @@ export function spouseReportTimingYears(): number[] {
 function buildTimingSection(chart: ZiweiChart): SpouseTimingSection {
   const years = spouseReportTimingYears();
   const signals = computeRelationshipTimingSignals(chart, zhongzhouV1, years);
-  const notableYears = signals
-    .filter((s) => s.activation.score > 0 && s.stability.score > 0 && s.formalization.score > 0)
-    .map((s) => s.year);
-  return { title: "결혼 활성 시기(연도별 신호)", signals, notableYears };
+  const highlights: TimingHighlights = {
+    activationYears: signals.filter((s) => s.activation.score >= HIGHLIGHT_THRESHOLD).map((s) => s.year),
+    stabilityYears: signals.filter((s) => s.stability.score >= HIGHLIGHT_THRESHOLD).map((s) => s.year),
+    formalizationYears: signals.filter((s) => s.formalization.score >= HIGHLIGHT_THRESHOLD).map((s) => s.year),
+    volatilityYears: signals.filter((s) => s.volatility.score >= HIGHLIGHT_THRESHOLD).map((s) => s.year),
+  };
+  return { title: "결혼 활성 시기(연도별 신호)", signals, highlights };
 }
 
 export interface SpouseReport {

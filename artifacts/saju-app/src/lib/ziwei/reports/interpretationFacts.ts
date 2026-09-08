@@ -7,6 +7,8 @@ import type { EvidenceItem, Palace, PalaceName, StarPlacement } from "../types";
 import type { SpouseEvidenceBundle } from "../spouseEvidence";
 import {
   MAJOR_STAR_MEANINGS, SIHUA_MEANINGS, AUXILIARY_MEANINGS, type Polarity, type StarMeaning,
+  MEETING_PATTERN_BY_STAR, MEETING_PATTERN_TEXT, type MeetingPattern,
+  CAREER_PATTERN_BY_STAR, CAREER_PATTERN_TEXT, type CareerPattern,
 } from "./starInterpretations";
 
 export type InterpretationDomain =
@@ -117,23 +119,35 @@ export function appearanceFacts(evidence: SpouseEvidenceBundle): InterpretationF
   return finalize("appearance", drafts);
 }
 
-/** 직업·사회적 위치 — 夫妻宮 + 官祿축(對宮) + 三方. */
+function clusterByPattern<TPattern extends string>(
+  palaces: Palace[],
+  patternByStar: Record<string, TPattern>,
+): Map<TPattern, EvidenceItem[]> {
+  const byPattern = new Map<TPattern, EvidenceItem[]>();
+  for (const p of palaces) {
+    for (const star of [...p.majorStars, ...p.minorStars]) {
+      const pattern = patternByStar[star.name];
+      if (!pattern) continue;
+      const list = byPattern.get(pattern) ?? [];
+      list.push(starEvidence(star.name, p.palace));
+      byPattern.set(pattern, list);
+    }
+  }
+  return byPattern;
+}
+
+/** 직업·사회적 위치 — 夫妻宮 본궁은 그대로 개별 반영하고, 官祿축(對宮)+三方은 별 하나하나를
+ * 다 나열하지 않고 2~3개 상위 패턴(전문성/사회적 지위·귀인/도전)으로 압축한다. */
 export function careerFacts(evidence: SpouseEvidenceBundle): InterpretationFact[] {
   const drafts: FactDraft[] = [];
   const { stars, sourcePalace, borrowed } = resolveGoverningMajors(evidence);
   for (const star of stars) {
     push(drafts, "career", MAJOR_STAR_MEANINGS[star.name]?.career, [starEvidence(star.name, sourcePalace)], borrowed ? "(對宮 借星)" : undefined);
   }
-  for (const star of evidence.oppositePalace.majorStars) {
-    push(drafts, "career", MAJOR_STAR_MEANINGS[star.name]?.career, [starEvidence(star.name, evidence.oppositePalace.palace)], `(官祿軸 ${evidence.oppositePalace.palace})`);
-  }
-  for (const star of evidence.oppositePalace.minorStars) {
-    push(drafts, "career", AUXILIARY_MEANINGS[star.name]?.career, [starEvidence(star.name, evidence.oppositePalace.palace)], `(官祿軸 ${evidence.oppositePalace.palace})`);
-  }
-  for (const p of evidence.trinePalaces) {
-    for (const star of p.majorStars) {
-      push(drafts, "career", MAJOR_STAR_MEANINGS[star.name]?.career, [starEvidence(star.name, p.palace)], `(三方 ${p.palace})`);
-    }
+  const byPattern = clusterByPattern<CareerPattern>([evidence.oppositePalace, ...evidence.trinePalaces], CAREER_PATTERN_BY_STAR);
+  for (const [pattern, ev] of byPattern) {
+    const text = CAREER_PATTERN_TEXT[pattern];
+    drafts.push({ domain: "career", meaning: text.meaning, polarity: text.polarity, evidence: ev });
   }
   return finalize("career", drafts);
 }
@@ -157,17 +171,14 @@ export function wealthFacts(evidence: SpouseEvidenceBundle): InterpretationFact[
 
 /** 만남 환경 — 遷移/交友/官祿 등 "관계 밖" 궁 근거(현재 evidence bundle에 포함된 對宮=官祿,
  * 三方의 遷移宮·福德宮만 사용 — 交友宮은 spouseEvidence.ts가 아직 추출하지 않아 임의 확장하지
- * 않는다). 夫妻宮 본궁 자체는 "환경"이 아니라 "관계 그 자체"이므로 제외한다. */
+ * 않는다). 夫妻宮 본궁 자체는 "환경"이 아니라 "관계 그 자체"이므로 제외한다. 별 하나하나를 다
+ * 나열하지 않고 2~3개 상위 패턴(사교/귀인·조력/로맨틱)으로 압축한다. */
 export function meetingFacts(evidence: SpouseEvidenceBundle): InterpretationFact[] {
   const drafts: FactDraft[] = [];
-  const contextPalaces: Palace[] = [evidence.oppositePalace, ...evidence.trinePalaces];
-  for (const p of contextPalaces) {
-    for (const star of p.majorStars) {
-      push(drafts, "meeting", MAJOR_STAR_MEANINGS[star.name]?.meeting, [starEvidence(star.name, p.palace)], `(${p.palace})`);
-    }
-    for (const star of p.minorStars) {
-      push(drafts, "meeting", AUXILIARY_MEANINGS[star.name]?.meeting, [starEvidence(star.name, p.palace)], `(${p.palace})`);
-    }
+  const byPattern = clusterByPattern<MeetingPattern>([evidence.oppositePalace, ...evidence.trinePalaces], MEETING_PATTERN_BY_STAR);
+  for (const [pattern, ev] of byPattern) {
+    const text = MEETING_PATTERN_TEXT[pattern];
+    drafts.push({ domain: "meeting", meaning: text.meaning, polarity: text.polarity, evidence: ev });
   }
   return finalize("meeting", drafts);
 }
@@ -224,24 +235,23 @@ function factRoleTag(fact: InterpretationFact): string {
   return "";
 }
 
-/** facts를 하나의 결합 문단으로 합성한다 — 별/사화/보조성별 독립 문장을 나열하지 않고, polarity
- * 전환에 따라 접속어를 붙여 하나의 흐름으로 잇는다. */
+function joinClauses(facts: InterpretationFact[]): string {
+  return facts.map((f) => `${f.meaning}${factRoleTag(f)}`).join(", ");
+}
+
+/** facts를 하나의 결합 문단으로 합성한다. 서로 다른 결론(polarity)이 섞여 있을 때 "다만...
+ * 동시에...다만..."처럼 계속 병렬로 나열하지 않는다 — 우호적(positive+mixed) 진영과 위험(risk)
+ * 진영 중 evidence가 더 많은 쪽을 주절로 삼아 하나의 해석으로 조정하고, 소수 진영은 양보절
+ * 하나로만 요약한다(접속어 전환은 최대 1번). */
 export function synthesizeText(facts: InterpretationFact[]): string {
   if (facts.length === 0) return "";
-  let text = "";
-  let prevPolarity: Polarity | null = null;
-  facts.forEach((f, i) => {
-    const clause = `${f.meaning}${factRoleTag(f)}`;
-    if (i === 0) {
-      text = clause;
-    } else if (f.polarity === "risk" && prevPolarity !== "risk") {
-      text += `. 다만 ${clause}`;
-    } else if (prevPolarity === "risk" && f.polarity !== "risk") {
-      text += `. 동시에 ${clause}`;
-    } else {
-      text += `, ${clause}`;
-    }
-    prevPolarity = f.polarity;
-  });
-  return text + "이 함께 나타납니다.";
+  const favorable = facts.filter((f) => f.polarity !== "risk");
+  const risk = facts.filter((f) => f.polarity === "risk");
+
+  if (risk.length === 0) return `${joinClauses(favorable)}이 함께 나타납니다.`;
+  if (favorable.length === 0) return `${joinClauses(risk)}이 함께 나타납니다.`;
+  if (favorable.length >= risk.length) {
+    return `${joinClauses(favorable)}. 다만 ${joinClauses(risk)}이 함께 나타납니다.`;
+  }
+  return `${joinClauses(risk)}. 그럼에도 ${joinClauses(favorable)}이 함께 나타납니다.`;
 }

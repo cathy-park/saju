@@ -103,15 +103,25 @@ function TimingSection({ report }: { report: ReturnType<typeof buildSpouseReport
         볼 수 있습니다.
       </p>
 
-      {timing.notableYears.length > 0 && (
-        <div className="mt-3 flex flex-wrap gap-1.5">
-          {timing.notableYears.map((y) => (
-            <span key={y} className="rounded-full bg-primary/10 text-primary px-2.5 py-1 text-xs font-semibold">
-              {y}년 — 신호 겹침
-            </span>
-          ))}
-        </div>
-      )}
+      <div className="mt-3 space-y-2">
+        {([
+          ["활성도가 뚜렷한 해", timing.highlights.activationYears, "bg-primary/10 text-primary"],
+          ["안정도가 뚜렷한 해", timing.highlights.stabilityYears, "bg-emerald-500/10 text-emerald-700"],
+          ["공식화 신호가 있는 해", timing.highlights.formalizationYears, "bg-sky-500/10 text-sky-700"],
+          ["변곡점(변동성 주의)", timing.highlights.volatilityYears, "bg-amber-500/10 text-amber-700"],
+        ] as const).map(([label, ys, cls]) =>
+          ys.length > 0 ? (
+            <div key={label}>
+              <p className="text-[11px] font-semibold text-muted-foreground mb-1">{label}</p>
+              <div className="flex flex-wrap gap-1.5">
+                {ys.map((y) => (
+                  <span key={y} className={`rounded-full px-2.5 py-1 text-xs font-semibold ${cls}`}>{y}년</span>
+                ))}
+              </div>
+            </div>
+          ) : null
+        )}
+      </div>
 
       <div className="mt-4 overflow-x-auto">
         <table className="w-full text-xs">

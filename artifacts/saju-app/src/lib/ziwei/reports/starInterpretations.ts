@@ -212,12 +212,12 @@ export const AUXILIARY_MEANINGS: Record<string, AuxiliaryMeaningSet> = {
   },
   文昌: {
     meeting: { meaning: "학식 있고 반듯한 자리에서의 인연", polarity: "positive" },
-    relationship: { meaning: "지적이고 반듯한 매력이 더해지되 문서·계약은 신중해야 하는 면", polarity: "mixed" },
+    relationship: { meaning: "지적이고 반듯한 매력이 관계에 신뢰감을 더해주는 면", polarity: "positive" },
     career: { meaning: "학식·전문성이 요구되는 영역과의 연결", polarity: "positive" },
   },
   文曲: {
     meeting: { meaning: "예술적이고 지적인 자리에서의 인연", polarity: "positive" },
-    relationship: { meaning: "지적·예술적 매력이 더해지되 문서·계약은 신중해야 하는 면", polarity: "mixed" },
+    relationship: { meaning: "지적·예술적 감성이 관계에 낭만적인 색채를 더해주는 면", polarity: "positive" },
     career: { meaning: "예술·전문성이 요구되는 영역과의 연결", polarity: "positive" },
   },
   天魁: {
@@ -258,6 +258,35 @@ export const AUXILIARY_MEANINGS: Record<string, AuxiliaryMeaningSet> = {
     meeting: { meaning: "인연·경사와 관련된 로맨틱한 분위기의 환경", polarity: "positive" },
     relationship: { meaning: "인연·경사와 관련된 신호가 함께 있어 로맨틱한 분위기가 형성되기 쉬움", polarity: "positive" },
   },
+};
+
+// ── 상위 패턴 클러스터(만남 환경·직업 — 별 하나하나를 다 나열하지 않고 2~3개 패턴으로 압축) ──
+
+export type MeetingPattern = "social" | "benefactor" | "romantic";
+export const MEETING_PATTERN_BY_STAR: Record<string, MeetingPattern> = {
+  紫微: "social", 太陽: "social", 貪狼: "social", 巨門: "social", 天機: "social", 天同: "social", 文昌: "social",
+  天魁: "benefactor", 天鉞: "benefactor", 左輔: "benefactor", 右弼: "benefactor", 天梁: "benefactor",
+  武曲: "benefactor", 天府: "benefactor", 天相: "benefactor", 祿存: "benefactor",
+  廉貞: "romantic", 破軍: "romantic", 七殺: "romantic", 太陰: "romantic", 文曲: "romantic",
+  紅鸞: "romantic", 天喜: "romantic", 擎羊: "romantic", 陀羅: "romantic", 地空: "romantic", 地劫: "romantic",
+};
+export const MEETING_PATTERN_TEXT: Record<MeetingPattern, StarMeaning> = {
+  social: { meaning: "사교·사회활동을 통해 자연스럽게 이어지는 만남", polarity: "positive" },
+  benefactor: { meaning: "귀인·조력자의 도움이나 신중한 관계 속에서 이어지는 만남", polarity: "positive" },
+  romantic: { meaning: "로맨틱하거나 예상치 못하게 급진전되는 만남", polarity: "mixed" },
+};
+
+export type CareerPattern = "expertise" | "status" | "challenge";
+export const CAREER_PATTERN_BY_STAR: Record<string, CareerPattern> = {
+  天機: "expertise", 巨門: "expertise", 太陰: "expertise", 天相: "expertise", 天梁: "expertise",
+  文昌: "expertise", 文曲: "expertise", 天同: "expertise",
+  紫微: "status", 太陽: "status", 天府: "status", 天魁: "status", 天鉞: "status", 廉貞: "status",
+  武曲: "challenge", 貪狼: "challenge", 七殺: "challenge", 破軍: "challenge",
+};
+export const CAREER_PATTERN_TEXT: Record<CareerPattern, StarMeaning> = {
+  expertise: { meaning: "전문성과 능력을 살리는 방향의 직업군", polarity: "positive" },
+  status: { meaning: "사회적 지위나 귀인의 도움이 따르는 위치", polarity: "positive" },
+  challenge: { meaning: "도전적이고 자기 색이 뚜렷한 분야", polarity: "positive" },
 };
 
 /** 별이 없을 때(空宮) 對宮의 별을 빌려보는 전통 규칙 — 이때는 확신도를 낮춰 표기한다. */
