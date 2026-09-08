@@ -20,6 +20,10 @@ const CATEGORY_LABEL: Record<SajuEvidenceItem["category"], string> = {
   daewoon: "대운",
   saeun: "세운",
   wolun: "월운",
+  compatScore: "궁합 점수",
+  compatDetail: "궁합 세부",
+  compatAxis: "배우자 구조축",
+  compatMarriage: "결혼 관점",
 };
 
 function evidenceLabel(e: SajuEvidenceItem): string {

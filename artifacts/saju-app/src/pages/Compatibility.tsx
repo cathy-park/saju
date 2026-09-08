@@ -8,6 +8,7 @@ import type { AnyCompatibilityReport } from "@/lib/reports";
 import { getCompatibilityReport } from "@/lib/reports";
 import { COMPAT_TONE_COLOR } from "@/lib/compatibilityScore";
 import { getCompatibilityCardPolicy } from "@/lib/compatibilityDisplayPolicy";
+import { SajuCompatibilitySummary } from "@/components/saju/SajuCompatibilitySummary";
 import { getPurposeCompatibilityInterpretation, type PercentileGrade } from "@/lib/compatibilityInterpretation";
 import { toneClasses, toneTierFromScore, toneTierFromLevel, toneClassesNeutral, type ToneTier } from "@/lib/toneColors";
 
@@ -1631,6 +1632,14 @@ export default function Compatibility() {
                   </div>
                 )}
               </div>
+
+              {/* 11단계: 궁합 핵심 요약 — 기존 점수·상세표·운세 UI는 그대로 두고 그 위에
+                  6섹션(최대) 자연어 요약만 추가한다(대표 지시: 삭제 금지). 정적 궁합 엔진
+                  결과(fullReport)만 재사용 — 새 계산 없음. facts가 없는 섹션은 컴포넌트
+                  내부에서 숨겨진다. */}
+              {p1 && p2 && (
+                <SajuCompatibilitySummary pairId={`${p1.id}-${p2.id}`} report={fullReport} />
+              )}
 
               {/* ── 2. 관계 구조 분석: 섹션 pastel → 카드/네스티드 white ── */}
                 <div className="ds-card overflow-hidden shadow-none">

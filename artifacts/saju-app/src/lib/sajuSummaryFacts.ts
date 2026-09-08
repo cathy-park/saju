@@ -51,7 +51,9 @@ export interface SajuEvidenceItem {
     | "strength" | "gukguk" | "yongshin" | "fiveElement" | "tenGod" | "interaction" | "shinsal" | "ruleInsight"
     // 10단계(월별운세 핵심 요약)가 추가한 시점 출처 카테고리 — 원국 요약과 달리 "어떤 판단인지"가
     // 아니라 "어느 시점(원국/대운/세운/월운)에서 나온 근거인지"를 구분해야 해서 별도로 둔다.
-    | "natal" | "daewoon" | "saeun" | "wolun";
+    | "natal" | "daewoon" | "saeun" | "wolun"
+    // 11단계(궁합 핵심 요약)가 추가한 카테고리 — 두 사람 사이의 궁합 근거 출처를 구분한다.
+    | "compatScore" | "compatDetail" | "compatAxis" | "compatMarriage";
   label: string;
 }
 
