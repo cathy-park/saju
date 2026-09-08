@@ -99,6 +99,16 @@ export function SajuCoreSummary({
     [pipeline, branchRelations, shinsalEntries],
   );
 
+  // sections는 pipeline/branchRelations 등 상위 참조가 바뀔 때마다(같은 세운·월운을
+  // 다시 계산하는 등 실제 fact 내용은 그대로여도) 새 객체로 만들어진다. AI 호출 여부는
+  // 객체 참조가 아니라 "실제 fact 내용"으로 판단해야, 상위 상태(selectedSeunYear 등)가
+  // 흔들려도 같은 문장에 대해 재호출하지 않는다. section.text는 이미 facts로만 결정되는
+  // deterministic 문자열이므로, 이를 그대로 이어붙인 문자열을 content key로 쓴다.
+  const sectionsContentKey = useMemo(
+    () => sections.map((s) => `${s.key}:${s.text}`).join("|"),
+    [sections],
+  );
+
   // AI 문장 다듬기 — 자미두수와 동일한 공통 구조(polishStatementText, sourceHash 캐시) 재사용.
   // 섹션당 정확히 1회, 총 6회만 호출한다. facts는 이미 deterministic하게 완성돼 있고, AI는
   // 자연어 표현만 다듬을 뿐 새 해석을 추가하지 않는다(서버 프롬프트가 이미 강제).
@@ -118,7 +128,9 @@ export function SajuCoreSummary({
       }
     }, 1200);
     return () => { cancelled = true; clearTimeout(timer); };
-  }, [sections, personId]);
+    // sections 참조가 아니라 sectionsContentKey(내용)로만 재실행 여부를 판단한다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sectionsContentKey, personId]);
 
   return (
     <div className="ds-stack-2">

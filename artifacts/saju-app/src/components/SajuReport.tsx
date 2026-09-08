@@ -5146,14 +5146,18 @@ export function SajuReport({ record, showSaveStatus = false, hourMode: parentHou
     return { seunBranch: seun?.ganZhi.branch, daewoonBranch: cur?.ganZhi.branch };
   }, [luckCycles, input.year]);
 
-  const yuanGuoShinsalPillars = (dayStem && dayBranch)
-    ? calculateShinsalFull(dayStem, dayBranch, input.month, [
-        { pillar: "시주", stem: effectivePillars.hour?.hangul?.[0] ?? "", branch: effectivePillars.hour?.hangul?.[1] ?? "" },
-        { pillar: "일주", stem: effectivePillars.day?.hangul?.[0] ?? "", branch: effectivePillars.day?.hangul?.[1] ?? "" },
-        { pillar: "월주", stem: effectivePillars.month?.hangul?.[0] ?? "", branch: effectivePillars.month?.hangul?.[1] ?? "" },
-        { pillar: "년주", stem: effectivePillars.year?.hangul?.[0] ?? "", branch: effectivePillars.year?.hangul?.[1] ?? "" },
-      ], fortuneOpts?.shinsalMode ?? "default")
-    : [];
+  const yuanGuoShinsalPillars = useMemo(
+    () =>
+      (dayStem && dayBranch)
+        ? calculateShinsalFull(dayStem, dayBranch, input.month, [
+            { pillar: "시주", stem: effectivePillars.hour?.hangul?.[0] ?? "", branch: effectivePillars.hour?.hangul?.[1] ?? "" },
+            { pillar: "일주", stem: effectivePillars.day?.hangul?.[0] ?? "", branch: effectivePillars.day?.hangul?.[1] ?? "" },
+            { pillar: "월주", stem: effectivePillars.month?.hangul?.[0] ?? "", branch: effectivePillars.month?.hangul?.[1] ?? "" },
+            { pillar: "년주", stem: effectivePillars.year?.hangul?.[0] ?? "", branch: effectivePillars.year?.hangul?.[1] ?? "" },
+          ], fortuneOpts?.shinsalMode ?? "default")
+        : [],
+    [dayStem, dayBranch, input.month, effectivePillars, fortuneOpts?.shinsalMode],
+  );
 
   const shinsalBranchItems = (["시주", "일주", "월주", "년주"] as const).map(
     (name) => yuanGuoShinsalPillars.find((p) => p.pillar === name)?.branchItems ?? []
