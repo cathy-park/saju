@@ -264,3 +264,69 @@ describe("sajuSummaryFacts — 조용민(신살 다수 + 규칙 0개) 회귀 방
     expect(parkWorkWealth).not.toBe(joWorkWealth);
   });
 });
+
+/** 김민지·박주성·심다인 실제 원국 회귀 테스트 — "일·재물/연애·관계가 5개 중 2개 그룹만 보다
+ * 보니 generic 문장으로 수렴", "주의할 점에 합(긍정) 계열이 섞여 polarity/section 오류",
+ * "gukguk 설명의 세부 십성명(정관/편재)·구체 직업명이 메인에 재노출"이라는 3가지 회귀를
+ * 각각 직접 재현·고정한다. */
+function buildFor(birth: BirthInput) {
+  const profile = calculateProfileFromBirth(birth);
+  const { year, month, day, hour } = profile.computedPillars;
+  const allStems = [hour?.hangul[0], day.hangul[0], month.hangul[0], year.hangul[0]].filter((c): c is string => !!c);
+  const allBranches = [hour?.hangul[1], day.hangul[1], month.hangul[1], year.hangul[1]].filter((c): c is string => !!c);
+  const p = computeSajuPipeline({
+    dayStem: day.hangul[0], monthBranch: month.hangul[1], dayBranch: day.hangul[1],
+    dayPillarHangul: day.hangul, allStems, allBranches,
+    effectiveFiveElements: countFiveElements(profile.computedPillars), gender: birth.gender === "여" ? "여" : "남",
+  });
+  const br = analyzeBranchRelations({ year, month, day, hour });
+  return buildSajuSummarySections(p, br, []);
+}
+
+describe("sajuSummaryFacts — 김민지·박주성·심다인 회귀 방지(5개 십성 분포 + 주의할 점 polarity + gukguk 세부 십성명)", () => {
+  const kim = buildFor({ name: "t", gender: "여", calendarType: "solar", year: 1989, month: 8, day: 15, hour: 10, minute: 3, timeUnknown: false });
+  const park = buildFor({ name: "t", gender: "남", calendarType: "solar", year: 1989, month: 5, day: 15, hour: 0, minute: 0, timeUnknown: true });
+  const sim = buildFor({ name: "t", gender: "여", calendarType: "solar", year: 1995, month: 3, day: 4, hour: 16, minute: 30, timeUnknown: false });
+
+  it("일·재물/연애·관계는 5개 십성 그룹 전체를 보고 판단한다 — 김민지·박주성은 서로 다른 그룹이 STRONG이라 서로 다른 문장이 나온다(구 버전 회귀: 둘 다 balanced로 수렴했었음)", () => {
+    const kimWorkWealth = kim.find((s) => s.key === "workWealth")!.text;
+    const parkWorkWealth = park.find((s) => s.key === "workWealth")!.text;
+    expect(kimWorkWealth).not.toBe(parkWorkWealth);
+    // 김민지는 비겁만 STRONG(단일 문장) — 식상·재성 라벨이 섞이지 않아야 한다.
+    expect(kimWorkWealth).not.toContain("표현·창의");
+    expect(kimWorkWealth).not.toContain("재물·현실");
+    // 박주성은 식상+재성이 함께 STRONG(결합 문장)이어야 한다.
+    expect(parkWorkWealth).toContain("표현·창의");
+    expect(parkWorkWealth).toContain("재물·현실");
+  });
+
+  it("STRONG인 그룹이 2개 이상이면(박소연: 비겁+식상) 결합 문장을 쓰고, 1개뿐이면(김민지: 비겁만) 단일 문장을 쓴다", () => {
+    const parkSoyeonSections = buildSajuSummarySections(pipeline, branchRelations, shinsalEntries);
+    const parkSoyeonWorkWealth = parkSoyeonSections.find((s) => s.key === "workWealth")!.text;
+    expect(parkSoyeonWorkWealth).toContain("독립·의지");
+    expect(parkSoyeonWorkWealth).toContain("표현·창의");
+    const kimWorkWealth = kim.find((s) => s.key === "workWealth")!.text;
+    expect(kimWorkWealth).not.toContain("표현·창의"); // 김민지는 식상이 STRONG이 아니므로 안 섞인다
+  });
+
+  it("'주의할 점'에는 합 계열(조화·긍정)이 섞이지 않는다 — 김민지는 천간합·지지육합이 있지만 실제로 캡션에 쓰이는 건 형(갈등) 뿐이어야 한다(구 버전 회귀: 합 계열 문장이 주의할 점에 들어갔었음)", () => {
+    const kimCautions = kim.find((s) => s.key === "cautions")!.text;
+    expect(kimCautions).not.toContain("잘 맞아떨어지는");
+    expect(kimCautions).not.toContain("편안하고 밀착된");
+    // evidence에는 천간합·지지육합 원자료가 여전히 남아있어야 한다(정보 손실 없음).
+    const kimCautionsEv = kim.find((s) => s.key === "cautions")!.evidence;
+    expect(kimCautionsEv.some((e) => e.label.startsWith("천간합"))).toBe(true);
+  });
+
+  it("gukguk 설명의 세부 십성명(정관/편재)과 구체 직업명은 메인에 노출되지 않는다 — evidence에는 원문 그대로 남는다", () => {
+    const kimAtAGlance = kim.find((s) => s.key === "atAGlance")!;
+    expect(kimAtAGlance.text).not.toContain("정관");
+    expect(kimAtAGlance.text).not.toMatch(/공직|법조|관리직/);
+    expect(kimAtAGlance.evidence.some((e) => e.category === "gukguk" && e.label.includes("정관"))).toBe(true);
+
+    const simAtAGlance = sim.find((s) => s.key === "atAGlance")!;
+    expect(simAtAGlance.text).not.toContain("편재");
+    expect(simAtAGlance.text).not.toMatch(/무역|금융|인연이 깊습니다/);
+    expect(simAtAGlance.evidence.some((e) => e.category === "gukguk" && e.label.includes("편재"))).toBe(true);
+  });
+});

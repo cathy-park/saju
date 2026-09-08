@@ -42,7 +42,6 @@
 // (SajuCoreSummary.tsx가 facts.length===0인 섹션을 렌더링하지 않음).
 import type { SajuPipelineResult } from "./sajuPipeline";
 import type { BranchRelation, RelationType } from "./branchRelations";
-import { RELATION_MEANING } from "./branchRelations";
 import type { ShinsalInterpretationEntry } from "./shinsalInterpretation";
 import { type ReportFact, type Polarity } from "./reportFacts";
 
@@ -122,6 +121,21 @@ const TEN_GOD_CONCEPT_LABEL: Record<string, string> = {
   비겁: "독립·의지", 식상: "표현·창의", 재성: "재물·현실", 관성: "명예·규범", 인성: "학습·보호",
 };
 
+/** 상위 5개 그룹의 고정 순서 — 여러 그룹이 함께 STRONG일 때 결합 문장의 순서를 결정적으로
+ * 만든다(대표 지시: 5개 십성 전체 분포를 보되 새 개념은 추가하지 않음). */
+const ALL_TEN_GOD_GROUPS = ["비겁", "식상", "재성", "관성", "인성"] as const;
+
+/** gukguk.description 등에는 세부 십성 10종(비견/겁재/식신/상관/정재/편재/정관/편관/정인/편인)이
+ * 그대로 쓰인다 — 이것도 기술용어이므로, 이미 있는 상위 그룹 개념(TEN_GOD_CONCEPT_LABEL)으로만
+ * 옮긴다(새 개념 발명 아님, 상위 5개 그룹 매핑을 세분화 십성에 적용한 것뿐). */
+const SPECIFIC_TEN_GOD_TO_GROUP: Record<string, string> = {
+  비견: "비겁", 겁재: "비겁",
+  식신: "식상", 상관: "식상",
+  정재: "재성", 편재: "재성",
+  정관: "관성", 편관: "관성",
+  정인: "인성", 편인: "인성",
+};
+
 /** 일간 강도(엔진의 StrengthLevel 원문)를 메인 문장에서 쓸 짧은 수식어로만 옮긴다 — 등급
  * 이름(신약/태강 등)은 evidence에는 그대로 남고, 메인 문장에서는 이 수식어로 대체된다. */
 const STRENGTH_LEVEL_PLAIN: Record<string, string> = {
@@ -154,11 +168,14 @@ function fixParticle(original: string, replacement: string): string {
 function stripTechnicalTerms(text: string): string {
   let out = text;
 
-  // "관성(압박·책임)이" → "명예·규범이" (이미 붙어 있던 개념 설명을 그대로 쓰고, 조사만 보정)
+  // "관성(압박·책임)이" → "명예·규범이" (이미 붙어 있던 개념 설명을 그대로 쓰고, 조사만 보정).
+  // "정관"/"편재" 같은 세부 십성명은 SPECIFIC_TEN_GOD_TO_GROUP으로 상위 그룹을 찾아 같은
+  // 개념 라벨로 옮긴다(둘 다 결국 TEN_GOD_CONCEPT_LABEL 범위 안).
   out = out.replace(
-    /(비겁|식상|재성|관성|인성)(?:\(([^)]+)\))?(이|가|은|는|을|를|과|와|으로|로)?/g,
+    /(비견|겁재|식신|상관|정재|편재|정관|편관|정인|편인|비겁|식상|재성|관성|인성)(?:\(([^)]+)\))?(이|가|은|는|을|를|과|와|으로|로)?/g,
     (_m, term: string, paren: string | undefined, particle: string | undefined) => {
-      const label = paren ?? TEN_GOD_CONCEPT_LABEL[term];
+      const group = SPECIFIC_TEN_GOD_TO_GROUP[term] ?? term;
+      const label = paren ?? TEN_GOD_CONCEPT_LABEL[group];
       return particle ? `${label}${fixParticle(particle, label)}` : label;
     },
   );
@@ -258,68 +275,65 @@ function fact(domain: string, meaning: string, polarity: Polarity, evidence: Saj
   return { id: `${domain}-${evidence.map((e) => e.label).join("|") || meaning}`, domain, meaning, polarity, strength: 1, evidence };
 }
 
-/** [구체 직업 예시 제거 — 대표 지시] "군·의료·스포츠 등 강한 직군이 맞습니다"처럼 격국
- * 설명이 특정 직업/분야를 예로 드는 문장은, 그 직업이 deterministic 근거로 직접 뒷받침된
- * 게 아니라 격국 설명에 곁들여진 예시일 뿐이라 메인에서는 제거한다(문장 단위로만 제거해
- * 나머지 성향 서술은 그대로 둔다). "직군"이 포함된 문장이 없으면 원문을 그대로 반환한다.
- * 원문 전체(직업 예시 포함)는 항상 evidence에 남는다. */
+/** [구체 직업 예시 제거 — 대표 지시] "군·의료·스포츠 등 강한 직군이 맞습니다", "공직·법조·
+ * 관리직에서 뛰어난 능력을 발휘합니다", "무역·사업·금융과 인연이 깊습니다"처럼 격국 설명이
+ * 특정 직업/분야를 예로 드는 문장은, 그 직업이 deterministic 근거로 직접 뒷받침된 게 아니라
+ * 격국 설명에 곁들여진 예시일 뿐이라 메인에서는 제거한다(문장 단위로만 제거해 나머지 성향
+ * 서술은 그대로 둔다). 격국 설명들이 실제로 쓰는 문구 패턴(직군/직업/분야+인연·능력 발휘)을
+ * 모두 잡는다 — 걸리는 문장이 없으면 원문을 그대로 반환한다. 원문 전체(직업 예시 포함)는
+ * 항상 evidence에 남는다. */
 function stripJobExampleSentences(text: string): string {
   const kept = text
     .split(/(?<=[.!?])\s*/)
-    .filter((s) => s.trim().length > 0 && !/직군|어울리는 직업|적합한 직업/.test(s));
+    .filter((s) => s.trim().length > 0 && !/직군|어울리는 직업|적합한 직업|인연이 깊습니다|분야가 맞습니다|능력을 발휘합니다/.test(s));
   return kept.length > 0 ? kept.join(" ").trim() : text;
 }
 
-/** gukguk.description은 이미 행동 언어로 쓰여 있지만 "OO격으로 ..."처럼 격국명을 문장 맨
- * 앞에서 반복한다 — 그 명칭 접두사만 제거한다(패턴이 안 맞으면 원문을 그대로 반환해 문장이
- * 깨지지 않게 한다 — 새 격국명이 추가돼도 안전). 격국명 자체는 evidence에만 남는다. */
+/** gukguk.description은 이미 행동 언어로 쓰여 있지만 "OO격으로 ..."(격국명 그대로) 또는
+ * "정관이/편재가 격을 이루어 ..."(세부 십성명)처럼 명칭을 문장 안에서 반복한다 — 격국명
+ * 접두사를 먼저 제거하고, 남은 문장에 세부 십성명이 있으면 stripTechnicalTerms로 상위 그룹
+ * 개념 라벨로 옮긴다(패턴이 안 맞아도 원문을 그대로 반환해 문장이 깨지지 않게 한다 — 새
+ * 격국명이 추가돼도 안전). 격국명·세부 십성명 자체는 evidence에만 남는다. */
 function gukgukPlainText(gukguk: NonNullable<SajuPipelineResult["interpretation"]["gukguk"]>): string {
   const stripped = gukguk.description.replace(new RegExp(`^${gukguk.name}(으로|이라서|이며|은|는)?\\s*`), "");
-  return stripJobExampleSentences(stripped || gukguk.description);
+  return stripJobExampleSentences(stripTechnicalTerms(stripped || gukguk.description));
 }
 
 /** [일·재물/연애·관계 fallback 세분화 — 대표 지시] interpretationRules.ts가 이미 쓰는
- * STRONG(>=0.30)/WEAK(<0.15) 비율 경계를 그대로 재사용한다(새 threshold·새 강약 판정 아님
- * — 같은 숫자를 이 파일에도 복제해 둔 것뿐이다). 두 그룹 중 하나가 STRONG이고 다른 하나가
- * WEAK일 때만 "어느 쪽이 우세한지"를 구별하고, 그렇지 않으면(둘 다 MEDIUM이거나 둘 다
- * STRONG/WEAK 등) 기존 기준으로 구별할 수 없으므로 "balanced"로 판정해 짧고 중립적인
- * 문장을 그대로 쓴다. */
+ * STRONG(>=0.30) 비율 경계를 그대로 재사용한다(새 threshold·새 강약 판정 아님 — 같은 숫자를
+ * 이 파일에도 복제해 둔 것뿐이다). 조용민 사례(관성·비겁 딱 2개만 보다 보니 그 2개가 둘 다
+ * MEDIUM인 사람이 많아 balanced로 몰리고, 실제로 다른 그룹이 두드러진 사람도 반영이 안 됨)
+ * 이후로, 2개 그룹만 비교하지 않고 5개 그룹 전체에서 STRONG인 그룹을 모두 찾는다:
+ *   - STRONG이 정확히 1개면 그 그룹 중심 문장.
+ *   - STRONG이 2개 이상이면 그 그룹들을 함께 표현하는 문장(어느 조합이 나와도 쓸 수 있는
+ *     일반형 템플릿 — 조합마다 손으로 문장을 만들지 않는다).
+ *   - STRONG이 0개면(뚜렷한 그룹이 없음) balanced/중립 문장.
+ * 어느 경우든 TEN_GOD_CONCEPT_LABEL 5개 라벨 범위 안에서만 표현한다. */
 const STRONG_RATIO = 0.30;
-const WEAK_RATIO = 0.15;
-function tenGodDominance(groups: Record<string, number>, groupA: string, groupB: string): "A" | "B" | "balanced" {
-  const total = Object.values(groups).reduce((a, b) => a + b, 0) || 1;
-  const ratioA = (groups[groupA] ?? 0) / total;
-  const ratioB = (groups[groupB] ?? 0) / total;
-  if (ratioA >= STRONG_RATIO && ratioB < WEAK_RATIO) return "A";
-  if (ratioB >= STRONG_RATIO && ratioA < WEAK_RATIO) return "B";
-  return "balanced";
+function strongTenGodGroups(groups: Record<string, number>): string[] {
+  const total = ALL_TEN_GOD_GROUPS.reduce((sum, g) => sum + (groups[g] ?? 0), 0) || 1;
+  return ALL_TEN_GOD_GROUPS.filter((g) => (groups[g] ?? 0) / total >= STRONG_RATIO);
 }
 
-/** 재성·식상(일·재물) 또는 관성·비겁(연애·관계) 두 십성 그룹의 비중 원자료를, 규칙이 하나도
- * 안 뜬 경우의 guaranteed fallback으로 문장화한다. 어느 한쪽이 뚜렷하게 우세할 때만(위
- * tenGodDominance) 그 쪽 중심 문장을 쓰고, 구별이 안 되면 항상 같은 균형 문장을 쓴다 —
- * "다른 사람과 구별이 안 되는 것"이 아니라 "실제로 이 사람의 원국이 균형적이라 구별할
- * 근거가 없는 것"이다. 메인 문장에는 그룹명 없이 개념 라벨만 쓰고, 원자료(그룹명·카운트)는
- * evidence에 그대로 남긴다. */
-function tenGodPairFact(
+/** 십성 5개 그룹의 실제 분포를 규칙이 하나도 안 뜬 경우의 guaranteed fallback으로 문장화한다.
+ * 그룹명 없이 개념 라벨만 메인에 쓰고, 원자료(그룹별 카운트)는 evidence에 그대로 남긴다. */
+function tenGodDistributionFact(
   domain: string,
-  groupA: string,
-  groupB: string,
   groups: Record<string, number>,
   sentences: {
-    dominantA: (labelA: string) => string;
-    dominantB: (labelB: string) => string;
-    balanced: (labelA: string, labelB: string, particleAfterB: (p: string) => string) => string;
+    single: Record<string, string>;
+    combined: (joinedLabels: string) => string;
+    balanced: string;
   },
 ): SajuFact {
-  const labelA = TEN_GOD_CONCEPT_LABEL[groupA];
-  const labelB = TEN_GOD_CONCEPT_LABEL[groupB];
-  const dominance = tenGodDominance(groups, groupA, groupB);
-  const meaning = dominance === "A" ? sentences.dominantA(labelA)
-    : dominance === "B" ? sentences.dominantB(labelB)
-    : sentences.balanced(labelA, labelB, (p: string) => fixParticle(p, labelB));
+  const strong = strongTenGodGroups(groups);
+  const meaning = strong.length === 0
+    ? sentences.balanced
+    : strong.length === 1
+      ? sentences.single[strong[0]]
+      : sentences.combined(strong.map((g) => TEN_GOD_CONCEPT_LABEL[g]).join(", "));
   return fact(domain, meaning, "neutral", [
-    ev("tenGod", `${groupA} ${groups[groupA] ?? 0} · ${groupB} ${groups[groupB] ?? 0} (dominance: ${dominance})`),
+    ev("tenGod", `${ALL_TEN_GOD_GROUPS.map((g) => `${g} ${groups[g] ?? 0}`).join(" · ")} (strong: ${strong.join(",") || "없음"})`),
   ]);
 }
 
@@ -419,39 +433,46 @@ function buildStrengthFacts(pipeline: SajuPipelineResult): SajuFact[] {
 /** [합충형파해원진 → 현실 패턴 presentation mapping — 대표 지시] RELATION_MEANING(이미
  * 확립된 개념 사전, branchRelations.ts)의 뜻을 "~하는 편입니다/~수 있습니다" 문장으로만
  * 바꿔 쓴 것이다 — 그 타입이 뒷받침하지 않는 사건·심리(예: 사고, 수술, 이별)는 새로 추론해
- * 넣지 않는다. RELATION_MEANING에 없는 타입이 추가돼도 안전하도록 폴백을 둔다. */
-const RELATION_TYPE_PATTERN: Partial<Record<RelationType, string>> = {
-  형: "감정이 격해지면 관계에서 긴장이나 갈등으로 표출되기 쉬운 편입니다",
-  충: "생활 패턴이나 환경이 바뀔 때 충돌이 생기기 쉬운 편입니다",
-  파: "관계나 상황이 예상과 다르게 흐트러지는 경우가 있을 수 있습니다",
-  해: "일이 진행될 때 방해나 지연을 겪는 경우가 있을 수 있습니다",
-  원진: "오해나 반목이 쌓여 거리감으로 이어지는 경우가 있을 수 있습니다",
-  공망: "몰입하던 것이 허무하게 느껴지거나 흐지부지되는 경우가 있을 수 있습니다",
-  합: "주변과 쉽게 어우러지고 조화를 이루는 편입니다",
-  천간합: "겉으로 드러나는 태도나 의지가 주변과 잘 맞아떨어지는 편입니다",
-  지지육합: "일상적인 관계에서 편안하고 밀착된 유대를 만드는 편입니다",
-  지지삼합: "여러 요인이 결합해 특정 기운이 강하게 쌓이는 구조적 흐름이 있습니다",
-  지지방합: "환경이나 계절적 기운의 영향을 크게 받는 편입니다",
-  천간충: "생각이나 표현 방식에서 마찰이 생기기 쉬운 편입니다",
-  지지충: "생활 패턴이나 환경이 바뀔 때 변화의 폭이 크게 나타날 수 있습니다",
+ * 넣지 않는다. RELATION_MEANING에 없는 타입이 추가돼도 안전하도록 폴백을 둔다.
+ *
+ * isCaution은 새로 만든 분류가 아니라, 바로 위 text를 쓸 때 RELATION_MEANING의 뜻 자체가
+ * 조화/긍정(천간합·지지육합·지지삼합·지지방합·합 — "융화", "밀착", "강화")인지 충돌/긴장
+ * (형·파·해·원진·공망·천간충·지지충·충 — "갈등", "손상", "방해", "반목", "충돌")인지를 그
+ * 자리에서 같이 표시해 둔 것이다(대표 지시: 타입 이름을 별도로 하드코딩해서 나누지 말고,
+ * 이미 쓴 RELATION_MEANING 해석에 근거해 나눈다). "주의할 점"에는 isCaution만 쓴다 — 긍정
+ * 계열은 evidence에는 남지만 "주의"로는 쓰지 않는다. */
+const RELATION_TYPE_PATTERN: Partial<Record<RelationType, { text: string; isCaution: boolean }>> = {
+  형: { text: "감정이 격해지면 관계에서 긴장이나 갈등으로 표출되기 쉬운 편입니다", isCaution: true },
+  충: { text: "생활 패턴이나 환경이 바뀔 때 충돌이 생기기 쉬운 편입니다", isCaution: true },
+  파: { text: "관계나 상황이 예상과 다르게 흐트러지는 경우가 있을 수 있습니다", isCaution: true },
+  해: { text: "일이 진행될 때 방해나 지연을 겪는 경우가 있을 수 있습니다", isCaution: true },
+  원진: { text: "오해나 반목이 쌓여 거리감으로 이어지는 경우가 있을 수 있습니다", isCaution: true },
+  공망: { text: "몰입하던 것이 허무하게 느껴지거나 흐지부지되는 경우가 있을 수 있습니다", isCaution: true },
+  천간충: { text: "생각이나 표현 방식에서 마찰이 생기기 쉬운 편입니다", isCaution: true },
+  지지충: { text: "생활 패턴이나 환경이 바뀔 때 변화의 폭이 크게 나타날 수 있습니다", isCaution: true },
+  합: { text: "주변과 쉽게 어우러지고 조화를 이루는 편입니다", isCaution: false },
+  천간합: { text: "겉으로 드러나는 태도나 의지가 주변과 잘 맞아떨어지는 편입니다", isCaution: false },
+  지지육합: { text: "일상적인 관계에서 편안하고 밀착된 유대를 만드는 편입니다", isCaution: false },
+  지지삼합: { text: "여러 요인이 결합해 특정 기운이 강하게 쌓이는 구조적 흐름이 있습니다", isCaution: false },
+  지지방합: { text: "환경이나 계절적 기운의 영향을 크게 받는 편입니다", isCaution: false },
 };
-function relationTypePattern(type: RelationType): string {
-  return RELATION_TYPE_PATTERN[type] ?? `${RELATION_MEANING[type]} 흐름이 있습니다`;
-}
 
 /** "주의할 점" 섹션 목표(대표 지시): 과잉될 때 나타나는 현실 패턴. R01/R07/R11(압박형 권위·
- * 스트레스 과부하·오행 결핍)을 우선 쓰고, 합충형파해원진은 RELATION_TYPE_PATTERN(위)으로
- * 실제 행동 패턴 문장으로만 옮긴다(명칭은 evidence에만). 매핑된 규칙도 없고 의미 있는
- * 합충형파해원진도 없을 때만 격국(흉)으로 최소 fallback한다 — 그것도 없으면 억지로 채우지
- * 않고 빈 배열을 반환한다(섹션 숨김). */
+ * 스트레스 과부하·오행 결핍)을 우선 쓰고, 합충형파해원진은 RELATION_TYPE_PATTERN 중
+ * isCaution=true인 것만(긍정/조화 계열인 합 계열은 제외) 실제 행동 패턴 문장으로 옮긴다
+ * (명칭은 evidence에만, 제외된 합 계열도 evidence에는 그대로 남는다 — branchRelations를
+ * 전부 evidence로 넘기므로). 매핑된 규칙도 없고 주의 성격의 합충형파해원진도 없을 때만
+ * 격국(흉)으로 최소 fallback한다 — 그것도 없으면 억지로 채우지 않고 빈 배열을 반환한다
+ * (섹션 숨김). */
 function buildCautionFacts(pipeline: SajuPipelineResult, branchRelations: BranchRelation[]): SajuFact[] {
   const facts = mappedRuleFacts(pipeline, "cautions");
 
-  // 합충형파해원진 타입이 여러 개 동시에 성립해도 전부 나열하면 다시 읽기 어려워지므로, 가장
-  // 먼저 성립한 2개까지만 메인에 쓴다 — 나머지도 evidence에는 전부 남는다.
-  const meaningfulTypes = [...new Set(branchRelations.map((r) => r.type))].filter((t) => RELATION_MEANING[t]);
-  if (meaningfulTypes.length > 0) {
-    const clause = meaningfulTypes.slice(0, 2).map((t) => relationTypePattern(t)).join(". 또한 ");
+  // isCaution=true인 타입만 후보로 삼는다(단순 성립 순서로 앞 2개를 자르지 않음) — 여러 개가
+  // 동시에 성립해도 전부 나열하면 다시 읽기 어려워지므로, 그중 2개까지만 메인에 쓴다.
+  const cautionTypes = [...new Set(branchRelations.map((r) => r.type))]
+    .filter((t) => RELATION_TYPE_PATTERN[t]?.isCaution);
+  if (cautionTypes.length > 0) {
+    const clause = cautionTypes.slice(0, 2).map((t) => RELATION_TYPE_PATTERN[t]!.text).join(". 또한 ");
     facts.push(fact(
       "interaction",
       clause,
@@ -472,32 +493,43 @@ function buildCautionFacts(pipeline: SajuPipelineResult, branchRelations: Branch
 }
 
 /** "일·재물" 섹션 목표(대표 지시): 일하는 방식·성과·수익·관리. R02(계획형 재물 구조)가 뜨면
- * 그걸 그대로 쓰고, 안 뜨면 재성·식상 비중을 개념 라벨로만 옮긴 guaranteed fallback을 쓴다
- * (원자료·그룹명 나열 금지). */
+ * 그걸 그대로 쓰고, 안 뜨면 십성 5개 그룹 분포를 개념 라벨로만 옮긴 guaranteed fallback을
+ * 쓴다(원자료·그룹명 나열 금지). 그룹별 문장은 "이 성향이 일하는 방식에서 어떻게 나타나는가"
+ * 만 서술하고 새 판단을 더하지 않는다. */
 function buildWorkWealthFacts(pipeline: SajuPipelineResult): SajuFact[] {
   const mapped = mappedRuleFacts(pipeline, "workWealth");
   if (mapped.length > 0) return mapped;
 
-  const groups = pipeline.base.tenGodGroups;
-  return [tenGodPairFact("tenGod-wealth", "재성", "식상", groups, {
-    dominantA: (a) => `${a} 감각이 두드러져, 안정적으로 자산을 지키고 관리하는 방식으로 성과를 만들어가는 편입니다.`,
-    dominantB: (b) => `${b} 감각이 두드러져, 아이디어를 행동으로 옮기며 성과를 만들어가는 편입니다.`,
-    balanced: (a, b, p) => `${a}과 ${b}${p("이")} 함께 나타나, 현실적인 감각과 실행력을 함께 활용해 성과를 만들어가는 방식입니다.`,
+  return [tenGodDistributionFact("tenGod-wealth", pipeline.base.tenGodGroups, {
+    single: {
+      비겁: "독립적인 추진력이 두드러져, 스스로 판단해 밀고 나가는 방식으로 성과를 만들어가는 편입니다.",
+      식상: "표현력과 창의력이 두드러져, 아이디어를 행동으로 옮기며 성과를 만들어가는 편입니다.",
+      재성: "현실적인 감각이 두드러져, 안정적으로 자산을 지키고 관리하는 방식으로 성과를 만들어가는 편입니다.",
+      관성: "책임감과 원칙이 두드러져, 신뢰와 안정감을 바탕으로 성과를 만들어가는 편입니다.",
+      인성: "학습과 통찰이 두드러져, 준비와 숙고를 바탕으로 성과를 만들어가는 편입니다.",
+    },
+    combined: (joined) => `${joined} 성향이 함께 두드러져, 이를 함께 활용해 성과를 만들어가는 방식입니다.`,
+    balanced: "여러 성향이 고르게 나타나, 한쪽으로 치우치지 않고 균형 있게 성과를 만들어가는 방식입니다.",
   })];
 }
 
 /** "연애·관계" 섹션 목표(대표 지시): 끌림·표현·갈등·관계 운영. 지금은 이 주제를 직접 다루는
- * 규칙이 없어(향후 궁합 규칙 추가 대비 자리는 남겨둠) 관성·비겁 비중을 개념 라벨로만 옮긴
- * guaranteed fallback을 쓴다. */
+ * 규칙이 없어(향후 궁합 규칙 추가 대비 자리는 남겨둠) 십성 5개 그룹 분포를 개념 라벨로만
+ * 옮긴 guaranteed fallback을 쓴다. */
 function buildRomanceRelationshipFacts(pipeline: SajuPipelineResult): SajuFact[] {
   const mapped = mappedRuleFacts(pipeline, "romanceRelationship");
   if (mapped.length > 0) return mapped;
 
-  const groups = pipeline.base.tenGodGroups;
-  return [tenGodPairFact("tenGod-relationship", "관성", "비겁", groups, {
-    dominantA: () => "관계에서 책임과 안정감을 우선하는 편입니다.",
-    dominantB: () => "관계에서도 자율성과 독립성을 우선하는 편입니다.",
-    balanced: (a, b, p) => `${a}과 ${b}${p("이")} 함께 나타나, 관계에서 책임·안정과 자율·독립을 함께 추구하는 편입니다.`,
+  return [tenGodDistributionFact("tenGod-relationship", pipeline.base.tenGodGroups, {
+    single: {
+      비겁: "관계에서도 자율성과 독립성을 우선하는 편입니다.",
+      식상: "관계에서 표현하고 교류하는 것을 중요하게 여기는 편입니다.",
+      재성: "관계에서 현실적인 조건과 실리를 중요하게 보는 편입니다.",
+      관성: "관계에서 책임과 안정감을 우선하는 편입니다.",
+      인성: "관계에서 배려와 신중함을 바탕으로 신뢰를 쌓아가는 편입니다.",
+    },
+    combined: (joined) => `${joined} 성향이 함께 나타나, 관계에서 이를 함께 추구하는 편입니다.`,
+    balanced: "관계에서 여러 성향이 고르게 나타나, 상황에 따라 균형 있게 관계를 운영하는 편입니다.",
   })];
 }
 
