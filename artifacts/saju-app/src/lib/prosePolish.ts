@@ -59,3 +59,35 @@ export async function polishStatementText(
     return FALLBACK(deterministicText);
   }
 }
+
+/** 9단계(원국 핵심 요약)에서 처음 만든 패턴: 컴포넌트가 언마운트·재마운트돼도(예: 로그인 직후
+ * auth↔DB 동기화로 상위 record 객체가 통째로 교체되는 경우) 같은 content key에 대해 다듬기
+ * 요청을 다시 보내지 않도록, 요청 자체를 모듈 스코프 캐시(Map)로 감싼다. React state와 달리
+ * 언마운트로 사라지지 않는다. 10단계(월별운세 요약)도 이 팩토리로 자신만의 캐시 인스턴스를
+ * 만들어 그대로 재사용한다(토픽별로 별도 캐시를 두므로 서로 섞이지 않는다). */
+export function createPolishRequestCache(topic: string) {
+  const cache = new Map<string, Promise<Record<string, string>>>();
+
+  return function requestPolishedTexts(
+    sections: { key: string; text: string; facts: ReportFact<unknown>[] }[],
+    contentKey: string,
+  ): Promise<Record<string, string>> {
+    const cached = cache.get(contentKey);
+    if (cached) return cached;
+
+    const promise = (async () => {
+      const results: Record<string, string> = {};
+      await Promise.all(
+        sections.map(async (section) => {
+          if (section.facts.length === 0) return;
+          const result = await polishStatementText(section.facts, section.text, topic, section.key);
+          if (result.source !== "fallback") results[section.key] = result.text;
+        }),
+      );
+      return results;
+    })();
+
+    cache.set(contentKey, promise);
+    return promise;
+  };
+}

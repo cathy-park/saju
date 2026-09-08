@@ -40,6 +40,7 @@ import { useAuth } from "@/lib/authContext";
 import { computePersonPipelineSnapshot } from "@/lib/personPipelineSnapshot";
 import { computeSajuPipeline } from "@/lib/sajuPipeline";
 import { SajuCoreSummary } from "@/components/saju/SajuCoreSummary";
+import { SajuMonthlySummary } from "@/components/saju/SajuMonthlySummary";
 import {
   computeSpouseActivationByYearRange,
   type SpouseActivationYearEntry,
@@ -6314,6 +6315,19 @@ export function SajuReport({ record, showSaveStatus = false, hourMode: parentHou
               />
             </div>
           </div>
+
+          {/* 10단계: 월별운세 핵심 요약 — 기존 "구조·운 가중" 카드 이하는 그대로 두고 그 위에
+              5섹션 자연어 요약만 추가한다(대표 지시: 기존 UI 삭제·변경 금지). 월운 탭에서만
+              보여준다 — 대운/세운/일운 탭은 "이번 달" 프레이밍과 안 맞는다. 계산은
+              sajuPipelineResult의 기존 timing activation 결과를 그대로 재사용 — 새 계산 없음. */}
+          {selectedLuckTab === "월운" && dayStem && sajuPipelineResult && (
+            <SajuMonthlySummary
+              personId={record.id}
+              pipeline={sajuPipelineResult}
+              selectedWolun={selectedWolun}
+            />
+          )}
+
           {sajuPipelineResult?.timingActivation && sajuPipelineResult.evaluations && (
             <div className="ds-card overflow-hidden shadow-none border-border/80">
               <div className="border-b border-border px-4 pb-2 pt-4">

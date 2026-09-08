@@ -3,7 +3,7 @@ import type { SajuPipelineResult } from "@/lib/sajuPipeline";
 import type { BranchRelation } from "@/lib/branchRelations";
 import type { ShinsalInterpretationEntry } from "@/lib/shinsalInterpretation";
 import { buildSajuSummarySections, type SajuEvidenceItem, type SajuSummarySection } from "@/lib/sajuSummaryFacts";
-import { polishStatementText } from "@/lib/prosePolish";
+import { createPolishRequestCache } from "@/lib/prosePolish";
 
 const PROSE_TOPIC = "sajuSummary";
 
@@ -16,6 +16,10 @@ const CATEGORY_LABEL: Record<SajuEvidenceItem["category"], string> = {
   interaction: "합충형파해원진",
   shinsal: "신살",
   ruleInsight: "규칙",
+  natal: "원국",
+  daewoon: "대운",
+  saeun: "세운",
+  wolun: "월운",
 };
 
 function evidenceLabel(e: SajuEvidenceItem): string {
@@ -24,39 +28,14 @@ function evidenceLabel(e: SajuEvidenceItem): string {
 
 const PREVIEW_COUNT = 8;
 
-/** content key(섹션 텍스트 조합) → 다듬어진 문장 Promise. 모듈 스코프에 둬서, 컴포넌트가
- * 언마운트·재마운트돼도(예: 로그인 직후 auth 동기화가 끝나며 상위에서 record 객체를 통째로
- * 새로 만들어 리마운트가 한 번 발생하는 경우) 같은 내용에 대해 네트워크 요청을 다시 보내지
- * 않는다. React state와 달리 언마운트로 사라지지 않는다. */
-const polishRequestCache = new Map<string, Promise<Record<string, string>>>();
-
-function requestPolishedTexts(
-  sections: SajuSummarySection[],
-  contentKey: string,
-): Promise<Record<string, string>> {
-  const cached = polishRequestCache.get(contentKey);
-  if (cached) return cached;
-
-  const promise = (async () => {
-    const results: Record<string, string> = {};
-    await Promise.all(
-      sections.map(async (section) => {
-        if (section.facts.length === 0) return;
-        const result = await polishStatementText(section.facts, section.text, PROSE_TOPIC, section.key);
-        if (result.source !== "fallback") results[section.key] = result.text;
-      }),
-    );
-    return results;
-  })();
-
-  polishRequestCache.set(contentKey, promise);
-  return promise;
-}
+const requestPolishedTexts = createPolishRequestCache(PROSE_TOPIC);
 
 /** 사주 전용 근거 토글 — 자미두수의 EvidenceToggle과 UI 톤은 맞추되, saju 쪽 evidence
  * 타입(SajuEvidenceItem)을 직접 쓴다(계산·타입 모두 자미두수 모듈에 의존하지 않기 위함 —
- * 12단계 UI 대정리 때 공용 컴포넌트로 합칠 수 있다). */
-function SajuEvidenceToggle({ evidence }: { evidence: SajuEvidenceItem[] }) {
+ * 12단계 UI 대정리 때 공용 컴포넌트로 합칠 수 있다). 10단계(월별운세 요약)부터 export해서
+ * SajuMonthlySummary.tsx가 새 토글을 복제하지 않고 그대로 재사용한다 — factors[] 형태 차이는
+ * 호출 쪽 adapter(sajuMonthlyFacts.ts)가 SajuEvidenceItem으로 변환해서 흡수한다. */
+export function SajuEvidenceToggle({ evidence }: { evidence: SajuEvidenceItem[] }) {
   const [open, setOpen] = useState(false);
   const [showAll, setShowAll] = useState(false);
   if (evidence.length === 0) return null;
