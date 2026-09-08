@@ -63,7 +63,10 @@ export function coreWealthFacts(evidence: WealthEvidenceBundle): InterpretationF
   for (const star of stars) {
     push(drafts, "coreWealth", MAJOR_STAR_MEANINGS[star.name]?.wealth, [starEvidence(star.name, sourcePalace)], borrowed ? "(對宮 借星)" : undefined);
   }
+  // 化忌는 "재물 변동성" 섹션 전용이라 여기서는 제외한다(같은 fact가 두 섹션에 겹치지 않도록
+  // domain ownership을 분리 — 化祿/化權/化科는 재물의 성격을, 化忌는 변동성만 담당).
   for (const s of evidence.sihuaInScope) {
+    if (s.kind === "化忌") continue;
     push(drafts, "coreWealth", WEALTH_TOPIC_SIHUA[s.kind], [sihuaEvidence(s.kind, s.star, s.palace)]);
   }
   return finalize("coreWealth", drafts);
@@ -89,11 +92,12 @@ export function spendingTendencyFacts(evidence: WealthEvidenceBundle): Interpret
   return finalize("spendingTendency", drafts);
 }
 
-/** 재물 변동성 — 사화(化祿/化忌) + 삼방사정 내 살성(擎羊·陀羅·地空·地劫). */
+/** 재물 변동성 — 化忌(핵심 재물상 섹션과 겹치지 않도록 이 섹션 전용) + 삼방사정 내
+ * 살성(擎羊·陀羅·地空·地劫). */
 export function wealthVolatilityFacts(evidence: WealthEvidenceBundle): InterpretationFact[] {
   const drafts: FactDraft[] = [];
   for (const s of evidence.sihuaInScope) {
-    if (s.kind !== "化祿" && s.kind !== "化忌") continue;
+    if (s.kind !== "化忌") continue;
     push(drafts, "volatility", WEALTH_TOPIC_SIHUA[s.kind], [sihuaEvidence(s.kind, s.star, s.palace)]);
   }
   for (const group of evidence.sanfangSizhengStars) {

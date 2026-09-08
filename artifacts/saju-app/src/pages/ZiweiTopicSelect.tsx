@@ -7,7 +7,7 @@ const TOPICS: { key: string; label: string; ready: boolean; icon?: typeof Heart 
   { key: "overview",      label: "종합",         ready: false },
   { key: "nature",        label: "타고난 성향",   ready: false },
   { key: "wealth",        label: "재물",         ready: true  },
-  { key: "career",        label: "커리어",       ready: false },
+  { key: "career",        label: "커리어",       ready: true  },
   { key: "romance",       label: "연애",         ready: false },
   { key: "marriageTiming",label: "결혼시기",     ready: false },
 ];
