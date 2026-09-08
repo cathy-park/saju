@@ -118,7 +118,7 @@ export function SajuCoreSummary({
   useEffect(() => {
     // TEMP DEBUG (9단계 후속 audit, 검증 후 제거 예정)
     // eslint-disable-next-line no-console
-    console.log("[sajuSummaryDebug] effect fired", Date.now(), sectionsContentKey.length, sectionsContentKey.slice(0, 40));
+    console.log("[sajuSummaryDebug] effect fired", Date.now(), "personId=", personId, "keyLen=", sectionsContentKey.length, "keyFull=", sectionsContentKey);
     let cancelled = false;
     const timer = setTimeout(() => {
       setPolishedTexts({});
