@@ -1,35 +1,21 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "wouter";
-import { ArrowLeft } from "lucide-react";
 import { getMyProfile, getPeople, type PersonRecord } from "@/lib/storage";
 import { buildZiweiChart } from "@/lib/ziwei/buildZiweiChart";
 import { zhongzhouV1 } from "@/lib/ziwei/ruleSets/zhongzhouV1";
 import { spouseReportTimingYears } from "@/lib/ziwei/reports/spouseReport";
 import {
-  buildMarriageTimingReport, type MarriageTimingReport, type MarriageTimingYearCard, type TimingAxis,
+  buildMarriageTimingReport, type MarriageTimingReport, type MarriageTimingYearCard,
 } from "@/lib/ziwei/reports/marriageTimingReport";
 import { polishStatementText } from "@/lib/ziwei/reports/proseLayer";
 import type { EvidenceItem } from "@/lib/ziwei/types";
+import { ReportHeader } from "@/components/ziwei/ReportHeader";
+import { EvidenceToggle, evidenceLabel } from "@/components/ziwei/EvidenceToggle";
+import { AxisBadge } from "@/components/ziwei/AxisBadge";
 
 const PROSE_TOPIC = "marriageTiming";
 
-const AXIS_LABEL: Record<TimingAxis, string> = {
-  activation: "관계 활성화",
-  stability: "안정화",
-  formalization: "공식화 가능성",
-  volatility: "변동성·주의",
-};
-const AXIS_BADGE_CLASS: Record<TimingAxis, string> = {
-  activation: "bg-primary/10 text-primary",
-  stability: "bg-emerald-500/10 text-emerald-700",
-  formalization: "bg-sky-500/10 text-sky-700",
-  volatility: "bg-amber-500/10 text-amber-700",
-};
-const SOURCE_LABEL: Record<NonNullable<EvidenceItem["source"]>, string> = {
-  natal: "원국",
-  major: "대한",
-  annual: "유년",
-};
+const DISCLAIMER = "아래 연도는 \"이 해에 결혼한다\"는 예측이 아닙니다. 활성화가 높다고 반드시 결혼하기 좋은 해는 아니며, 안정화·공식화 가능성·변동성과 함께 참고용으로만 봐주세요.";
 
 function findPerson(personId: string): PersonRecord | null {
   const my = getMyProfile();
@@ -37,48 +23,17 @@ function findPerson(personId: string): PersonRecord | null {
   return getPeople().find((p) => p.id === personId) ?? null;
 }
 
-function evidenceLabel(e: EvidenceItem): string {
-  const prefix = e.source ? `[${SOURCE_LABEL[e.source]}] ` : "";
-  switch (e.type) {
-    case "star": return `${prefix}별: ${e.value}`;
-    case "palace": return `${prefix}궁: ${e.value}`;
-    case "transformation": return `${prefix}사화: ${e.value}`;
-    case "period": return `${prefix}시기: ${e.value}`;
-    default: return `${prefix}${e.value}`;
-  }
-}
-
 function YearCard({ card, polishedText }: { card: MarriageTimingYearCard; polishedText?: string }) {
-  const [open, setOpen] = useState(false);
   return (
     <div className="ds-card ds-card-pad shadow-none">
       <div className="flex items-center justify-between gap-2">
         <h3 className="text-base font-bold text-foreground">{card.year}년</h3>
-        <div className="flex flex-wrap gap-1 justify-end">
-          {card.axes.map((axis) => (
-            <span key={axis} className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${AXIS_BADGE_CLASS[axis]}`}>
-              {AXIS_LABEL[axis]}
-            </span>
-          ))}
+        <div className="flex flex-wrap justify-end gap-1">
+          {card.axes.map((axis) => <AxisBadge key={axis} axis={axis} />)}
         </div>
       </div>
       <p className="mt-2 text-sm text-foreground leading-relaxed">{polishedText ?? card.text}</p>
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="mt-1 text-xs text-primary underline underline-offset-2"
-      >
-        {open ? "근거 숨기기" : "[왜 이런 결과인가요?]"}
-      </button>
-      {open && (
-        <div className="mt-2 flex flex-wrap gap-1.5">
-          {card.evidence.map((e, i) => (
-            <span key={i} className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
-              {evidenceLabel(e)}
-            </span>
-          ))}
-        </div>
-      )}
+      <EvidenceToggle evidence={card.evidence} />
     </div>
   );
 }
@@ -198,20 +153,13 @@ export default function ZiweiMarriageTimingReport() {
 
   return (
     <div className="ds-app-shell ds-page-pad py-8 ds-section-gap">
-      <Link href={`/ziwei/${personId}`} className="inline-flex items-center gap-1 text-sm text-muted-foreground">
-        <ArrowLeft className="h-4 w-4" /> 주제 선택으로
-      </Link>
-      <h1 className="ds-title-lg">{person.birthInput.name}님의 결혼시기 리포트</h1>
+      <ReportHeader personId={personId!} personName={person.birthInput.name} activeKey="marriageTiming" disclaimer={DISCLAIMER} />
 
       {error ? (
         <div className="ds-card ds-card-pad shadow-none text-sm text-muted-foreground">{error}</div>
       ) : (
         report && (
           <>
-            <div className="ds-card ds-card-pad shadow-none text-xs text-muted-foreground leading-relaxed">
-              아래 연도는 "이 해에 결혼한다"는 예측이 아닙니다. 활성화가 높다고 반드시 결혼하기 좋은
-              해는 아니며, 안정화·공식화 가능성·변동성과 함께 참고용으로만 봐주세요.
-            </div>
             {report.yearCards.length === 0 ? (
               <div className="ds-card ds-card-pad shadow-none text-sm text-muted-foreground">
                 뚜렷한 신호가 나타나는 해가 없습니다.

@@ -26,6 +26,7 @@ import { cn } from "@/lib/utils";
 import { GenderSymbol } from "@/components/GenderSymbol";
 import { CopyButton } from "@/components/CopyButton";
 import { buildPersonClipboardText } from "@/lib/clipboardExport";
+import { SystemSelector } from "@/components/SystemSelector";
 
 export default function MyProfile() {
   const [editing, setEditing] = useState(false);
@@ -271,6 +272,8 @@ export default function MyProfile() {
         hourMode={hourMode}
         onHourModeChange={setHourMode}
       />
+
+      <SystemSelector personId={record.id} sajuHref="/saju" />
 
       <Link href={`/ziwei/${record.id}`}>
         <Button variant="outline" className="w-full gap-2 shadow-none">

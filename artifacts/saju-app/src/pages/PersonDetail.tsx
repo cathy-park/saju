@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { GenderSymbol } from "@/components/GenderSymbol";
 import { CopyButton } from "@/components/CopyButton";
 import { buildPersonClipboardText } from "@/lib/clipboardExport";
+import { SystemSelector } from "@/components/SystemSelector";
 
 function partnerBadgeStatus(person: PersonRecord): MaritalBadgeStatus | undefined {
   if (person.maritalStatus) return person.maritalStatus;
@@ -124,11 +125,13 @@ export default function PersonDetail() {
         </div>
       </div>
 
-      <SajuReport 
-        record={person} 
-        hourMode={hourMode} 
-        onHourModeChange={setHourMode} 
+      <SajuReport
+        record={person}
+        hourMode={hourMode}
+        onHourModeChange={setHourMode}
       />
+
+      <SystemSelector personId={person.id} sajuHref={`/people/${person.id}`} />
 
       {/* Bottom actions */}
       <div className="flex gap-3 pt-2">

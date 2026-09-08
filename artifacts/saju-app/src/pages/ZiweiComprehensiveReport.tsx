@@ -1,21 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "wouter";
-import { ArrowLeft } from "lucide-react";
 import { getMyProfile, getPeople, type PersonRecord } from "@/lib/storage";
 import { buildZiweiChart } from "@/lib/ziwei/buildZiweiChart";
 import { zhongzhouV1 } from "@/lib/ziwei/ruleSets/zhongzhouV1";
 import { spouseReportTimingYears } from "@/lib/ziwei/reports/spouseReport";
 import { buildComprehensiveReport, type ComprehensiveReport, type ComprehensiveSection } from "@/lib/ziwei/reports/comprehensiveReport";
 import { polishStatementText } from "@/lib/ziwei/reports/proseLayer";
-import type { EvidenceItem } from "@/lib/ziwei/types";
+import { ReportHeader } from "@/components/ziwei/ReportHeader";
+import { EvidenceToggle } from "@/components/ziwei/EvidenceToggle";
 
 const PROSE_TOPIC = "overview";
-
-const SOURCE_LABEL: Record<NonNullable<EvidenceItem["source"]>, string> = {
-  natal: "원국",
-  major: "대한",
-  annual: "유년",
-};
 
 function findPerson(personId: string): PersonRecord | null {
   const my = getMyProfile();
@@ -23,41 +17,14 @@ function findPerson(personId: string): PersonRecord | null {
   return getPeople().find((p) => p.id === personId) ?? null;
 }
 
-function evidenceLabel(e: EvidenceItem): string {
-  const prefix = e.source ? `[${SOURCE_LABEL[e.source]}] ` : "";
-  switch (e.type) {
-    case "star": return `${prefix}별: ${e.value}`;
-    case "palace": return `${prefix}궁: ${e.value}`;
-    case "transformation": return `${prefix}사화: ${e.value}`;
-    case "period": return `${prefix}시기: ${e.value}`;
-    default: return `${prefix}${e.value}`;
-  }
-}
-
 function SectionCard({ section, polishedText }: { section: ComprehensiveSection; polishedText?: string }) {
-  const [open, setOpen] = useState(false);
   return (
     <div className="ds-card ds-card-pad shadow-none">
       <h2 className="text-base font-bold text-foreground">{section.title}</h2>
       {section.text ? (
         <>
           <p className="mt-2 text-sm text-foreground leading-relaxed">{polishedText ?? section.text}</p>
-          <button
-            type="button"
-            onClick={() => setOpen((v) => !v)}
-            className="mt-1 text-xs text-primary underline underline-offset-2"
-          >
-            {open ? "근거 숨기기" : "[왜 이런 결과인가요?]"}
-          </button>
-          {open && (
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {section.evidence.map((e, i) => (
-                <span key={i} className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
-                  {evidenceLabel(e)}
-                </span>
-              ))}
-            </div>
-          )}
+          <EvidenceToggle evidence={section.evidence} />
         </>
       ) : (
         <p className="mt-2 text-sm text-muted-foreground">이 주제에 대한 근거가 부족합니다.</p>
@@ -119,10 +86,7 @@ export default function ZiweiComprehensiveReport() {
 
   return (
     <div className="ds-app-shell ds-page-pad py-8 ds-section-gap">
-      <Link href={`/ziwei/${personId}`} className="inline-flex items-center gap-1 text-sm text-muted-foreground">
-        <ArrowLeft className="h-4 w-4" /> 주제 선택으로
-      </Link>
-      <h1 className="ds-title-lg">{person.birthInput.name}님의 종합 리포트</h1>
+      <ReportHeader personId={personId!} personName={person.birthInput.name} activeKey="overview" />
 
       {error ? (
         <div className="ds-card ds-card-pad shadow-none text-sm text-muted-foreground">{error}</div>
