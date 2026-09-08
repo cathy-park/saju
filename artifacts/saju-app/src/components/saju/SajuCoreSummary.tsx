@@ -116,6 +116,9 @@ export function SajuCoreSummary({
   // 바뀔 수 있어, 값이 안정된 뒤(1200ms 무변동) 한 번만 호출하도록 디바운스한다.
   const [polishedTexts, setPolishedTexts] = useState<Record<string, string>>({});
   useEffect(() => {
+    // TEMP DEBUG (9단계 후속 audit, 검증 후 제거 예정)
+    // eslint-disable-next-line no-console
+    console.log("[sajuSummaryDebug] effect fired", Date.now(), sectionsContentKey.length, sectionsContentKey.slice(0, 40));
     let cancelled = false;
     const timer = setTimeout(() => {
       setPolishedTexts({});
