@@ -23,6 +23,14 @@
 // AI 다듬기 호출 예산: 섹션당 정확히 1회, 총 5회. AI에는 여기서 만든 deterministic text/fact
 // 묶음만 전달하고(기존 polish-prose.ts 프롬프트가 이미 "사실 목록 밖 해석 금지"를 강제한다),
 // 이 파일이 서버 프롬프트를 바꾸지는 않는다.
+//
+// 품질 패치(2차, 대표 지시): 일·재물/연애·배우자는 같은 궁(財帛宮·事業宮 등)을 "나"(self)와
+// "배우자상"(spouse)이 각각 다른 리포트에서 참조할 수 있어 주어가 섞여 보일 위험이 있다.
+// 원본 계산·fact.meaning 문자열은 절대 바꾸지 않고, synthesizeScopedSections()의 lead-in
+// wrapper("나는 재물 면에서는"/"배우자상에서는" 등)로만 scope를 구분한다. 또한 연애·배우자는
+// fact가 37개까지 늘어나 AI synthesis 입력이 장황해지므로, pickTopPerDomain()으로 domain당
+// strength 최상위 fact만 합성에 쓰고 나머지는 evidenceFacts로 그대로 근거 토글에 남긴다(새
+// 판정 기준이 아니라 각 리포트가 이미 계산해 둔 strength 재사용).
 import type { EvidenceItem, PalaceName, RuleSet, ZiweiChart } from "../types";
 import { extractNatureEvidence } from "../natureEvidence";
 import { extractWealthEvidence } from "../wealthEvidence";
@@ -95,17 +103,26 @@ interface SurfaceInnerConfig {
   inner: Set<string>;
 }
 
-/** 4단계 synthesis를 적용해 한 섹션의 deterministic text + fact 묶음을 만든다. outer/inner
- * 양쪽에 실제 fact가 있고, 그 둘의 favorable/risk 우세 방향이 서로 다를 때만 "겉으로는 A,
- * 내면에서는 B" 구조를 쓴다 — 그 외의 모든 polarity 충돌은 synthesizeText의 기존 양보절
- * (다만/그럼에도)로 통합한다. */
-export function synthesizeSection(rawFacts: InterpretationFact[], config: SurfaceInnerConfig): { text: string; facts: InterpretationFact[] } {
-  const facts = dedupeExactMeaning(rawFacts);
-  if (facts.length === 0) return { text: "", facts: [] };
+/** 같은 domain의 fact 중 strength가 가장 높은 것 하나만 남긴다 — 새 판정 기준이 아니라, 각
+ * 리포트가 이미 finalize()에서 계산해 둔 strength(같은 극성 fact가 몇 개 모였는지)를 그대로
+ * 재사용한다. AI synthesis 입력이 지나치게 장황해지는 것을 막기 위한 압축 전용이며, 압축 전
+ * 전체 fact/evidence는 호출부에서 별도로 보존한다(근거 토글용). */
+function pickTopPerDomain(facts: InterpretationFact[]): InterpretationFact[] {
+  const bestByDomain = new Map<string, InterpretationFact>();
+  for (const f of facts) {
+    const current = bestByDomain.get(f.domain);
+    if (!current || f.strength > current.strength) bestByDomain.set(f.domain, f);
+  }
+  return [...bestByDomain.values()];
+}
 
-  const outer = facts.filter((f) => config.outer.has(f.domain));
-  const inner = facts.filter((f) => config.inner.has(f.domain));
-  const other = facts.filter((f) => !config.outer.has(f.domain) && !config.inner.has(f.domain));
+/** outer/inner 구조 판단 + synthesizeText 위임을 한 fact 풀에 적용한다(대명 없이) —
+ * synthesizeSection과 synthesizeScopedSections이 공유하는 핵심 로직. */
+function composePool(pool: InterpretationFact[], config: SurfaceInnerConfig): string {
+  if (pool.length === 0) return "";
+  const outer = pool.filter((f) => config.outer.has(f.domain));
+  const inner = pool.filter((f) => config.inner.has(f.domain));
+  const other = pool.filter((f) => !config.outer.has(f.domain) && !config.inner.has(f.domain));
 
   const outerLean = lean(outer);
   const innerLean = lean(inner);
@@ -113,10 +130,56 @@ export function synthesizeSection(rawFacts: InterpretationFact[], config: Surfac
 
   if (useSurfaceInner) {
     const otherText = other.length > 0 ? ` ${synthesizeText(other)}` : "";
-    const text = `겉으로는 ${joinMeanings(outer)}이지만, 내면에서는 ${joinMeanings(inner)}인 모습입니다.${otherText}`;
-    return { text, facts };
+    return `겉으로는 ${joinMeanings(outer)}이지만, 내면에서는 ${joinMeanings(inner)}인 모습입니다.${otherText}`;
   }
-  return { text: synthesizeText(facts), facts };
+  return synthesizeText(pool);
+}
+
+/** 4단계 synthesis를 적용해 한 섹션의 deterministic text + fact 묶음을 만든다. outer/inner
+ * 양쪽에 실제 fact가 있고, 그 둘의 favorable/risk 우세 방향이 서로 다를 때만 "겉으로는 A,
+ * 내면에서는 B" 구조를 쓴다 — 그 외의 모든 polarity 충돌은 synthesizeText의 기존 양보절
+ * (다만/그럼에도)로 통합한다. */
+export function synthesizeSection(rawFacts: InterpretationFact[], config: SurfaceInnerConfig): { text: string; facts: InterpretationFact[] } {
+  const facts = dedupeExactMeaning(rawFacts);
+  if (facts.length === 0) return { text: "", facts: [] };
+  return { text: composePool(facts, config), facts };
+}
+
+export interface ScopedFactGroup {
+  /** 이 그룹의 fact가 누구 이야기인지 문장 앞에 붙이는 자연어 lead-in(예: "나는 재물 면에서는",
+   * "배우자상에서는"). 원본 fact.meaning 문자열은 건드리지 않고, 합성 문단에서만 앞에 붙인다
+   * (대표 지시: scope는 metadata/wrapper로만 해결, 원본 계산·문구는 그대로). */
+  leadIn: string;
+  facts: InterpretationFact[];
+  outer?: Set<string>;
+  inner?: Set<string>;
+}
+
+/** 여러 scope(나/배우자상 등)의 fact 그룹을 각각 압축·합성한 뒤 lead-in과 함께 이어붙인다.
+ * 같은 궁을 참조하더라도 그룹이 다르면(예: 財帛宮을 읽는 self.wealth vs spouse.wealth) 절대
+ * 하나로 합치지 않고 별도 문장으로 유지한다 — 이게 "주어 혼동 방지"의 핵심이다.
+ * compress=true면 그룹 내부에서 domain당 strength 최상위 fact만 합성에 쓰고(장황함 방지),
+ * 나머지는 evidenceFacts로 그대로 반환해 근거 토글에서 유지한다. */
+export function synthesizeScopedSections(
+  groups: ScopedFactGroup[],
+  compress: boolean,
+): { text: string; facts: InterpretationFact[]; evidenceFacts: InterpretationFact[] } {
+  const parts: string[] = [];
+  const synthesisFacts: InterpretationFact[] = [];
+  const evidenceFacts: InterpretationFact[] = [];
+
+  for (const group of groups) {
+    const deduped = dedupeExactMeaning(group.facts);
+    if (deduped.length === 0) continue;
+    evidenceFacts.push(...deduped);
+    const pool = compress ? pickTopPerDomain(deduped) : deduped;
+    const text = composePool(pool, { outer: group.outer ?? new Set(), inner: group.inner ?? new Set() });
+    if (!text) continue;
+    parts.push(`${group.leadIn} ${text}`);
+    synthesisFacts.push(...pool);
+  }
+
+  return { text: parts.join(" "), facts: synthesisFacts, evidenceFacts };
 }
 
 // ── 현재 삶의 중심축 — 새 판정 기준 없이 이미 계산된 身宮/大限/결혼시기 하이라이트만 읽는다 ──
@@ -218,35 +281,53 @@ export function buildComprehensiveReport(chart: ZiweiChart, ruleSet: RuleSet, pe
     inner: new Set(["coreNature", "lifeDirection", "lifeAttitude"]),
   });
 
-  // ── 일·재물(내 재물·커리어 리포트만 — 배우자의 career/wealth 도메인은 "연애·배우자"로) ──
-  const workWealthFactsAll = [
+  // ── 일·재물(내 재물·커리어 리포트만 — 배우자의 career/wealth 도메인은 "연애·배우자"로).
+  // 재물/커리어는 둘 다 "나"의 이야기지만 주제가 다르므로 각각 "나는 재물 면에서는"/
+  // "나는 일에서는" lead-in으로 분리한다 — 연애·배우자 섹션의 spouse.wealth/spouse.career와
+  // 같은 궁을 참조하더라도 주어가 섞이지 않도록 하기 위함(대표 지시).
+  const wealthFactsAll = [
     ...coreWealthFacts(wealthEvidence), ...incomeStyleFacts(wealthEvidence),
     ...spendingTendencyFacts(wealthEvidence), ...wealthVolatilityFacts(wealthEvidence),
+  ];
+  const careerFactsAll = [
     ...coreCareerFacts(careerEvidence), ...workStyleFacts(careerEvidence),
     ...collaborationEnvironmentFacts(careerEvidence), ...achievementVolatilityFacts(careerEvidence),
   ];
-  const workWealth = synthesizeSection(workWealthFactsAll, { outer: new Set(), inner: new Set() });
+  const workWealth = synthesizeScopedSections(
+    [
+      { leadIn: "나는 재물 면에서는", facts: wealthFactsAll },
+      { leadIn: "나는 일에서는", facts: careerFactsAll },
+    ],
+    false,
+  );
 
-  // ── 연애·배우자(romance 4축 + 배우자 리포트 전체 도메인) ──
-  const romanceSpouseFactsAll = [
+  // ── 연애·배우자(romance 4축="나"의 연애 방식 + 배우자 리포트 전체 도메인="배우자상"). 37개
+  // fact를 전부 근거로는 유지하되, AI synthesis 입력은 그룹별 domain당 strength 최상위 fact만
+  // 써서 메인 문장이 장황해지지 않게 한다(compress=true). ──
+  const romanceFactsAll = [
     ...attractionFacts(spouseEvidence), ...expressionFacts(spouseEvidence),
     ...conflictFacts(spouseEvidence), ...managementFacts(spouseEvidence),
+  ];
+  const spouseFactsAll = [
     ...spouseCoreImageFacts(spouseEvidence), ...spousePersonalityFacts(spouseEvidence), ...spouseAppearanceFacts(spouseEvidence),
     ...spouseCareerFacts(spouseEvidence), ...spouseWealthFacts(spouseEvidence),
     ...meetingFacts(spouseEvidence), ...relationshipFacts(spouseEvidence), ...compatibilityFacts(spouseEvidence),
   ];
-  const romanceSpouse = synthesizeSection(romanceSpouseFactsAll, {
-    outer: new Set(["appearance"]),
-    inner: new Set(["personality"]),
-  });
+  const romanceSpouse = synthesizeScopedSections(
+    [
+      { leadIn: "나는 연애에서는", facts: romanceFactsAll },
+      { leadIn: "배우자상에서는", facts: spouseFactsAll, outer: new Set(["appearance"]), inner: new Set(["personality"]) },
+    ],
+    true,
+  );
 
   const currentFocus = buildCurrentFocusSection(chart, marriageTiming);
   const upcomingTiming = buildUpcomingTimingSection(marriageTiming);
 
   const sections: ComprehensiveSection[] = [
     { key: "coreNature", title: "핵심 성향", text: coreNature.text, facts: coreNature.facts, evidence: withSource(coreNature.facts.flatMap((f) => f.evidence), "natal") },
-    { key: "workWealth", title: "일·재물", text: workWealth.text, facts: workWealth.facts, evidence: withSource(workWealth.facts.flatMap((f) => f.evidence), "natal") },
-    { key: "romanceSpouse", title: "연애·배우자", text: romanceSpouse.text, facts: romanceSpouse.facts, evidence: withSource(romanceSpouse.facts.flatMap((f) => f.evidence), "natal") },
+    { key: "workWealth", title: "일·재물", text: workWealth.text, facts: workWealth.facts, evidence: withSource(workWealth.evidenceFacts.flatMap((f) => f.evidence), "natal") },
+    { key: "romanceSpouse", title: "연애·배우자", text: romanceSpouse.text, facts: romanceSpouse.facts, evidence: withSource(romanceSpouse.evidenceFacts.flatMap((f) => f.evidence), "natal") },
     currentFocus,
     upcomingTiming,
   ];

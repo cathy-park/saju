@@ -1,10 +1,13 @@
 import { describe, it, expect } from "vitest";
 import { buildZiweiChart } from "../../buildZiweiChart";
 import { zhongzhouV1 } from "../../ruleSets/zhongzhouV1";
+import { extractWealthEvidence } from "../../wealthEvidence";
+import { extractSpouseEvidence } from "../../spouseEvidence";
 import { PARK_SOYEON_BIRTH } from "../../__tests__/fixtures/parkSoyeon";
 import { spouseReportTimingYears } from "../spouseReport";
-import { buildComprehensiveReport, synthesizeSection } from "../comprehensiveReport";
-import type { InterpretationFact } from "../interpretationFacts";
+import { buildComprehensiveReport, synthesizeSection, synthesizeScopedSections } from "../comprehensiveReport";
+import { coreWealthFacts, incomeStyleFacts, spendingTendencyFacts, wealthVolatilityFacts } from "../wealthFacts";
+import { wealthFacts as spouseWealthFacts, type InterpretationFact } from "../interpretationFacts";
 
 function fact(domain: string, meaning: string, polarity: InterpretationFact["polarity"]): InterpretationFact {
   return { id: meaning, domain, meaning, polarity, strength: 1, evidence: [] };
@@ -78,6 +81,85 @@ describe("comprehensiveReport — 5개 섹션 구성과 도메인 오염 방지"
   it("앞으로의 주요 시기는 yearCards를 재계산하지 않고 상위 3개만 요약한다", () => {
     const upcoming = section("upcomingTiming");
     expect(upcoming.facts.length).toBeLessThanOrEqual(3);
+  });
+
+  it("일·재물은 '나는' scope로만 서술한다 — '배우자상에서는'이 절대 섞이지 않는다", () => {
+    const text = section("workWealth").text;
+    expect(text).toContain("나는 재물 면에서는");
+    expect(text).toContain("나는 일에서는");
+    expect(text).not.toContain("배우자상에서는");
+  });
+
+  it("연애·배우자는 '나는 연애에서는'(romance)과 '배우자상에서는'(spouse)을 명확히 구분해 서술한다", () => {
+    const text = section("romanceSpouse").text;
+    expect(text).toContain("나는 연애에서는");
+    expect(text).toContain("배우자상에서는");
+  });
+
+  it("연애·배우자는 domain당 strength 최상위 fact만 synthesis에 쓰지만(장황함 방지), 근거 토글에는 37개 원본 fact의 evidence를 모두 유지한다", () => {
+    const romanceSpouse = section("romanceSpouse");
+    // romance 4개 도메인 + spouse 8개 도메인 = 최대 12개 synthesis fact.
+    expect(romanceSpouse.facts.length).toBeLessThanOrEqual(12);
+    // 근거 토글(evidence)은 압축 전 원본 fact들의 evidence를 그대로 담아 훨씬 많다.
+    expect(romanceSpouse.evidence.length).toBeGreaterThan(romanceSpouse.facts.length * 2);
+  });
+
+  it("[박소연 fixture] 財帛宮을 self.wealth와 spouse.wealth가 각각 참조해 문구가 완전히 겹치는 실제 사례가 있다 — 이 겹침이 scope 구분이 필요한 근거다", () => {
+    const wealthEvidence = extractWealthEvidence(chart);
+    const spouseEvidence = extractSpouseEvidence(chart);
+    const selfWealthMeanings = [
+      ...coreWealthFacts(wealthEvidence), ...incomeStyleFacts(wealthEvidence),
+      ...spendingTendencyFacts(wealthEvidence), ...wealthVolatilityFacts(wealthEvidence),
+    ].map((f) => f.meaning);
+    const spouseWealthMeanings = spouseWealthFacts(spouseEvidence).map((f) => f.meaning);
+    const overlap = selfWealthMeanings.filter((m) => spouseWealthMeanings.includes(m));
+    expect(overlap.length).toBeGreaterThan(0);
+  });
+});
+
+describe("synthesizeScopedSections — 같은 문구라도 scope 그룹이 다르면 절대 하나로 합치지 않는다", () => {
+  it("[박소연 fixture 실데이터] self.wealth와 spouse.wealth가 겹치는 문구를 각각 다른 lead-in으로 구분해 보존한다", () => {
+    const wealthEvidence = extractWealthEvidence(chart);
+    const spouseEvidence = extractSpouseEvidence(chart);
+    const selfWealthFacts = [
+      ...coreWealthFacts(wealthEvidence), ...incomeStyleFacts(wealthEvidence),
+      ...spendingTendencyFacts(wealthEvidence), ...wealthVolatilityFacts(wealthEvidence),
+    ];
+    const spouseWealthFactsList = spouseWealthFacts(spouseEvidence);
+    const overlapMeaning = selfWealthFacts.map((f) => f.meaning)
+      .find((m) => spouseWealthFactsList.some((f) => f.meaning === m))!;
+    expect(overlapMeaning).toBeTruthy();
+
+    const result = synthesizeScopedSections(
+      [
+        { leadIn: "나는 재물 면에서는", facts: [{ id: "s", domain: "coreWealth", meaning: overlapMeaning, polarity: "positive", strength: 1, evidence: [] }] },
+        { leadIn: "배우자상에서는", facts: [{ id: "p", domain: "wealth", meaning: overlapMeaning, polarity: "positive", strength: 1, evidence: [] }] },
+      ],
+      false,
+    );
+    // 같은 문구가 삭제되지 않고 두 scope 모두에 각자의 lead-in과 함께 남아야 한다.
+    const selfIdx = result.text.indexOf("나는 재물 면에서는");
+    const spouseIdx = result.text.indexOf("배우자상에서는");
+    expect(selfIdx).toBeGreaterThanOrEqual(0);
+    expect(spouseIdx).toBeGreaterThan(selfIdx);
+    expect(result.text.slice(selfIdx, spouseIdx)).toContain(overlapMeaning);
+    expect(result.text.slice(spouseIdx)).toContain(overlapMeaning);
+  });
+
+  it("compress=true면 그룹 내부에서 domain당 최상위 strength fact만 synthesis에 쓰지만 evidenceFacts는 전부 보존한다", () => {
+    const result = synthesizeScopedSections(
+      [{
+        leadIn: "테스트",
+        facts: [
+          { id: "a", domain: "x", meaning: "약한 문장", polarity: "positive", strength: 1, evidence: [] },
+          { id: "b", domain: "x", meaning: "강한 문장", polarity: "positive", strength: 5, evidence: [] },
+          { id: "c", domain: "y", meaning: "다른 도메인 문장", polarity: "positive", strength: 1, evidence: [] },
+        ],
+      }],
+      true,
+    );
+    expect(result.facts.map((f) => f.meaning).sort()).toEqual(["강한 문장", "다른 도메인 문장"]);
+    expect(result.evidenceFacts.length).toBe(3);
   });
 });
 
