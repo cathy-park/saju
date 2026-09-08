@@ -5056,7 +5056,10 @@ export function SajuReport({ record, showSaveStatus = false, hourMode: parentHou
     } catch { /* ignore */ }
   }
 
-  const branchRelations = analyzeBranchRelations(effectivePillars as Parameters<typeof analyzeBranchRelations>[0]);
+  const branchRelations = useMemo(
+    () => analyzeBranchRelations(effectivePillars as Parameters<typeof analyzeBranchRelations>[0]),
+    [effectivePillars],
+  );
 
   // ── 오늘운세: 오늘 날짜 기준 요약 데이터 ────────────────────────
   const todayFortune = useMemo(() => {
