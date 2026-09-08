@@ -41,7 +41,11 @@ import type { ShinsalInterpretationEntry } from "./shinsalInterpretation";
 import { type ReportFact, type Polarity } from "./reportFacts";
 
 export interface SajuEvidenceItem {
-  category: "strength" | "gukguk" | "yongshin" | "fiveElement" | "tenGod" | "interaction" | "shinsal" | "ruleInsight";
+  category:
+    | "strength" | "gukguk" | "yongshin" | "fiveElement" | "tenGod" | "interaction" | "shinsal" | "ruleInsight"
+    // 10단계(월별운세 핵심 요약)가 추가한 시점 출처 카테고리 — 원국 요약과 달리 "어떤 판단인지"가
+    // 아니라 "어느 시점(원국/대운/세운/월운)에서 나온 근거인지"를 구분해야 해서 별도로 둔다.
+    | "natal" | "daewoon" | "saeun" | "wolun";
   label: string;
 }
 
@@ -172,16 +176,67 @@ function stripTechnicalTerms(text: string): string {
   return out;
 }
 
+/** "관성이 강하지만 인성이 이를..." 처럼 한 규칙의 원문 안에 성격 서술과 조언/약점/직업
+ * 예시가 함께 있으면, stripTechnicalTerms만으로는 "섹션 목적에 안 맞는 절"까지 그대로
+ * 남는다(예: '핵심 성향'에 재물 조언이 섞이거나, '강점'에 약점·보완 조언이 섞임). 그래서
+ * 11개 규칙마다 "이 섹션에서 보여줄 결"만 손으로 다시 쓴다 — 규칙의 조건/판정과 의미는
+ * 그대로 두고(새 명리 판단 아님), 표현만 그 섹션 목적(성격/능력/과잉패턴 등)에 맞게 추리고
+ * 문장을 다듬은 것이다. 원문 전체는 항상 evidence(ruleInsight)에 그대로 남는다.
+ *
+ *   R01 압박형 권위 구조   → 주의할 점: 조언(인성으로 보충) 제거, 과잉 패턴만.
+ *   R02 계획형 재물 구조   → 일·재물: "핵심"이라는 단정과 실행력 조언 완화.
+ *   R03/R04 조후 화·수 필요 → 핵심 성향: 마지막 "~보조하세요" 명령형 조언 제거.
+ *   R05 경쟁형 에너지 구조 → 핵심 성향: 재물 결과·파트너/멘토 조언 제거, 성향/행동만.
+ *   R06 창의형 표현가 구조 → 강점: 약점(학습·안정 부족)·조언(명상) 제거, 능력만.
+ *   R07 스트레스 과부하    → 주의할 점: 휴식·충전 루틴 조언 제거, 패턴 서술로.
+ *   R08 균형형 다재다능    → 핵심 성향: 장기 노력 조언 제거.
+ *   R09 극신강 독립·사업형 → 강점: 구체 직업 예시(사업/전문직) 대신 일반화된 능력 서술.
+ *   R10 인성강 학습형      → 강점: 약점(행동력 저하)·조언(실행 루틴) 제거, 능력만.
+ *   R11 오행 결핍 보완     → 주의할 점: "OO의 공백" 같은 추상 표현 대신 실제 의사결정
+ *     패턴으로. 결핍 그룹은 conditions 문자열에서 그대로 읽어와 새 판단을 만들지 않는다.
+ */
+const RULE_MAIN_TEXT_OVERRIDE: Record<string, (r: SajuPipelineResult["interpretation"]["rulesApplied"][number]) => string> = {
+  R01: () => "책임과 의무를 과하게 짊어지려는 경향이 있어, 권위나 규범이 동기부여보다 스트레스로 다가올 수 있습니다.",
+  R02: () => "재물에 대한 감각과 욕구는 강하지만 이를 행동으로 옮기는 힘은 상대적으로 약해, 계획과 전략 위주로 재물을 다루는 편입니다.",
+  R03: () => "차분하고 다소 냉정한 기운이 강하게 자리잡고 있어, 따뜻하고 활동적인 환경에서 에너지가 더 잘 풀리는 편입니다.",
+  R04: () => "열정과 에너지가 넘쳐 마음이 쉽게 달아오르는 편이라, 차분하고 여유 있는 환경에서 안정을 찾는 성향입니다.",
+  R05: () => "자아와 독립심이 강하고 경쟁심이 높아, 협력보다는 스스로 판단하고 행동하는 것을 선호하는 편입니다.",
+  R06: () => "창의적인 표현력과 행동력이 뛰어나 아이디어를 빠르게 실행으로 옮기는 능력이 있습니다.",
+  R07: () => "외부의 요구와 책임이 내면의 여유보다 앞서기 쉬워, 스스로도 모르게 무리하다가 과로나 번아웃으로 이어질 수 있는 패턴입니다.",
+  R08: () => "여러 영역에서 고르게 능력을 발휘하는 균형 잡힌 편으로, 한 분야에 강하게 몰두하기보다 협업하거나 조율하는 역할에서 판단력을 발휘합니다.",
+  R09: () => "에너지가 강해 조직에 얽매이지 않고 독립적으로 판단하고 주도하는 능력이 뛰어납니다.",
+  R10: () => "학습과 탐구, 직관이 발달해 지식을 받아들이고 깊이 파고드는 능력이 뛰어납니다.",
+  R11: (r) => {
+    const missing = r.conditions[0]?.match(/결핍 십성 그룹: (.+)/)?.[1]?.split("·") ?? [];
+    const primary = missing[0];
+    return TEN_GOD_DEFICIT_PATTERN[primary]
+      ?? "특정 영역의 기운이 매우 부족해, 그 영역과 관련된 의사결정에서 공백이 나타날 수 있습니다.";
+  },
+};
+
+/** R11(오행 결핍)이 결핍된 그룹에 따라 실제 어떤 의사결정 패턴으로 나타날 수 있는지를
+ * 서술한다 — "OO의 공백" 같은 추상적 표현 대신, 이미 R11이 판정한 "이 그룹이 부족하다"는
+ * 사실을 실제 행동 패턴으로만 옮긴 것이다(새 판단 아님). */
+const TEN_GOD_DEFICIT_PATTERN: Record<string, string> = {
+  비겁: "결단을 내려야 하는 순간에 스스로 확신하지 못하고 주저하는 경향이 나타날 수 있습니다.",
+  식상: "생각을 표현하거나 행동으로 옮기는 힘이 약해, 기회 앞에서 머뭇거리는 경향이 나타날 수 있습니다.",
+  재성: "현실적인 판단이나 재물 감각이 약해, 계획이 실제 성과로 이어지기 어려운 경향이 나타날 수 있습니다.",
+  관성: "책임이나 원칙을 지키는 기준이 흔들려, 결정과 행동이 상황에 따라 오락가락하는 경향이 나타날 수 있습니다.",
+  인성: "배움이나 조언을 받아들이는 여유가 부족해, 자기 판단만으로 밀어붙이다 어려움을 겪는 경향이 나타날 수 있습니다.",
+};
+
 /** interpretationRules.ts가 이미 낸 문장 중 timing 표현이 없고, 이 섹션에 배치된 규칙(fired)만
- * 골라 SajuFact로 감싼다(기술용어는 stripTechnicalTerms로 치환, 원문은 evidence에 보존).
- * ruleId는 "이미 성립한 규칙의 의미를 현실 언어로 옮기는" 용도로만 쓰고, 여기서 새로 명리
- * 판단을 내리지 않는다. */
+ * 골라 SajuFact로 감싼다. 메인 문장은 RULE_MAIN_TEXT_OVERRIDE(섹션 목적에 맞게 다시 쓴 결)를
+ * 우선 쓰고, 아직 override가 없는 규칙(향후 추가분)은 stripTechnicalTerms로 안전하게
+ * fallback한다. 원문은 항상 evidence(ruleInsight label)에 그대로 남는다. ruleId는 "이미
+ * 성립한 규칙의 의미를 현실 언어로 옮기는" 용도로만 쓰고, 여기서 새로 명리 판단을 내리지
+ * 않는다. */
 function mappedRuleFacts(pipeline: SajuPipelineResult, section: SajuSectionKey): SajuFact[] {
   return pipeline.interpretation.rulesApplied
     .filter((r) => r.fired && RULE_SECTION_MAP[r.ruleId] === section && !isTimingSentence(r.interpretation))
     .map((r) => fact(
       `rule-${r.ruleId}`,
-      stripTechnicalTerms(r.interpretation),
+      RULE_MAIN_TEXT_OVERRIDE[r.ruleId]?.(r) ?? stripTechnicalTerms(r.interpretation),
       "neutral",
       [ev("ruleInsight", `${r.ruleName}(${r.category}): ${r.interpretation}`)],
     ));
@@ -195,12 +250,24 @@ function fact(domain: string, meaning: string, polarity: Polarity, evidence: Saj
   return { id: `${domain}-${evidence.map((e) => e.label).join("|") || meaning}`, domain, meaning, polarity, strength: 1, evidence };
 }
 
+/** [구체 직업 예시 제거 — 대표 지시] "군·의료·스포츠 등 강한 직군이 맞습니다"처럼 격국
+ * 설명이 특정 직업/분야를 예로 드는 문장은, 그 직업이 deterministic 근거로 직접 뒷받침된
+ * 게 아니라 격국 설명에 곁들여진 예시일 뿐이라 메인에서는 제거한다(문장 단위로만 제거해
+ * 나머지 성향 서술은 그대로 둔다). "직군"이 포함된 문장이 없으면 원문을 그대로 반환한다.
+ * 원문 전체(직업 예시 포함)는 항상 evidence에 남는다. */
+function stripJobExampleSentences(text: string): string {
+  const kept = text
+    .split(/(?<=[.!?])\s*/)
+    .filter((s) => s.trim().length > 0 && !/직군|어울리는 직업|적합한 직업/.test(s));
+  return kept.length > 0 ? kept.join(" ").trim() : text;
+}
+
 /** gukguk.description은 이미 행동 언어로 쓰여 있지만 "OO격으로 ..."처럼 격국명을 문장 맨
  * 앞에서 반복한다 — 그 명칭 접두사만 제거한다(패턴이 안 맞으면 원문을 그대로 반환해 문장이
  * 깨지지 않게 한다 — 새 격국명이 추가돼도 안전). 격국명 자체는 evidence에만 남는다. */
 function gukgukPlainText(gukguk: NonNullable<SajuPipelineResult["interpretation"]["gukguk"]>): string {
   const stripped = gukguk.description.replace(new RegExp(`^${gukguk.name}(으로|이라서|이며|은|는)?\\s*`), "");
-  return stripped || gukguk.description;
+  return stripJobExampleSentences(stripped || gukguk.description);
 }
 
 /** 재성·식상(일·재물) 또는 관성·비겁(연애·관계) 두 십성 그룹의 비중 원자료를, 규칙이 하나도
@@ -277,7 +344,7 @@ function buildAtAGlanceFacts(pipeline: SajuPipelineResult): SajuFact[] {
   const facts: SajuFact[] = [];
   const sr = pipeline.base.strengthResult;
   if (sr.description) {
-    facts.push(fact("strength", stripTechnicalTerms(sr.description), "neutral", [
+    facts.push(fact("strength", stripJobExampleSentences(stripTechnicalTerms(sr.description)), "neutral", [
       ev("strength", `강약: ${sr.level}(점수 ${sr.score}) — ${sr.description}`),
     ]));
   }
