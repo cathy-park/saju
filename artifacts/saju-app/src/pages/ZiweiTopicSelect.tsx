@@ -5,7 +5,7 @@ import { getMyProfile, getPeople } from "@/lib/storage";
 const TOPICS: { key: string; label: string; ready: boolean; icon?: typeof Heart }[] = [
   { key: "spouse",        label: "배우자",       ready: true,  icon: Heart },
   { key: "overview",      label: "종합",         ready: false },
-  { key: "nature",        label: "타고난 성향",   ready: false },
+  { key: "nature",        label: "타고난 성향",   ready: true  },
   { key: "wealth",        label: "재물",         ready: true  },
   { key: "career",        label: "커리어",       ready: true  },
   { key: "romance",       label: "연애",         ready: false },
