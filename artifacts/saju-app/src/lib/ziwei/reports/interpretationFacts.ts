@@ -238,6 +238,16 @@ function joinClauses(facts: InterpretationFact[]): string {
   return facts.map((f) => f.meaning).join(", ");
 }
 
+/** 한글 주격 조사(이/가) 선택 — 마지막 음절에 받침이 있으면 "이", 없으면 "가". 한글 음절이
+ * 아닌 문자로 끝나면(드물게 영문·기호 등) 안전하게 "이"를 기본값으로 쓴다. */
+function subjectParticle(text: string): "이" | "가" {
+  const lastChar = text.trim().at(-1);
+  if (!lastChar) return "이";
+  const code = lastChar.charCodeAt(0);
+  if (code < 0xac00 || code > 0xd7a3) return "이";
+  return (code - 0xac00) % 28 === 0 ? "가" : "이";
+}
+
 /** facts를 하나의 결합 문단으로 합성한다. 서로 다른 결론(polarity)이 섞여 있을 때 "다만...
  * 동시에...다만..."처럼 계속 병렬로 나열하지 않는다 — 우호적(positive+mixed) 진영과 위험(risk)
  * 진영 중 evidence가 더 많은 쪽을 주절로 삼아 하나의 해석으로 조정하고, 소수 진영은 양보절
@@ -247,10 +257,18 @@ export function synthesizeText(facts: InterpretationFact[]): string {
   const favorable = facts.filter((f) => f.polarity !== "risk");
   const risk = facts.filter((f) => f.polarity === "risk");
 
-  if (risk.length === 0) return `${joinClauses(favorable)}이 함께 나타납니다.`;
-  if (favorable.length === 0) return `${joinClauses(risk)}이 함께 나타납니다.`;
-  if (favorable.length >= risk.length) {
-    return `${joinClauses(favorable)}. 다만 ${joinClauses(risk)}이 함께 나타납니다.`;
+  if (risk.length === 0) {
+    const clause = joinClauses(favorable);
+    return `${clause}${subjectParticle(clause)} 함께 나타납니다.`;
   }
-  return `${joinClauses(risk)}. 그럼에도 ${joinClauses(favorable)}이 함께 나타납니다.`;
+  if (favorable.length === 0) {
+    const clause = joinClauses(risk);
+    return `${clause}${subjectParticle(clause)} 함께 나타납니다.`;
+  }
+  if (favorable.length >= risk.length) {
+    const riskClause = joinClauses(risk);
+    return `${joinClauses(favorable)}. 다만 ${riskClause}${subjectParticle(riskClause)} 함께 나타납니다.`;
+  }
+  const favorableClause = joinClauses(favorable);
+  return `${joinClauses(risk)}. 그럼에도 ${favorableClause}${subjectParticle(favorableClause)} 함께 나타납니다.`;
 }
