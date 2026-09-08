@@ -94,6 +94,16 @@ export function SajuCoreSummary({
   branchRelations: BranchRelation[];
   shinsalEntries: ShinsalInterpretationEntry[];
 }) {
+  // TEMP DEBUG (9단계 후속 audit, 검증 후 제거 예정)
+  useEffect(() => {
+    // eslint-disable-next-line no-console
+    console.log("[sajuSummaryDebug] MOUNT", Date.now());
+    return () => {
+      // eslint-disable-next-line no-console
+      console.log("[sajuSummaryDebug] UNMOUNT", Date.now());
+    };
+  }, []);
+
   const sections = useMemo(
     () => buildSajuSummarySections(pipeline, branchRelations, shinsalEntries),
     [pipeline, branchRelations, shinsalEntries],
