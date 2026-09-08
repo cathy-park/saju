@@ -21,10 +21,16 @@ export interface InterpretationFact {
    * 夫妻宮 배우자 주제의 InterpretationDomain만 쓰지만, 다른 주제(재물 등)의 생성기도 같은
    * InterpretationFact 타입과 synthesizeText를 재사용할 수 있도록 string으로 열어둔다. */
   domain: string;
+  /** 메인 리포트에 그대로 보이는 순수 자연어 문구 — 궁명·별명·사화 표기 등 기술적 출처 정보는
+   * 절대 여기 섞지 않는다(대표 지시). 출처는 evidence에만 담고 [왜 이런 결과인가요?] 토글에서만
+   * 노출한다. */
   meaning: string;
   polarity: Polarity;
   strength: number;
   evidence: EvidenceItem[];
+  /** 본궁이 空宮이라 對宮에서 별을 빌려온 경우 — meaning 문자열에 표식을 남기지 않고 이 필드로만
+   * 판단한다(신뢰도 계산용). */
+  borrowed?: boolean;
 }
 
 function starEvidence(name: string, palace: PalaceName): EvidenceItem {
@@ -60,9 +66,9 @@ function finalize(domain: InterpretationDomain, drafts: FactDraft[]): Interpreta
   }));
 }
 
-function push(drafts: FactDraft[], domain: InterpretationDomain, m: StarMeaning | undefined, evidence: EvidenceItem[], prefix?: string) {
+function push(drafts: FactDraft[], domain: InterpretationDomain, m: StarMeaning | undefined, evidence: EvidenceItem[], borrowed?: boolean) {
   if (!m) return;
-  drafts.push({ domain, meaning: prefix ? `${prefix} ${m.meaning}` : m.meaning, polarity: m.polarity, evidence });
+  drafts.push({ domain, meaning: m.meaning, polarity: m.polarity, evidence, borrowed });
 }
 
 // ── 도메인별 fact 생성기 (evidence 소스를 도메인마다 다르게 둔다) ─────────────
@@ -73,18 +79,18 @@ export function coreImageFacts(evidence: SpouseEvidenceBundle): InterpretationFa
   const drafts: FactDraft[] = [];
   const { stars, sourcePalace, borrowed } = resolveGoverningMajors(evidence);
   for (const star of stars) {
-    push(drafts, "coreImage", MAJOR_STAR_MEANINGS[star.name]?.personality, [starEvidence(star.name, sourcePalace)], borrowed ? "(對宮 借星)" : undefined);
+    push(drafts, "coreImage", MAJOR_STAR_MEANINGS[star.name]?.personality, [starEvidence(star.name, sourcePalace)], borrowed);
   }
   for (const s of evidence.sihuaInScope) {
     push(drafts, "coreImage", SIHUA_MEANINGS[s.kind]?.relationship, [sihuaEvidence(s.kind, s.star, s.palace)]);
   }
   for (const p of evidence.trinePalaces) {
     for (const star of p.majorStars) {
-      push(drafts, "coreImage", MAJOR_STAR_MEANINGS[star.name]?.personality, [starEvidence(star.name, p.palace)], `(三方 ${p.palace})`);
+      push(drafts, "coreImage", MAJOR_STAR_MEANINGS[star.name]?.personality, [starEvidence(star.name, p.palace)]);
     }
   }
   for (const star of evidence.oppositePalace.majorStars) {
-    push(drafts, "coreImage", MAJOR_STAR_MEANINGS[star.name]?.personality, [starEvidence(star.name, evidence.oppositePalace.palace)], `(對宮 ${evidence.oppositePalace.palace})`);
+    push(drafts, "coreImage", MAJOR_STAR_MEANINGS[star.name]?.personality, [starEvidence(star.name, evidence.oppositePalace.palace)]);
   }
   return finalize("coreImage", drafts);
 }
@@ -94,14 +100,14 @@ export function personalityFacts(evidence: SpouseEvidenceBundle): Interpretation
   const drafts: FactDraft[] = [];
   const { stars, sourcePalace, borrowed } = resolveGoverningMajors(evidence);
   for (const star of stars) {
-    push(drafts, "personality", MAJOR_STAR_MEANINGS[star.name]?.personality, [starEvidence(star.name, sourcePalace)], borrowed ? "(對宮 借星)" : undefined);
+    push(drafts, "personality", MAJOR_STAR_MEANINGS[star.name]?.personality, [starEvidence(star.name, sourcePalace)], borrowed);
   }
   for (const s of evidence.sihuaInScope) {
     push(drafts, "personality", SIHUA_MEANINGS[s.kind]?.personality, [sihuaEvidence(s.kind, s.star, s.palace)]);
   }
   for (const p of evidence.trinePalaces) {
     for (const star of p.majorStars) {
-      push(drafts, "personality", MAJOR_STAR_MEANINGS[star.name]?.personality, [starEvidence(star.name, p.palace)], `(三方 ${p.palace})`);
+      push(drafts, "personality", MAJOR_STAR_MEANINGS[star.name]?.personality, [starEvidence(star.name, p.palace)]);
     }
   }
   return finalize("personality", drafts);
@@ -112,11 +118,11 @@ export function appearanceFacts(evidence: SpouseEvidenceBundle): InterpretationF
   const drafts: FactDraft[] = [];
   const { stars, sourcePalace, borrowed } = resolveGoverningMajors(evidence);
   for (const star of stars) {
-    push(drafts, "appearance", MAJOR_STAR_MEANINGS[star.name]?.appearance, [starEvidence(star.name, sourcePalace)], borrowed ? "(對宮 借星)" : undefined);
+    push(drafts, "appearance", MAJOR_STAR_MEANINGS[star.name]?.appearance, [starEvidence(star.name, sourcePalace)], borrowed);
   }
   if (!borrowed) {
     for (const star of evidence.oppositePalace.majorStars) {
-      push(drafts, "appearance", MAJOR_STAR_MEANINGS[star.name]?.appearance, [starEvidence(star.name, evidence.oppositePalace.palace)], `(對宮 ${evidence.oppositePalace.palace})`);
+      push(drafts, "appearance", MAJOR_STAR_MEANINGS[star.name]?.appearance, [starEvidence(star.name, evidence.oppositePalace.palace)]);
     }
   }
   return finalize("appearance", drafts);
@@ -145,7 +151,7 @@ export function careerFacts(evidence: SpouseEvidenceBundle): InterpretationFact[
   const drafts: FactDraft[] = [];
   const { stars, sourcePalace, borrowed } = resolveGoverningMajors(evidence);
   for (const star of stars) {
-    push(drafts, "career", MAJOR_STAR_MEANINGS[star.name]?.career, [starEvidence(star.name, sourcePalace)], borrowed ? "(對宮 借星)" : undefined);
+    push(drafts, "career", MAJOR_STAR_MEANINGS[star.name]?.career, [starEvidence(star.name, sourcePalace)], borrowed);
   }
   const byPattern = clusterByPattern<CareerPattern>([evidence.oppositePalace, ...evidence.trinePalaces], CAREER_PATTERN_BY_STAR);
   for (const [pattern, ev] of byPattern) {
@@ -160,11 +166,11 @@ export function wealthFacts(evidence: SpouseEvidenceBundle): InterpretationFact[
   const drafts: FactDraft[] = [];
   const { stars, sourcePalace, borrowed } = resolveGoverningMajors(evidence);
   for (const star of stars) {
-    push(drafts, "wealth", MAJOR_STAR_MEANINGS[star.name]?.wealth, [starEvidence(star.name, sourcePalace)], borrowed ? "(對宮 借星)" : undefined);
+    push(drafts, "wealth", MAJOR_STAR_MEANINGS[star.name]?.wealth, [starEvidence(star.name, sourcePalace)], borrowed);
   }
   const caibo = evidence.relatedPalaces.財帛宮;
   for (const star of caibo.majorStars) {
-    push(drafts, "wealth", MAJOR_STAR_MEANINGS[star.name]?.wealth, [starEvidence(star.name, "財帛宮")], "(財帛宮)");
+    push(drafts, "wealth", MAJOR_STAR_MEANINGS[star.name]?.wealth, [starEvidence(star.name, "財帛宮")]);
   }
   for (const s of evidence.sihuaInScope) {
     push(drafts, "wealth", SIHUA_MEANINGS[s.kind]?.wealth, [sihuaEvidence(s.kind, s.star, s.palace)]);
@@ -195,7 +201,7 @@ export function relationshipFacts(evidence: SpouseEvidenceBundle): Interpretatio
   }
   for (const group of evidence.sanfangSizhengStars) {
     for (const star of group.stars) {
-      push(drafts, "relationship", AUXILIARY_MEANINGS[star.name]?.relationship, [starEvidence(star.name, group.palace)], group.palace === "夫妻宮" ? undefined : `(${group.palace})`);
+      push(drafts, "relationship", AUXILIARY_MEANINGS[star.name]?.relationship, [starEvidence(star.name, group.palace)]);
     }
   }
   return finalize("relationship", drafts);
@@ -225,21 +231,11 @@ export function compatibilityFacts(evidence: SpouseEvidenceBundle): Interpretati
 
 // ── 문장 합성 ────────────────────────────────────────────────────
 
-function factRoleTag(fact: InterpretationFact): string {
-  // meaning에 이미 "(對宮 事業宮)" 같은 role prefix를 심어뒀다면 evidence 태그를 또 붙이지
-  // 않는다(중복 방지) — meaning에 괄호 prefix가 없을 때만 sihua 종류를 보조 표시한다.
-  if (/^\(/.test(fact.meaning)) return "";
-  const ev = fact.evidence[0];
-  if (!ev) return "";
-  if (ev.type === "transformation") {
-    const kind = ev.value.split("(")[0];
-    return ` [${kind}]`;
-  }
-  return "";
-}
-
+/** 메인 리포트 문장은 순수 자연어만 이어붙인다 — 궁명·별명·사화 표기 같은 기술적 출처 정보는
+ * 여기서 절대 노출하지 않는다(대표 지시). 출처는 fact.evidence에 이미 보존돼 있고, UI의
+ * [왜 이런 결과인가요?] 토글에서만 보여준다. */
 function joinClauses(facts: InterpretationFact[]): string {
-  return facts.map((f) => `${f.meaning}${factRoleTag(f)}`).join(", ");
+  return facts.map((f) => f.meaning).join(", ");
 }
 
 /** facts를 하나의 결합 문단으로 합성한다. 서로 다른 결론(polarity)이 섞여 있을 때 "다만...

@@ -25,9 +25,9 @@ function finalize(domain: WealthDomain, drafts: FactDraft[]): InterpretationFact
   return drafts.map((d, i) => ({ id: `${domain}-${i}`, strength: countByPolarity[d.polarity], ...d }));
 }
 
-function push(drafts: FactDraft[], domain: WealthDomain, m: StarMeaning | undefined, evidence: EvidenceItem[], prefix?: string) {
+function push(drafts: FactDraft[], domain: WealthDomain, m: StarMeaning | undefined, evidence: EvidenceItem[], borrowed?: boolean) {
   if (!m) return;
-  drafts.push({ domain, meaning: prefix ? `${prefix} ${m.meaning}` : m.meaning, polarity: m.polarity, evidence });
+  drafts.push({ domain, meaning: m.meaning, polarity: m.polarity, evidence, borrowed });
 }
 
 /** starInterpretations.ts의 SIHUA_MEANINGS.wealth는 "배우자 인연을 통해..." 식으로 배우자
@@ -61,7 +61,7 @@ export function coreWealthFacts(evidence: WealthEvidenceBundle): InterpretationF
   const drafts: FactDraft[] = [];
   const { stars, sourcePalace, borrowed } = resolveWealthStars(evidence);
   for (const star of stars) {
-    push(drafts, "coreWealth", MAJOR_STAR_MEANINGS[star.name]?.wealth, [starEvidence(star.name, sourcePalace)], borrowed ? "(對宮 借星)" : undefined);
+    push(drafts, "coreWealth", MAJOR_STAR_MEANINGS[star.name]?.wealth, [starEvidence(star.name, sourcePalace)], borrowed);
   }
   // 化忌는 "재물 변동성" 섹션 전용이라 여기서는 제외한다(같은 fact가 두 섹션에 겹치지 않도록
   // domain ownership을 분리 — 化祿/化權/化科는 재물의 성격을, 化忌는 변동성만 담당).
@@ -77,7 +77,7 @@ export function incomeStyleFacts(evidence: WealthEvidenceBundle): Interpretation
   const drafts: FactDraft[] = [];
   for (const p of evidence.trinePalaces) {
     for (const star of p.majorStars) {
-      push(drafts, "incomeStyle", MAJOR_STAR_MEANINGS[star.name]?.wealth, [starEvidence(star.name, p.palace)], `(三方 ${p.palace})`);
+      push(drafts, "incomeStyle", MAJOR_STAR_MEANINGS[star.name]?.wealth, [starEvidence(star.name, p.palace)]);
     }
   }
   return finalize("incomeStyle", drafts);
@@ -87,7 +87,7 @@ export function incomeStyleFacts(evidence: WealthEvidenceBundle): Interpretation
 export function spendingTendencyFacts(evidence: WealthEvidenceBundle): InterpretationFact[] {
   const drafts: FactDraft[] = [];
   for (const star of evidence.oppositePalace.majorStars) {
-    push(drafts, "spendingTendency", MAJOR_STAR_MEANINGS[star.name]?.wealth, [starEvidence(star.name, evidence.oppositePalace.palace)], `(對宮 ${evidence.oppositePalace.palace})`);
+    push(drafts, "spendingTendency", MAJOR_STAR_MEANINGS[star.name]?.wealth, [starEvidence(star.name, evidence.oppositePalace.palace)]);
   }
   return finalize("spendingTendency", drafts);
 }
@@ -104,7 +104,7 @@ export function wealthVolatilityFacts(evidence: WealthEvidenceBundle): Interpret
     for (const star of group.stars) {
       const m = WEALTH_RISK_AUX[star.name];
       if (!m) continue;
-      push(drafts, "volatility", m, [starEvidence(star.name, group.palace)], group.palace === "財帛宮" ? undefined : `(${group.palace})`);
+      push(drafts, "volatility", m, [starEvidence(star.name, group.palace)]);
     }
   }
   return finalize("volatility", drafts);

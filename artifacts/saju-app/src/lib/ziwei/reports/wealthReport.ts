@@ -27,30 +27,29 @@ function synthesizeStatements(facts: InterpretationFact[]): SpouseStatement[] {
   if (facts.length === 0) return [];
   const text = synthesizeText(facts);
   const evidence = facts.flatMap((f) => f.evidence);
-  const borrowed = facts.some((f) => f.meaning.includes("借星"));
+  const borrowed = facts.some((f) => f.borrowed);
   const confidence: Confidence = borrowed ? "low" : evidence.length >= 3 ? "high" : "medium";
   return [{ text, evidence, confidence, facts }];
 }
 
 function buildFinalProfile(evidence: WealthEvidenceBundle): WealthReportSection {
-  const sanfangMajors = evidence.sanfangSizhengPalaces
-    .flatMap((p) => p.majorStars.map((s) => `${s.name}@${p.palace}`))
-    .join(", ") || "없음";
-  const sanfangMinors = evidence.sanfangSizhengPalaces
-    .flatMap((p) => p.minorStars.map((s) => `${s.name}@${p.palace}`))
-    .join(", ") || "없음";
-  const sihuaNames = evidence.sihuaInScope.map((s) => `${s.star}(${s.kind})`).join(", ") || "없음";
-
-  const text = `財帛宮(${evidence.wealthPalace.branch}) 삼방사정 主星: ${sanfangMajors} / 보조성: ${sanfangMinors} / 관련 생년사화: ${sihuaNames}`;
-  const evidenceItems: EvidenceItem[] = [
-    { type: "palace", value: evidence.wealthPalace.palace },
-    ...evidence.wealthPalace.majorStars.map((s) => ({ type: "star" as const, value: `${s.name}@財帛宮` })),
-  ];
+  const majorEvidence: EvidenceItem[] = evidence.sanfangSizhengPalaces.flatMap((p) =>
+    p.majorStars.map((s) => ({ type: "star" as const, value: `${s.name}@${p.palace}` })));
+  const minorEvidence: EvidenceItem[] = evidence.sanfangSizhengPalaces.flatMap((p) =>
+    p.minorStars.map((s) => ({ type: "star" as const, value: `${s.name}@${p.palace}` })));
+  const sihuaEvidence: EvidenceItem[] = evidence.sihuaInScope.map((s) => ({
+    type: "transformation" as const, value: `${s.kind}(${s.star})@${s.palace}`,
+  }));
 
   return {
     key: "finalProfile",
     title: SECTION_TITLES.finalProfile,
-    statements: [{ text, evidence: evidenceItems, confidence: "high", facts: [] }],
+    statements: [{
+      text: "지금까지 살펴본 재물상·소득 패턴·소비 성향 등은 모두 아래에 정리된 구조적 근거에서 나온 것입니다.",
+      evidence: [{ type: "palace", value: evidence.wealthPalace.palace }, ...majorEvidence, ...minorEvidence, ...sihuaEvidence],
+      confidence: "high",
+      facts: [],
+    }],
   };
 }
 

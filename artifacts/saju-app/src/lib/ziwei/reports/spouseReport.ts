@@ -9,7 +9,7 @@ import { extractSpouseEvidence, type SpouseEvidenceBundle } from "../spouseEvide
 import { computeRelationshipTimingSignals, type RelationshipTimingSignal } from "../timingEngine";
 import { zhongzhouV1 } from "../ruleSets/zhongzhouV1";
 import {
-  resolveGoverningMajors, synthesizeText,
+  synthesizeText,
   coreImageFacts, personalityFacts, appearanceFacts, careerFacts, wealthFacts,
   meetingFacts, relationshipFacts, compatibilityFacts,
   type InterpretationFact,
@@ -55,7 +55,7 @@ function synthesizeStatements(facts: InterpretationFact[]): SpouseStatement[] {
   if (facts.length === 0) return [];
   const text = synthesizeText(facts);
   const evidence = facts.flatMap((f) => f.evidence);
-  const borrowed = facts.some((f) => f.meaning.includes("借星"));
+  const borrowed = facts.some((f) => f.borrowed);
   // 상위 패턴으로 압축된 fact는 evidence 개수가 fact 개수보다 훨씬 많을 수 있으므로(예: 만남 환경
   // 2개 fact가 5개 별 evidence를 합친 것), fact 개수 대신 evidence 총량으로 신뢰도를 판단한다.
   const confidence: Confidence = borrowed ? "low" : evidence.length >= 3 ? "high" : "medium";
@@ -70,30 +70,20 @@ const AGE_GAP_FALLBACK: SpouseStatement = {
 };
 
 function buildFinalProfile(evidence: SpouseEvidenceBundle): SpouseReportSection {
-  const { stars, sourcePalace, borrowed } = resolveGoverningMajors(evidence);
-  const starNames = stars.map((s) => s.name).join(", ") || "없음";
-  const sanfangMajors = evidence.sanfangSizhengPalaces
-    .flatMap((p) => p.majorStars.map((s) => `${s.name}@${p.palace}`))
-    .join(", ") || "없음";
-  const sanfangMinors = evidence.sanfangSizhengPalaces
-    .flatMap((p) => p.minorStars.map((s) => `${s.name}@${p.palace}`))
-    .join(", ") || "없음";
-  const sihuaNames = evidence.sihuaInScope.map((s) => `${s.star}(${s.kind})`).join(", ") || "없음";
-
-  const text =
-    `배우자궁(${evidence.spousePalace.branch}) 기준 主星: ${starNames}` +
-    `${borrowed ? ` (對宮 ${sourcePalace}에서 借星)` : ""}` +
-    ` / 三方四正 主星: ${sanfangMajors} / 三方四正 보조성: ${sanfangMinors} / 관련 생년사화: ${sihuaNames}`;
+  const majorEvidence: EvidenceItem[] = evidence.sanfangSizhengPalaces.flatMap((p) =>
+    p.majorStars.map((s) => ({ type: "star" as const, value: `${s.name}@${p.palace}` })));
+  const minorEvidence: EvidenceItem[] = evidence.sanfangSizhengPalaces.flatMap((p) =>
+    p.minorStars.map((s) => ({ type: "star" as const, value: `${s.name}@${p.palace}` })));
+  const sihuaEvidence: EvidenceItem[] = evidence.sihuaInScope.map((s) => ({
+    type: "transformation" as const, value: `${s.kind}(${s.star})@${s.palace}`,
+  }));
 
   return {
     key: "matchProfile",
     title: SECTION_TITLES.matchProfile,
     statements: [{
-      text,
-      evidence: [
-        { type: "palace", value: evidence.spousePalace.palace },
-        ...stars.map((s) => ({ type: "star" as const, value: `${s.name}@${sourcePalace}` })),
-      ],
+      text: "지금까지 살펴본 배우자상·성격·경제 성향 등은 모두 아래에 정리된 구조적 근거에서 나온 것입니다.",
+      evidence: [{ type: "palace", value: evidence.spousePalace.palace }, ...majorEvidence, ...minorEvidence, ...sihuaEvidence],
       confidence: "high",
       facts: [],
     }],

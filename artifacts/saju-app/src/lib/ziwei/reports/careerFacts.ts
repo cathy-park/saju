@@ -30,9 +30,9 @@ function finalize(domain: CareerDomain, drafts: FactDraft[]): InterpretationFact
   return drafts.map((d, i) => ({ id: `${domain}-${i}`, strength: countByPolarity[d.polarity], ...d }));
 }
 
-function push(drafts: FactDraft[], domain: CareerDomain, m: StarMeaning | undefined, evidence: EvidenceItem[], prefix?: string) {
+function push(drafts: FactDraft[], domain: CareerDomain, m: StarMeaning | undefined, evidence: EvidenceItem[], borrowed?: boolean) {
   if (!m) return;
-  drafts.push({ domain, meaning: prefix ? `${prefix} ${m.meaning}` : m.meaning, polarity: m.polarity, evidence });
+  drafts.push({ domain, meaning: m.meaning, polarity: m.polarity, evidence, borrowed });
 }
 
 /** 커리어 주제 전용 사화 문구 — 배우자/재물 문맥("배우자 인연을 통해...", "재물이...") 잔재가
@@ -64,7 +64,7 @@ export function coreCareerFacts(evidence: CareerEvidenceBundle): InterpretationF
   const drafts: FactDraft[] = [];
   const { stars, sourcePalace, borrowed } = resolveCareerStars(evidence);
   for (const star of stars) {
-    push(drafts, "coreCareer", MAJOR_STAR_MEANINGS[star.name]?.career, [starEvidence(star.name, sourcePalace)], borrowed ? "(對宮 借星)" : undefined);
+    push(drafts, "coreCareer", MAJOR_STAR_MEANINGS[star.name]?.career, [starEvidence(star.name, sourcePalace)], borrowed);
   }
   // 化忌는 "성취 변동성" 섹션 전용이라 여기서는 제외한다(같은 fact가 두 섹션에 겹치지 않도록
   // domain ownership을 분리 — 재물 주제 리뷰에서 발견한 문제를 커리어에서는 처음부터 방지).
@@ -80,7 +80,7 @@ export function workStyleFacts(evidence: CareerEvidenceBundle): InterpretationFa
   const drafts: FactDraft[] = [];
   for (const p of evidence.trinePalaces) {
     for (const star of p.majorStars) {
-      push(drafts, "workStyle", MAJOR_STAR_MEANINGS[star.name]?.career, [starEvidence(star.name, p.palace)], `(三方 ${p.palace})`);
+      push(drafts, "workStyle", MAJOR_STAR_MEANINGS[star.name]?.career, [starEvidence(star.name, p.palace)]);
     }
   }
   return finalize("workStyle", drafts);
@@ -90,7 +90,7 @@ export function workStyleFacts(evidence: CareerEvidenceBundle): InterpretationFa
 export function collaborationEnvironmentFacts(evidence: CareerEvidenceBundle): InterpretationFact[] {
   const drafts: FactDraft[] = [];
   for (const star of evidence.oppositePalace.majorStars) {
-    push(drafts, "collaborationEnvironment", MAJOR_STAR_MEANINGS[star.name]?.career, [starEvidence(star.name, evidence.oppositePalace.palace)], `(對宮 ${evidence.oppositePalace.palace})`);
+    push(drafts, "collaborationEnvironment", MAJOR_STAR_MEANINGS[star.name]?.career, [starEvidence(star.name, evidence.oppositePalace.palace)]);
   }
   return finalize("collaborationEnvironment", drafts);
 }
@@ -107,7 +107,7 @@ export function achievementVolatilityFacts(evidence: CareerEvidenceBundle): Inte
     for (const star of group.stars) {
       const m = CAREER_RISK_AUX[star.name];
       if (!m) continue;
-      push(drafts, "achievementVolatility", m, [starEvidence(star.name, group.palace)], group.palace === "事業宮" ? undefined : `(${group.palace})`);
+      push(drafts, "achievementVolatility", m, [starEvidence(star.name, group.palace)]);
     }
   }
   return finalize("achievementVolatility", drafts);
