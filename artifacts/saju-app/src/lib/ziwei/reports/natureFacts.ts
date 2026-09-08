@@ -3,7 +3,8 @@
 // InterpretationFact/synthesizeText 재사용 구조이며, evidence 소스와 domain-specific
 // meaning만 새로 설계했다(계산 엔진은 건드리지 않음).
 //
-// 命宮과 身宮의 역할 분리(정통 이론): 命宮=타고난 기질, 身宮=후천적으로 힘쓰는 방향·가치관.
+// 命宮과 身宮의 역할 분리(정통 이론): 命宮=타고난 기질, 身宮=시간이 갈수록 힘이 실리기 쉬운
+// 방향·집중 영역(身宮을 "성격 그 자체"로 단정하지 않는다 — 대표 지시).
 // 財帛宮·事業宮은 재물/커리어 주제와 같은 궁을 공유하지만, 거기서는 "돈을 어떻게 벌고 쓰는가/
 // 어떻게 일하는가"가 초점이고 여기서는 "삶을 대하는 태도"가 초점이라 문구를 재사용하지 않고
 // 이 주제 전용으로 새로 정의했다 — 재물/커리어 리뷰에서 지적된 문맥 잔재 문제를 주제 간에도
@@ -43,22 +44,23 @@ const NATURE_TOPIC_SIHUA: Record<SihuaKind, StarMeaning> = {
   化忌: { meaning: "스스로도 갈피를 못 잡고 흔들리기 쉬운 면", polarity: "risk" },
 };
 
-/** 身宮 관점 — "후천적으로 힘쓰는 방향·가치관"(命宮의 타고난 기질과 다른 축). */
+/** 身宮 관점 — 身宮은 "성격 그 자체"로 단정하지 않는다(대표 지시). 命宮의 타고난 기질과 달리,
+ * "시간이 갈수록 힘이 실리기 쉬운 방향·집중 영역"이라는 잠정적·시간축 표현으로만 서술한다. */
 const LIFE_DIRECTION_MEANINGS: Record<string, StarMeaning> = {
-  紫微: { meaning: "명예와 인정을 얻는 방향으로 힘을 쏟는 편", polarity: "positive" },
-  天機: { meaning: "새로운 것을 배우고 이해하는 데 몰두하는 편", polarity: "positive" },
-  太陽: { meaning: "베풀고 드러내는 활동에 에너지를 쏟는 편", polarity: "positive" },
-  武曲: { meaning: "실질적 성과와 결과를 만드는 데 힘을 쏟는 편", polarity: "positive" },
-  天同: { meaning: "편안함과 조화를 유지하는 데 마음을 쓰는 편", polarity: "positive" },
-  廉貞: { meaning: "매력과 존재감을 드러내는 방향으로 힘을 쏟는 편", polarity: "mixed" },
-  天府: { meaning: "안정적인 기반을 다지는 데 힘을 쏟는 편", polarity: "positive" },
-  太陰: { meaning: "내면을 돌보고 섬세하게 다듬는 데 마음을 쓰는 편", polarity: "positive" },
-  貪狼: { meaning: "다양한 경험과 관계를 넓히는 데 힘을 쏟는 편", polarity: "positive" },
-  巨門: { meaning: "말과 논리로 자신을 표현하는 데 힘을 쏟는 편", polarity: "mixed" },
-  天相: { meaning: "주변을 조율하고 돕는 데 힘을 쏟는 편", polarity: "positive" },
-  天梁: { meaning: "원칙을 지키고 남을 보살피는 데 힘을 쏟는 편", polarity: "positive" },
-  七殺: { meaning: "도전하고 성과를 밀어붙이는 데 힘을 쏟는 편", polarity: "positive" },
-  破軍: { meaning: "틀을 깨고 새로 시작하는 데 힘을 쏟는 편", polarity: "positive" },
+  紫微: { meaning: "시간이 갈수록 명예와 인정을 얻는 쪽에 힘이 실리기 쉬움", polarity: "positive" },
+  天機: { meaning: "시간이 갈수록 배우고 이해하는 영역에 집중이 쏠리기 쉬움", polarity: "positive" },
+  太陽: { meaning: "시간이 갈수록 베풀고 드러내는 활동에 힘이 실리기 쉬움", polarity: "positive" },
+  武曲: { meaning: "시간이 갈수록 실질적 성과를 만드는 쪽에 힘이 실리기 쉬움", polarity: "positive" },
+  天同: { meaning: "시간이 갈수록 편안함과 조화를 유지하는 쪽에 무게가 실리기 쉬움", polarity: "positive" },
+  廉貞: { meaning: "시간이 갈수록 매력과 존재감을 드러내는 쪽에 힘이 쏠리기 쉬움", polarity: "mixed" },
+  天府: { meaning: "시간이 갈수록 안정적인 기반을 다지는 쪽에 힘이 실리기 쉬움", polarity: "positive" },
+  太陰: { meaning: "시간이 갈수록 내면을 돌보고 다듬는 영역에 무게가 실리기 쉬움", polarity: "positive" },
+  貪狼: { meaning: "시간이 갈수록 다양한 경험과 관계를 넓히는 쪽에 힘이 실리기 쉬움", polarity: "positive" },
+  巨門: { meaning: "시간이 갈수록 말과 논리로 표현하는 영역에 집중이 쏠리기 쉬움", polarity: "mixed" },
+  天相: { meaning: "시간이 갈수록 주변을 조율하고 돕는 쪽에 무게가 실리기 쉬움", polarity: "positive" },
+  天梁: { meaning: "시간이 갈수록 원칙을 지키고 남을 보살피는 쪽에 힘이 실리기 쉬움", polarity: "positive" },
+  七殺: { meaning: "시간이 갈수록 도전하고 밀어붙이는 쪽에 힘이 실리기 쉬움", polarity: "positive" },
+  破軍: { meaning: "시간이 갈수록 틀을 깨고 새로 시작하는 쪽에 힘이 쏠리기 쉬움", polarity: "positive" },
 };
 
 /** 對宮(遷移宮) 관점 — "남에게 비치는 인상·대인관계에서 드러나는 모습". */
