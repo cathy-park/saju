@@ -1,7 +1,8 @@
 import { Link, useParams } from "wouter";
-import { ArrowLeft, ChevronRight } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { getMyProfile, getPeople } from "@/lib/storage";
 import { ZIWEI_TOPICS, ZIWEI_GROUP_LABEL, type ZiweiTopicGroup } from "@/lib/ziwei/topics";
+import { SystemSelector } from "@/components/SystemSelector";
 
 function findPerson(personId: string) {
   const my = getMyProfile();
@@ -26,11 +27,14 @@ export default function ZiweiTopicSelect() {
     );
   }
 
+  const myProfile = getMyProfile();
+  const sajuHref = myProfile && myProfile.id === personId ? "/saju" : `/people/${personId}`;
+
   return (
     <div className="ds-app-shell ds-page-pad py-8 ds-section-gap">
-      <Link href="/ziwei" className="inline-flex items-center gap-1 text-sm text-muted-foreground">
-        <ArrowLeft className="h-4 w-4" /> 목록으로
-      </Link>
+      <div className="sticky top-14 z-30 -mx-4 bg-background/95 px-4 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/90">
+        <SystemSelector personId={personId!} sajuHref={sajuHref} />
+      </div>
       <h1 className="ds-title-lg">{person.birthInput.name}님의 자미두수</h1>
       <p className="ds-subtitle -mt-2">어떤 주제가 궁금하세요?</p>
 
