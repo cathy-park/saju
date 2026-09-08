@@ -1,12 +1,15 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "wouter";
 import { ArrowLeft } from "lucide-react";
 import { getMyProfile, getPeople, type PersonRecord } from "@/lib/storage";
 import { buildZiweiChart } from "@/lib/ziwei/buildZiweiChart";
 import { zhongzhouV1 } from "@/lib/ziwei/ruleSets/zhongzhouV1";
 import { buildWealthReport, type WealthReportSection } from "@/lib/ziwei/reports/wealthReport";
+import { polishStatementText } from "@/lib/ziwei/reports/proseLayer";
 import type { EvidenceItem } from "@/lib/ziwei/types";
 import type { SpouseStatement } from "@/lib/ziwei/reports/spouseReport";
+
+const PROSE_TOPIC = "wealth";
 
 function findPerson(personId: string): PersonRecord | null {
   const my = getMyProfile();
@@ -24,11 +27,11 @@ function evidenceLabel(e: EvidenceItem): string {
   }
 }
 
-function StatementBlock({ statement }: { statement: SpouseStatement }) {
+function StatementBlock({ statement, polishedText }: { statement: SpouseStatement; polishedText?: string }) {
   const [open, setOpen] = useState(false);
   return (
     <div className="border-t border-border first:border-t-0 pt-3 first:pt-0 mt-3 first:mt-0">
-      <p className="text-sm text-foreground leading-relaxed">{statement.text}</p>
+      <p className="text-sm text-foreground leading-relaxed">{polishedText ?? statement.text}</p>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -52,14 +55,16 @@ function StatementBlock({ statement }: { statement: SpouseStatement }) {
   );
 }
 
-function SectionCard({ section }: { section: WealthReportSection }) {
+function SectionCard({ section, polishedText }: { section: WealthReportSection; polishedText?: string }) {
   return (
     <div className="ds-card ds-card-pad shadow-none">
       <h2 className="text-base font-bold text-foreground">{section.title}</h2>
       {section.statements.length === 0 ? (
         <p className="mt-2 text-sm text-muted-foreground">이 주제에 대한 근거가 부족합니다.</p>
       ) : (
-        section.statements.map((s, i) => <StatementBlock key={i} statement={s} />)
+        section.statements.map((s, i) => (
+          <StatementBlock key={i} statement={s} polishedText={i === 0 ? polishedText : undefined} />
+        ))
       )}
     </div>
   );
@@ -67,7 +72,10 @@ function SectionCard({ section }: { section: WealthReportSection }) {
 
 export default function ZiweiWealthReport() {
   const { personId } = useParams<{ personId: string }>();
-  const person = personId ? findPerson(personId) : null;
+  // findPerson()은 localStorage를 매번 새로 읽어 새 객체 참조를 반환하므로, personId로만
+  // memoize해야 한다 — 그렇지 않으면 아래 report가 렌더마다 새 참조가 되어 report에 의존하는
+  // useEffect(다듬기 효과)가 무한 루프를 돈다.
+  const person = useMemo(() => (personId ? findPerson(personId) : null), [personId]);
 
   const { report, error } = useMemo(() => {
     if (!person) return { report: null, error: null };
@@ -85,6 +93,26 @@ export default function ZiweiWealthReport() {
     );
     return { report: buildWealthReport(chart, input.name), error: null };
   }, [person]);
+
+  // AI 문장 다듬기(prose layer) — 결정론적 리포트는 이미 위에서 즉시 렌더된다. 이 effect는
+  // 백그라운드로 각 섹션의 첫 statement만 다듬어 순차적으로 교체한다(progressive enhancement).
+  // 로그인하지 않았거나 API가 실패하면 polishStatementText가 deterministic 문장을 그대로
+  // 반환하므로, 이 페이지는 항상 안전하게 동작한다.
+  const [polishedTexts, setPolishedTexts] = useState<Record<string, string>>({});
+  useEffect(() => {
+    if (!report) return;
+    setPolishedTexts({});
+    let cancelled = false;
+    for (const section of report.sections) {
+      const first = section.statements[0];
+      if (!first || first.facts.length === 0) continue;
+      polishStatementText(first.facts, first.text, PROSE_TOPIC, section.key).then((result) => {
+        if (cancelled || result.source === "fallback") return;
+        setPolishedTexts((prev) => ({ ...prev, [section.key]: result.text }));
+      });
+    }
+    return () => { cancelled = true; };
+  }, [report]);
 
   if (!person) {
     return (
@@ -105,7 +133,9 @@ export default function ZiweiWealthReport() {
       {error ? (
         <div className="ds-card ds-card-pad shadow-none text-sm text-muted-foreground">{error}</div>
       ) : (
-        report && report.sections.map((section) => <SectionCard key={section.key} section={section} />)
+        report && report.sections.map((section) => (
+          <SectionCard key={section.key} section={section} polishedText={polishedTexts[section.key]} />
+        ))
       )}
     </div>
   );
