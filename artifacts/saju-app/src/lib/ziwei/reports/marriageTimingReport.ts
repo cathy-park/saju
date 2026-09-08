@@ -26,7 +26,7 @@ import { spouseReportTimingYears } from "./spouseReport";
 
 export type TimingAxis = "activation" | "stability" | "formalization" | "volatility";
 
-const AXIS_LABEL: Record<TimingAxis, string> = {
+export const AXIS_LABEL: Record<TimingAxis, string> = {
   activation: "관계 활성화",
   stability: "안정화",
   formalization: "공식화 가능성",
