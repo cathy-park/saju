@@ -85,11 +85,13 @@ describe("sajuSummaryFacts — 우선순위 고정 + neutral 보존 + 신살 격
     if (interactionFact) expect(interactionFact.polarity).toBe("neutral");
   });
 
-  it("신살은 항상 neutral이고, '핵심 성향' 섹션에만 참고로 붙는다 — 다른 섹션엔 신살 fact가 없다", () => {
-    const coreNatureFacts = factsOf(sections, "coreNature");
-    const shinsalInCore = coreNatureFacts.filter((f) => f.domain.startsWith("shinsal"));
-    expect(shinsalInCore.length).toBe(shinsalEntries.length);
-    for (const f of shinsalInCore) expect(f.polarity).toBe("neutral");
+  it("신살은 '핵심 성향'에 핵심 fact(mapped rule)가 있으면 본문 facts에 안 들어가지만 evidence에는 남는다 — 다른 섹션엔 신살이 전혀 없다", () => {
+    // 이 fixture(박소연 실제 원국)는 R05(경쟁형 에너지)가 떠서 coreNature가 fallback이 아니다
+    // — 그래서 신살은 "핵심 fact가 부족할 때만 보조 사용"(대표 지시) 조건에 해당하지 않는다.
+    const coreNatureSection = sections.find((s) => s.key === "coreNature")!;
+    const shinsalInFacts = coreNatureSection.facts.filter((f) => f.domain.startsWith("shinsal"));
+    expect(shinsalInFacts.length).toBe(0);
+    expect(coreNatureSection.evidence.some((e) => e.category === "shinsal")).toBe(true);
 
     for (const key of ["atAGlance", "strengths", "cautions", "workWealth", "romanceRelationship"] as const) {
       const hasShinsal = factsOf(sections, key).some((f) => f.domain.startsWith("shinsal"));
@@ -97,20 +99,25 @@ describe("sajuSummaryFacts — 우선순위 고정 + neutral 보존 + 신살 격
     }
   });
 
-  it("신살 하나만 있고 나머지가 전부 긍정적이어도, 신살이 '핵심 성향'의 방향성 결론을 만들지 않는다(참고 문구로만 뒤에 붙음)", () => {
-    // 신살은 neutral이라 synthesizeText(방향성 계산)에 들어가지 않는다 — coreNature 텍스트가
-    // "다만/그럼에도" 같은 대립 구조 없이도 신살 참고 문장을 뒤에 붙일 수 있어야 한다.
+  it("핵심 fact가 있는 한(이 fixture는 R05가 뜬다) '핵심 성향' 본문에 신살이 '참고로'로 섞이지 않는다", () => {
     const coreNatureText = sections.find((s) => s.key === "coreNature")!.text;
-    expect(coreNatureText).toContain("참고로");
-    expect(coreNatureText).toContain(shinsalEntries[0].oneLine);
+    expect(coreNatureText).not.toContain("참고로");
+    expect(coreNatureText).not.toContain(shinsalEntries[0].oneLine);
   });
 
-  it("일·재물과 연애·관계는 서로 다른 십성 축(재성·식상 vs 관성·비겁)을 참조하고 같은 문장을 만들지 않는다", () => {
+  it("일·재물과 연애·관계는 서로 다른 축을 참조해 같은 문장을 만들지 않지만, 메인 문장에는 기술용어(재성/식상/관성/비겁)를 노출하지 않는다", () => {
     const workWealthText = sections.find((s) => s.key === "workWealth")!.text;
     const romanceText = sections.find((s) => s.key === "romanceRelationship")!.text;
     expect(workWealthText).not.toBe(romanceText);
-    expect(workWealthText).toContain("재성");
-    expect(romanceText).toContain("관성");
+    for (const term of ["재성", "식상", "관성", "비겁"]) {
+      expect(workWealthText).not.toContain(term);
+      expect(romanceText).not.toContain(term);
+    }
+    // 원자료(그룹명)는 evidence에는 그대로 남아있어야 한다.
+    const workWealth = sections.find((s) => s.key === "workWealth")!;
+    const romance = sections.find((s) => s.key === "romanceRelationship")!;
+    expect(workWealth.evidence.some((e) => e.label.includes("재성"))).toBe(true);
+    expect(romance.evidence.some((e) => e.label.includes("관성"))).toBe(true);
   });
 
   it("근거 토글에 쓸 evidence에는 강약 점수/격국명/용신 오행/십성 카운트/합충형파해원진/신살 원자료가 모두 남아있다", () => {
@@ -162,5 +169,32 @@ describe("sajuSummaryFacts — 섹션별 fact 선정(RULE_SECTION_MAP) + 메인/
     const romance = sections.find((s) => s.key === "romanceRelationship")!;
     expect(workWealth.evidence.some((e) => e.category === "tenGod")).toBe(true);
     expect(romance.evidence.some((e) => e.category === "tenGod")).toBe(true);
+  });
+});
+
+describe("sajuSummaryFacts — 메인 본문 기술용어 제거 + evidence 보존", () => {
+  const sections = buildSajuSummarySections(pipeline, branchRelations, shinsalEntries);
+  const TECH_TERMS = ["일간", "재성", "식상", "관성", "비겁", "인성"];
+
+  it("메인 fact 문장 어디에도 명리 기술용어(일간/재성/식상/관성/비겁/인성/격국명)가 노출되지 않는다", () => {
+    const gukgukName = pipeline.interpretation.gukguk?.name;
+    for (const s of sections) {
+      for (const f of s.facts) {
+        for (const term of TECH_TERMS) expect(f.meaning).not.toContain(term);
+        if (gukgukName) expect(f.meaning).not.toContain(gukgukName);
+      }
+    }
+  });
+
+  it("evidence에는 격국명·강약 등급·규칙 원문이 기술용어 그대로 남아있다(메인에서만 숨김, 정보 손실 없음)", () => {
+    const gukguk = pipeline.interpretation.gukguk;
+    const atAGlanceEv = sections.find((s) => s.key === "atAGlance")!.evidence;
+    if (gukguk) {
+      expect(atAGlanceEv.some((e) => e.category === "gukguk" && e.label.includes(gukguk.name))).toBe(true);
+    }
+    expect(atAGlanceEv.some((e) => e.category === "strength" && e.label.includes(pipeline.base.strengthResult.level))).toBe(true);
+
+    const coreNatureEv = sections.find((s) => s.key === "coreNature")!.evidence;
+    expect(coreNatureEv.some((e) => e.category === "ruleInsight")).toBe(true);
   });
 });
