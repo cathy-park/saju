@@ -32,7 +32,7 @@ function BottomNav() {
 
   const tabs = [
     { href: "/",       label: "홈",    icon: HomeIcon, exact: true  },
-    { href: "/saju",   label: "내 사주", icon: User,    exact: false },
+    { href: "/saju",   label: "나의 흐름", icon: User,    exact: false },
     { href: "/people", label: "상대",  icon: Users,   exact: false },
   ];
 

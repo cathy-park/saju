@@ -13,6 +13,7 @@ import type { ZodiacInfo } from "@/lib/zodiacAnimal";
 import { charToElement, elementBgClass, elementTextClass } from "@/lib/element-color";
 import type { FiveElKey } from "@/lib/element-color";
 import { cn } from "@/lib/utils";
+import { SystemSelector } from "@/components/SystemSelector";
 import gyeolDefault from "@assets/image_24_1774912053926.png";
 
 const NICK_KEY = "naheuleum_nickname";
@@ -361,23 +362,15 @@ function Dashboard({ record }: { record: PersonRecord }) {
         </div>
       </div>
 
-      {/* ④ 주요 기능 이동 */}
+      {/* ④ 개인 분석 진입 — SystemSelector 재사용(사주/자미두수/점성술/종합), 궁합만 별도 CTA */}
       <div className="px-4 pt-4">
-        <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">주요 기능</p>
-        <div className="flex gap-2">
-        <Link href="/saju" className="flex-1">
-          <div className="flex h-12 cursor-pointer items-center justify-center gap-2 rounded-full border border-indigo-200/60 bg-indigo-500/10 px-4">
-            <span className="text-base" aria-hidden>🔍</span>
-            <span className="text-sm font-bold text-indigo-600">내 사주 보기</span>
-          </div>
-        </Link>
-        <Link href="/compatibility" className="flex-1">
+        <SystemSelector personId={record.id} sajuHref="/saju" />
+        <Link href="/compatibility" className="mt-3 block">
           <div className="flex h-12 cursor-pointer items-center justify-center gap-2 rounded-full border border-primary/25 bg-primary/10 px-4">
             <span className="text-base" aria-hidden>💞</span>
             <span className="text-sm font-bold text-primary">궁합 보기</span>
           </div>
         </Link>
-        </div>
       </div>
 
       {showEditSheet && (

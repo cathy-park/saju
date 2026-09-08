@@ -18,13 +18,15 @@ const BADGE_DISPLAY_OPTIONS: { value: MaritalBadgeStatus; icon: string }[] = [
 export function MaritalField({
   value,
   onChange,
+  subjectLabel = "나의 현재 상태",
 }: {
   value: MaritalStatus | undefined;
   onChange: (v: MaritalStatus | undefined) => void;
+  subjectLabel?: string;
 }) {
   return (
     <div className="ds-card ds-card-pad mb-1 bg-muted/20">
-      <p className="ds-caption mb-2 font-bold uppercase tracking-wide">나의 현재 상태</p>
+      <p className="ds-caption mb-2 font-bold uppercase tracking-wide">{subjectLabel}</p>
       <div className="flex flex-wrap gap-2">
         {MARITAL_OPTIONS.map(({ value: v, icon }) => {
           const active = value === v;

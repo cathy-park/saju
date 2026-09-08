@@ -153,6 +153,7 @@ export default function EditPerson() {
                   <MaritalField
                     value={maritalStatus}
                     onChange={setMaritalStatus}
+                    subjectLabel="현재 관계 상태"
                   />
                 }
               />
@@ -215,7 +216,7 @@ export default function EditPerson() {
                 );
               })}
 
-              <MaritalField value={maritalStatus} onChange={setMaritalStatus} />
+              <MaritalField value={maritalStatus} onChange={setMaritalStatus} subjectLabel="현재 관계 상태" />
 
               <Button className="w-full shadow-none" onClick={handleManualSave}>
                 수정 저장

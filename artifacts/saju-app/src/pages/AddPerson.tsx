@@ -80,6 +80,7 @@ export default function AddPerson() {
               <MaritalField
                 value={maritalStatus}
                 onChange={setMaritalStatus}
+                subjectLabel="현재 관계 상태"
               />
             }
           />

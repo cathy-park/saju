@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { SajuReport } from "@/components/SajuReport";
 import { getPeople, getFinalPillars, type PersonRecord } from "@/lib/storage";
 import { getZodiacFromDayPillar } from "@/lib/zodiacAnimal";
-import { ArrowLeft, Heart, Sparkles } from "lucide-react";
+import { ArrowLeft, Heart } from "lucide-react";
 import { charToElement, elementBgClass, type FiveElKey } from "@/lib/element-color";
 import { MaritalBadge, type MaritalBadgeStatus } from "@/components/MaritalField";
 import { cn } from "@/lib/utils";
@@ -145,12 +145,6 @@ export default function PersonDetail() {
           <Button variant="outline" className="w-full gap-2 shadow-none">
             <Heart className="h-4 w-4" />
             궁합 보기
-          </Button>
-        </Link>
-        <Link href={`/ziwei/${person.id}`} className="flex-1">
-          <Button variant="outline" className="w-full gap-2 shadow-none">
-            <Sparkles className="h-4 w-4" />
-            자미두수
           </Button>
         </Link>
       </div>

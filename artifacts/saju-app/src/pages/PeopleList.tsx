@@ -161,7 +161,7 @@ function PersonCard({
         <div className="flex gap-2 mt-3">
           <Link href={`/people/${record.id}`} className="flex-1">
             <Button variant="outline" size="sm" className="w-full text-[13px]">
-              사주 보기
+              상세 보기
             </Button>
           </Link>
           <Link href={`/compatibility/${record.id}`} className="flex-1">
