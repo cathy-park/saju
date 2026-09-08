@@ -10,6 +10,9 @@ import AddPerson from "@/pages/AddPerson";
 import EditPerson from "@/pages/EditPerson";
 import PersonDetail from "@/pages/PersonDetail";
 import Compatibility from "@/pages/Compatibility";
+import ZiweiHome from "@/pages/ZiweiHome";
+import ZiweiTopicSelect from "@/pages/ZiweiTopicSelect";
+import ZiweiSpouseReport from "@/pages/ZiweiSpouseReport";
 import AuthCallback from "@/pages/AuthCallback";
 import NotFound from "@/pages/not-found";
 import { Home as HomeIcon, User, Users } from "lucide-react";
@@ -112,6 +115,9 @@ function SyncedApp() {
           <Route path="/people/:id"              component={PersonDetail} />
           <Route path="/compatibility"           component={Compatibility} />
           <Route path="/compatibility/:personId" component={Compatibility} />
+          <Route path="/ziwei"                   component={ZiweiHome} />
+          <Route path="/ziwei/:personId"         component={ZiweiTopicSelect} />
+          <Route path="/ziwei/:personId/spouse"  component={ZiweiSpouseReport} />
           <Route                                 component={NotFound} />
         </Switch>
       </main>

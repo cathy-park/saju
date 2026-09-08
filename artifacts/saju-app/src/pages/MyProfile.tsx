@@ -18,7 +18,8 @@ import { getFinalPillars } from "@/lib/storage";
 import { getZodiacFromDayPillar } from "@/lib/zodiacAnimal";
 import { useAuth } from "@/lib/authContext";
 import { upsertMyProfile, deleteMyProfileFromDb } from "@/lib/db";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, Sparkles } from "lucide-react";
+import { Link } from "wouter";
 import { MaritalField, MaritalBadge } from "@/components/MaritalField";
 import { charToElement, elementBgClass, type FiveElKey } from "@/lib/element-color";
 import { cn } from "@/lib/utils";
@@ -265,11 +266,18 @@ export default function MyProfile() {
         </div>
       </div>
 
-      <SajuReport 
-        record={record} 
-        hourMode={hourMode} 
-        onHourModeChange={setHourMode} 
+      <SajuReport
+        record={record}
+        hourMode={hourMode}
+        onHourModeChange={setHourMode}
       />
+
+      <Link href={`/ziwei/${record.id}`}>
+        <Button variant="outline" className="w-full gap-2 shadow-none">
+          <Sparkles className="h-4 w-4" />
+          자미두수
+        </Button>
+      </Link>
     </div>
   );
 }
