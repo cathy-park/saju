@@ -4,8 +4,11 @@
 // 조각이다. 실제 문장 합성(여러 fact를 하나의 배우자상으로 엮는 것)은 interpretationFacts.ts의
 // synthesizeText()가 담당한다. 이 파일 자체는 "별 이름 → 통설 의미"만 아는 순수 데이터다.
 import type { SihuaKind } from "../types";
+// Polarity는 자미두수·사주가 공유하는 중립 타입(src/lib/reportFacts.ts)에서 그대로 가져온다 —
+// 여기서 다시 정의하지 않는다(계산 엔진 결합 방지를 위해 만든 공용 타입 하나만 쓴다).
+import type { Polarity } from "@/lib/reportFacts";
+export type { Polarity };
 
-export type Polarity = "positive" | "mixed" | "risk";
 export interface StarMeaning {
   meaning: string;
   polarity: Polarity;

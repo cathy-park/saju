@@ -10,28 +10,15 @@ import {
   MEETING_PATTERN_BY_STAR, MEETING_PATTERN_TEXT, type MeetingPattern,
   CAREER_PATTERN_BY_STAR, CAREER_PATTERN_TEXT, type CareerPattern,
 } from "./starInterpretations";
+import { type ReportFact, synthesizeText as synthesizeReportText } from "@/lib/reportFacts";
 
 export type InterpretationDomain =
   | "coreImage" | "personality" | "appearance" | "career" | "wealth"
   | "meeting" | "relationship" | "compatibility" | "ageGap";
 
-export interface InterpretationFact {
-  id: string;
-  /** 주제별 fact 생성기(spouse/wealth/...)가 자유롭게 정의하는 도메인 태그 — 이 파일은
-   * 夫妻宮 배우자 주제의 InterpretationDomain만 쓰지만, 다른 주제(재물 등)의 생성기도 같은
-   * InterpretationFact 타입과 synthesizeText를 재사용할 수 있도록 string으로 열어둔다. */
-  domain: string;
-  /** 메인 리포트에 그대로 보이는 순수 자연어 문구 — 궁명·별명·사화 표기 등 기술적 출처 정보는
-   * 절대 여기 섞지 않는다(대표 지시). 출처는 evidence에만 담고 [왜 이런 결과인가요?] 토글에서만
-   * 노출한다. */
-  meaning: string;
-  polarity: Polarity;
-  strength: number;
-  evidence: EvidenceItem[];
-  /** 본궁이 空宮이라 對宮에서 별을 빌려온 경우 — meaning 문자열에 표식을 남기지 않고 이 필드로만
-   * 판단한다(신뢰도 계산용). */
-  borrowed?: boolean;
-}
+/** InterpretationFact는 공용 ReportFact(src/lib/reportFacts.ts)에 자미두수 전용 evidence
+ * 타입(EvidenceItem)만 꽂은 것이다 — 계산 로직·필드는 전혀 바뀌지 않았다(순수 재배치). */
+export type InterpretationFact = ReportFact<EvidenceItem>;
 
 function starEvidence(name: string, palace: PalaceName): EvidenceItem {
   return { type: "star", value: `${name}@${palace}` };
@@ -57,7 +44,7 @@ type FactDraft = Omit<InterpretationFact, "id" | "strength">;
 /** 같은 domain 안에서 같은 polarity(=같은 결론 방향)를 지지하는 fact가 많을수록 strength가
  * 높아진다 — "단일 별 하나보다 복수 evidence가 같은 결론을 지지할 때 강도를 높인다"는 요구사항. */
 function finalize(domain: InterpretationDomain, drafts: FactDraft[]): InterpretationFact[] {
-  const countByPolarity: Record<Polarity, number> = { positive: 0, mixed: 0, risk: 0 };
+  const countByPolarity: Record<Polarity, number> = { positive: 0, mixed: 0, risk: 0, neutral: 0 };
   for (const d of drafts) countByPolarity[d.polarity]++;
   return drafts.map((d, i) => ({
     id: `${domain}-${i}`,
@@ -230,45 +217,7 @@ export function compatibilityFacts(evidence: SpouseEvidenceBundle): Interpretati
 }
 
 // ── 문장 합성 ────────────────────────────────────────────────────
-
-/** 메인 리포트 문장은 순수 자연어만 이어붙인다 — 궁명·별명·사화 표기 같은 기술적 출처 정보는
- * 여기서 절대 노출하지 않는다(대표 지시). 출처는 fact.evidence에 이미 보존돼 있고, UI의
- * [왜 이런 결과인가요?] 토글에서만 보여준다. */
-function joinClauses(facts: InterpretationFact[]): string {
-  return facts.map((f) => f.meaning).join(", ");
-}
-
-/** 한글 주격 조사(이/가) 선택 — 마지막 음절에 받침이 있으면 "이", 없으면 "가". 한글 음절이
- * 아닌 문자로 끝나면(드물게 영문·기호 등) 안전하게 "이"를 기본값으로 쓴다. */
-function subjectParticle(text: string): "이" | "가" {
-  const lastChar = text.trim().at(-1);
-  if (!lastChar) return "이";
-  const code = lastChar.charCodeAt(0);
-  if (code < 0xac00 || code > 0xd7a3) return "이";
-  return (code - 0xac00) % 28 === 0 ? "가" : "이";
-}
-
-/** facts를 하나의 결합 문단으로 합성한다. 서로 다른 결론(polarity)이 섞여 있을 때 "다만...
- * 동시에...다만..."처럼 계속 병렬로 나열하지 않는다 — 우호적(positive+mixed) 진영과 위험(risk)
- * 진영 중 evidence가 더 많은 쪽을 주절로 삼아 하나의 해석으로 조정하고, 소수 진영은 양보절
- * 하나로만 요약한다(접속어 전환은 최대 1번). */
-export function synthesizeText(facts: InterpretationFact[]): string {
-  if (facts.length === 0) return "";
-  const favorable = facts.filter((f) => f.polarity !== "risk");
-  const risk = facts.filter((f) => f.polarity === "risk");
-
-  if (risk.length === 0) {
-    const clause = joinClauses(favorable);
-    return `${clause}${subjectParticle(clause)} 함께 나타납니다.`;
-  }
-  if (favorable.length === 0) {
-    const clause = joinClauses(risk);
-    return `${clause}${subjectParticle(clause)} 함께 나타납니다.`;
-  }
-  if (favorable.length >= risk.length) {
-    const riskClause = joinClauses(risk);
-    return `${joinClauses(favorable)}. 다만 ${riskClause}${subjectParticle(riskClause)} 함께 나타납니다.`;
-  }
-  const favorableClause = joinClauses(favorable);
-  return `${joinClauses(risk)}. 그럼에도 ${favorableClause}${subjectParticle(favorableClause)} 함께 나타납니다.`;
-}
+// synthesizeText의 실제 구현은 src/lib/reportFacts.ts(공용)로 옮겼다 — 로직·문구는 전혀
+// 바뀌지 않았다(순수 재배치). 기존에 이 파일에서 synthesizeText를 import하던 8개 리포트
+// 파일이 계속 동작하도록 이름만 그대로 재노출한다.
+export const synthesizeText = synthesizeReportText;

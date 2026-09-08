@@ -39,6 +39,7 @@ import { upsertMyProfile, upsertPartnerProfile } from "@/lib/db";
 import { useAuth } from "@/lib/authContext";
 import { computePersonPipelineSnapshot } from "@/lib/personPipelineSnapshot";
 import { computeSajuPipeline } from "@/lib/sajuPipeline";
+import { SajuCoreSummary } from "@/components/saju/SajuCoreSummary";
 import {
   computeSpouseActivationByYearRange,
   type SpouseActivationYearEntry,
@@ -5553,6 +5554,19 @@ export function SajuReport({ record, showSaveStatus = false, hourMode: parentHou
               }
             />
           ) : null}
+          {/* 9단계: 원국 개인 핵심 요약 — 기존 상세 카드(ReportAtAGlanceCard 이하)는 그대로
+              두고 그 위에 6섹션 자연어 요약만 추가한다(대표 지시: 삭제 금지, UI 대정리는
+              12단계). 계산은 SajuReport.tsx가 이미 만든 sajuPipelineResult/branchRelations/
+              yuanGuoShinsalInterpretEntries를 그대로 재사용 — 새 계산 없음. */}
+          {dayStem && sajuPipelineResult && (
+            <SajuCoreSummary
+              personId={record.id}
+              pipeline={sajuPipelineResult}
+              branchRelations={branchRelations}
+              shinsalEntries={yuanGuoShinsalInterpretEntries}
+            />
+          )}
+
           {dayStem && sajuPipelineResult && (
             <ReportAtAGlanceCard
               dayStem={dayStem}

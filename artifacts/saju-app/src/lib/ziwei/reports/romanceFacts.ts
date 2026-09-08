@@ -27,7 +27,7 @@ function sihuaEvidence(kind: string, star: string, palace: PalaceName): Evidence
 type FactDraft = Omit<InterpretationFact, "id" | "strength">;
 
 function finalize(domain: RomanceDomain, drafts: FactDraft[]): InterpretationFact[] {
-  const countByPolarity: Record<Polarity, number> = { positive: 0, mixed: 0, risk: 0 };
+  const countByPolarity: Record<Polarity, number> = { positive: 0, mixed: 0, risk: 0, neutral: 0 };
   for (const d of drafts) countByPolarity[d.polarity]++;
   return drafts.map((d, i) => ({ id: `${domain}-${i}`, strength: countByPolarity[d.polarity], ...d }));
 }

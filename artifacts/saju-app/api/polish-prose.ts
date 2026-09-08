@@ -27,7 +27,7 @@ const MAX_FACTS = 60;
 const MAX_MEANING_LEN = 300;
 const MAX_TEXT_LEN = 6_000;
 const RATE_LIMIT_PER_MINUTE = 10;
-const VALID_POLARITY = new Set(["positive", "mixed", "risk"]);
+const VALID_POLARITY = new Set(["positive", "mixed", "risk", "neutral"]);
 
 interface FactInput {
   domain: string;
