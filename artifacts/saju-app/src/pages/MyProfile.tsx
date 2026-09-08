@@ -154,7 +154,9 @@ export default function MyProfile() {
   return (
     <div className="ds-app-shell ds-page-pad py-8 ds-section-gap">
 
-      <SystemSelector personId={record.id} sajuHref="/saju" />
+      <div className="sticky top-14 z-30 -mx-4 bg-background/95 px-4 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/90">
+        <SystemSelector personId={record.id} sajuHref="/saju" />
+      </div>
 
       {/* ── Unified Identity Card ── */}
       <div className="ds-card ds-card-pad relative shadow-none">
@@ -272,6 +274,7 @@ export default function MyProfile() {
         record={record}
         hourMode={hourMode}
         onHourModeChange={setHourMode}
+        stickyOffsetPx={120}
       />
     </div>
   );

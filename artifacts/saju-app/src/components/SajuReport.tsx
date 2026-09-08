@@ -4484,6 +4484,10 @@ interface SajuReportProps {
   showSaveStatus?: boolean;
   hourMode?: "포함" | "제외" | "비교";
   onHourModeChange?: (mode: "포함" | "제외" | "비교") => void;
+  /** 상단에 AppHeader 외 다른 고정/sticky 바(예: SystemSelector)가 더 있을 때
+   * 그 높이만큼 더한 값을 넘겨 리포트 내부 탭이 그 아래에 쌓이도록 한다.
+   * 기본값은 AppHeader 높이(APP_HEADER_OFFSET_PX)뿐인 경우. */
+  stickyOffsetPx?: number;
 }
 
 type ReportMainTab = "원국" | "성격해석" | "운세" | "오늘운세";
@@ -4511,7 +4515,7 @@ type YuanGuoInlineDetail =
   | { kind: "twelveStage"; label: string; branch: string; stage: string }
   | { kind: "branchRelation"; relation: BranchRelation };
 
-export function SajuReport({ record, showSaveStatus = false, hourMode: parentHourMode, onHourModeChange }: SajuReportProps) {
+export function SajuReport({ record, showSaveStatus = false, hourMode: parentHourMode, onHourModeChange, stickyOffsetPx = APP_HEADER_OFFSET_PX }: SajuReportProps) {
   const { user } = useAuth();
   const [infoSheet, setInfoSheet] = useState<InfoSheetType | null>(null);
   const [manualShinsal, setManualShinsal] = useState<ManualShinsalItem[]>(record.manualShinsal ?? []);
@@ -5507,7 +5511,7 @@ export function SajuReport({ record, showSaveStatus = false, hourMode: parentHou
           생기지 않는다(수동 여백 보정용 placeholder도 필요 없어져 함께 제거). */}
       <div
         className="sticky z-30 -mx-4 border-b border-border/50 bg-background/95 px-4 py-2 backdrop-blur-sm"
-        style={{ top: APP_HEADER_OFFSET_PX }}
+        style={{ top: stickyOffsetPx }}
       >
         <div className="ds-segment-list min-h-11 rounded-xl border border-border shadow-none">
           {REPORT_MAIN_TABS.map((tab) => (

@@ -59,7 +59,9 @@ export default function PersonDetail() {
   return (
     <div className="ds-app-shell ds-page-pad py-8 ds-section-gap">
 
-      <SystemSelector personId={person.id} sajuHref={`/people/${person.id}`} />
+      <div className="sticky top-14 z-30 -mx-4 bg-background/95 px-4 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/90">
+        <SystemSelector personId={person.id} sajuHref={`/people/${person.id}`} />
+      </div>
 
       {/* ── Unified Identity Card (same structure as MyProfile) ── */}
       <div className="ds-card ds-card-pad relative shadow-none">
@@ -131,6 +133,7 @@ export default function PersonDetail() {
         record={person}
         hourMode={hourMode}
         onHourModeChange={setHourMode}
+        stickyOffsetPx={120}
       />
 
       {/* Bottom actions */}
