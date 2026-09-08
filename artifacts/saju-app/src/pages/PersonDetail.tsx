@@ -59,6 +59,8 @@ export default function PersonDetail() {
   return (
     <div className="ds-app-shell ds-page-pad py-8 ds-section-gap">
 
+      <SystemSelector personId={person.id} sajuHref={`/people/${person.id}`} />
+
       {/* ── Unified Identity Card (same structure as MyProfile) ── */}
       <div className="ds-card ds-card-pad relative shadow-none">
         <div className="flex items-start gap-4">
@@ -130,8 +132,6 @@ export default function PersonDetail() {
         hourMode={hourMode}
         onHourModeChange={setHourMode}
       />
-
-      <SystemSelector personId={person.id} sajuHref={`/people/${person.id}`} />
 
       {/* Bottom actions */}
       <div className="flex gap-3 pt-2">

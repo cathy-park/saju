@@ -154,6 +154,8 @@ export default function MyProfile() {
   return (
     <div className="ds-app-shell ds-page-pad py-8 ds-section-gap">
 
+      <SystemSelector personId={record.id} sajuHref="/saju" />
+
       {/* ── Unified Identity Card ── */}
       <div className="ds-card ds-card-pad relative shadow-none">
         <div className="absolute right-4 top-4 flex gap-1">
@@ -271,8 +273,6 @@ export default function MyProfile() {
         hourMode={hourMode}
         onHourModeChange={setHourMode}
       />
-
-      <SystemSelector personId={record.id} sajuHref="/saju" />
     </div>
   );
 }
