@@ -3,6 +3,13 @@
 // 어떻게 표현하고 하나의 문단으로 합성하는가"라는 순수 텍스트 합성 로직만 둔다 — 어느 쪽
 // 궁·오행·별자리 개념도 이 파일에 들어오지 않는다. evidence는 각 도메인이 자기 shape를
 // 정의해서 제네릭으로 채운다(자미두수=EvidenceItem, 사주=자체 정의 타입).
+//
+// [앱 전체 공통 AI 해석 출력 원칙과의 관계] 핵심 결론 2~4개 압축·유사 fact 병합처럼 "몇 개를
+// 어떻게 고르는가"는 각 도메인의 fact 빌더(예: sajuSummaryFacts.ts)가 섹션 목적에 맞게
+// 책임진다 — synthesizeText는 "이미 골라진 fact들을 문장으로 잇는" 마지막 단계일 뿐이다.
+// AI가 다듬는 경로의 원칙 전문은 api/polish-prose.ts(PROSE_PROMPT_VERSION) 참고. 이 함수는
+// 자미두수 리포트가 이미 의존하는 fallback 문체 계약이라 여기서는 원칙 적용을 이유로 결합
+// 로직 자체를 바꾸지 않는다(대표 지시 — 최소 변경).
 export type Polarity = "positive" | "mixed" | "risk" | "neutral";
 
 export interface ReportFact<TEvidence = unknown> {

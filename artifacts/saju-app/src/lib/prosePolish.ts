@@ -8,8 +8,10 @@ import type { ReportFact } from "@/lib/reportFacts";
 
 /** 프롬프트를 바꿀 때마다 올린다 — sourceHash 계산에 포함되어 버전이 바뀌면 캐시가
  * 자동으로 무효화된다(서버가 source_hash·prompt_version 조합으로 재계산·재조회하므로
- * 클라이언트는 이 값만 최신으로 보내면 된다). */
-export const PROSE_PROMPT_VERSION = "v1";
+ * 클라이언트는 이 값만 최신으로 보내면 된다).
+ * v2: 앱 전체 공통 AI 해석 출력 원칙(api/polish-prose.ts 참고 — 핵심 결론 2~4개 압축,
+ * 유사 fact 병합, 상반 fact 관계 설명, 원자료 나열 대신 성향/행동 표현, 2~4문장) 적용. */
+export const PROSE_PROMPT_VERSION = "v2";
 
 export interface PolishResult {
   text: string;

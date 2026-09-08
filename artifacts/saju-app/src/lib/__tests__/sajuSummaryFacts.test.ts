@@ -122,3 +122,45 @@ describe("sajuSummaryFacts — 우선순위 고정 + neutral 보존 + 신살 격
     expect(categories.has("shinsal")).toBe(true);
   });
 });
+
+describe("sajuSummaryFacts — 섹션별 fact 선정(RULE_SECTION_MAP) + 메인/evidence 분리", () => {
+  const sections = buildSajuSummarySections(pipeline, branchRelations, shinsalEntries);
+
+  it("R09(극신강 독립·사업형, 신강약 카테고리)는 이제 '핵심 성향'이 아니라 '강점'에 배치된다", () => {
+    // 이 fixture는 비겁 강+태강 조건을 만족해 R09가 실제로 발동한다(과거엔 category==='신강약'
+    // 필터로 coreNature에 섞여 들어갔던 규칙 — RULE_SECTION_MAP 도입 후 strengths로만 간다).
+    const coreNatureFacts = factsOf(sections, "coreNature");
+    const strengthFacts = factsOf(sections, "strengths");
+    expect(coreNatureFacts.some((f) => f.domain === "rule-R09")).toBe(false);
+    expect(strengthFacts.some((f) => f.domain === "rule-R09")).toBe(true);
+  });
+
+  it("R11(오행 결핍, 용신 카테고리)은 '주의할 점'에 배치되고 '일·재물'/'연애·관계'에는 섞이지 않는다", () => {
+    expect(factsOf(sections, "cautions").some((f) => f.domain === "rule-R11")).toBe(true);
+    expect(factsOf(sections, "workWealth").some((f) => f.domain === "rule-R11")).toBe(false);
+    expect(factsOf(sections, "romanceRelationship").some((f) => f.domain === "rule-R11")).toBe(false);
+  });
+
+  it("모든 섹션의 메인 fact 개수는 1~4개 사이다(전역 우선순위 절단이 아니라 섹션별 선택이라 자연스럽게 이 범위에 있어야 한다)", () => {
+    for (const s of sections) {
+      expect(s.facts.length).toBeGreaterThanOrEqual(1);
+      expect(s.facts.length).toBeLessThanOrEqual(4);
+    }
+  });
+
+  it("메인 fact 문장에는 timing 표현(시기/증가한다/전환점/기회가 생긴다)이 없다", () => {
+    const timingPattern = /시기|증가한다|전환점|기회가 생긴다/;
+    for (const s of sections) {
+      for (const f of s.facts) {
+        expect(f.meaning).not.toMatch(timingPattern);
+      }
+    }
+  });
+
+  it("'일·재물'/'연애·관계'가 규칙 대신 fallback을 쓸 때도 evidence에는 십성 원자료(카운트)가 그대로 남는다", () => {
+    const workWealth = sections.find((s) => s.key === "workWealth")!;
+    const romance = sections.find((s) => s.key === "romanceRelationship")!;
+    expect(workWealth.evidence.some((e) => e.category === "tenGod")).toBe(true);
+    expect(romance.evidence.some((e) => e.category === "tenGod")).toBe(true);
+  });
+});
