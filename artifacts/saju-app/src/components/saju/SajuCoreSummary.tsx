@@ -143,9 +143,12 @@ export function SajuCoreSummary({
   return (
     <div className="ds-stack-2">
       <p className="ds-caption font-semibold uppercase tracking-wide">원국 핵심 요약</p>
-      {sections.map((section) => (
-        <SectionCard key={section.key} section={section} polishedText={polishedTexts[section.key]} />
-      ))}
+      {sections
+        // main fact가 0개인 섹션은 generic filler로 채우지 않고 카드 자체를 숨긴다(대표 지시).
+        .filter((section) => section.facts.length > 0)
+        .map((section) => (
+          <SectionCard key={section.key} section={section} polishedText={polishedTexts[section.key]} />
+        ))}
     </div>
   );
 }

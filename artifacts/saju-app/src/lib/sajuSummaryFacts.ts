@@ -29,13 +29,19 @@
 //     positive/risk로 밀어넣지 않는다. "강점"/"주의할 점" 섹션에 배치되더라도 polarity 자체는
 //     바꾸지 않는다(섹션 배치는 주제 관련성일 뿐, 새로운 길흉 판단이 아니다).
 //
-// 신살은 절대 메인 결론(핵심 성향의 방향성)을 뒤집지 않는다 — 항상 neutral이고, 방향성 계산
-// (synthesizeSajuSection의 favorable/risk 판정)에는 아예 들어가지 않는다. 그리고 "핵심 성향"의
-// 핵심 fact(규칙 매핑)가 하나라도 있으면 신살은 아예 붙이지 않는다 — 핵심 fact가 부족할 때만
-// (fallback 경로일 때만) 보조적으로 "참고로 ~"를 붙인다(대표 지시: 신살은 메인 결론 선정에서
-// 원칙적으로 제외, 부족할 때만 보조 사용). 신살은 그 어떤 섹션에서도 독립 결론을 만들지 않는다.
+// [신살 = evidence only, 절대 main fallback으로 쓰지 않음 — 대표 지시] 조용민 사례(신살
+// 12개가 "핵심 성향" main에 전부 쏟아져 들어간 회귀) 이후로, 신살은 핵심 fact가 부족한
+// 경우에도 main의 빈칸을 채우는 용도로 절대 쓰지 않는다. shinsalFacts는 언제나
+// evidenceOnlyFacts로만 들어가고(section.evidence에는 남음), section.facts·text에는 전혀
+// 반영되지 않는다 — "참고로 ~" 문구 자체를 아예 만들지 않는다. 신살 oneLine에 timing 표현이
+// 섞여 있어도(실제로 있었다) main에 안 쓰이므로 자동으로 걸러진다.
+//
+// [핵심 fact 부족 시 억지로 채우지 않기 — 대표 지시] 상위 구조(강약/격국/용희기신/십성) fact가
+// 부족하면 다른 출처로 2~4개를 억지로 채우지 않고, 있는 그대로 짧게(때로 1문장) 유지한다.
+// 어떤 섹션이든 main fact가 0개면 generic filler를 만들지 않고 섹션 자체를 숨긴다
+// (SajuCoreSummary.tsx가 facts.length===0인 섹션을 렌더링하지 않음).
 import type { SajuPipelineResult } from "./sajuPipeline";
-import type { BranchRelation } from "./branchRelations";
+import type { BranchRelation, RelationType } from "./branchRelations";
 import { RELATION_MEANING } from "./branchRelations";
 import type { ShinsalInterpretationEntry } from "./shinsalInterpretation";
 import { type ReportFact, type Polarity } from "./reportFacts";
@@ -270,21 +276,48 @@ function gukgukPlainText(gukguk: NonNullable<SajuPipelineResult["interpretation"
   return stripJobExampleSentences(stripped || gukguk.description);
 }
 
+/** [일·재물/연애·관계 fallback 세분화 — 대표 지시] interpretationRules.ts가 이미 쓰는
+ * STRONG(>=0.30)/WEAK(<0.15) 비율 경계를 그대로 재사용한다(새 threshold·새 강약 판정 아님
+ * — 같은 숫자를 이 파일에도 복제해 둔 것뿐이다). 두 그룹 중 하나가 STRONG이고 다른 하나가
+ * WEAK일 때만 "어느 쪽이 우세한지"를 구별하고, 그렇지 않으면(둘 다 MEDIUM이거나 둘 다
+ * STRONG/WEAK 등) 기존 기준으로 구별할 수 없으므로 "balanced"로 판정해 짧고 중립적인
+ * 문장을 그대로 쓴다. */
+const STRONG_RATIO = 0.30;
+const WEAK_RATIO = 0.15;
+function tenGodDominance(groups: Record<string, number>, groupA: string, groupB: string): "A" | "B" | "balanced" {
+  const total = Object.values(groups).reduce((a, b) => a + b, 0) || 1;
+  const ratioA = (groups[groupA] ?? 0) / total;
+  const ratioB = (groups[groupB] ?? 0) / total;
+  if (ratioA >= STRONG_RATIO && ratioB < WEAK_RATIO) return "A";
+  if (ratioB >= STRONG_RATIO && ratioA < WEAK_RATIO) return "B";
+  return "balanced";
+}
+
 /** 재성·식상(일·재물) 또는 관성·비겁(연애·관계) 두 십성 그룹의 비중 원자료를, 규칙이 하나도
- * 안 뜬 경우의 guaranteed fallback으로 문장화한다. 메인 문장에는 그룹명 없이 개념 라벨만
- * 쓰고, 원자료(그룹명·카운트)는 evidence에 그대로 남긴다. 새로운 강약 판정은 추가하지 않는다. */
+ * 안 뜬 경우의 guaranteed fallback으로 문장화한다. 어느 한쪽이 뚜렷하게 우세할 때만(위
+ * tenGodDominance) 그 쪽 중심 문장을 쓰고, 구별이 안 되면 항상 같은 균형 문장을 쓴다 —
+ * "다른 사람과 구별이 안 되는 것"이 아니라 "실제로 이 사람의 원국이 균형적이라 구별할
+ * 근거가 없는 것"이다. 메인 문장에는 그룹명 없이 개념 라벨만 쓰고, 원자료(그룹명·카운트)는
+ * evidence에 그대로 남긴다. */
 function tenGodPairFact(
   domain: string,
   groupA: string,
   groupB: string,
   groups: Record<string, number>,
-  sentence: (labelA: string, labelB: string, particleAfterB: (p: string) => string) => string,
+  sentences: {
+    dominantA: (labelA: string) => string;
+    dominantB: (labelB: string) => string;
+    balanced: (labelA: string, labelB: string, particleAfterB: (p: string) => string) => string;
+  },
 ): SajuFact {
   const labelA = TEN_GOD_CONCEPT_LABEL[groupA];
   const labelB = TEN_GOD_CONCEPT_LABEL[groupB];
-  const meaning = sentence(labelA, labelB, (p: string) => fixParticle(p, labelB));
+  const dominance = tenGodDominance(groups, groupA, groupB);
+  const meaning = dominance === "A" ? sentences.dominantA(labelA)
+    : dominance === "B" ? sentences.dominantB(labelB)
+    : sentences.balanced(labelA, labelB, (p: string) => fixParticle(p, labelB));
   return fact(domain, meaning, "neutral", [
-    ev("tenGod", `${groupA} ${groups[groupA] ?? 0} · ${groupB} ${groups[groupB] ?? 0}`),
+    ev("tenGod", `${groupA} ${groups[groupA] ?? 0} · ${groupB} ${groups[groupB] ?? 0} (dominance: ${dominance})`),
   ]);
 }
 
@@ -305,16 +338,14 @@ function joinSentences(facts: SajuFact[]): string {
 }
 
 /** neutral fact는 방향성 계산에 넣지 않고 먼저 평이하게 서술한 뒤, 나머지(positive/risk)만
- * 우세한 쪽을 주절로 소수 진영을 "다만" 양보절로 통합한다. shinsalFacts는 항상 neutral이며
- * 항상 맨 뒤에 "참고로"로만 붙어서 방향성 계산에 아예 참여하지 않는다(신살이 결론을 뒤집을 수
- * 없다는 것을 구조적으로 보장).
+ * 우세한 쪽을 주절로 소수 진영을 "다만" 양보절로 통합한다.
  *
- * evidenceOnlyFacts는 본문(text)·AI 다듬기용 facts에는 전혀 들어가지 않지만, evidence에는
- * 포함된다 — "핵심 fact가 있으면 신살은 본문에 안 쓰지만, evidence 자체는 잃지 않는다"(대표
- * 지시: evidence 전부 보존)를 구현한다. */
+ * evidenceOnlyFacts(신살 등)는 본문(text)·AI 다듬기용 facts에는 절대 들어가지 않지만,
+ * evidence에는 포함된다 — "신살은 main fallback으로 절대 쓰지 않되, evidence는 잃지 않는다"
+ * (대표 지시)를 구현한다. facts가 비어 있으면 text도 빈 문자열이 된다 — 억지로 채우지 않고
+ * 섹션을 짧게(또는 숨김) 유지한다는 원칙을 그대로 반영한다(호출부가 이 경우 섹션을 숨김). */
 function synthesizeSajuSection(
   facts: SajuFact[],
-  shinsalFacts: SajuFact[] = [],
   evidenceOnlyFacts: SajuFact[] = [],
 ): { text: string; facts: SajuFact[]; evidence: SajuEvidenceItem[] } {
   const neutral = facts.filter((f) => f.polarity === "neutral");
@@ -332,12 +363,9 @@ function synthesizeSajuSection(
     directionalText = joinSentences([...favorable, ...risk]);
   }
 
-  const shinsalText = shinsalFacts.length > 0 ? ` 참고로 ${joinSentences(shinsalFacts)}` : "";
-
-  const text = ([neutralText, directionalText].filter(Boolean).join(" ") + shinsalText).trim();
-  const allFacts = [...facts, ...shinsalFacts];
-  const evidence = [...allFacts, ...evidenceOnlyFacts].flatMap((f) => f.evidence);
-  return { text, facts: allFacts, evidence };
+  const text = [neutralText, directionalText].filter(Boolean).join(" ").trim();
+  const evidence = [...facts, ...evidenceOnlyFacts].flatMap((f) => f.evidence);
+  return { text, facts, evidence };
 }
 
 function buildAtAGlanceFacts(pipeline: SajuPipelineResult): SajuFact[] {
@@ -368,46 +396,63 @@ function buildAtAGlanceFacts(pipeline: SajuPipelineResult): SajuFact[] {
 }
 
 /** "강점" 섹션 목표(대표 지시): 실제 잘 쓰이는 능력. R06/R09/R10(창의·독립사업·학습형)처럼
- * 이미 능력을 직접 서술하는 규칙이 하나라도 뜨면 그것을 그대로 쓰고, 하나도 안 뜨면 기존
- * 구조적 강점(격국 길·용신/희신)으로 fallback한다 — 두 출처를 동시에 합치지 않아 섹션이
- * 2~4개를 넘지 않는다. */
+ * 이미 능력을 직접 서술하는 규칙이 하나라도 뜨면 그것을 그대로 쓰고, 없으면 격국이 "길"할
+ * 때만(이것도 "구조가 유리하게 작용한다"는 실체가 있는 판단이라 남긴다) 그 설명을 쓴다.
+ * 용신·희신은 "이 사람에게 필요한 오행"일 뿐 "잘하는 능력"이 아니므로(대표 지시), 그
+ * 자체를 강점 fact로 만들지 않는다 — 실제 능력을 서술하는 fact가 전혀 없으면 빈 배열을
+ * 반환해 섹션을 짧게 두거나 숨긴다(generic filler로 채우지 않음). */
 function buildStrengthFacts(pipeline: SajuPipelineResult): SajuFact[] {
   const mapped = mappedRuleFacts(pipeline, "strengths");
   if (mapped.length > 0) return mapped;
 
-  const facts: SajuFact[] = [];
   const gukguk = pipeline.interpretation.gukguk;
   if (gukguk && gukguk.tone === "길") {
-    facts.push(fact("gukguk-strength", gukgukPlainText(gukguk), "positive", [
+    return [fact("gukguk-strength", gukgukPlainText(gukguk), "positive", [
       ev("gukguk", `격국: ${gukguk.name}(길) — ${gukguk.description}`),
-    ]));
+    ])];
   }
-  const yongshin = pipeline.adjusted.effectiveYongshin;
-  facts.push(fact("yongshin-strength", `${yongshin} 기운을 키우는 방향이 강점으로 작용합니다`, "positive", [ev("yongshin", `용신: ${yongshin}`)]));
-  const secondary = pipeline.adjusted.effectiveYongshinSecondary;
-  if (secondary) {
-    facts.push(fact("huishin-strength", `${secondary} 기운도 함께 도움이 되는 구조입니다`, "positive", [ev("yongshin", `희신: ${secondary}`)]));
-  }
-  return facts;
+  return [];
+}
+
+/** [합충형파해원진 → 현실 패턴 presentation mapping — 대표 지시] RELATION_MEANING(이미
+ * 확립된 개념 사전, branchRelations.ts)의 뜻을 "~하는 편입니다/~수 있습니다" 문장으로만
+ * 바꿔 쓴 것이다 — 그 타입이 뒷받침하지 않는 사건·심리(예: 사고, 수술, 이별)는 새로 추론해
+ * 넣지 않는다. RELATION_MEANING에 없는 타입이 추가돼도 안전하도록 폴백을 둔다. */
+const RELATION_TYPE_PATTERN: Partial<Record<RelationType, string>> = {
+  형: "감정이 격해지면 관계에서 긴장이나 갈등으로 표출되기 쉬운 편입니다",
+  충: "생활 패턴이나 환경이 바뀔 때 충돌이 생기기 쉬운 편입니다",
+  파: "관계나 상황이 예상과 다르게 흐트러지는 경우가 있을 수 있습니다",
+  해: "일이 진행될 때 방해나 지연을 겪는 경우가 있을 수 있습니다",
+  원진: "오해나 반목이 쌓여 거리감으로 이어지는 경우가 있을 수 있습니다",
+  공망: "몰입하던 것이 허무하게 느껴지거나 흐지부지되는 경우가 있을 수 있습니다",
+  합: "주변과 쉽게 어우러지고 조화를 이루는 편입니다",
+  천간합: "겉으로 드러나는 태도나 의지가 주변과 잘 맞아떨어지는 편입니다",
+  지지육합: "일상적인 관계에서 편안하고 밀착된 유대를 만드는 편입니다",
+  지지삼합: "여러 요인이 결합해 특정 기운이 강하게 쌓이는 구조적 흐름이 있습니다",
+  지지방합: "환경이나 계절적 기운의 영향을 크게 받는 편입니다",
+  천간충: "생각이나 표현 방식에서 마찰이 생기기 쉬운 편입니다",
+  지지충: "생활 패턴이나 환경이 바뀔 때 변화의 폭이 크게 나타날 수 있습니다",
+};
+function relationTypePattern(type: RelationType): string {
+  return RELATION_TYPE_PATTERN[type] ?? `${RELATION_MEANING[type]} 흐름이 있습니다`;
 }
 
 /** "주의할 점" 섹션 목표(대표 지시): 과잉될 때 나타나는 현실 패턴. R01/R07/R11(압박형 권위·
- * 스트레스 과부하·오행 결핍)을 우선 쓰고, 합충형파해원진은 관계 타입 명칭 없이
- * RELATION_MEANING(이미 확립된 개념 사전, branchRelations.ts)의 의미만 메인에 쓴다(명칭은
- * evidence에만). 매핑된 규칙도 없고 의미 있는 합충형파해원진도 없을 때만 격국(흉)으로
- * fallback한다. */
+ * 스트레스 과부하·오행 결핍)을 우선 쓰고, 합충형파해원진은 RELATION_TYPE_PATTERN(위)으로
+ * 실제 행동 패턴 문장으로만 옮긴다(명칭은 evidence에만). 매핑된 규칙도 없고 의미 있는
+ * 합충형파해원진도 없을 때만 격국(흉)으로 최소 fallback한다 — 그것도 없으면 억지로 채우지
+ * 않고 빈 배열을 반환한다(섹션 숨김). */
 function buildCautionFacts(pipeline: SajuPipelineResult, branchRelations: BranchRelation[]): SajuFact[] {
   const facts = mappedRuleFacts(pipeline, "cautions");
 
-  // 합충형파해원진 타입이 여러 개 동시에 성립해도 전부 나열하면 다시 "명칭 나열"이 되므로
-  // (이번엔 명칭 대신 의미 문구라도 여러 개를 이어붙이면 마찬가지로 읽기 어려워진다), 가장
+  // 합충형파해원진 타입이 여러 개 동시에 성립해도 전부 나열하면 다시 읽기 어려워지므로, 가장
   // 먼저 성립한 2개까지만 메인에 쓴다 — 나머지도 evidence에는 전부 남는다.
   const meaningfulTypes = [...new Set(branchRelations.map((r) => r.type))].filter((t) => RELATION_MEANING[t]);
   if (meaningfulTypes.length > 0) {
-    const clause = meaningfulTypes.slice(0, 2).map((t) => RELATION_MEANING[t]).join("·");
+    const clause = meaningfulTypes.slice(0, 2).map((t) => relationTypePattern(t)).join(". 또한 ");
     facts.push(fact(
       "interaction",
-      `${clause}의 흐름이 있어, 관계·환경 변화에 따라 긴장이나 마찰이 커질 수 있는 지점입니다`,
+      clause,
       "neutral",
       branchRelations.map((r) => ev("interaction", `${r.type}: ${r.description}`)),
     ));
@@ -432,10 +477,11 @@ function buildWorkWealthFacts(pipeline: SajuPipelineResult): SajuFact[] {
   if (mapped.length > 0) return mapped;
 
   const groups = pipeline.base.tenGodGroups;
-  return [tenGodPairFact(
-    "tenGod-wealth", "재성", "식상", groups,
-    (a, b, p) => `${a}과 ${b}${p("이")} 함께 나타나, 현실적인 감각과 실행력을 함께 활용해 성과를 만들어가는 방식입니다.`,
-  )];
+  return [tenGodPairFact("tenGod-wealth", "재성", "식상", groups, {
+    dominantA: (a) => `${a} 감각이 두드러져, 안정적으로 자산을 지키고 관리하는 방식으로 성과를 만들어가는 편입니다.`,
+    dominantB: (b) => `${b} 감각이 두드러져, 아이디어를 행동으로 옮기며 성과를 만들어가는 편입니다.`,
+    balanced: (a, b, p) => `${a}과 ${b}${p("이")} 함께 나타나, 현실적인 감각과 실행력을 함께 활용해 성과를 만들어가는 방식입니다.`,
+  })];
 }
 
 /** "연애·관계" 섹션 목표(대표 지시): 끌림·표현·갈등·관계 운영. 지금은 이 주제를 직접 다루는
@@ -446,10 +492,11 @@ function buildRomanceRelationshipFacts(pipeline: SajuPipelineResult): SajuFact[]
   if (mapped.length > 0) return mapped;
 
   const groups = pipeline.base.tenGodGroups;
-  return [tenGodPairFact(
-    "tenGod-relationship", "관성", "비겁", groups,
-    (a, b, p) => `${a}과 ${b}${p("이")} 함께 나타나, 관계에서 책임·안정과 자율·독립을 함께 추구하는 편입니다.`,
-  )];
+  return [tenGodPairFact("tenGod-relationship", "관성", "비겁", groups, {
+    dominantA: () => "관계에서 책임과 안정감을 우선하는 편입니다.",
+    dominantB: () => "관계에서도 자율성과 독립성을 우선하는 편입니다.",
+    balanced: (a, b, p) => `${a}과 ${b}${p("이")} 함께 나타나, 관계에서 책임·안정과 자율·독립을 함께 추구하는 편입니다.`,
+  })];
 }
 
 export function buildSajuSummarySections(
@@ -461,23 +508,17 @@ export function buildSajuSummarySections(
     fact(`shinsal-${s.id}`, s.oneLine, "neutral", [ev("shinsal", s.name)]),
   );
 
-  // 핵심 성향: R03/R04(조후)·R05(경쟁형)·R08(균형형)을 우선 쓰고, 하나도 안 뜨면(드문 경우)
-  // atAGlance의 강약 설명을 최소 fallback으로 재사용해 섹션이 비지 않게 한다. 신살은 핵심
-  // fact(mapped)가 하나라도 있으면 붙이지 않고, fallback일 때만(핵심 fact가 부족할 때만)
-  // 보조로 붙인다(대표 지시).
+  // 핵심 성향: R03/R04(조후)·R05(경쟁형)·R08(균형형)을 우선 쓰고, 하나도 안 뜨면(조용민처럼
+  // 흔히 있는 경우) atAGlance의 강약 설명 한 줄만 최소 fallback으로 재사용한다 — 그것마저
+  // 없으면 억지로 채우지 않고 빈 배열로 둔다(섹션 숨김). 신살은 어떤 경우에도 본문에 쓰지
+  // 않고 evidenceOnlyFacts로만 보존한다(대표 지시 — 신살은 main fallback으로 절대 미사용).
   const coreNatureMapped = mappedRuleFacts(pipeline, "coreNature");
-  const coreNatureIsFallback = coreNatureMapped.length === 0;
-  const coreNatureFacts = coreNatureIsFallback
-    ? buildAtAGlanceFacts(pipeline).filter((f) => f.domain === "strength")
-    : coreNatureMapped;
+  const coreNatureFacts = coreNatureMapped.length > 0
+    ? coreNatureMapped
+    : buildAtAGlanceFacts(pipeline).filter((f) => f.domain === "strength");
 
   const atAGlance = synthesizeSajuSection(buildAtAGlanceFacts(pipeline));
-  // 핵심 fact(mapped)가 있으면 신살은 본문에 안 쓰지만, evidence는 evidenceOnlyFacts로 보존한다.
-  const coreNature = synthesizeSajuSection(
-    coreNatureFacts,
-    coreNatureIsFallback ? shinsalFacts : [],
-    coreNatureIsFallback ? [] : shinsalFacts,
-  );
+  const coreNature = synthesizeSajuSection(coreNatureFacts, shinsalFacts);
   const strengths = synthesizeSajuSection(buildStrengthFacts(pipeline));
   const cautions = synthesizeSajuSection(buildCautionFacts(pipeline, branchRelations));
   const workWealth = synthesizeSajuSection(buildWorkWealthFacts(pipeline));
