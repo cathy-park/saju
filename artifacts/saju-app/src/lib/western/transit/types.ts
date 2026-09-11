@@ -62,6 +62,8 @@ export interface TransitEvent extends TransitActivation {
   transitLongitude: number;
   natalLongitude: number;
   primaryOwnerSection?: TransitSectionKey;
+  /** Added by the interpretation report; raw timeline calculation leaves it unset. */
+  natalLink?: NatalLink;
 }
 
 export interface TransitTimeline {

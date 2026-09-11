@@ -13,6 +13,7 @@ describe("western transit report", () => {
     expect(new Set(owned.map(([id]) => id)).size).toBe(owned.length);
     expect(owned.every(([id, owner]) => report.timeline.events.find((event) => event.id === id)?.primaryOwnerSection === owner)).toBe(true);
     expect(report.timeline.events.every((event) => event.primaryOwnerSection)).toBe(true);
+    expect(report.timeline.events.every((event) => (event as typeof event & { natalLink?: unknown }).natalLink)).toBe(true);
   });
 
   it("makes overview a deterministic summary without raw evidence", () => {

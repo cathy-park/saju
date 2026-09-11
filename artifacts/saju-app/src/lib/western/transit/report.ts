@@ -98,7 +98,8 @@ export function buildWesternTransitReport(chart: WesternNatalChart, query: Trans
   const timeline = calculateTransitTimeline(chart, query), factIndex = existingFactIndex(chart);
   const linked = timeline.events.map((event) => {
     event.primaryOwnerSection = ownerFor(event);
-    return { event, link: natalLink(chart, event.natalTargetId, factIndex) };
+    event.natalLink = natalLink(chart, event.natalTargetId, factIndex);
+    return { event, link: event.natalLink };
   }).sort(eventOrder);
   const backgrounds = linked.filter((item) => item.event.role === "background").slice(0, 8);
   const backgroundTargets = new Set(backgrounds.map((item) => item.event.natalTargetId));
