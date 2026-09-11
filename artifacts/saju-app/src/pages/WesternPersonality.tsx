@@ -58,8 +58,9 @@ export default function WesternPersonality() {
     <div className="ds-app-shell ds-page-pad py-8 ds-section-gap">
       <SystemSelector personId={person.id} sajuHref={person.id === getMyProfile()?.id ? "/saju" : `/people/${person.id}`} />
       <nav className="flex rounded-xl bg-muted/40 p-1" aria-label="서양점성술 해석 주제">
-        <span className="flex min-h-11 flex-1 items-center justify-center rounded-lg border border-primary/30 bg-card px-3 text-center text-sm font-bold text-primary">개인 성향</span>
-        <Link href={`/western/${person.id}/romance`} className="flex min-h-11 flex-1 items-center justify-center rounded-lg px-3 text-center text-sm font-semibold text-muted-foreground">연애·배우자</Link>
+      <span className="flex min-h-11 flex-1 items-center justify-center rounded-lg border border-primary/30 bg-card px-2 text-center text-xs font-bold text-primary">개인 성향</span>
+      <Link href={`/western/${person.id}/romance`} className="flex min-h-11 flex-1 items-center justify-center rounded-lg px-2 text-center text-xs font-semibold text-muted-foreground">연애·배우자</Link>
+      <Link href={`/western/${person.id}/transit`} className="flex min-h-11 flex-1 items-center justify-center rounded-lg px-2 text-center text-xs font-semibold text-muted-foreground">시기운</Link>
       </nav>
       <header>
         <p className="text-xs font-semibold text-primary">서양점성술 · 개인 성향</p>
