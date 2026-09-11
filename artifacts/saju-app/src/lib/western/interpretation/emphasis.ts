@@ -1,7 +1,7 @@
-import type { WesternNatalChart } from "../types";
-import { HOUSE_RULES, HOUSE_THEME_EMPHASIS } from "./rules/houseRules";
-import { ELEMENT_EMPHASIS, MODALITY_EMPHASIS, signRuleAt } from "./rules/signRules";
-import type { WesternChartEmphasis } from "./types";
+import type { WesternNatalChart } from "../types.js";
+import { HOUSE_RULES, HOUSE_THEME_EMPHASIS } from "./rules/houseRules.js";
+import { ELEMENT_EMPHASIS, MODALITY_EMPHASIS, signRuleAt } from "./rules/signRules.js";
+import type { WesternChartEmphasis } from "./types.js";
 
 /** Selects repeated independent placements categorically; no numeric personality score is produced. */
 export function detectChartEmphasis(chart: WesternNatalChart): WesternChartEmphasis[] {

@@ -1,6 +1,6 @@
 /** Angle/frame calculations adapted from astro-mcp v0.3.1, commit 76039f3 (MIT). */
 import * as AstronomyImport from "astronomy-engine";
-import type { PlanetId } from "./types";
+import type { PlanetId } from "./types.js";
 
 const A = ((AstronomyImport as unknown as { default?: typeof AstronomyImport }).default ?? AstronomyImport) as typeof AstronomyImport;
 A.SetDeltaTFunction(A.DeltaT_JplHorizons);

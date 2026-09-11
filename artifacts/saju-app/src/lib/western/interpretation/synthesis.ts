@@ -1,5 +1,5 @@
 import type { ReportFact } from "@/lib/reportFacts";
-import type { WesternEvidenceItem, WesternPersonalityFact } from "./types";
+import type { WesternEvidenceItem, WesternPersonalityFact } from "./types.js";
 
 const clean = (text: string) => text.trim().replace(/[.!?]+$/, "");
 const contrastive = (text: string) => {

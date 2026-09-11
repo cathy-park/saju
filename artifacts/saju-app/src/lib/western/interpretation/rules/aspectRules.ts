@@ -1,4 +1,4 @@
-import type { AspectType, PlanetId } from "../../types";
+import type { AspectType, PlanetId } from "../../types.js";
 
 export type OrbBand = "exact" | "close" | "supporting";
 export const ORB_BAND_ORDER: Record<OrbBand, number> = { exact: 0, close: 1, supporting: 2 };

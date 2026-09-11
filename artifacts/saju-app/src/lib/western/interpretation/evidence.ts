@@ -1,7 +1,7 @@
-import type { PlanetId, WesternAspect, WesternNatalChart, WesternPoint } from "../types";
-import { signRuleAt } from "./rules/signRules";
-import { orbBand } from "./rules/aspectRules";
-import { PLANET_LABEL, type WesternEvidenceItem } from "./types";
+import type { PlanetId, WesternAspect, WesternNatalChart, WesternPoint } from "../types.js";
+import { signRuleAt } from "./rules/signRules.js";
+import { orbBand } from "./rules/aspectRules.js";
+import { PLANET_LABEL, type WesternEvidenceItem } from "./types.js";
 
 export function placementEvidence(point: WesternPoint): WesternEvidenceItem {
   const sign = signRuleAt(point.longitude);

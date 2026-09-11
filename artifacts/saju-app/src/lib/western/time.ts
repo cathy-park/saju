@@ -2,7 +2,7 @@
  * Adapted from astro-mcp v0.3.1, commit 76039f3 (MIT), src/core/time.ts.
  * Copyright (c) 2026 Wesley Liu. See THIRD_PARTY_NOTICES.md.
  */
-import type { DstFold, WesternNatalInput } from "./types";
+import type { DstFold, WesternNatalInput } from "./types.js";
 
 const WALL_PATTERN = /^(\d{4,})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/;
 const BRACKET_MS = 25 * 60 * 60 * 1000;

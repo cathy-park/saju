@@ -1,8 +1,8 @@
-import { calculateAngles, calculatePlanet } from "./astronomy";
-import { calculateMajorAspects } from "./aspects";
-import { calculatePlacidusCusps, houseForLongitude } from "./houses";
-import { resolveLocalDateTime, WesternInputError } from "./time";
-import { WESTERN_ENGINE, WESTERN_SCHEMA_VERSION, type PlanetId, type WesternCalculationResult, type WesternIssue, type WesternNatalInput } from "./types";
+import { calculateAngles, calculatePlanet } from "./astronomy.js";
+import { calculateMajorAspects } from "./aspects.js";
+import { calculatePlacidusCusps, houseForLongitude } from "./houses.js";
+import { resolveLocalDateTime, WesternInputError } from "./time.js";
+import { WESTERN_ENGINE, WESTERN_SCHEMA_VERSION, type PlanetId, type WesternCalculationResult, type WesternIssue, type WesternNatalInput } from "./types.js";
 
 const PLANETS: PlanetId[] = ["sun", "moon", "mercury", "venus", "mars", "jupiter", "saturn", "uranus", "neptune", "pluto"];
 

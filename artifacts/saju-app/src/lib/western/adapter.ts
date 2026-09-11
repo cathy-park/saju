@@ -1,4 +1,4 @@
-import type { WesternAdapterResult } from "./types";
+import type { WesternAdapterResult } from "./types.js";
 
 export interface WesternBirthSource {
   calendarType: "solar" | "lunar";

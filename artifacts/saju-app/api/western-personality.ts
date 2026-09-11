@@ -1,5 +1,5 @@
-import { resolveWesternPersonalityForBirth } from "../src/lib/western/interpretation/personAdapter";
-import type { WesternBirthSource } from "../src/lib/western/adapter";
+import { resolveWesternPersonalityForBirth } from "../src/lib/western/interpretation/personAdapter.js";
+import type { WesternBirthSource } from "../src/lib/western/adapter.js";
 
 interface RequestLike { method?: string; headers: Record<string, string | string[] | undefined>; body?: unknown }
 interface ResponseLike { status(code: number): ResponseLike; json(body: unknown): void }

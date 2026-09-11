@@ -4,7 +4,7 @@
  * Copyright (c) 2026 Wesley Liu; Copyright (c) 2026 devil.services.
  * See THIRD_PARTY_NOTICES.md. No Swiss Ephemeris code or data is used.
  */
-import { D2R, R2D, norm360 } from "./astronomy";
+import { D2R, R2D, norm360 } from "./astronomy.js";
 
 function signedArc(a: number, b: number): number { let delta = norm360(a - b); if (delta > 180) delta -= 360; return delta; }
 function longitudeOfRa(ra: number, epsilon: number): number {

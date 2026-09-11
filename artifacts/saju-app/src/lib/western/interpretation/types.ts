@@ -1,6 +1,6 @@
 import type { ReportFact } from "@/lib/reportFacts";
-import type { PlanetId, WesternNatalChart, WesternPointId } from "../types";
-import type { OrbBand } from "./rules/aspectRules";
+import type { PlanetId, WesternNatalChart, WesternPointId } from "../types.js";
+import type { OrbBand } from "./rules/aspectRules.js";
 
 export interface WesternEvidenceItem {
   id: string;

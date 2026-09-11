@@ -1,12 +1,12 @@
 import type { Polarity } from "@/lib/reportFacts";
-import type { AspectType, PlanetId, WesternAspect, WesternNatalChart } from "../types";
-import { ASPECT_PAIR_RULES, ASPECT_TYPE_RULES, ORB_BAND_ORDER, PLANET_ROLE_RULES, orbBand, pairKey } from "./rules/aspectRules";
-import { HOUSE_RULES } from "./rules/houseRules";
-import { signRuleAt } from "./rules/signRules";
-import { ascendantEvidence, aspectEvidence, placementEvidence, pointById } from "./evidence";
-import { detectChartEmphasis } from "./emphasis";
-import { synthesizeWesternFacts } from "./synthesis";
-import type { WesternPersonalityFact, WesternPersonalityReport, WesternPersonalitySection, WesternSectionKey } from "./types";
+import type { AspectType, PlanetId, WesternAspect, WesternNatalChart } from "../types.js";
+import { ASPECT_PAIR_RULES, ASPECT_TYPE_RULES, ORB_BAND_ORDER, PLANET_ROLE_RULES, orbBand, pairKey } from "./rules/aspectRules.js";
+import { HOUSE_RULES } from "./rules/houseRules.js";
+import { signRuleAt } from "./rules/signRules.js";
+import { ascendantEvidence, aspectEvidence, placementEvidence, pointById } from "./evidence.js";
+import { detectChartEmphasis } from "./emphasis.js";
+import { synthesizeWesternFacts } from "./synthesis.js";
+import type { WesternPersonalityFact, WesternPersonalityReport, WesternPersonalitySection, WesternSectionKey } from "./types.js";
 
 const TITLES: Record<WesternSectionKey, string> = { atAGlance: "한눈에 보는 나", coreNature: "핵심 성향", emotionalInner: "감정·내면", thinkingCommunication: "사고·소통", actionDrive: "행동·추진력", strengths: "강점", cautions: "주의할 점" };
 

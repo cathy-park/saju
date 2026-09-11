@@ -1,5 +1,5 @@
-import { norm360 } from "./astronomy";
-import type { AspectType, PlanetId, WesternAspect } from "./types";
+import { norm360 } from "./astronomy.js";
+import type { AspectType, PlanetId, WesternAspect } from "./types.js";
 
 function separation(a: number, b: number): number { const delta = norm360(b - a); return delta > 180 ? 360 - delta : delta; }
 function match(exactAngle: number, allowedOrb: number, a: number, b: number) {
