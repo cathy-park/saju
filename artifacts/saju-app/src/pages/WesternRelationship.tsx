@@ -43,6 +43,7 @@ export default function WesternRelationship() {
   return <div className="ds-app-shell ds-page-pad py-8 ds-section-gap">
     <SystemSelector personId={person.id} sajuHref={sajuHref} />
     <nav className="flex rounded-xl bg-muted/40 p-1" aria-label="서양점성술 해석 주제">
+      <Link href={`/western/${person.id}/overview`} className="flex min-h-11 flex-1 items-center justify-center rounded-lg px-2 text-center text-xs font-semibold text-muted-foreground">종합</Link>
       <Link href={`/western/${person.id}`} className="flex min-h-11 flex-1 items-center justify-center rounded-lg px-2 text-center text-xs font-semibold text-muted-foreground">개인 성향</Link>
       <span className="flex min-h-11 flex-1 items-center justify-center rounded-lg border border-primary/30 bg-card px-2 text-center text-xs font-bold text-primary">연애·배우자</span>
       <Link href={`/western/${person.id}/transit`} className="flex min-h-11 flex-1 items-center justify-center rounded-lg px-2 text-center text-xs font-semibold text-muted-foreground">시기운</Link>

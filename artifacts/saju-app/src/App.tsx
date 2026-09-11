@@ -23,6 +23,8 @@ import WesternPersonality from "@/pages/WesternPersonality";
 import WesternRelationship from "@/pages/WesternRelationship";
 import WesternTransit from "@/pages/WesternTransit";
 import WesternSynastry from "@/pages/WesternSynastry";
+import WesternOverview from "@/pages/WesternOverview";
+import WesternRelationshipOverview from "@/pages/WesternRelationshipOverview";
 import AuthCallback from "@/pages/AuthCallback";
 import NotFound from "@/pages/not-found";
 import { Home as HomeIcon, User, Users } from "lucide-react";
@@ -134,7 +136,9 @@ function SyncedApp() {
           <Route path="/ziwei/:personId/romance" component={ZiweiRomanceReport} />
           <Route path="/ziwei/:personId/marriageTiming" component={ZiweiMarriageTimingReport} />
           <Route path="/ziwei/:personId/overview" component={ZiweiComprehensiveReport} />
+          <Route path="/western/:personId/synastry/:otherPersonId/overview" component={WesternRelationshipOverview} />
           <Route path="/western/:personId/synastry/:otherPersonId" component={WesternSynastry} />
+          <Route path="/western/:personId/overview" component={WesternOverview} />
           <Route path="/western/:personId/transit" component={WesternTransit} />
           <Route path="/western/:personId/romance" component={WesternRelationship} />
           <Route path="/western/:personId"        component={WesternPersonality} />
