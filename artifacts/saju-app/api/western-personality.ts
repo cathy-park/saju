@@ -1,4 +1,3 @@
-import { resolveWesternPersonalityForBirth } from "../src/lib/western/interpretation/personAdapter.js";
 import type { WesternBirthSource } from "../src/lib/western/adapter.js";
 
 interface RequestLike { method?: string; headers: Record<string, string | string[] | undefined>; body?: unknown }
@@ -22,7 +21,15 @@ export default async function handler(req: RequestLike, res: ResponseLike) {
     res.status(400).json({ error: "Invalid birth input" });
     return;
   }
-  const result = resolveWesternPersonalityForBirth(body as WesternBirthSource);
+  let result;
+  try {
+    const { resolveWesternPersonalityForBirth } = await import("../src/lib/western/interpretation/personAdapter.js");
+    result = resolveWesternPersonalityForBirth(body as WesternBirthSource);
+  } catch (error) {
+    console.error("western-personality initialization failed", error);
+    res.status(500).json({ errors: [{ code: "CALCULATION_FAILED", message: "Western calculation service failed to initialize" }] });
+    return;
+  }
   if (!result.ok) {
     res.status(422).json({ errors: result.errors });
     return;
