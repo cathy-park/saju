@@ -27,13 +27,7 @@ export default async function handler(req: RequestLike, res: ResponseLike) {
     result = resolveWesternPersonalityForBirth(body as WesternBirthSource);
   } catch (error) {
     console.error("western-personality initialization failed", error);
-    const category = (error as { code?: unknown })?.code === "ERR_MODULE_NOT_FOUND"
-      ? "MODULE_NOT_FOUND"
-      : error instanceof ReferenceError ? "REFERENCE_ERROR"
-      : error instanceof SyntaxError ? "SYNTAX_ERROR"
-      : error instanceof RangeError ? "RANGE_ERROR"
-      : error instanceof TypeError ? "TYPE_ERROR" : "ERROR";
-    res.status(500).json({ errors: [{ code: "CALCULATION_FAILED", message: "Western calculation service failed to initialize", details: { category } }] });
+    res.status(500).json({ errors: [{ code: "CALCULATION_FAILED", message: "Western calculation service failed to initialize" }] });
     return;
   }
   if (!result.ok) {
