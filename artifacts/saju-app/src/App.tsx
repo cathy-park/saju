@@ -20,6 +20,7 @@ import ZiweiRomanceReport from "@/pages/ZiweiRomanceReport";
 import ZiweiMarriageTimingReport from "@/pages/ZiweiMarriageTimingReport";
 import ZiweiComprehensiveReport from "@/pages/ZiweiComprehensiveReport";
 import WesternPersonality from "@/pages/WesternPersonality";
+import WesternRelationship from "@/pages/WesternRelationship";
 import AuthCallback from "@/pages/AuthCallback";
 import NotFound from "@/pages/not-found";
 import { Home as HomeIcon, User, Users } from "lucide-react";
@@ -131,6 +132,7 @@ function SyncedApp() {
           <Route path="/ziwei/:personId/romance" component={ZiweiRomanceReport} />
           <Route path="/ziwei/:personId/marriageTiming" component={ZiweiMarriageTimingReport} />
           <Route path="/ziwei/:personId/overview" component={ZiweiComprehensiveReport} />
+          <Route path="/western/:personId/romance" component={WesternRelationship} />
           <Route path="/western/:personId"        component={WesternPersonality} />
           <Route                                 component={NotFound} />
         </Switch>
