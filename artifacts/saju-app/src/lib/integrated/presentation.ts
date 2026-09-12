@@ -17,7 +17,7 @@ function areaSources(report: IntegratedReport, area: IntegratedArea) {
   ];
   const temporalOnly = area.key === "currentFlow" || area.key === "currentRelationshipFlow";
   return Array.from(new Map(sources
-    .filter((source) => !temporalOnly || !!source.temporalScope)
+    .filter((source) => temporalOnly ? !!source.temporalScope : !source.temporalScope)
     .map((source) => [`${source.system}:${source.module}:${source.factId}`, source])).values());
 }
 
