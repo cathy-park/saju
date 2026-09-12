@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "wouter";
-import { SystemSelector } from "@/components/SystemSelector";
+import { WesternPersonalNav } from "@/components/western/WesternNavigation";
+import { WesternReportShell } from "@/components/western/WesternReportShell";
+import { WesternMissingContext } from "@/components/western/WesternMissingContext";
 import { WesternPersonalitySummary } from "@/components/western/WesternPersonalitySummary";
 import { createPolishRequestCache } from "@/lib/prosePolish";
 import { getMyProfile, getPeople, type PersonRecord } from "@/lib/storage";
 import type { WesternIssue } from "@/lib/western/types";
 import type { WesternPersonalityReport } from "@/lib/western/interpretation";
 import type { WesternBirthSource } from "@/lib/western/adapter";
+import { westernBirthSource } from "@/lib/western/uiModel";
 
 const requestPolishedTexts = createPolishRequestCache("westernPersonality");
 
@@ -28,7 +31,7 @@ export default function WesternPersonality() {
     setResult({ loading: true });
     fetch("/api/western-personality", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(person.birthInput as unknown as WesternBirthSource),
+      body: JSON.stringify(westernBirthSource(person) satisfies WesternBirthSource),
     }).then(async (response) => {
       const data = await response.json() as { report?: WesternPersonalityReport; errors?: WesternIssue[] };
       if (!cancelled) setResult(response.ok && data.report ? { report: data.report, loading: false } : { errors: data.errors, loading: false });
@@ -55,33 +58,14 @@ export default function WesternPersonality() {
   );
 
   return (
-    <div className="ds-app-shell ds-page-pad py-8 ds-section-gap">
-      <SystemSelector personId={person.id} sajuHref={person.id === getMyProfile()?.id ? "/saju" : `/people/${person.id}`} />
-      <nav className="flex rounded-xl bg-muted/40 p-1" aria-label="서양점성술 해석 주제">
-      <Link href={`/western/${person.id}/overview`} className="flex min-h-11 flex-1 items-center justify-center rounded-lg px-2 text-center text-xs font-semibold text-muted-foreground">종합</Link>
-      <span className="flex min-h-11 flex-1 items-center justify-center rounded-lg border border-primary/30 bg-card px-2 text-center text-xs font-bold text-primary">개인 성향</span>
-      <Link href={`/western/${person.id}/romance`} className="flex min-h-11 flex-1 items-center justify-center rounded-lg px-2 text-center text-xs font-semibold text-muted-foreground">연애·배우자</Link>
-      <Link href={`/western/${person.id}/transit`} className="flex min-h-11 flex-1 items-center justify-center rounded-lg px-2 text-center text-xs font-semibold text-muted-foreground">시기운</Link>
-      </nav>
-      <header>
-        <p className="text-xs font-semibold text-primary">서양점성술 · 개인 성향</p>
-        <h1 className="mt-1 text-2xl font-bold text-foreground">{person.birthInput.name}님의 성향</h1>
-      </header>
+    <WesternReportShell personId={person.id} sajuHref={person.id === getMyProfile()?.id ? "/saju" : `/people/${person.id}`} eyebrow="서양점성술 · 개인 성향" title={`${person.birthInput.name}님의 성향`} navigation={<WesternPersonalNav personId={person.id} />}>
       {result.loading ? (
         <div className="ds-card ds-card-pad text-sm text-muted-foreground shadow-none" role="status" aria-live="polite">출생차트를 계산하고 있습니다.</div>
       ) : result.report ? (
         <WesternPersonalitySummary report={result.report} polishedTexts={polishedTexts} />
       ) : (
-        <div className="ds-card ds-card-pad shadow-none" role="alert">
-          <p className="text-sm font-bold text-foreground">정확한 출생 위치 정보가 필요합니다</p>
-          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-            {result.errors?.[0]?.code === "MISSING_LOCATION_CONTEXT"
-              ? "저장된 출생지 좌표와 IANA 시간대가 없어 차트를 임의로 추정하지 않았습니다. 위치 입력 방식이 준비된 뒤 이용할 수 있습니다."
-              : result.errors?.[0]?.message ?? "차트를 계산할 수 없습니다."}
-          </p>
-          {result.errors?.[0] && <p className="mt-2 text-xs text-muted-foreground">오류 코드: {result.errors[0].code}</p>}
-        </div>
+        <WesternMissingContext personId={person.id} personNames={[person.birthInput.name]} issue={result.errors?.[0]} fallback="차트를 계산할 수 없습니다." />
       )}
-    </div>
+    </WesternReportShell>
   );
 }

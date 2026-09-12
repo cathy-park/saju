@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useParams, Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { SajuReport } from "@/components/SajuReport";
-import { getPeople, getFinalPillars, type PersonRecord } from "@/lib/storage";
+import { getMyProfile, getPeople, getFinalPillars, type PersonRecord } from "@/lib/storage";
 import { getZodiacFromDayPillar } from "@/lib/zodiacAnimal";
 import { ArrowLeft, Heart } from "lucide-react";
 import { charToElement, elementBgClass, type FiveElKey } from "@/lib/element-color";
@@ -55,12 +55,16 @@ export default function PersonDetail() {
   const dayEl = (dayStem ? charToElement(dayStem) : null) as FiveElKey | null;
   const thumbBgClass = dayEl ? elementBgClass(dayEl, "muted") : "bg-muted";
   const badgeStatus = partnerBadgeStatus(person);
+  const myProfile = getMyProfile();
+  const westernHref = myProfile
+    ? `/western/${myProfile.id}/synastry/${person.id}/overview`
+    : `/western/${person.id}/relationship`;
 
   return (
     <div className="ds-app-shell ds-page-pad py-8 ds-section-gap">
 
       <div className="sticky top-14 z-30 -mx-4 bg-background/95 px-4 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/90">
-        <SystemSelector personId={person.id} sajuHref={`/people/${person.id}`} />
+        <SystemSelector personId={person.id} sajuHref={`/people/${person.id}`} westernHref={westernHref} />
       </div>
 
       {/* ── Unified Identity Card (same structure as MyProfile) ── */}

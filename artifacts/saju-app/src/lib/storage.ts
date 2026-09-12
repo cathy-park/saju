@@ -130,6 +130,15 @@ export interface PersonRecord {
   manualFiveElements?: FiveElementCount;
   manualTenGodCounts?: ManualTenGodCounts;
   fortuneOptions?: FortuneOptions;
+  /** Explicit context used only by Western astrology. Never inferred from the
+   * Saju birthplace/longitude fields. Stored inside the existing JSON payload. */
+  westernLocation?: {
+    placeLabel: string;
+    latitude: number;
+    longitude: number;
+    timezone: string;
+    resolver?: { provider: string; version?: string };
+  };
   createdAt: string;
   updatedAt: string;
 }

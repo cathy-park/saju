@@ -121,7 +121,7 @@ const KNOWN_YONGSHIN_TYPES = new Set(["억부용신", "조후용신", "통관용
 
 // ── Helper: DB row → PersonRecord ─────────────────────────────────
 
-function dbRowToRecord(row: DbMyProfile | DbPartnerProfile): PersonRecord {
+export function dbRowToRecord(row: DbMyProfile | DbPartnerProfile): PersonRecord {
   const payload = row.saju_payload as PersonRecord;
   const [yr, mo, dy] = row.birth_date.split("-").map(Number);
   const timeUnknown = row.birth_time === null;
