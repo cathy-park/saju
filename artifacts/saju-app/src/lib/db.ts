@@ -169,7 +169,9 @@ export function dbRowToRecord(row: DbMyProfile | DbPartnerProfile): PersonRecord
       minute:       timeUnknown ? undefined : mi,
       timeUnknown,
       calendarType: (row.calendar_type ?? "solar") as "solar" | "lunar",
-      birthplace:   (row as DbMyProfile).birth_place ?? undefined,
+      // partner_profiles에는 birth_place 컬럼이 없다. 상대 출생지는 saju_payload 안에
+      // 보존되므로, 컬럼 자체가 없는 row에서 payload 값을 undefined로 덮어쓰지 않는다.
+      birthplace:   "birth_place" in row ? row.birth_place ?? undefined : payload.birthInput.birthplace,
       name:         row.name,
       gender:       (row.gender ?? "남") as "남" | "여",
     },

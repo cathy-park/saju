@@ -36,6 +36,7 @@ interface HolisticFactInput {
   meaning: string;
   relationKind: "consensus" | "complement" | "tension";
   sourceSystems: string[];
+  sources: { system: string; module: string; meaning: string; evidenceLabels: string[] }[];
 }
 interface HolisticTimingInput {
   theme: string;
@@ -80,6 +81,7 @@ export default async function handler(req: VercelLikeRequest, res: VercelLikeRes
     if (typeof f.theme !== "string" || f.theme.length > 100 || typeof f.concept !== "string" || f.concept.length > 100) { res.status(400).json({ error: "Invalid fact.theme/concept" }); return; }
     if (!VALID_RELATION_KIND.has(f.relationKind)) { res.status(400).json({ error: "Invalid fact.relationKind" }); return; }
     if (!Array.isArray(f.sourceSystems) || f.sourceSystems.length === 0 || f.sourceSystems.length > 3 || f.sourceSystems.some((s) => !VALID_SYSTEM.has(s))) { res.status(400).json({ error: "Invalid fact.sourceSystems" }); return; }
+    if (!Array.isArray(f.sources) || f.sources.length === 0 || f.sources.length > 12 || f.sources.some((s) => !VALID_SYSTEM.has(s.system) || typeof s.module !== "string" || typeof s.meaning !== "string" || s.meaning.length > MAX_MEANING_LEN || !Array.isArray(s.evidenceLabels) || s.evidenceLabels.length > 20 || s.evidenceLabels.some((label) => typeof label !== "string" || label.length > 200))) { res.status(400).json({ error: "Invalid fact.sources" }); return; }
   }
   const timing = Array.isArray(timingConvergences) ? timingConvergences : [];
   if (timing.length > MAX_TIMING || timing.some((t) => !t || typeof t.meaning !== "string" || t.meaning.length > MAX_MEANING_LEN || typeof t.theme !== "string")) {
@@ -112,7 +114,7 @@ export default async function handler(req: VercelLikeRequest, res: VercelLikeRes
   const normalized = [
     availableSystems.slice().sort().join(","),
     missingSystems.slice().sort().join(","),
-    facts.map((f) => `${f.theme}|${f.concept}|${f.relationKind}|${f.sourceSystems.slice().sort().join(",")}|${f.meaning}`).sort().join("\n"),
+    facts.map((f) => `${f.theme}|${f.concept}|${f.relationKind}|${f.sourceSystems.slice().sort().join(",")}|${f.meaning}|${f.sources.map((s) => `${s.system}:${s.module}:${s.meaning}:${s.evidenceLabels.join(",")}`).sort().join(";")}`).sort().join("\n"),
     timing.map((t) => `${t.theme}|${t.meaning}`).sort().join("\n"),
   ].join("\n---\n");
   const sourceHash = createHash("sha256").update(normalized).digest("hex");
@@ -130,7 +132,7 @@ export default async function handler(req: VercelLikeRequest, res: VercelLikeRes
   if (cached?.prose) { res.status(200).json({ prose: cached.prose, cached: true }); return; }
 
   const SYSTEM_LABEL: Record<string, string> = { saju: "사주", ziwei: "자미두수", western: "서양점성술" };
-  const factLines = facts.map((f) => `- [${f.relationKind}] (${f.sourceSystems.map((s) => SYSTEM_LABEL[s]).join("+")}) ${f.meaning}`).join("\n");
+  const factLines = facts.map((f) => `- [${f.relationKind}] ${f.meaning}\n  확정 source: ${f.sources.map((s) => `${SYSTEM_LABEL[s.system]} ${s.meaning}${s.evidenceLabels.length ? ` (근거: ${s.evidenceLabels.join(", ")})` : ""}`).join(" / ")}`).join("\n");
   const timingLines = timing.map((t) => `- ${t.meaning}`).join("\n");
   const missingLine = missingSystems.length > 0 ? `이 사람(관계)은 ${missingSystems.map((s) => SYSTEM_LABEL[s]).join(", ")} 정보가 없습니다. 없는 체계를 있는 것처럼 언급하지 마세요.` : "";
 

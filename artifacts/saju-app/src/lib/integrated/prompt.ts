@@ -6,9 +6,9 @@ import { SHARED_PROSE_PROMPT_VERSION, INTEGRATED_HOLISTIC_PROMPT_VERSION } from 
  * src/lib/prosePromptVersion.ts(SHARED_PROSE_PROMPT_VERSION) 하나뿐이다 — 사주·자미두수·
  * 서양점성술과 같은 상수를 그대로 재노출한다(21단계, 캐시 버전 드리프트 방지). */
 export const INTEGRATED_PROMPT_VERSION = SHARED_PROSE_PROMPT_VERSION;
-export function buildIntegratedCopyPrompt(report: IntegratedReport): string {
-  const facts = report.sections.flatMap((section) => section.facts.map((fact) => ({ section: section.title, meaning: fact.meaning, relationKind: fact.relationKind, sourceSystems: fact.sourceSystems, provenance: fact.sources.map((source) => ({ system: source.system, module: source.module, factId: source.factId, evidenceLabels: source.evidence.map((item) => item.label), role: source.evidenceRole })) })));
-  return JSON.stringify({ instruction: "아래 확정 synthesis fact만 자연스러운 상담문으로 표현하세요. 새로운 계산, 점수, 사건 예측, 사주·자미두수·점성술 판단을 추가하지 마세요.", promptVersion: INTEGRATED_PROMPT_VERSION, scope: report.scope, sourceSystems: report.availableSystems, missingSystems: report.missingSystems, synthesisFacts: facts, timingConvergences: report.timingConvergences }, null, 2);
+export interface IntegratedRawPromptParts { saju: string; ziwei: string; western: string }
+export function buildIntegratedCopyPrompt(parts: IntegratedRawPromptParts): string {
+  return ["아래는 한 사람에 대해 계산된 사주, 자미두수, 서양점성술의 원자료입니다.", "", "각 체계를 따로 요약하는 데서 끝내지 말고, 세 체계가 공통으로 말하는 성향, 서로 보완되는 부분, 서로 다르게 보이는 부분을 함께 검토해서 이 사람을 하나의 사람으로 이해할 수 있도록 종합적으로 해석해주세요.", "", "성격, 감정 처리, 관계, 연애·배우자, 일·커리어, 재물, 강점과 약점, 현재 시기의 흐름을 연결해서 설명해주세요.", "", "제공된 계산 결과 밖의 별·궁·aspect·십성·사화 등을 임의로 만들어내지 마세요.", "", "# 1. 사주", parts.saju, "", "# 2. 자미두수", parts.ziwei, "", "# 3. 서양점성술", parts.western].join("\n");
 }
 
 export async function polishIntegratedSection(report: IntegratedReport, sectionKey: string, deterministicText: string) {
@@ -37,6 +37,7 @@ export async function polishIntegratedHolistic(report: IntegratedReport): Promis
   const facts = report.sections.flatMap((section) => section.facts).map((fact) => ({
     theme: fact.theme, concept: fact.concept, meaning: fact.meaning,
     relationKind: fact.relationKind, sourceSystems: fact.sourceSystems,
+    sources: fact.sources.map((source) => ({ system: source.system, module: source.module, meaning: source.meaning, evidenceLabels: source.evidence.map((item) => item.label) })),
   }));
   if (facts.length === 0 || !deterministicText) return deterministicText;
   try {

@@ -1,12 +1,23 @@
 import { describe, expect, it } from "vitest";
 import { buildIntegratedPersonalReport, buildIntegratedRelationshipReport } from "../report";
-import { buildHolisticDeterministicText } from "../prompt";
+import { buildHolisticDeterministicText, buildIntegratedCopyPrompt } from "../prompt";
 import type { IntegratedSourceFact } from "../types";
 
 const source = (value: Partial<IntegratedSourceFact> & Pick<IntegratedSourceFact, "system" | "module" | "factId" | "meaning">): IntegratedSourceFact => ({
   evidenceRole: "individual-context",
   evidence: [{ id: `${value.system}:raw:${value.factId}`, label: value.factId }],
   ...value,
+});
+
+describe("buildIntegratedCopyPrompt — 계산 구조 상담용 Markdown", () => {
+  it("세 체계 원자료만 합치고 synthesis 및 개발 ID를 제외한다", () => {
+    const text = buildIntegratedCopyPrompt({ saju: "출생정보\n사주팔자", ziwei: "명궁: 子", western: "Sun: Aquarius 27°" });
+    expect(text).toContain("# 1. 사주\n출생정보");
+    expect(text).toContain("# 2. 자미두수\n명궁: 子");
+    expect(text).toContain("# 3. 서양점성술\nSun: Aquarius 27°");
+    expect(text).not.toMatch(/relationKind|sourceFactId|rule-R|coreWealth-|"synthesisFacts"/);
+    expect(() => JSON.parse(text)).toThrow();
+  });
 });
 
 describe("buildHolisticDeterministicText — 21단계 종합 AI holistic 레이어의 fallback 문장", () => {

@@ -10,6 +10,7 @@ import { polishStatementText } from "@/lib/ziwei/reports/proseLayer";
 import { ReportHeader } from "@/components/ziwei/ReportHeader";
 import { EvidenceToggle } from "@/components/ziwei/EvidenceToggle";
 import { CopyButton } from "@/components/CopyButton";
+import type { ZiweiChart } from "@/lib/ziwei/types";
 
 const PROSE_TOPIC = "overview";
 
@@ -42,11 +43,11 @@ export default function ZiweiComprehensiveReport() {
   // useEffect(다듬기 효과)가 무한 루프를 돈다.
   const person = useMemo(() => (personId ? findPerson(personId) : null), [personId]);
 
-  const { report, error } = useMemo((): { report: ComprehensiveReport | null; error: string | null } => {
-    if (!person) return { report: null, error: null };
+  const { report, chart, error } = useMemo((): { report: ComprehensiveReport | null; chart: ZiweiChart | null; error: string | null } => {
+    if (!person) return { report: null, chart: null, error: null };
     const input = person.birthInput;
     if (input.timeUnknown || input.hour === undefined) {
-      return { report: null, error: "출생 시간이 없으면 자미두수 명반을 정확히 계산할 수 없습니다. 출생 시간을 입력해주세요." };
+      return { report: null, chart: null, error: "출생 시간이 없으면 자미두수 명반을 정확히 계산할 수 없습니다. 출생 시간을 입력해주세요." };
     }
     const chart = buildZiweiChart(
       {
@@ -57,7 +58,7 @@ export default function ZiweiComprehensiveReport() {
       zhongzhouV1,
       spouseReportTimingYears(),
     );
-    return { report: buildComprehensiveReport(chart, zhongzhouV1, input.name), error: null };
+    return { report: buildComprehensiveReport(chart, zhongzhouV1, input.name), chart, error: null };
   }, [person]);
 
   // AI 문장 다듬기 — 5개 섹션당 정확히 1회씩, 총 5회만 호출한다(섹션마다 이미 deterministic
@@ -98,7 +99,7 @@ export default function ZiweiComprehensiveReport() {
             {report.sections.map((section) => (
               <SectionCard key={section.key} section={section} polishedText={polishedTexts[section.key]} />
             ))}
-            <CopyButton buildText={() => buildZiweiCopyPrompt(report)} label="자미두수 AI 해석 프롬프트 복사" toastTitle="자미두수 분석 데이터가 복사되었습니다." />
+            <CopyButton buildText={() => buildZiweiCopyPrompt(chart!)} label="자미두수 AI 해석 프롬프트 복사" toastTitle="자미두수 계산 구조가 복사되었습니다." />
           </>
         )
       )}
