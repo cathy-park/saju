@@ -17,4 +17,6 @@ export const SHARED_PROSE_PROMPT_VERSION = "v5";
 // 여러 곳에 흩어져 드리프트되는 문제"를 반복하지 않기 위해 SHARED_PROSE_PROMPT_VERSION과
 // 같은 파일에 둔다 — api/integrated-holistic.ts의 프롬프트를 바꿀 때는 이 값만 올리면 된다.
 // holistic-v3: client single-flight production 회귀 검증을 위해 이전 holistic cache와 분리.
-export const INTEGRATED_HOLISTIC_PROMPT_VERSION = "holistic-v3";
+// holistic-v4: 응답 계약을 "문단 하나(prose: string)"에서 "고정 7영역 배열(areas: {key,text}[])"로
+// 바꿨다 — 예전 캐시(prose가 평문 문단)를 그대로 JSON.parse하면 깨지므로 반드시 분리한다.
+export const INTEGRATED_HOLISTIC_PROMPT_VERSION = "holistic-v4";

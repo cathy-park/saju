@@ -1,7 +1,11 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi, beforeEach } from "vitest";
 import { buildIntegratedPersonalReport, buildIntegratedRelationshipReport } from "../report";
-import { buildHolisticDeterministicText, buildIntegratedCopyPrompt, runHolisticSingleFlight } from "../prompt";
+import { buildHolisticDeterministicText, buildIntegratedCopyPrompt, runHolisticSingleFlight, polishIntegratedHolistic } from "../prompt";
 import type { IntegratedSourceFact } from "../types";
+
+vi.mock("../../supabase", () => ({
+  supabase: { auth: { getSession: () => Promise.resolve({ data: { session: { access_token: "test-token" } } }) } },
+}));
 
 const source = (value: Partial<IntegratedSourceFact> & Pick<IntegratedSourceFact, "system" | "module" | "factId" | "meaning">): IntegratedSourceFact => ({
   evidenceRole: "individual-context",
@@ -66,5 +70,67 @@ describe("integrated holistic single-flight", () => {
       runHolisticSingleFlight("person-b", request),
     ]);
     expect(request).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("polishIntegratedHolistic — 최초 진입 동시 요청 중복 제거(실제 회귀 재현)", () => {
+  // 모듈 스코프 single-flight 캐시가 테스트 간에도 유지되므로(그게 이 기능의 목적이다),
+  // 테스트끼리 서로 간섭하지 않도록 personId(=facts 내용)를 테스트마다 다르게 준다.
+  const buildReport = (personId: string) => buildIntegratedPersonalReport({ personId, sources: [
+    source({ system: "saju", module: "summary", factId: "rule-R05-a", meaning: "독립적으로 판단합니다" }),
+    source({ system: "ziwei", module: "comprehensive", factId: "coreNature-0", meaning: "주도적으로 책임집니다" }),
+    source({ system: "western", module: "overview", factId: `synthesis:${personId}:core`, meaning: "자기 기준을 지킵니다" }),
+  ] });
+
+  beforeEach(() => { vi.restoreAllMocks(); });
+
+  it("같은 report로 동시에 두 번 호출해도 /api/integrated-holistic은 1회만 호출된다", async () => {
+    const report = buildReport("p-dedupe-concurrent");
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({ areas: [{ key: "coreNatureAndLife", text: "통합된 핵심 성향 설명입니다." }] }),
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const [first, second] = await Promise.all([polishIntegratedHolistic(report), polishIntegratedHolistic(report)]);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(first).toEqual(second);
+    expect(first[0]?.key).toBe("coreNatureAndLife");
+  });
+
+  it("완료된 뒤 재진입(새 report 인스턴스, 같은 내용)해도 다시 호출하지 않고 캐시된 결과를 쓴다", async () => {
+    const report = buildReport("p-dedupe-reentry");
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({ areas: [{ key: "coreNatureAndLife", text: "통합된 핵심 성향 설명입니다." }] }),
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await polishIntegratedHolistic(report);
+    // 같은 내용을 다시 계산한 새 report 객체(리렌더로 report가 새 참조가 되는 상황을 재현).
+    const sameContentReport = buildReport("p-dedupe-reentry");
+    await polishIntegratedHolistic(sameContentReport);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("내용이 다른 report(다른 사람)는 별도로 1회씩 호출된다", async () => {
+    // 두 report 모두 "실제로 synthesis fact가 만들어지는" 조합(buildReport, 위 테스트들에서
+    // 이미 검증됨)을 쓰되 personId만 다르게 해서 순수하게 "내용이 다르면 key도 다르다"만
+    // 검증한다 — 임의로 다른 fact 조합을 쓰면 한쪽이 우연히 fact 0개가 되어(관계 없는 방향
+    // 차이는 tension으로도 합쳐지지 않는 기존 규칙 때문에) fetch 자체를 안 타는 거짓 통과가
+    // 될 수 있다.
+    const reportA = buildReport("p-a-distinct");
+    const reportB = buildReport("p-b-distinct");
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({ areas: [{ key: "coreNatureAndLife", text: "설명" }] }),
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await Promise.all([polishIntegratedHolistic(reportA), polishIntegratedHolistic(reportB)]);
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });
