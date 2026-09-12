@@ -129,7 +129,7 @@ export default async function handler(req: VercelLikeRequest, res: VercelLikeRes
     .eq("section_key", sectionKey)
     .maybeSingle();
 
-  if (cached?.prose) { res.status(200).json({ prose: cached.prose, cached: true }); return; }
+  if (cached?.prose) { console.info("[prose-cache] hit", { topic, promptVersion, model: "gpt-5.6-sol" }); res.status(200).json({ prose: cached.prose, cached: true }); return; }
 
   const SYSTEM_LABEL: Record<string, string> = { saju: "사주", ziwei: "자미두수", western: "서양점성술" };
   const factLines = facts.map((f) => `- [${f.relationKind}] ${f.meaning}\n  확정 source: ${f.sources.map((s) => `${SYSTEM_LABEL[s.system]} ${s.meaning}${s.evidenceLabels.length ? ` (근거: ${s.evidenceLabels.join(", ")})` : ""}`).join(" / ")}`).join("\n");
@@ -168,6 +168,7 @@ export default async function handler(req: VercelLikeRequest, res: VercelLikeRes
 
   let holistic: string | undefined;
   try {
+    console.info("[prose-cache] openai-call", { topic, promptVersion, model: "gpt-5.6-sol" });
     const aiRes = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${OPENAI_API_KEY}` },
@@ -178,7 +179,7 @@ export default async function handler(req: VercelLikeRequest, res: VercelLikeRes
         max_tokens: 900,
       }),
     });
-    if (!aiRes.ok) throw new Error(`OpenAI error: ${aiRes.status}`);
+    if (!aiRes.ok) { console.error("[prose-cache] openai-error", { status: aiRes.status, detail: (await aiRes.text()).slice(0, 500) }); throw new Error(`OpenAI error: ${aiRes.status}`); }
     const data = (await aiRes.json()) as { choices?: { message?: { content?: string } }[] };
     holistic = data?.choices?.[0]?.message?.content?.trim();
   } catch {

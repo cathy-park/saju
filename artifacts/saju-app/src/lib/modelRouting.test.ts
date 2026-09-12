@@ -15,4 +15,12 @@ describe("OpenAI prose model routing", () => {
     expect(versions).toContain('SHARED_PROSE_PROMPT_VERSION = "v5"');
     expect(versions).toContain('INTEGRATED_HOLISTIC_PROMPT_VERSION = "holistic-v2"');
   });
+
+  it("emits cache hit and paid-call markers without logging source content", () => {
+    for (const path of ["api/polish-prose.ts", "api/integrated-holistic.ts"]) {
+      const source = readFileSync(path, "utf8");
+      expect(source).toContain('console.info("[prose-cache] hit"');
+      expect(source).toContain('console.info("[prose-cache] openai-call"');
+    }
+  });
 });

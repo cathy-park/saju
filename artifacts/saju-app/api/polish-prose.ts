@@ -172,6 +172,7 @@ export default async function handler(req: VercelLikeRequest, res: VercelLikeRes
     .maybeSingle();
 
   if (cached?.prose) {
+    console.info("[prose-cache] hit", { topic, promptVersion, model: "gpt-5.6-terra" });
     res.status(200).json({ prose: cached.prose, cached: true });
     return;
   }
@@ -205,6 +206,7 @@ export default async function handler(req: VercelLikeRequest, res: VercelLikeRes
 
   let polished: string | undefined;
   try {
+    console.info("[prose-cache] openai-call", { topic, promptVersion, model: "gpt-5.6-terra" });
     const aiRes = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${OPENAI_API_KEY}` },
@@ -215,7 +217,7 @@ export default async function handler(req: VercelLikeRequest, res: VercelLikeRes
         max_tokens: 600,
       }),
     });
-    if (!aiRes.ok) throw new Error(`OpenAI error: ${aiRes.status}`);
+    if (!aiRes.ok) { console.error("[prose-cache] openai-error", { status: aiRes.status, detail: (await aiRes.text()).slice(0, 500) }); throw new Error(`OpenAI error: ${aiRes.status}`); }
     const data = (await aiRes.json()) as { choices?: { message?: { content?: string } }[] };
     polished = data?.choices?.[0]?.message?.content?.trim();
   } catch {
