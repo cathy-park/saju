@@ -30,8 +30,8 @@ export function adaptZiweiRelationshipContext(report: ComprehensiveReport, perso
 export function adaptWesternPersonal(report: WesternPersonalSynthesisReport, selectedScope?: TemporalScope): IntegratedSourceFact[] {
   const base = report.sections.filter((section) => section.key !== "overview").flatMap((section) => section.facts.map((fact) => ({ system: "western" as const, module: "overview", factId: fact.id, personId: report.personId, meaning: fact.meaning, evidence: fact.independence.allEvidenceIds.map((id) => ({ id: `western:${id}`, label: id })), evidenceRole: "individual-context" as const, sourceKind: fact.sourceRefs.length ? undefined : "summary" as const })));
   if (!selectedScope) return base;
-  const transitIds = [...new Set(report.sections.flatMap((section) => section.facts.flatMap((fact) => fact.timing.transitFactIds)))];
-  return [...base, ...transitIds.map((factId) => ({ system: "western" as const, module: "transit", factId, personId: report.personId, meaning: "선택 기간에 기존 관계 욕구와 행동 방식의 조율 지점이 활성화됩니다", evidence: [{ id: `western:${factId}`, label: factId }], evidenceRole: "individual-context" as const, temporalScope: selectedScope }))];
+  const transitFacts = report.sections.find((section) => section.key === "currentFlow")?.facts ?? [];
+  return [...base, ...transitFacts.flatMap((fact) => fact.timing.transitFactIds.slice(0, 1).map((factId) => ({ system: "western" as const, module: "transit", factId, personId: report.personId, meaning: fact.meaning, evidence: fact.sourceRefs.flatMap((ref) => ref.ultimateEvidenceIds).map((id) => ({ id: `western:${id}`, label: fact.meaning })), evidenceRole: "individual-context" as const, temporalScope: selectedScope })))];
 }
 
 export function adaptWesternRelationship(report: WesternRelationshipSynthesisReport): IntegratedSourceFact[] {

@@ -2,6 +2,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { buildIntegratedPersonalReport, buildIntegratedRelationshipReport } from "../report";
 import { buildHolisticDeterministicText, buildIntegratedCopyPrompt, runHolisticSingleFlight, polishIntegratedHolistic } from "../prompt";
 import type { IntegratedSourceFact } from "../types";
+import { PERSONAL_AREAS, RELATIONSHIP_AREAS } from "../areas";
 
 vi.mock("../../supabase", () => ({
   supabase: { auth: { getSession: () => Promise.resolve({ data: { session: { access_token: "test-token" } } }) } },
@@ -14,6 +15,10 @@ const source = (value: Partial<IntegratedSourceFact> & Pick<IntegratedSourceFact
 });
 
 describe("buildIntegratedCopyPrompt — 계산 구조 상담용 Markdown", () => {
+  it("개인 9개·관계 7개 사용자 주제 계약을 유지한다", () => {
+    expect(PERSONAL_AREAS.map((area) => area.title)).toEqual(["한눈에 보는 나", "성향", "감정·내면", "연애", "결혼·배우자", "일·커리어", "재물", "건강·생활 리듬", "현재 흐름"]);
+    expect(RELATIONSHIP_AREAS.map((area) => area.title)).toEqual(["관계의 핵심", "감정·애착", "대화·갈등", "끌림·친밀감", "결혼·장기 지속성", "현실·생활 궁합", "현재 관계 흐름"]);
+  });
   it("세 체계 원자료만 합치고 synthesis 및 개발 ID를 제외한다", () => {
     const text = buildIntegratedCopyPrompt({ saju: "출생정보\n사주팔자", ziwei: "명궁: 子", western: "Sun: Aquarius 27°" });
     expect(text).toContain("# 1. 사주\n출생정보");
@@ -31,8 +36,8 @@ describe("buildHolisticDeterministicText — 21단계 종합 AI holistic 레이�
       source({ system: "ziwei", module: "comprehensive", factId: "coreNature-0", meaning: "주도적으로 책임집니다" }),
       source({ system: "western", module: "overview", factId: "synthesis:p:core", meaning: "자기 기준을 지킵니다" }),
     ] });
-    const overview = report.sections.find((section) => section.key === "overview");
-    expect(buildHolisticDeterministicText(report)).toBe(overview?.text);
+    expect(buildHolisticDeterministicText(report)).toContain("독립적으로 판단합니다");
+    expect(buildHolisticDeterministicText(report)).not.toContain("서로 다른 관점");
     expect(buildHolisticDeterministicText(report).length).toBeGreaterThan(0);
   });
 
@@ -41,8 +46,7 @@ describe("buildHolisticDeterministicText — 21단계 종합 AI holistic 레이�
       source({ system: "saju", module: "compatibility", factId: "emotion-a", meaning: "대화를 통해 조율합니다", evidenceRole: "dyadic-evidence" }),
       source({ system: "western", module: "synastry", factId: "communication-a", meaning: "감정을 말로 정리합니다", evidenceRole: "dyadic-evidence" }),
     ] });
-    const core = report.sections.find((section) => section.key === "relationshipCore");
-    expect(buildHolisticDeterministicText(report)).toBe(core?.text);
+    expect(buildHolisticDeterministicText(report)).toContain("대화를 통해 조율합니다");
   });
 
   it("fact가 전혀 없어 섹션이 비어 있으면 빈 문자열을 반환한다(새 문장을 지어내지 않음)", () => {
@@ -88,7 +92,7 @@ describe("polishIntegratedHolistic — 최초 진입 동시 요청 중복 제거
     const report = buildReport("p-dedupe-concurrent");
     const fetchMock = vi.fn(async () => ({
       ok: true,
-      json: async () => ({ areas: [{ key: "coreNatureAndLife", text: "통합된 핵심 성향 설명입니다." }] }),
+      json: async () => ({ areas: [{ key: "personality", text: "통합된 핵심 성향 설명입니다." }] }),
     }));
     vi.stubGlobal("fetch", fetchMock);
 
@@ -96,14 +100,14 @@ describe("polishIntegratedHolistic — 최초 진입 동시 요청 중복 제거
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(first).toEqual(second);
-    expect(first[0]?.key).toBe("coreNatureAndLife");
+    expect(first[0]?.key).toBe("personality");
   });
 
   it("완료된 뒤 재진입(새 report 인스턴스, 같은 내용)해도 다시 호출하지 않고 캐시된 결과를 쓴다", async () => {
     const report = buildReport("p-dedupe-reentry");
     const fetchMock = vi.fn(async () => ({
       ok: true,
-      json: async () => ({ areas: [{ key: "coreNatureAndLife", text: "통합된 핵심 성향 설명입니다." }] }),
+      json: async () => ({ areas: [{ key: "personality", text: "통합된 핵심 성향 설명입니다." }] }),
     }));
     vi.stubGlobal("fetch", fetchMock);
 
@@ -125,7 +129,7 @@ describe("polishIntegratedHolistic — 최초 진입 동시 요청 중복 제거
     const reportB = buildReport("p-b-distinct");
     const fetchMock = vi.fn(async () => ({
       ok: true,
-      json: async () => ({ areas: [{ key: "coreNatureAndLife", text: "설명" }] }),
+      json: async () => ({ areas: [{ key: "personality", text: "설명" }] }),
     }));
     vi.stubGlobal("fetch", fetchMock);
 

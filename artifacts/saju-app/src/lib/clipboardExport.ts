@@ -25,6 +25,7 @@ import {
   type PersonInteractionContext,
 } from "./evaluations/relationshipInteractionActivation";
 import type { CompatibilityResult } from "./compatibilityScore";
+import type { AnyCompatibilityReport } from "./reports";
 import { getCompatibilityCardPolicy } from "./compatibilityDisplayPolicy";
 import { getPurposeCompatibilityInterpretation } from "./compatibilityInterpretation";
 import {
@@ -53,6 +54,16 @@ const SUMMER_BR = ["사", "오", "미"];
 
 function fmt2(n: number): string {
   return Number(n).toFixed(2);
+}
+
+function sanitizeAiCalculationLines(lines: string[]): string[] {
+  let skip = false;
+  return lines.filter((line) => {
+    if (/^\[(debug anchor|강약 검증 리포트|대표 요약|🎯 합격운 · 📝 계약운 월별 조견표)/i.test(line)) { skip = true; return false; }
+    if (skip && /^\[/.test(line)) skip = false;
+    if (skip) return false;
+    return !/anchor|검증 예시|자동 세운 계산|^\s*(해석|요약):/.test(line);
+  });
 }
 
 /** 년주·월주·일주·시주 → 디버그 위치 라벨 */
@@ -970,7 +981,7 @@ export function buildPersonClipboardText(
     );
   }
 
-  return lines.join("\n");
+  return sanitizeAiCalculationLines(lines).join("\n");
 }
 
 /** [해석 일관성 규칙] — 제공된 계산 결과를 anchor로 고정하고 AI가 임의로 재계산·역전하지 않도록 하는 공통 지시. 개인·궁합 프롬프트 하단에 동일하게 붙인다.
@@ -1307,4 +1318,13 @@ export function buildCompatibilityClipboardText(
   );
 
   return lines.join("\n");
+}
+
+export function buildCompatibilityCalculationClipboardText(
+  person1: PersonRecord, person2: PersonRecord, result: CompatibilityResult | AnyCompatibilityReport,
+  hourMode1: "포함" | "제외" | "비교" = "포함", hourMode2: "포함" | "제외" | "비교" = "포함",
+): string {
+  const score = "scoreResult" in result ? result.scoreResult : result;
+  const full = buildCompatibilityClipboardText(person1, person2, score, hourMode1, hourMode2);
+  return full.split("[새 궁합 전용 프롬프트]")[0].replace(/\n---\s*$/, "").trim();
 }

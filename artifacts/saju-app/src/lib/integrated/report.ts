@@ -16,12 +16,12 @@ function normalize(sources: IntegratedSourceFact[]) {
   return { accepted, mapped, unmapped, uniqueEvidence: unique(evidenceIds), duplicated: unique(evidenceIds.filter((id, index) => evidenceIds.indexOf(id) !== index)), excluded: sources.filter((source) => !eligible(source)).map(sourceKey) };
 }
 
-function synthesisMeaning(concept: string, kind: IntegratedSynthesisFact["relationKind"], systems: IntegratedSystem[]): string {
+function synthesisMeaning(concept: string, kind: IntegratedSynthesisFact["relationKind"]): string {
   const label: Record<string, string> = { autonomy: "자기 기준을 지키며 주도적으로 선택하는 경향", execution: "생각을 실제 행동과 결과로 연결하는 방식", "relationship-communication": "감정과 생각을 대화로 확인하고 조율하는 방식", attraction: "호감과 친밀감이 형성되는 방식", "conflict-adjustment": "반응 속도와 힘의 강도를 조율하는 방식", "sustainable-structure": "책임과 생활 기반을 함께 세우는 장기 관계 방식", "practical-output": "현실적인 성과와 기반을 만드는 방식" };
   const subject = label[concept] ?? "서로 다른 삶의 측면";
-  if (kind === "consensus") return `${systems.length === 2 ? "두 체계" : "여러 체계"}가 공통으로 ${subject}을 가리킵니다. 이는 정확도나 확률의 상승이 아니라 서로 다른 관점에서 같은 방향이 확인된다는 뜻입니다`;
+  if (kind === "consensus") return `${subject}이 삶의 여러 장면에서 일관되게 드러납니다`;
   if (kind === "tension") return `${subject} 안에서 서로 반대되는 요구가 함께 확인되어, 상황에 따라 우선순위를 분명히 할 필요가 있습니다`;
-  return `${subject}에 서로 다른 측면이 더해져, 함께 볼 때 행동의 조건과 맥락이 구체화됩니다`;
+  return `${subject}은 상황과 역할에 따라 서로 다른 방식으로 나타납니다`;
 }
 
 function buildFacts(mapped: IntegratedProvenance[], relationship: boolean): { facts: IntegratedSynthesisFact[]; used: Set<string> } {
@@ -39,7 +39,7 @@ function buildFacts(mapped: IntegratedProvenance[], relationship: boolean): { fa
     if (!kind) continue;
     const [theme, concept] = key.split(":") as [IntegratedProvenance["mapping"]["theme"], string];
     const primaryOwnerSection = relationship ? (concept === "relationship-communication" ? "emotionalCommunication" : concept === "sustainable-structure" ? "longTerm" : concept === "conflict-adjustment" ? "conflictAdjustment" : "attractionIntimacy") : owner[theme];
-    const fact: IntegratedSynthesisFact = { id: `integrated:${relationship ? "relationship" : "personal"}:${theme}:${concept}`, theme, concept, direction: directions.join("+"), meaning: synthesisMeaning(concept, kind, relationship ? dyadicSystems : systems), relationKind: kind, sources: deduped, sourceSystems: systems, dyadicSystems, primaryOwnerSection };
+    const fact: IntegratedSynthesisFact = { id: `integrated:${relationship ? "relationship" : "personal"}:${theme}:${concept}`, theme, concept, direction: directions.join("+"), meaning: synthesisMeaning(concept, kind), relationKind: kind, sources: deduped, sourceSystems: systems, dyadicSystems, primaryOwnerSection };
     facts.push(fact); deduped.forEach((source) => used.add(sourceKey(source)));
   }
   return { facts, used };
@@ -55,9 +55,9 @@ function timing(mapped: IntegratedProvenance[], selected?: SelectedPeriod): Timi
     const systems = unique(sources.map((source) => source.system)); if (systems.length < 2) return [];
     const pair = sources.find((a) => sources.some((b) => a !== b && overlaps(a.temporalScope!, b.temporalScope!))); if (!pair) return [];
     const start = sources.map((source) => source.temporalScope!.start).sort().at(-1)!; const end = sources.map((source) => source.temporalScope!.end).sort()[0];
-    const granularities = new Set(sources.map((source) => source.temporalScope!.granularity)); const precision = granularities.has("year") && (granularities.has("month") || granularities.has("instant-window")) ? "연간 배경과 월간 활성" : "서로 겹치는 기간의 활성";
     const [theme, concept] = key.split(":") as [TimingConvergence["theme"], string];
-    return [{ id: `integrated:timing:${theme}:${concept}:${start}`, theme, concept, meaning: `${precision}에서 같은 주제가 함께 확인됩니다. 같은 사건을 뜻하지는 않습니다`, sources, overlap: { start, end } }];
+    const meanings = unique(sources.map((source) => source.meaning)).slice(0, 2).join(" ");
+    return meanings ? [{ id: `integrated:timing:${theme}:${concept}:${start}`, theme, concept, meaning: meanings, sources, overlap: { start, end } }] : [];
   });
 }
 

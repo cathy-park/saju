@@ -35,7 +35,7 @@ function synthesizeStatements(facts: InterpretationFact[]): SpouseStatement[] {
   return [{ text, evidence, confidence, facts }];
 }
 
-function buildFinalProfile(evidence: CareerEvidenceBundle): CareerReportSection {
+function buildFinalProfile(evidence: CareerEvidenceBundle, facts: InterpretationFact[]): CareerReportSection {
   const majorEvidence: EvidenceItem[] = evidence.sanfangSizhengPalaces.flatMap((p) =>
     p.majorStars.map((s) => ({ type: "star" as const, value: `${s.name}@${p.palace}` })));
   const minorEvidence: EvidenceItem[] = evidence.sanfangSizhengPalaces.flatMap((p) =>
@@ -48,10 +48,10 @@ function buildFinalProfile(evidence: CareerEvidenceBundle): CareerReportSection 
     key: "finalProfile",
     title: SECTION_TITLES.finalProfile,
     statements: [{
-      text: "지금까지 살펴본 커리어상·일하는 방식·협업 환경 등은 모두 아래에 정리된 구조적 근거에서 나온 것입니다.",
+      text: synthesizeText(facts),
       evidence: [{ type: "palace", value: evidence.careerPalace.palace }, ...majorEvidence, ...minorEvidence, ...sihuaEvidence],
       confidence: "high",
-      facts: [],
+      facts,
     }],
   };
 }
@@ -64,12 +64,13 @@ export interface CareerReport {
 
 export function buildCareerReport(chart: ZiweiChart, personName: string): CareerReport {
   const evidence = extractCareerEvidence(chart);
+  const core = coreCareerFacts(evidence), work = workStyleFacts(evidence), collaboration = collaborationEnvironmentFacts(evidence), volatility = achievementVolatilityFacts(evidence);
   const sections: CareerReportSection[] = [
-    { key: "coreCareer", title: SECTION_TITLES.coreCareer, statements: synthesizeStatements(coreCareerFacts(evidence)) },
-    { key: "workStyle", title: SECTION_TITLES.workStyle, statements: synthesizeStatements(workStyleFacts(evidence)) },
-    { key: "collaborationEnvironment", title: SECTION_TITLES.collaborationEnvironment, statements: synthesizeStatements(collaborationEnvironmentFacts(evidence)) },
-    { key: "achievementVolatility", title: SECTION_TITLES.achievementVolatility, statements: synthesizeStatements(achievementVolatilityFacts(evidence)) },
-    buildFinalProfile(evidence),
+    { key: "coreCareer", title: SECTION_TITLES.coreCareer, statements: synthesizeStatements(core) },
+    { key: "workStyle", title: SECTION_TITLES.workStyle, statements: synthesizeStatements(work) },
+    { key: "collaborationEnvironment", title: SECTION_TITLES.collaborationEnvironment, statements: synthesizeStatements(collaboration) },
+    { key: "achievementVolatility", title: SECTION_TITLES.achievementVolatility, statements: synthesizeStatements(volatility) },
+    buildFinalProfile(evidence, [...core, ...work, ...collaboration, ...volatility]),
   ];
   return { personName, careerEvidence: evidence, sections };
 }

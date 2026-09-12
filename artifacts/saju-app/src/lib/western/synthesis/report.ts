@@ -30,8 +30,9 @@ export function buildWesternPersonalSynthesis(input: PersonalSynthesisInput): We
   const action = compact([makeFact(`synthesis:${input.personId}:action`, "workAction", "끝까지 밀어붙이는 추진력이 강하지만 좋아하는 방향과 당장 행동하려는 방향이 어긋날 수 있어, 힘을 쓸 범위와 속도를 함께 정해야 합니다", "tension", actionRefs, timingFor(actionRefs, transit))]);
   const strength = compact([makeFact(`synthesis:${input.personId}:strength`, "growth", "이상과 가능성을 생활에서 지속 가능한 구조로 바꾸는 힘이 관계의 안정 기준과도 연결됩니다", "complement", strengthRefs, timingFor(strengthRefs, transit))]);
   const usedTransit = new Set([...core, ...emotion, ...action, ...strength].flatMap((fact) => fact.timing.transitFactIds));
+  const transitMeaning = new Map(input.transit?.sections.flatMap((item) => item.facts).map((fact) => [fact.id, fact.meaning]) ?? []);
   const timingOnlyRefs = transit.filter((ref) => !usedTransit.has(ref.factId)).slice(0, 3);
-  const timingOnly = compact(timingOnlyRefs.map((ref, index) => makeFact(`synthesis:${input.personId}:timing:${index}`, "currentFlow", "현재 기간에는 기존 상세 종합 fact와 직접 묶이지 않은 흐름도 별도의 timing activation으로 작동하고 있습니다", undefined, [], [ref])));
+  const timingOnly = compact(timingOnlyRefs.map((ref, index) => makeFact(`synthesis:${input.personId}:timing:${index}`, "currentFlow", transitMeaning.get(ref.factId) ?? "", undefined, [], [ref])));
   const details = [section("coreLife", "핵심 성향과 삶의 방식", core), section("emotionRelationship", "감정·관계", emotion), section("workAction", "일·행동 방식", action), section("growth", "강점과 성장 포인트", strength), section("currentFlow", "현재 활성화된 흐름", timingOnly)];
   const overviewSources = details.flatMap((item) => item.facts).slice(0, 4);
   const overview = section("overview", "한눈에 보는 나", [{ id: `synthesis:${input.personId}:overview`, meaning: overviewSources.map((fact) => fact.meaning.replace(/[.!?]+$/, "")).join(". "), timing: { active: overviewSources.some((fact) => fact.timing.active), transitFactIds: [...new Set(overviewSources.flatMap((fact) => fact.timing.transitFactIds))].sort() }, sourceRefs: [], independence: analyzeEvidenceIndependence([]), primaryOwnerSection: "overview" }], overviewSources.map((fact) => fact.id));

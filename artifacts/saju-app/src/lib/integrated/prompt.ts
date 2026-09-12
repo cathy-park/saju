@@ -2,6 +2,7 @@ import type { IntegratedReport } from "./types";
 import { supabase } from "../supabase";
 import { SHARED_PROSE_PROMPT_VERSION, INTEGRATED_HOLISTIC_PROMPT_VERSION } from "../prosePromptVersion";
 import { areasForScope } from "./areas";
+import { buildDeterministicPresentedAreas, isUserFacingInterpretation } from "./presentation";
 
 const holisticInFlight = new Map<string, Promise<unknown>>();
 const holisticCompleted = new Map<string, unknown>();
@@ -37,6 +38,9 @@ export interface IntegratedRawPromptParts { saju: string; ziwei: string; western
 export function buildIntegratedCopyPrompt(parts: IntegratedRawPromptParts): string {
   return ["아래는 한 사람에 대해 계산된 사주, 자미두수, 서양점성술의 원자료입니다.", "", "각 체계를 따로 요약하는 데서 끝내지 말고, 세 체계가 공통으로 말하는 성향, 서로 보완되는 부분, 서로 다르게 보이는 부분을 함께 검토해서 이 사람을 하나의 사람으로 이해할 수 있도록 종합적으로 해석해주세요.", "", "성격, 감정 처리, 관계, 연애·배우자, 일·커리어, 재물, 강점과 약점, 현재 시기의 흐름을 연결해서 설명해주세요.", "", "제공된 계산 결과 밖의 별·궁·aspect·십성·사화 등을 임의로 만들어내지 마세요.", "", "# 1. 사주", parts.saju, "", "# 2. 자미두수", parts.ziwei, "", "# 3. 서양점성술", parts.western].join("\n");
 }
+export function buildIntegratedRelationshipCopyPrompt(parts: IntegratedRawPromptParts): string {
+  return ["아래는 두 사람에 대해 계산된 사주, 자미두수, 서양점성술 관계 원자료입니다.", "", "각 체계를 따로 나열하는 데서 끝내지 말고 관계의 핵심, 감정·애착, 대화·갈등, 끌림·친밀감, 결혼·장기 지속성, 현실·생활 궁합을 연결해 상담해주세요.", "", "제공된 계산 결과 밖의 별·궁·aspect·십성·사화나 사건을 만들지 마세요.", "", "# 1. 두 사람 사주와 사주 궁합", parts.saju, "", "# 2. 두 사람 자미두수 관계 구조", parts.ziwei, "", "# 3. 두 사람 Western natal과 synastry", parts.western].join("\n");
+}
 
 export async function polishIntegratedSection(report: IntegratedReport, sectionKey: string, deterministicText: string) {
   const section = report.sections.find((item) => item.key === sectionKey);
@@ -54,9 +58,7 @@ export async function polishIntegratedSection(report: IntegratedReport, sectionK
  * 쓴다 — api/integrated-holistic.ts가 새 계산·사건 예측·임의 점수 생성을 프롬프트로 강하게
  * 금지한다. AI 실패/미로그인 시 기존 deterministic 개요 문장으로 그대로 fallback한다. */
 export function buildHolisticDeterministicText(report: IntegratedReport): string {
-  const overviewKey = report.scope === "personal" ? "overview" : "relationshipCore";
-  return report.sections.find((section) => section.key === overviewKey)?.text
-    || report.sections.map((section) => section.text).filter(Boolean).join(" ");
+  return buildDeterministicPresentedAreas(report)[0]?.text ?? "";
 }
 
 export interface HolisticArea { key: string; title: string; text: string }
@@ -80,15 +82,14 @@ function toOrderedAreas(scope: IntegratedReport["scope"], raw: { key: string; te
  * fallback한다(7개를 억지로 채우지 않는다). */
 export async function polishIntegratedHolistic(report: IntegratedReport): Promise<HolisticArea[]> {
   const deterministicText = buildHolisticDeterministicText(report);
-  const fallback: HolisticArea[] = deterministicText
-    ? [{ key: "summary", title: report.scope === "personal" ? "핵심 요약" : "관계 핵심 요약", text: deterministicText }]
-    : [];
+  const fallback: HolisticArea[] = buildDeterministicPresentedAreas(report);
   const facts = report.sections.flatMap((section) => section.facts).map((fact) => ({
     theme: fact.theme, concept: fact.concept, meaning: fact.meaning,
     relationKind: fact.relationKind, sourceSystems: fact.sourceSystems,
-    sources: fact.sources.map((source) => ({ system: source.system, module: source.module, meaning: source.meaning, evidenceLabels: source.evidence.map((item) => item.label) })),
+    sources: fact.sources.map((source) => ({ system: source.system, module: source.module, meaning: source.meaning, evidenceLabels: source.evidence.map((item) => item.label), evidenceRole: source.evidenceRole })),
   }));
-  if (facts.length === 0) return fallback;
+  const sourceFacts = report.standaloneFacts.map((source) => ({ theme: source.mapping.theme, concept: source.mapping.concept, meaning: source.meaning, system: source.system, module: source.module, evidenceLabels: source.evidence.map((item) => item.label), evidenceRole: source.evidenceRole }));
+  if (facts.length === 0 && sourceFacts.length === 0) return fallback;
 
   const topic = `integrated-holistic-${report.scope}`;
   const sectionKey = report.subjectId;
@@ -101,7 +102,8 @@ export async function polishIntegratedHolistic(report: IntegratedReport): Promis
   const sourceIdentity = [
     report.availableSystems.slice().sort().join(","),
     report.missingSystems.slice().sort().join(","),
-    facts.map((f) => `${f.theme}|${f.concept}|${f.relationKind}|${f.sourceSystems.slice().sort().join(",")}|${f.meaning}|${f.sources.map((s) => `${s.system}:${s.module}:${s.meaning}:${s.evidenceLabels.join(",")}`).sort().join(";")}`).sort().join("\n"),
+    facts.map((f) => `${f.theme}|${f.concept}|${f.relationKind}|${f.sourceSystems.slice().sort().join(",")}|${f.meaning}|${f.sources.map((s) => `${s.system}:${s.module}:${s.evidenceRole}:${s.meaning}:${s.evidenceLabels.join(",")}`).sort().join(";")}`).sort().join("\n"),
+    sourceFacts.map((f) => `${f.system}|${f.module}|${f.evidenceRole}|${f.theme}|${f.concept}|${f.meaning}|${f.evidenceLabels.join(",")}`).sort().join("\n"),
     timing.map((t) => `${t.theme}|${t.meaning}`).sort().join("\n"),
     deterministicText,
   ].join("\n---\n");
@@ -116,7 +118,7 @@ export async function polishIntegratedHolistic(report: IntegratedReport): Promis
       const response = await fetch("/api/integrated-holistic", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
-        body: JSON.stringify({ scope: report.scope, availableSystems: report.availableSystems, missingSystems: report.missingSystems, facts, timingConvergences: timing, deterministicText, sectionKey, promptVersion: INTEGRATED_HOLISTIC_PROMPT_VERSION }),
+        body: JSON.stringify({ scope: report.scope, availableSystems: report.availableSystems, missingSystems: report.missingSystems, facts, sourceFacts, timingConvergences: timing, deterministicText, sectionKey, promptVersion: INTEGRATED_HOLISTIC_PROMPT_VERSION }),
       });
       if (!response.ok) throw new Error(`AI holistic synthesis failed: ${response.status}`);
       const responseData = await response.json() as { areas?: { key: string; text: string }[] };
@@ -124,7 +126,8 @@ export async function polishIntegratedHolistic(report: IntegratedReport): Promis
       return responseData.areas;
     });
     const ordered = toOrderedAreas(report.scope, raw);
-    return ordered.length > 0 ? ordered : fallback;
+    const safe = ordered.filter((area) => isUserFacingInterpretation(area.text));
+    return safe.length > 0 ? safe : fallback;
   } catch {
     return fallback;
   }

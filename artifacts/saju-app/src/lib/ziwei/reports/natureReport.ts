@@ -35,7 +35,7 @@ function synthesizeStatements(facts: InterpretationFact[]): SpouseStatement[] {
   return [{ text, evidence, confidence, facts }];
 }
 
-function buildFinalProfile(evidence: NatureEvidenceBundle): NatureReportSection {
+function buildFinalProfile(evidence: NatureEvidenceBundle, facts: InterpretationFact[]): NatureReportSection {
   const majorEvidence: EvidenceItem[] = evidence.sanfangSizhengPalaces.flatMap((p) =>
     p.majorStars.map((s) => ({ type: "star" as const, value: `${s.name}@${p.palace}` })));
   const minorEvidence: EvidenceItem[] = evidence.sanfangSizhengPalaces.flatMap((p) =>
@@ -51,13 +51,13 @@ function buildFinalProfile(evidence: NatureEvidenceBundle): NatureReportSection 
     key: "finalProfile",
     title: SECTION_TITLES.finalProfile,
     statements: [{
-      text: "지금까지 살펴본 핵심 성향·후천적 지향·대인 인상·삶의 태도는 모두 아래에 정리된 구조적 근거에서 나온 것입니다.",
+      text: synthesizeText(facts),
       evidence: [
         { type: "palace", value: evidence.naturePalace.palace },
         ...majorEvidence, ...minorEvidence, ...shenGongEvidence, ...sihuaEvidence,
       ],
       confidence: "high",
-      facts: [],
+      facts,
     }],
   };
 }
@@ -70,12 +70,13 @@ export interface NatureReport {
 
 export function buildNatureReport(chart: ZiweiChart, personName: string): NatureReport {
   const evidence = extractNatureEvidence(chart);
+  const core = coreNatureFacts(evidence), direction = lifeDirectionFacts(evidence), social = socialImpressionFacts(evidence), attitude = lifeAttitudeFacts(evidence);
   const sections: NatureReportSection[] = [
-    { key: "coreNature", title: SECTION_TITLES.coreNature, statements: synthesizeStatements(coreNatureFacts(evidence)) },
-    { key: "lifeDirection", title: SECTION_TITLES.lifeDirection, statements: synthesizeStatements(lifeDirectionFacts(evidence)) },
-    { key: "socialImpression", title: SECTION_TITLES.socialImpression, statements: synthesizeStatements(socialImpressionFacts(evidence)) },
-    { key: "lifeAttitude", title: SECTION_TITLES.lifeAttitude, statements: synthesizeStatements(lifeAttitudeFacts(evidence)) },
-    buildFinalProfile(evidence),
+    { key: "coreNature", title: SECTION_TITLES.coreNature, statements: synthesizeStatements(core) },
+    { key: "lifeDirection", title: SECTION_TITLES.lifeDirection, statements: synthesizeStatements(direction) },
+    { key: "socialImpression", title: SECTION_TITLES.socialImpression, statements: synthesizeStatements(social) },
+    { key: "lifeAttitude", title: SECTION_TITLES.lifeAttitude, statements: synthesizeStatements(attitude) },
+    buildFinalProfile(evidence, [...core, ...direction, ...social, ...attitude]),
   ];
   return { personName, natureEvidence: evidence, sections };
 }

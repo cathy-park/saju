@@ -33,7 +33,7 @@ function synthesizeStatements(facts: InterpretationFact[]): SpouseStatement[] {
   return [{ text, evidence, confidence, facts }];
 }
 
-function buildFinalProfile(evidence: SpouseEvidenceBundle): RomanceReportSection {
+function buildFinalProfile(evidence: SpouseEvidenceBundle, facts: InterpretationFact[]): RomanceReportSection {
   const mingGong = evidence.mingGongRelation.mingGongPalace;
   const fude = evidence.trinePalaces.find((p) => p.palace === "福德宮");
   const majorEvidence: EvidenceItem[] = [
@@ -49,10 +49,10 @@ function buildFinalProfile(evidence: SpouseEvidenceBundle): RomanceReportSection
     key: "finalProfile",
     title: SECTION_TITLES.finalProfile,
     statements: [{
-      text: "지금까지 살펴본 끌리는 포인트·표현 방식·갈등 대응·관계 운영은 모두 아래에 정리된 구조적 근거에서 나온 것입니다.",
+      text: synthesizeText(facts),
       evidence: [{ type: "palace", value: mingGong.palace }, ...majorEvidence, ...sihuaEvidence],
       confidence: "high",
-      facts: [],
+      facts,
     }],
   };
 }
@@ -65,12 +65,13 @@ export interface RomanceReport {
 
 export function buildRomanceReport(chart: ZiweiChart, personName: string): RomanceReport {
   const evidence = extractSpouseEvidence(chart);
+  const attraction = attractionFacts(evidence), expression = expressionFacts(evidence), conflict = conflictFacts(evidence), management = managementFacts(evidence);
   const sections: RomanceReportSection[] = [
-    { key: "attraction", title: SECTION_TITLES.attraction, statements: synthesizeStatements(attractionFacts(evidence)) },
-    { key: "expression", title: SECTION_TITLES.expression, statements: synthesizeStatements(expressionFacts(evidence)) },
-    { key: "conflict", title: SECTION_TITLES.conflict, statements: synthesizeStatements(conflictFacts(evidence)) },
-    { key: "management", title: SECTION_TITLES.management, statements: synthesizeStatements(managementFacts(evidence)) },
-    buildFinalProfile(evidence),
+    { key: "attraction", title: SECTION_TITLES.attraction, statements: synthesizeStatements(attraction) },
+    { key: "expression", title: SECTION_TITLES.expression, statements: synthesizeStatements(expression) },
+    { key: "conflict", title: SECTION_TITLES.conflict, statements: synthesizeStatements(conflict) },
+    { key: "management", title: SECTION_TITLES.management, statements: synthesizeStatements(management) },
+    buildFinalProfile(evidence, [...attraction, ...expression, ...conflict, ...management]),
   ];
   return { personName, spouseEvidence: evidence, sections };
 }

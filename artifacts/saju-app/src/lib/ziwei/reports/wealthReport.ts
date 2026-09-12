@@ -32,7 +32,7 @@ function synthesizeStatements(facts: InterpretationFact[]): SpouseStatement[] {
   return [{ text, evidence, confidence, facts }];
 }
 
-function buildFinalProfile(evidence: WealthEvidenceBundle): WealthReportSection {
+function buildFinalProfile(evidence: WealthEvidenceBundle, facts: InterpretationFact[]): WealthReportSection {
   const majorEvidence: EvidenceItem[] = evidence.sanfangSizhengPalaces.flatMap((p) =>
     p.majorStars.map((s) => ({ type: "star" as const, value: `${s.name}@${p.palace}` })));
   const minorEvidence: EvidenceItem[] = evidence.sanfangSizhengPalaces.flatMap((p) =>
@@ -45,10 +45,10 @@ function buildFinalProfile(evidence: WealthEvidenceBundle): WealthReportSection 
     key: "finalProfile",
     title: SECTION_TITLES.finalProfile,
     statements: [{
-      text: "지금까지 살펴본 재물상·소득 패턴·소비 성향 등은 모두 아래에 정리된 구조적 근거에서 나온 것입니다.",
+      text: synthesizeText(facts),
       evidence: [{ type: "palace", value: evidence.wealthPalace.palace }, ...majorEvidence, ...minorEvidence, ...sihuaEvidence],
       confidence: "high",
-      facts: [],
+      facts,
     }],
   };
 }
@@ -61,12 +61,13 @@ export interface WealthReport {
 
 export function buildWealthReport(chart: ZiweiChart, personName: string): WealthReport {
   const evidence = extractWealthEvidence(chart);
+  const core = coreWealthFacts(evidence), income = incomeStyleFacts(evidence), spending = spendingTendencyFacts(evidence), volatility = wealthVolatilityFacts(evidence);
   const sections: WealthReportSection[] = [
-    { key: "coreWealth", title: SECTION_TITLES.coreWealth, statements: synthesizeStatements(coreWealthFacts(evidence)) },
-    { key: "incomeStyle", title: SECTION_TITLES.incomeStyle, statements: synthesizeStatements(incomeStyleFacts(evidence)) },
-    { key: "spendingTendency", title: SECTION_TITLES.spendingTendency, statements: synthesizeStatements(spendingTendencyFacts(evidence)) },
-    { key: "volatility", title: SECTION_TITLES.volatility, statements: synthesizeStatements(wealthVolatilityFacts(evidence)) },
-    buildFinalProfile(evidence),
+    { key: "coreWealth", title: SECTION_TITLES.coreWealth, statements: synthesizeStatements(core) },
+    { key: "incomeStyle", title: SECTION_TITLES.incomeStyle, statements: synthesizeStatements(income) },
+    { key: "spendingTendency", title: SECTION_TITLES.spendingTendency, statements: synthesizeStatements(spending) },
+    { key: "volatility", title: SECTION_TITLES.volatility, statements: synthesizeStatements(volatility) },
+    buildFinalProfile(evidence, [...core, ...income, ...spending, ...volatility]),
   ];
   return { personName, wealthEvidence: evidence, sections };
 }

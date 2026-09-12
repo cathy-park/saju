@@ -29,7 +29,7 @@ export const ZIWEI_TOPICS: ZiweiTopicMeta[] = [
   { key: "wealth", label: "재물", description: "돈을 버는 방식과 소비·축적 습관", icon: Coins, group: "workWealth" },
   { key: "career", label: "커리어", description: "일하는 방식과 성취가 따르는 분야", icon: Briefcase, group: "workWealth" },
   { key: "romance", label: "연애", description: "끌림·표현·갈등·관계 운영 방식", icon: Heart, group: "relationship" },
-  { key: "spouse", label: "배우자", description: "배우자상과 만남·관계의 모습", icon: Users, group: "relationship" },
+  { key: "spouse", label: "배우자상·관계 패턴", description: "끌리기 쉬운 파트너 특성과 반복되는 관계 방식", icon: Users, group: "relationship" },
   { key: "marriageTiming", label: "결혼시기", description: "연도별 활성화·안정화·공식화·변동성 신호", icon: CalendarClock, group: "relationship" },
 ];
 

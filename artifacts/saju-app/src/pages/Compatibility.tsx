@@ -1523,9 +1523,10 @@ export default function Compatibility() {
 
                         {/* AI 프롬프트 복사 버튼 */}
                         <div className="border-t border-border/40 pt-4">
+                          <Link href={`/integrated/${p1!.id}/relationship/${p2!.id}/overview`} className="mb-3 flex min-h-11 items-center justify-center rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground">세 체계 궁합 함께 보기</Link>
                           <CopyButton
                             buildText={() => buildCompatibilityClipboardText(p1!, p2!, result, hourModeA, hourModeB)}
-                            label="AI 해석 프롬프트 복사"
+                            label="사주 AI 해석 프롬프트 복사"
                           />
                         </div>
 

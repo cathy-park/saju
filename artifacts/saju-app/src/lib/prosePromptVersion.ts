@@ -19,4 +19,6 @@ export const SHARED_PROSE_PROMPT_VERSION = "v5";
 // holistic-v3: client single-flight production 회귀 검증을 위해 이전 holistic cache와 분리.
 // holistic-v4: 응답 계약을 "문단 하나(prose: string)"에서 "고정 7영역 배열(areas: {key,text}[])"로
 // 바꿨다 — 예전 캐시(prose가 평문 문단)를 그대로 JSON.parse하면 깨지므로 반드시 분리한다.
-export const INTEGRATED_HOLISTIC_PROMPT_VERSION = "holistic-v4";
+// holistic-v5: 개인 9영역·관계 7영역 주제 IA, source fact와 관계 evidence role을 포함한
+// 사용자용 다면 분석으로 바꿔 이전 메타 문구 캐시와 분리한다.
+export const INTEGRATED_HOLISTIC_PROMPT_VERSION = "holistic-v5";

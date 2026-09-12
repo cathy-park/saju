@@ -59,8 +59,8 @@ describe("cross-system integrated synthesis", () => {
     ], selectedPeriod: { start: "2026-09-01", end: "2026-09-30", timezone: "Asia/Seoul" } });
     expect(report.timingConvergences).toHaveLength(1);
     expect(report.sections.flatMap((section) => section.facts).some((fact) => fact.sources.some((source) => source.temporalScope))).toBe(false);
-    expect(report.timingConvergences[0].meaning).toContain("연간 배경");
-    expect(report.timingConvergences[0].meaning).toContain("월간 활성");
+    expect(report.timingConvergences[0].meaning).toContain("관계 조율이 중요합니다");
+    expect(report.timingConvergences[0].meaning).not.toContain("같은 사건을 뜻하지");
   });
 
   it("keeps a one-system result as a standalone fact, never consensus", () => {

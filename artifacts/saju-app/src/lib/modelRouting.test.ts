@@ -13,7 +13,7 @@ describe("OpenAI prose model routing", () => {
   it("isolates Terra/Sol results from the previous model cache", () => {
     const versions = readFileSync("src/lib/prosePromptVersion.ts", "utf8");
     expect(versions).toContain('SHARED_PROSE_PROMPT_VERSION = "v5"');
-    expect(versions).toContain('INTEGRATED_HOLISTIC_PROMPT_VERSION = "holistic-v4"');
+    expect(versions).toContain('INTEGRATED_HOLISTIC_PROMPT_VERSION = "holistic-v5"');
   });
 
   it("emits cache hit and paid-call markers without logging source content", () => {

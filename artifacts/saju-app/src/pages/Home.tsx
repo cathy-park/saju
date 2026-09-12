@@ -13,7 +13,6 @@ import type { ZodiacInfo } from "@/lib/zodiacAnimal";
 import { charToElement, elementBgClass, elementTextClass } from "@/lib/element-color";
 import type { FiveElKey } from "@/lib/element-color";
 import { cn } from "@/lib/utils";
-import { SystemSelector } from "@/components/SystemSelector";
 import { HomeTodayFlow } from "@/components/home/HomeTodayFlow";
 import gyeolDefault from "@assets/image_24_1774912053926.png";
 
@@ -328,10 +327,9 @@ function Dashboard({ record }: { record: PersonRecord }) {
         </div>
       </div>
 
-      {/* ④ 개인 분석 진입 — SystemSelector 재사용(사주/자미두수/점성술/종합), 궁합만 별도 CTA */}
+      {/* 개인/관계 진입 — 홈의 분석축은 위 주제 chip 하나로 통일한다. */}
       <div className="px-4 pt-4">
-        <SystemSelector personId={record.id} sajuHref="/saju" />
-        <Link href="/compatibility" className="mt-3 block">
+        <Link href="/compatibility" className="block">
           <div className="flex h-12 cursor-pointer items-center justify-center gap-2 rounded-full border border-primary/25 bg-primary/10 px-4">
             <span className="text-base" aria-hidden>💞</span>
             <span className="text-sm font-bold text-primary">궁합 보기</span>

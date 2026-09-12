@@ -48,7 +48,7 @@ const SECTION_TITLES: Record<SpouseReportSectionKey, string> = {
   relationship: "연애 관계 모습",
   compatibilityWell: "잘 맞는 배우자",
   compatibilityAvoid: "피해야 할 배우자",
-  matchProfile: "최종 배우자 프로필",
+  matchProfile: "배우자상·관계 패턴",
 };
 
 /** facts가 있으면 여러 별/사화/보조성을 하나의 결합 문단으로 합성해 1개 statement를 만든다
@@ -72,7 +72,7 @@ const AGE_GAP_FALLBACK: SpouseStatement = {
   facts: [],
 };
 
-function buildFinalProfile(evidence: SpouseEvidenceBundle): SpouseReportSection {
+function buildFinalProfile(evidence: SpouseEvidenceBundle, partnerFacts: InterpretationFact[], dynamicFacts: InterpretationFact[]): SpouseReportSection {
   const majorEvidence: EvidenceItem[] = evidence.sanfangSizhengPalaces.flatMap((p) =>
     p.majorStars.map((s) => ({ type: "star" as const, value: `${s.name}@${p.palace}` })));
   const minorEvidence: EvidenceItem[] = evidence.sanfangSizhengPalaces.flatMap((p) =>
@@ -85,10 +85,10 @@ function buildFinalProfile(evidence: SpouseEvidenceBundle): SpouseReportSection 
     key: "matchProfile",
     title: SECTION_TITLES.matchProfile,
     statements: [{
-      text: "지금까지 살펴본 배우자상·성격·경제 성향 등은 모두 아래에 정리된 구조적 근거에서 나온 것입니다.",
+      text: `${synthesizeText(partnerFacts)} 관계에서는 ${synthesizeText(dynamicFacts)}`,
       evidence: [{ type: "palace", value: evidence.spousePalace.palace }, ...majorEvidence, ...minorEvidence, ...sihuaEvidence],
       confidence: "high",
-      facts: [],
+      facts: [...partnerFacts, ...dynamicFacts],
     }],
   };
 }
@@ -125,19 +125,20 @@ export function buildSpouseReport(chart: ZiweiChart, personName: string): Spouse
   const evidence = extractSpouseEvidence(chart);
 
   const compatFacts = compatibilityFacts(evidence);
+  const image = coreImageFacts(evidence), personality = personalityFacts(evidence), relationship = relationshipFacts(evidence);
 
   const sections: SpouseReportSection[] = [
-    { key: "coreImage", title: SECTION_TITLES.coreImage, statements: synthesizeStatements(coreImageFacts(evidence)) },
-    { key: "personality", title: SECTION_TITLES.personality, statements: synthesizeStatements(personalityFacts(evidence)) },
+    { key: "coreImage", title: SECTION_TITLES.coreImage, statements: synthesizeStatements(image) },
+    { key: "personality", title: SECTION_TITLES.personality, statements: synthesizeStatements(personality) },
     { key: "appearance", title: SECTION_TITLES.appearance, statements: synthesizeStatements(appearanceFacts(evidence)) },
     { key: "career", title: SECTION_TITLES.career, statements: synthesizeStatements(careerFacts(evidence)) },
     { key: "wealth", title: SECTION_TITLES.wealth, statements: synthesizeStatements(wealthFacts(evidence)) },
     { key: "ageGap", title: SECTION_TITLES.ageGap, statements: [AGE_GAP_FALLBACK] },
     { key: "meeting", title: SECTION_TITLES.meeting, statements: synthesizeStatements(meetingFacts(evidence)) },
-    { key: "relationship", title: SECTION_TITLES.relationship, statements: synthesizeStatements(relationshipFacts(evidence)) },
+    { key: "relationship", title: SECTION_TITLES.relationship, statements: synthesizeStatements(relationship) },
     { key: "compatibilityWell", title: SECTION_TITLES.compatibilityWell, statements: synthesizeStatements(compatFacts.filter((f) => f.polarity !== "risk")) },
     { key: "compatibilityAvoid", title: SECTION_TITLES.compatibilityAvoid, statements: synthesizeStatements(compatFacts.filter((f) => f.polarity === "risk")) },
-    buildFinalProfile(evidence),
+    buildFinalProfile(evidence, [...image, ...personality], [...relationship, ...compatFacts]),
   ];
 
   return {
