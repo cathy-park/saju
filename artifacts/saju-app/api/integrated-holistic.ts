@@ -148,7 +148,10 @@ export default async function handler(req: VercelLikeRequest, res: VercelLikeRes
     res.status(400).json({ error: "Invalid timingConvergences" }); return;
   }
   if (typeof deterministicText !== "string" || deterministicText.length === 0 || deterministicText.length > MAX_TEXT_LEN) { res.status(400).json({ error: "Invalid deterministicText" }); return; }
-  if (typeof sectionKey !== "string" || !sectionKey || sectionKey.length > 50) { res.status(400).json({ error: "Invalid sectionKey" }); return; }
+  // 관계 종합의 sectionKey는 report.subjectId(=pairId, "personA~personB" 형태의 UUID 2개
+  // 조합)라 50자를 쉽게 넘는다(UUID 36자 × 2 + 구분자). 실제 production에서 이 제한 때문에
+  // 관계 종합만 항상 400으로 실패하던 걸 확인해 넉넉히 올렸다.
+  if (typeof sectionKey !== "string" || !sectionKey || sectionKey.length > 120) { res.status(400).json({ error: "Invalid sectionKey" }); return; }
   if (typeof promptVersion !== "string" || !promptVersion || promptVersion.length > 20) { res.status(400).json({ error: "Invalid promptVersion" }); return; }
 
   const authHeader = req.headers.authorization ?? req.headers.Authorization;
