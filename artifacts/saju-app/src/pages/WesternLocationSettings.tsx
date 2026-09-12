@@ -160,20 +160,35 @@ export default function WesternLocationSettings() {
       {selectedPlace && selectedPlace.timezones.length > 1 && (
         <div>
           <p className="text-sm font-semibold text-foreground">이 나라는 시간대가 여러 개입니다. 출생 당시 시간대를 골라주세요.</p>
-          <div className="mt-2 space-y-2">
-            {selectedPlace.timezones.map((tz) => (
-              <button
-                key={tz.value} type="button"
-                onClick={() => setSelectedTimezone(tz.value)}
-                className={cn(
-                  "flex w-full min-h-11 items-center rounded-xl border px-3 py-2 text-left text-sm transition-colors",
-                  selectedTimezone === tz.value ? "border-primary bg-primary/5 text-foreground" : "border-border text-muted-foreground hover:bg-muted/40",
-                )}
-              >
-                {tz.label}
-              </button>
-            ))}
-          </div>
+          {selectedPlace.timezones.length <= 6 ? (
+            <div className="mt-2 space-y-2">
+              {selectedPlace.timezones.map((tz) => (
+                <button
+                  key={tz.value} type="button"
+                  onClick={() => setSelectedTimezone(tz.value)}
+                  className={cn(
+                    "flex w-full min-h-11 items-center rounded-xl border px-3 py-2 text-left text-sm transition-colors",
+                    selectedTimezone === tz.value ? "border-primary bg-primary/5 text-foreground" : "border-border text-muted-foreground hover:bg-muted/40",
+                  )}
+                >
+                  {tz.label}
+                </button>
+              ))}
+            </div>
+          ) : (
+            // 미국·러시아처럼 국가 안 시간대가 아주 많으면(20개 이상) 버튼을 전부 늘어놓지
+            // 않고 네이티브 select로 좁힌다 — 검색된 좌표(고급 설정에 자동 채움)를 참고해
+            // 사용자가 직접 골라야 정확하다(주(state) 단위 추정은 하지 않는다 — 틀린 시간대를
+            // 추측해서 넣는 것보다 사용자가 직접 고르는 편이 안전하다).
+            <select
+              className="mt-2 h-11 w-full rounded-xl border border-border bg-card px-3 text-sm"
+              value={selectedTimezone ?? ""}
+              onChange={(event) => setSelectedTimezone(event.target.value || null)}
+            >
+              <option value="">시간대를 선택하세요</option>
+              {selectedPlace.timezones.map((tz) => <option key={tz.value} value={tz.value}>{tz.label}</option>)}
+            </select>
+          )}
         </div>
       )}
 
