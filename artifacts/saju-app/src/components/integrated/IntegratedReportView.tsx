@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { Check, Copy, ChevronDown } from "lucide-react";
 import type { IntegratedReport } from "@/lib/integrated";
-import { buildHolisticDeterministicText, polishIntegratedHolistic, type HolisticArea } from "@/lib/integrated/prompt";
-import { evidenceForArea, systemsForArea } from "@/lib/integrated/presentation";
+import { polishIntegratedHolistic, type HolisticArea } from "@/lib/integrated/prompt";
+import { buildDeterministicPresentedAreas, evidenceForArea, systemsForArea } from "@/lib/integrated/presentation";
 
 const SYSTEM_LABEL = { saju: "사주", ziwei: "자미두수", western: "서양점성술" } as const;
 
@@ -14,13 +14,9 @@ export function IntegratedReportView({ report, copyPrompt }: { report: Integrate
   // 화면에 남는 문제가 있었다. 지금은 AI가 고정된 7개 영역(areas.ts) 중 근거가 있는 것만
   // 돌려주고, 그 영역들을 그대로 카드로 나열한다 — 근거가 없는 영역은 폴백 텍스트로도
   // 억지로 채우지 않는다(빈 배열이면 카드 자체가 없다).
-  const [areas, setAreas] = useState<HolisticArea[]>(() => {
-    const text = buildHolisticDeterministicText(report);
-    return text ? [{ key: report.scope === "personal" ? "overview" : "relationshipCoreStructure", title: report.scope === "personal" ? "한눈에 보는 나" : "관계의 핵심", text }] : [];
-  });
+  const [areas, setAreas] = useState<HolisticArea[]>(() => buildDeterministicPresentedAreas(report));
   useEffect(() => {
-    const text = buildHolisticDeterministicText(report);
-    setAreas(text ? [{ key: report.scope === "personal" ? "overview" : "relationshipCoreStructure", title: report.scope === "personal" ? "한눈에 보는 나" : "관계의 핵심", text }] : []);
+    setAreas(buildDeterministicPresentedAreas(report));
     let cancelled = false;
     polishIntegratedHolistic(report).then((result) => { if (!cancelled && result.length > 0) setAreas(result); });
     return () => { cancelled = true; };

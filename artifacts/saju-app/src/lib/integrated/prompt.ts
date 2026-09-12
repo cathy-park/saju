@@ -125,9 +125,12 @@ export async function polishIntegratedHolistic(report: IntegratedReport): Promis
       if (!responseData.areas?.length) throw new Error("AI holistic synthesis returned no areas");
       return responseData.areas;
     });
-    const ordered = toOrderedAreas(report.scope, raw);
-    const safe = ordered.filter((area) => isUserFacingInterpretation(area.text));
-    return safe.length > 0 ? safe : fallback;
+    const safeByKey = new Map(toOrderedAreas(report.scope, raw)
+      .filter((area) => isUserFacingInterpretation(area.text))
+      .map((area) => [area.key, area]));
+    // 모델이 근거가 있는 영역 일부만 반환해도 주제 IA가 사라지지 않게 한다. 모델 문장은
+    // 같은 key의 deterministic 영역만 대체하며, 빠진 영역은 계산 fact 기반 fallback을 유지한다.
+    return fallback.map((area) => safeByKey.get(area.key) ?? area);
   } catch {
     return fallback;
   }

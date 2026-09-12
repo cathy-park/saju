@@ -100,7 +100,8 @@ describe("polishIntegratedHolistic — 최초 진입 동시 요청 중복 제거
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(first).toEqual(second);
-    expect(first[0]?.key).toBe("personality");
+    expect(first.some((area) => area.key === "personality" && area.text === "통합된 핵심 성향 설명입니다.")).toBe(true);
+    expect(first.some((area) => area.key === "overview")).toBe(true);
   });
 
   it("완료된 뒤 재진입(새 report 인스턴스, 같은 내용)해도 다시 호출하지 않고 캐시된 결과를 쓴다", async () => {
