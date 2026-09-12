@@ -55,13 +55,13 @@ export interface SajuSummaryCardSection {
   hasFacts: boolean;
 }
 
-function SajuSummarySectionCard({ section, polishedText }: { section: SajuSummaryCardSection; polishedText?: string }) {
+function SajuSummarySectionCard({ section }: { section: SajuSummaryCardSection }) {
   return (
     <div className="ds-card ds-card-pad shadow-none">
       <h3 className="text-base font-bold text-foreground">{section.title}</h3>
       {section.text ? (
         <>
-          <p className="mt-2 text-sm text-foreground leading-relaxed">{polishedText ?? section.text}</p>
+          <p className="mt-2 text-sm text-foreground leading-relaxed">{section.text}</p>
           <SajuEvidenceToggle evidence={section.evidence} />
         </>
       ) : (
@@ -74,11 +74,10 @@ function SajuSummarySectionCard({ section, polishedText }: { section: SajuSummar
 /** 원국/월운/궁합 3개 요약이 공유하는 바깥 래퍼 — fact가 있는 섹션만 카드로 보여주고,
  * 전부 0개면 캡션까지 포함해 전체를 숨긴다(대표 지시: 3곳 모두 동일하게). */
 export function SajuSummaryBlock({
-  caption, sections, polishedTexts,
+  caption, sections,
 }: {
   caption: string;
   sections: SajuSummaryCardSection[];
-  polishedTexts: Record<string, string>;
 }) {
   const visible = sections.filter((s) => s.hasFacts);
   if (visible.length === 0) return null;
@@ -87,7 +86,7 @@ export function SajuSummaryBlock({
     <div className="ds-stack-2">
       <p className="ds-caption font-semibold uppercase tracking-wide">{caption}</p>
       {visible.map((section) => (
-        <SajuSummarySectionCard key={section.key} section={section} polishedText={polishedTexts[section.key]} />
+        <SajuSummarySectionCard key={section.key} section={section} />
       ))}
     </div>
   );

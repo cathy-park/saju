@@ -22,9 +22,8 @@
 //      문장(`card.text`)에는 더 이상 나열하지 않는다 — "기술 근거는 [왜 이런 결과인가요?]에서
 //      확인"이라는 요구사항에 맞춰, 메인 문장은 축 조합 synthesis 1~2문장으로만 구성한다.
 //
-// AI 다듬기 호출 예산: 연도×축(최대 15×4=60회)으로 호출하지 않는다. 하이라이트된 해 1개당
-// 딱 1회만 polishStatementText를 호출한다. natal baseline은 모든 연도에 고정이라 AI 호출
-// 자체가 필요 없다(deterministic 문장을 그대로 쓴다 — 리포트당 1회조차 아끼는 것).
+// natal baseline은 모든 연도에 고정된 deterministic 문장을 그대로 쓴다(연도별로 다시 만들지
+// 않는다).
 import type { EvidenceItem, RuleSet, ZiweiChart } from "../types";
 import { extractSpouseEvidence, type SpouseEvidenceBundle } from "../spouseEvidence";
 import {
@@ -238,9 +237,8 @@ export interface MarriageTimingYearCard {
    * natal baseline과 大限/流年 raw 서술은 포함하지 않는다(각각 report.natalBaseline과
    * evidence 토글에서 확인). */
   text: string;
-  /** prose layer에 보낼 fact 목록 — 축 조합 synthesis + 大限/流年 작동을 담되, 연도 1개당
-   * 이 배열 전체로 polishStatementText를 딱 1회만 호출한다. natal baseline은 포함하지 않는다
-   * (모든 연도에 고정이라 매번 다시 보낼 필요가 없다 — report.natalBaseline이 별도로 있다). */
+  /** 축 조합 synthesis + 大限/流年 작동을 담는 fact 목록(연도 1개당). natal baseline은
+   * 포함하지 않는다(모든 연도에 고정이라 — report.natalBaseline이 별도로 있다). */
   facts: InterpretationFact[];
   /** [왜 이런 결과인가요?] 토글에 쓰는 근거(원국/대한/유년 전체) — 축 구분 없이 모은다. */
   evidence: EvidenceItem[];

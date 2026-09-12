@@ -4,7 +4,6 @@ import { WesternPersonalNav } from "@/components/western/WesternNavigation";
 import { WesternReportShell } from "@/components/western/WesternReportShell";
 import { WesternMissingContext } from "@/components/western/WesternMissingContext";
 import { WesternTransitSummary } from "@/components/western/WesternTransitSummary";
-import { createPolishRequestCache } from "@/lib/prosePolish";
 import { getMyProfile, getPeople, type PersonRecord } from "@/lib/storage";
 import type { WesternIssue } from "@/lib/western/types";
 import type { WesternTransitReport } from "@/lib/western/transit";
@@ -12,16 +11,13 @@ import { monthFromSearch, monthInTimezone, monthRange, shiftMonth } from "@/lib/
 import { useResolvedWesternBirth } from "@/lib/western/useResolvedWesternBirth";
 import { buildWesternCopyPrompt } from "@/lib/western/synthesis/promptExport";
 import { CopyButton } from "@/components/CopyButton";
-import { presentTransitSection } from "@/lib/western/transit/presentation";
 
-const requestPolishedTexts = createPolishRequestCache("westernTransit");
 const findPerson = (id: string): PersonRecord | null => { const mine = getMyProfile(); return mine?.id === id ? mine : getPeople().find((person) => person.id === id) ?? null; };
 export default function WesternTransit() {
   const { personId } = useParams<{ personId: string }>();
   const person = useMemo(() => personId ? findPerson(personId) : null, [personId]);
   const { birth, status: birthStatus } = useResolvedWesternBirth(person);
   const [state, setState] = useState<{ report?: WesternTransitReport; errors?: WesternIssue[]; loading: boolean }>({ loading: true });
-  const [polishedTexts, setPolishedTexts] = useState<Record<string, string>>({});
   const [, navigate] = useLocation();
   const timezone = person?.westernLocation?.timezone;
   const fallbackMonth = timezone ? monthInTimezone(timezone) : new Date().toISOString().slice(0, 7);
@@ -38,7 +34,6 @@ export default function WesternTransit() {
       .catch(() => { if (!cancelled) setState({ errors: [{ code: "CALCULATION_FAILED", message: "Western transit service is unavailable" }], loading: false }); });
     return () => { cancelled = true; };
   }, [person, birth, birthStatus, selectedMonth]);
-  useEffect(() => { if (!state.report) return; let cancelled = false; const report = state.report; requestPolishedTexts(report.sections.map((section) => ({ ...section, text: presentTransitSection(report, section) })), `${report.timeline.schemaVersion}:${report.timeline.query.startUtcInstant}:${report.timeline.query.endUtcInstant}:user-facing-v2`).then((texts) => { if (!cancelled) setPolishedTexts(texts); }); return () => { cancelled = true; }; }, [state.report]);
   if (!person) return <div className="ds-app-shell ds-page-pad py-8 text-center"><p className="text-sm text-muted-foreground">사람을 찾을 수 없습니다.</p><Link href="/people" className="mt-3 inline-block text-sm text-primary underline">목록으로</Link></div>;
   const sajuHref = person.id === getMyProfile()?.id ? "/saju" : `/people/${person.id}`;
   const [yearLabel, monthLabel] = selectedMonth.split("-");
@@ -49,7 +44,7 @@ export default function WesternTransit() {
       <button type="button" className="min-h-11 rounded-xl text-lg text-primary hover:bg-muted" onClick={() => chooseMonth(shiftMonth(selectedMonth, 1))} aria-label="다음 월">›</button>
     </div>
     {state.loading ? <div className="ds-card ds-card-pad text-sm text-muted-foreground shadow-none" role="status" aria-live="polite">현재 활성화된 차트 구조를 계산하고 있습니다.</div>
-      : state.report ? <><WesternTransitSummary report={state.report} polishedTexts={polishedTexts} /><CopyButton buildText={() => {
+      : state.report ? <><WesternTransitSummary report={state.report} /><CopyButton buildText={() => {
           // 화면에 보이는 시기와 복사 결과를 일치시킨다(대표 지시) — URL에 ?month=가 실제로
           // 있을 때만(사용자가 이전/다음 월을 명시적으로 골랐을 때만) 그 선택된 월의
           // WesternTransitReport를 그대로 쓰고, 선택이 없는 기본 진입 상태(오늘이 속한 달을

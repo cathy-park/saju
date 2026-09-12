@@ -32,9 +32,9 @@ export type SajuMonthlySectionKey = "atAGlance" | "workCareer" | "wealth" | "rom
 export interface SajuMonthlySummarySection {
   key: SajuMonthlySectionKey;
   title: string;
-  /** deterministic 합성 문단 — AI 다듬기 실패/미로그인 시 그대로 노출되는 fallback. */
+  /** deterministic 합성 문단 — 화면에 그대로 노출된다. */
   text: string;
-  /** prose layer에 보낼 fact 목록(섹션당 1회만 polishStatementText 호출). */
+  /** hasFacts 판정과 [왜 이런 결과인가요?] 토글 근거로 쓰이는 fact 목록. */
   facts: SajuMonthlyFact[];
   /** [왜 이런 결과인가요?] 토글용 근거 — 원국/대운/세운/월운 출처가 구분된다. */
   evidence: SajuEvidenceItem[];

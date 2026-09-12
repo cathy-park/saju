@@ -1,10 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, useParams } from "wouter";
 import { getMyProfile, getPeople, type PersonRecord } from "@/lib/storage";
 import { buildZiweiChart } from "@/lib/ziwei/buildZiweiChart";
 import { zhongzhouV1 } from "@/lib/ziwei/ruleSets/zhongzhouV1";
 import { buildSpouseReport, spouseReportTimingYears, type SpouseReportSection, type SpouseStatement } from "@/lib/ziwei/reports/spouseReport";
-import { polishStatementText } from "@/lib/ziwei/reports/proseLayer";
 import type { EvidenceItem, ZiweiChart } from "@/lib/ziwei/types";
 import { ReportHeader } from "@/components/ziwei/ReportHeader";
 import { EvidenceToggle, evidenceLabel } from "@/components/ziwei/EvidenceToggle";
@@ -12,33 +11,29 @@ import {
   Accordion, AccordionContent, AccordionItem, AccordionTrigger,
 } from "@/components/ui/accordion";
 
-const PROSE_TOPIC = "spouse";
-
 function findPerson(personId: string): PersonRecord | null {
   const my = getMyProfile();
   if (my && my.id === personId) return my;
   return getPeople().find((p) => p.id === personId) ?? null;
 }
 
-function StatementBlock({ statement, polishedText }: { statement: SpouseStatement; polishedText?: string }) {
+function StatementBlock({ statement }: { statement: SpouseStatement }) {
   return (
     <div className="border-t border-border first:border-t-0 pt-3 first:pt-0 mt-3 first:mt-0">
-      <p className="text-sm text-foreground leading-relaxed">{polishedText ?? statement.text}</p>
+      <p className="text-sm text-foreground leading-relaxed">{statement.text}</p>
       <EvidenceToggle evidence={statement.evidence} confidence={statement.confidence} />
     </div>
   );
 }
 
-function SectionCard({ section, polishedText }: { section: SpouseReportSection; polishedText?: string }) {
+function SectionCard({ section }: { section: SpouseReportSection }) {
   return (
     <div className="ds-card ds-card-pad shadow-none">
       <h2 className="text-base font-bold text-foreground">{section.title}</h2>
       {section.statements.length === 0 ? (
         <p className="mt-2 text-sm text-muted-foreground">이 주제에 대한 근거가 부족합니다.</p>
       ) : (
-        section.statements.map((s, i) => (
-          <StatementBlock key={i} statement={s} polishedText={i === 0 ? polishedText : undefined} />
-        ))
+        section.statements.map((s, i) => <StatementBlock key={i} statement={s} />)
       )}
     </div>
   );
@@ -190,26 +185,6 @@ export default function ZiweiSpouseReport() {
     return { chart: built, report: buildSpouseReport(built, input.name), error: null };
   }, [person]);
 
-  // AI 문장 다듬기(prose layer) — 결정론적 리포트는 이미 위에서 즉시 렌더된다. 이 effect는
-  // 백그라운드로 각 섹션의 첫 statement만 다듬어 순차적으로 교체한다(progressive enhancement).
-  // 로그인하지 않았거나 API가 실패하면 polishStatementText가 deterministic 문장을 그대로
-  // 반환하므로, 이 페이지는 항상 안전하게 동작한다.
-  const [polishedTexts, setPolishedTexts] = useState<Record<string, string>>({});
-  useEffect(() => {
-    if (!report) return;
-    setPolishedTexts({});
-    let cancelled = false;
-    for (const section of report.sections) {
-      const first = section.statements[0];
-      if (!first || first.facts.length === 0) continue;
-      polishStatementText(first.facts, first.text, PROSE_TOPIC, section.key).then((result) => {
-        if (cancelled || result.source === "fallback") return;
-        setPolishedTexts((prev) => ({ ...prev, [section.key]: result.text }));
-      });
-    }
-    return () => { cancelled = true; };
-  }, [report]);
-
   if (!person) {
     return (
       <div className="ds-app-shell ds-page-pad py-8 text-center">
@@ -229,7 +204,7 @@ export default function ZiweiSpouseReport() {
         chart && report && (
           <>
             {report.sections.map((section) => (
-              <SectionCard key={section.key} section={section} polishedText={polishedTexts[section.key]} />
+              <SectionCard key={section.key} section={section} />
             ))}
             <TimingSection report={report} />
             <ChartAccordion chart={chart} />

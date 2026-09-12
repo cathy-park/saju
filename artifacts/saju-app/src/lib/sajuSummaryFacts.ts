@@ -63,10 +63,10 @@ export type SajuSectionKey = "atAGlance" | "coreNature" | "strengths" | "caution
 export interface SajuSummarySection {
   key: SajuSectionKey;
   title: string;
-  /** deterministic 합성 문단 — AI 다듬기 실패/미로그인 시 그대로 노출되는 fallback. */
+  /** deterministic 합성 문단 — 화면에 그대로 노출된다. */
   text: string;
-  /** prose layer에 보낼 fact 목록(섹션당 2~4개, 섹션 목적에 맞게 선택) — 섹션당 딱 1회만
-   * polishStatementText를 호출한다. */
+  /** 섹션당 2~4개, 섹션 목적에 맞게 선택한 fact 목록 — hasFacts 판정과
+   * [왜 이런 결과인가요?] 토글 근거로 쓰인다. */
   facts: SajuFact[];
   /** [왜 이런 결과인가요?] 토글에 쓰는 근거(강약/격국/용신/오행/십성/합충형파해원진/신살 원자료).
    * 메인 fact 선택과 무관하게, 이 섹션이 참조한 원자료는 전부 보존한다. */

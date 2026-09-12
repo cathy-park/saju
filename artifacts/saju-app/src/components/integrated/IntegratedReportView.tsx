@@ -1,25 +1,18 @@
 import { useEffect, useState } from "react";
 import { Check, Copy, ChevronDown } from "lucide-react";
 import type { IntegratedReport } from "@/lib/integrated";
-import { polishIntegratedHolistic, type HolisticArea } from "@/lib/integrated/prompt";
-import { buildDeterministicPresentedAreas, evidenceForArea, systemsForArea } from "@/lib/integrated/presentation";
+import { buildDeterministicPresentedAreas, evidenceForArea, systemsForArea, type PresentedArea } from "@/lib/integrated/presentation";
 
 const SYSTEM_LABEL = { saju: "사주", ziwei: "자미두수", western: "서양점성술" } as const;
 
 export function IntegratedReportView({ report, copyPrompt }: { report: IntegratedReport; copyPrompt?: string }) {
   const [copied, setCopied] = useState(false);
   const [activeKey, setActiveKey] = useState(report.scope === "personal" ? "overview" : "relationshipCoreStructure");
-  // 대표 지시(다면 구조 복원) — 예전에는 20단계 IntegratedSection 키를 임의로 3개 그룹으로
-  // 묶어 보여줬는데, 그 그룹과 AI holistic 문단의 구조가 서로 달라 실제로는 두 영역 정도만
-  // 화면에 남는 문제가 있었다. 지금은 AI가 고정된 7개 영역(areas.ts) 중 근거가 있는 것만
-  // 돌려주고, 그 영역들을 그대로 카드로 나열한다 — 근거가 없는 영역은 폴백 텍스트로도
-  // 억지로 채우지 않는다(빈 배열이면 카드 자체가 없다).
-  const [areas, setAreas] = useState<HolisticArea[]>(() => buildDeterministicPresentedAreas(report));
+  // 고정된 7개 영역(areas.ts) 중 실제 근거가 있는 것만 deterministic하게 골라 카드로 나열한다
+  // — 근거가 없는 영역은 억지로 채우지 않는다(빈 배열이면 카드 자체가 없다).
+  const [areas, setAreas] = useState<PresentedArea[]>(() => buildDeterministicPresentedAreas(report));
   useEffect(() => {
     setAreas(buildDeterministicPresentedAreas(report));
-    let cancelled = false;
-    polishIntegratedHolistic(report).then((result) => { if (!cancelled && result.length > 0) setAreas(result); });
-    return () => { cancelled = true; };
   }, [report]);
   const hasTiming = report.timingConvergences.length > 0 || report.standaloneFacts.some((source) => source.temporalScope);
   const visibleAreas = areas.filter((area) => {

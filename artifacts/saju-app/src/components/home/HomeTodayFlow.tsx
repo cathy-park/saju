@@ -5,8 +5,7 @@ import type { TodayFortuneData } from "@/lib/todayFortune";
 import type { LifeFlowInsightResult } from "@/lib/lifeFlowInsight";
 import { buildExistingPersonalReports } from "@/lib/integrated/personReports";
 import { adaptSajuPersonal, adaptWesternPersonal, adaptZiweiPersonal, buildIntegratedPersonalReport, type IntegratedReport } from "@/lib/integrated";
-import { polishIntegratedHolistic, type HolisticArea } from "@/lib/integrated/prompt";
-import { systemsForArea } from "@/lib/integrated/presentation";
+import { buildDeterministicPresentedAreas, systemsForArea, type PresentedArea } from "@/lib/integrated/presentation";
 import { monthInTimezone, monthRange, westernBirthSource } from "@/lib/western/uiModel";
 import type { WesternPersonalSynthesisReport } from "@/lib/western/synthesis";
 
@@ -16,7 +15,7 @@ const SYSTEM_LABEL = { saju: "사주", ziwei: "자미두수", western: "서양�
 export function HomeTodayFlow({ record, fortune, lifeFlow }: { record: PersonRecord; fortune: TodayFortuneData; lifeFlow: LifeFlowInsightResult | null }) {
   const [activeKey, setActiveKey] = useState("overview");
   const [report, setReport] = useState<IntegratedReport | null>(null);
-  const [areas, setAreas] = useState<HolisticArea[]>([]);
+  const [areas, setAreas] = useState<PresentedArea[]>([]);
   const existing = useMemo(() => buildExistingPersonalReports(record), [record.id]);
   useEffect(() => {
     let cancelled = false;
@@ -24,9 +23,9 @@ export function HomeTodayFlow({ record, fortune, lifeFlow }: { record: PersonRec
     const month = monthInTimezone(timezone); const range = monthRange(month);
     const scope = { start: range.start, end: range.end, timezone, granularity: "month" as const, sourcePeriodLabel: month };
     const base = [...adaptSajuPersonal(existing.saju, record.id), ...(existing.ziwei ? adaptZiweiPersonal(existing.ziwei, record.id) : [])];
-    const finish = async (western?: WesternPersonalSynthesisReport) => {
+    const finish = (western?: WesternPersonalSynthesisReport) => {
       const next = buildIntegratedPersonalReport({ personId: record.id, sources: [...base, ...(western ? adaptWesternPersonal(western, scope) : [])], selectedPeriod: scope });
-      if (cancelled) return; setReport(next); const polished = await polishIntegratedHolistic(next); if (!cancelled) setAreas(polished);
+      if (cancelled) return; setReport(next); setAreas(buildDeterministicPresentedAreas(next));
     };
     if (!record.westernLocation) { void finish(); return () => { cancelled = true; }; }
     const birth = westernBirthSource(record);

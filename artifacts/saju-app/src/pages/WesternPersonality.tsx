@@ -4,13 +4,10 @@ import { WesternPersonalNav } from "@/components/western/WesternNavigation";
 import { WesternReportShell } from "@/components/western/WesternReportShell";
 import { WesternMissingContext } from "@/components/western/WesternMissingContext";
 import { WesternPersonalitySummary } from "@/components/western/WesternPersonalitySummary";
-import { createPolishRequestCache } from "@/lib/prosePolish";
 import { getMyProfile, getPeople, type PersonRecord } from "@/lib/storage";
 import type { WesternIssue } from "@/lib/western/types";
 import type { WesternPersonalityReport } from "@/lib/western/interpretation";
 import { useResolvedWesternBirth } from "@/lib/western/useResolvedWesternBirth";
-
-const requestPolishedTexts = createPolishRequestCache("westernPersonality");
 
 function findPerson(personId: string): PersonRecord | null {
   const mine = getMyProfile();
@@ -23,7 +20,6 @@ export default function WesternPersonality() {
   const person = useMemo(() => personId ? findPerson(personId) : null, [personId]);
   const { birth, status: birthStatus } = useResolvedWesternBirth(person);
   const [result, setResult] = useState<{ report?: WesternPersonalityReport; errors?: WesternIssue[]; loading: boolean }>({ loading: true });
-  const [polishedTexts, setPolishedTexts] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (!person) return;
@@ -41,17 +37,6 @@ export default function WesternPersonality() {
     return () => { cancelled = true; };
   }, [person, birth, birthStatus]);
 
-  useEffect(() => {
-    if (!result.report) return;
-    let cancelled = false;
-    const report = result.report;
-    const contentKey = `${report.chart.schemaVersion}:${report.chart.engine.version}:${report.chart.normalizedBirth.utcInstant}`;
-    requestPolishedTexts(report.sections, contentKey).then((texts) => {
-      if (!cancelled) setPolishedTexts(texts);
-    });
-    return () => { cancelled = true; };
-  }, [result.report]);
-
   if (!person) return (
     <div className="ds-app-shell ds-page-pad py-8 text-center">
       <p className="text-sm text-muted-foreground">사람을 찾을 수 없습니다.</p>
@@ -64,7 +49,7 @@ export default function WesternPersonality() {
       {result.loading ? (
         <div className="ds-card ds-card-pad text-sm text-muted-foreground shadow-none" role="status" aria-live="polite">출생차트를 계산하고 있습니다.</div>
       ) : result.report ? (
-        <WesternPersonalitySummary report={result.report} polishedTexts={polishedTexts} />
+        <WesternPersonalitySummary report={result.report} />
       ) : (
         <WesternMissingContext personId={person.id} personNames={[person.birthInput.name]} issue={result.errors?.[0]} fallback="차트를 계산할 수 없습니다." />
       )}

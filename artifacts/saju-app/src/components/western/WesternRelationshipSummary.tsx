@@ -2,8 +2,8 @@ import type { WesternRelationshipReport } from "@/lib/western/interpretation/rom
 import { RelationshipEvidenceToggle } from "./RelationshipEvidenceToggle";
 import { WesternReportSection } from "./WesternReportSection";
 
-export function WesternRelationshipSummary({ report, polishedTexts = {} }: { report: WesternRelationshipReport; polishedTexts?: Record<string, string> }) {
+export function WesternRelationshipSummary({ report }: { report: WesternRelationshipReport }) {
   return <div className="ds-section-gap">{report.sections.map((section) => (
-    <WesternReportSection key={section.key} title={section.title} text={polishedTexts[section.key] ?? section.text} evidence={<RelationshipEvidenceToggle evidence={section.primaryEvidence} />} />
+    <WesternReportSection key={section.key} title={section.title} text={section.text} evidence={<RelationshipEvidenceToggle evidence={section.primaryEvidence} />} />
   ))}</div>;
 }

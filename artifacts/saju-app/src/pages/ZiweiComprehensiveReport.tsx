@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Link, useParams } from "wouter";
 import { getMyProfile, getPeople, type PersonRecord } from "@/lib/storage";
 import { buildZiweiChart } from "@/lib/ziwei/buildZiweiChart";
@@ -6,13 +6,10 @@ import { zhongzhouV1 } from "@/lib/ziwei/ruleSets/zhongzhouV1";
 import { spouseReportTimingYears } from "@/lib/ziwei/reports/spouseReport";
 import { buildComprehensiveReport, type ComprehensiveReport, type ComprehensiveSection } from "@/lib/ziwei/reports/comprehensiveReport";
 import { buildZiweiCopyPrompt } from "@/lib/ziwei/reports/promptExport";
-import { polishStatementText } from "@/lib/ziwei/reports/proseLayer";
 import { ReportHeader } from "@/components/ziwei/ReportHeader";
 import { EvidenceToggle } from "@/components/ziwei/EvidenceToggle";
 import { CopyButton } from "@/components/CopyButton";
 import type { ZiweiChart } from "@/lib/ziwei/types";
-
-const PROSE_TOPIC = "overview";
 
 function findPerson(personId: string): PersonRecord | null {
   const my = getMyProfile();
@@ -20,13 +17,13 @@ function findPerson(personId: string): PersonRecord | null {
   return getPeople().find((p) => p.id === personId) ?? null;
 }
 
-function SectionCard({ section, polishedText }: { section: ComprehensiveSection; polishedText?: string }) {
+function SectionCard({ section }: { section: ComprehensiveSection }) {
   return (
     <div className="ds-card ds-card-pad shadow-none">
       <h2 className="text-base font-bold text-foreground">{section.title}</h2>
       {section.text ? (
         <>
-          <p className="mt-2 text-sm text-foreground leading-relaxed">{polishedText ?? section.text}</p>
+          <p className="mt-2 text-sm text-foreground leading-relaxed">{section.text}</p>
           <EvidenceToggle evidence={section.evidence} />
         </>
       ) : (
@@ -61,23 +58,6 @@ export default function ZiweiComprehensiveReport() {
     return { report: buildComprehensiveReport(chart, zhongzhouV1, input.name), chart, error: null };
   }, [person]);
 
-  // AI 문장 다듬기 — 5개 섹션당 정확히 1회씩, 총 5회만 호출한다(섹션마다 이미 deterministic
-  // synthesis를 마친 facts/text 묶음을 그대로 넘길 뿐, AI가 새 해석을 추가하지 않는다).
-  const [polishedTexts, setPolishedTexts] = useState<Record<string, string>>({});
-  useEffect(() => {
-    if (!report) return;
-    setPolishedTexts({});
-    let cancelled = false;
-    for (const section of report.sections) {
-      if (section.facts.length === 0) continue;
-      polishStatementText(section.facts, section.text, PROSE_TOPIC, section.key).then((result) => {
-        if (cancelled || result.source === "fallback") return;
-        setPolishedTexts((prev) => ({ ...prev, [section.key]: result.text }));
-      });
-    }
-    return () => { cancelled = true; };
-  }, [report]);
-
   if (!person) {
     return (
       <div className="ds-app-shell ds-page-pad py-8 text-center">
@@ -97,7 +77,7 @@ export default function ZiweiComprehensiveReport() {
         report && (
           <>
             {report.sections.map((section) => (
-              <SectionCard key={section.key} section={section} polishedText={polishedTexts[section.key]} />
+              <SectionCard key={section.key} section={section} />
             ))}
             <CopyButton buildText={() => buildZiweiCopyPrompt(chart!)} label="자미두수 AI 해석 프롬프트 복사" toastTitle="자미두수 계산 구조가 복사되었습니다." />
           </>

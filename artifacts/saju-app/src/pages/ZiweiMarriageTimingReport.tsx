@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, useParams } from "wouter";
 import { getMyProfile, getPeople, type PersonRecord } from "@/lib/storage";
 import { buildZiweiChart } from "@/lib/ziwei/buildZiweiChart";
@@ -7,13 +7,10 @@ import { spouseReportTimingYears } from "@/lib/ziwei/reports/spouseReport";
 import {
   buildMarriageTimingReport, type MarriageTimingReport, type MarriageTimingYearCard,
 } from "@/lib/ziwei/reports/marriageTimingReport";
-import { polishStatementText } from "@/lib/ziwei/reports/proseLayer";
 import type { EvidenceItem } from "@/lib/ziwei/types";
 import { ReportHeader } from "@/components/ziwei/ReportHeader";
 import { EvidenceToggle, evidenceLabel } from "@/components/ziwei/EvidenceToggle";
 import { AxisBadge } from "@/components/ziwei/AxisBadge";
-
-const PROSE_TOPIC = "marriageTiming";
 
 const DISCLAIMER = "아래 연도는 \"이 해에 결혼한다\"는 예측이 아닙니다. 활성화가 높다고 반드시 결혼하기 좋은 해는 아니며, 안정화·공식화 가능성·변동성과 함께 참고용으로만 봐주세요.";
 
@@ -23,7 +20,7 @@ function findPerson(personId: string): PersonRecord | null {
   return getPeople().find((p) => p.id === personId) ?? null;
 }
 
-function YearCard({ card, polishedText }: { card: MarriageTimingYearCard; polishedText?: string }) {
+function YearCard({ card }: { card: MarriageTimingYearCard }) {
   return (
     <div className="ds-card ds-card-pad shadow-none">
       <div className="flex items-center justify-between gap-2">
@@ -32,7 +29,7 @@ function YearCard({ card, polishedText }: { card: MarriageTimingYearCard; polish
           {card.axes.map((axis) => <AxisBadge key={axis} axis={axis} />)}
         </div>
       </div>
-      <p className="mt-2 text-sm text-foreground leading-relaxed">{polishedText ?? card.text}</p>
+      <p className="mt-2 text-sm text-foreground leading-relaxed">{card.text}</p>
       <EvidenceToggle evidence={card.evidence} />
     </div>
   );
@@ -137,24 +134,6 @@ export default function ZiweiMarriageTimingReport() {
     return { report: buildMarriageTimingReport(chart, zhongzhouV1, input.name), error: null };
   }, [person]);
 
-  // AI 문장 다듬기 — 연도×축(최대 60회)이 아니라 하이라이트된 연도 1개당 1회만 호출한다.
-  // report.yearCards는 이미 축별 근거를 하나의 문단·fact 목록으로 묶어 둔 상태라, 여기서는
-  // 그 묶음을 그대로 polishStatementText에 한 번씩만 넘긴다.
-  const [polishedTexts, setPolishedTexts] = useState<Record<number, string>>({});
-  useEffect(() => {
-    if (!report) return;
-    setPolishedTexts({});
-    let cancelled = false;
-    for (const card of report.yearCards) {
-      if (card.facts.length === 0) continue;
-      polishStatementText(card.facts, card.text, PROSE_TOPIC, `year-${card.year}`).then((result) => {
-        if (cancelled || result.source === "fallback") return;
-        setPolishedTexts((prev) => ({ ...prev, [card.year]: result.text }));
-      });
-    }
-    return () => { cancelled = true; };
-  }, [report]);
-
   if (!person) {
     return (
       <div className="ds-app-shell ds-page-pad py-8 text-center">
@@ -180,7 +159,7 @@ export default function ZiweiMarriageTimingReport() {
               </div>
             ) : (
               report.yearCards.map((card) => (
-                <YearCard key={card.year} card={card} polishedText={polishedTexts[card.year]} />
+                <YearCard key={card.year} card={card} />
               ))
             )}
             <DetailTable report={report} />
