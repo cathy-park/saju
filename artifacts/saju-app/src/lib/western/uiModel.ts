@@ -49,6 +49,15 @@ export function monthInTimezone(timezone: string, now = new Date()): string {
   return `${part("year")}-${part("month")}`;
 }
 
+/** 특정 IANA 시간대의 "지금"을 offset 없는 ISO local wall time 문자열로 반환한다
+ * (resolveLocalDateTime이 받는 형식과 동일) — 서양점성술 복사 프롬프트가 "현재 transit"을
+ * 계산할 때 기준 시각으로 쓴다. 특정 날짜를 하드코딩하지 않기 위한 유일한 진입점. */
+export function nowLocalDateTime(timezone: string, now = new Date()): string {
+  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }).formatToParts(now);
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((item) => item.type === type)?.value ?? "";
+  return `${part("year")}-${part("month")}-${part("day")}T${part("hour")}:${part("minute")}:${part("second")}`;
+}
+
 export function validateWesternLocation(location: NonNullable<PersonRecord["westernLocation"]>): string | null {
   if (!location.placeLabel.trim()) return "출생지 표시 이름을 입력해주세요.";
   if (!Number.isFinite(location.latitude) || location.latitude < -90 || location.latitude > 90) return "위도는 -90~90 사이여야 합니다.";

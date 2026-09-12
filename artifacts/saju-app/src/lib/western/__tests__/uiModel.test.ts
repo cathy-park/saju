@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { PersonRecord } from "../../storage";
-import { monthFromSearch, monthRange, shiftMonth, validateWesternLocation, westernBirthSource, westernRoutes } from "../uiModel";
+import { monthFromSearch, monthRange, nowLocalDateTime, shiftMonth, validateWesternLocation, westernBirthSource, westernRoutes } from "../uiModel";
 
 const person = (westernLocation?: PersonRecord["westernLocation"]): PersonRecord => ({
   id: "person-a",
@@ -27,6 +27,12 @@ describe("western UI model", () => {
     expect(monthFromSearch("?month=2026-13", "2026-08")).toBe("2026-08");
     expect(shiftMonth("2026-01", -1)).toBe("2025-12");
     expect(monthRange("2024-02")).toEqual({ start: "2024-02-01", end: "2024-02-29" });
+  });
+
+  it("resolves the current instant to an offset-free local wall time (no hardcoded date)", () => {
+    const fixed = new Date("2026-09-12T15:30:05Z"); // KST = UTC+9 → 2026-09-13T00:30:05
+    expect(nowLocalDateTime("Asia/Seoul", fixed)).toBe("2026-09-13T00:30:05");
+    expect(nowLocalDateTime("America/New_York", fixed)).toBe("2026-09-12T11:30:05");
   });
 
   it("validates exact coordinates and an IANA timezone without guessing", () => {

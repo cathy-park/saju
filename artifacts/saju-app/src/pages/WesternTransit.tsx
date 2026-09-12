@@ -49,7 +49,7 @@ export default function WesternTransit() {
       <button type="button" className="min-h-11 rounded-xl text-lg text-primary hover:bg-muted" onClick={() => chooseMonth(shiftMonth(selectedMonth, 1))} aria-label="다음 월">›</button>
     </div>
     {state.loading ? <div className="ds-card ds-card-pad text-sm text-muted-foreground shadow-none" role="status" aria-live="polite">현재 활성화된 차트 구조를 계산하고 있습니다.</div>
-      : state.report ? <><WesternTransitSummary report={state.report} polishedTexts={polishedTexts} /><CopyButton buildText={() => buildWesternCopyPrompt(state.report!.timeline.natalChart, { transit: state.report, placeLabel: person.westernLocation?.placeLabel })} label="서양점성술 AI 해석 프롬프트 복사" toastTitle="서양점성술 계산 구조가 복사되었습니다." /></>
+      : state.report ? <><WesternTransitSummary report={state.report} polishedTexts={polishedTexts} /><CopyButton buildText={() => buildWesternCopyPrompt(state.report!.timeline.natalChart, { placeLabel: person.westernLocation?.placeLabel })} label="서양점성술 AI 해석 프롬프트 복사" toastTitle="서양점성술 계산 구조가 복사되었습니다." /></>
       : <WesternMissingContext personId={person.id} personNames={[person.birthInput.name]} issue={state.errors?.[0]} fallback="시기운 리포트를 만들 수 없습니다." />}
   </WesternReportShell>;
 }
