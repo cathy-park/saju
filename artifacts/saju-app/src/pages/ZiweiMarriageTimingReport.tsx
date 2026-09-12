@@ -38,6 +38,19 @@ function YearCard({ card, polishedText }: { card: MarriageTimingYearCard; polish
   );
 }
 
+/** 타고난 관계/배우자 baseline — 연도 목록 위에서 딱 한 번만 보여준다(21단계 대표 지시).
+ * 모든 연도에 고정된 문장이라 AI 다듬기를 거치지 않고 deterministic 문장을 그대로 쓴다. */
+function NatalBaselineCard({ natalBaseline }: { natalBaseline: MarriageTimingReport["natalBaseline"] }) {
+  if (!natalBaseline) return null;
+  return (
+    <div className="ds-card ds-card-pad shadow-none border-primary/15 bg-primary/[0.03]">
+      <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">타고난 관계 baseline</p>
+      <p className="mt-1.5 text-sm text-foreground leading-relaxed">{natalBaseline.text}</p>
+      <EvidenceToggle evidence={natalBaseline.evidence} />
+    </div>
+  );
+}
+
 function AxisEvidencePopover({ label, score, evidence }: { label: string; score: number; evidence: EvidenceItem[] }) {
   const [open, setOpen] = useState(false);
   return (
@@ -160,6 +173,7 @@ export default function ZiweiMarriageTimingReport() {
       ) : (
         report && (
           <>
+            <NatalBaselineCard natalBaseline={report.natalBaseline} />
             {report.yearCards.length === 0 ? (
               <div className="ds-card ds-card-pad shadow-none text-sm text-muted-foreground">
                 뚜렷한 신호가 나타나는 해가 없습니다.

@@ -9,12 +9,26 @@ import type { WesternBirthSource } from "@/lib/western/adapter";
 import type { WesternPersonalSynthesisReport } from "@/lib/western/synthesis";
 import type { WesternIssue } from "@/lib/western/types";
 import { monthInTimezone, monthRange, westernBirthSource } from "@/lib/western/uiModel";
+import { createWesternSynthesisPolishCache, westernSynthesisContentKey } from "@/lib/western/synthesis/prosePolish";
+import { buildWesternCopyPrompt } from "@/lib/western/synthesis/promptExport";
+import { CopyButton } from "@/components/CopyButton";
+
+const requestPolishedTexts = createWesternSynthesisPolishCache("western-overview");
 
 const findPerson = (id: string): PersonRecord | null => { const mine = getMyProfile(); return mine?.id === id ? mine : getPeople().find((person) => person.id === id) ?? null; };
 export default function WesternOverview() {
   const { personId } = useParams<{ personId: string }>();
   const person = useMemo(() => personId ? findPerson(personId) : null, [personId]);
   const [state, setState] = useState<{ report?: WesternPersonalSynthesisReport; errors?: WesternIssue[]; loading: boolean }>({ loading: true });
+  const [polishedTexts, setPolishedTexts] = useState<Record<string, string>>({});
+  useEffect(() => {
+    if (!state.report) return;
+    let cancelled = false;
+    requestPolishedTexts(state.report, westernSynthesisContentKey(state.report)).then((texts) => {
+      if (!cancelled) setPolishedTexts(texts);
+    });
+    return () => { cancelled = true; };
+  }, [state.report]);
   useEffect(() => {
     if (!person) return;
     const birth = westernBirthSource(person) satisfies WesternBirthSource;
@@ -28,6 +42,9 @@ export default function WesternOverview() {
   }, [person]);
   if (!person) return <main className="ds-app-shell ds-page-pad py-8 text-center"><p className="text-sm text-muted-foreground">사람을 찾을 수 없습니다.</p><Link href="/people" className="mt-3 inline-flex min-h-11 items-center text-sm text-primary underline">사람 목록으로</Link></main>;
   return <WesternReportShell personId={person.id} sajuHref={person.id === getMyProfile()?.id ? "/saju" : `/people/${person.id}`} eyebrow="서양점성술 · 개인 종합" title={`${person.birthInput.name}님의 전체 흐름`} navigation={<WesternPersonalNav personId={person.id} />}>
-    {state.loading ? <div className="ds-card ds-card-pad text-sm text-muted-foreground shadow-none" role="status" aria-live="polite">기존 분석 결과를 종합하고 있습니다.</div> : state.report ? <WesternSynthesisSummary report={state.report} /> : <WesternMissingContext personId={person.id} personNames={[person.birthInput.name]} issue={state.errors?.[0]} fallback="종합 리포트를 만들 수 없습니다." />}
+    {state.loading ? <div className="ds-card ds-card-pad text-sm text-muted-foreground shadow-none" role="status" aria-live="polite">기존 분석 결과를 종합하고 있습니다.</div> : state.report ? (<>
+      <WesternSynthesisSummary report={state.report} polishedTexts={polishedTexts} />
+      <CopyButton buildText={() => buildWesternCopyPrompt(state.report!)} label="서양점성술 AI 해석 프롬프트 복사" toastTitle="서양점성술 분석 데이터가 복사되었습니다." />
+    </>) : <WesternMissingContext personId={person.id} personNames={[person.birthInput.name]} issue={state.errors?.[0]} fallback="종합 리포트를 만들 수 없습니다." />}
   </WesternReportShell>;
 }

@@ -1,11 +1,12 @@
-import { useState } from "react";
 import type { SajuEvidenceItem } from "@/lib/sajuSummaryFacts";
+import { EvidenceDisclosure, EvidenceChipList } from "@/components/EvidenceDisclosure";
 
 // 12단계 UI·요약 구조 정리 — 9/10/11단계가 각자 파일에 복붙해 두었던 evidence 토글 +
 // 요약 카드 래퍼를 이 파일 하나로 합친다. 시각 스타일은 그대로(색상·타이포·카드 스타일
-// 변경 없음), 중복 제거와 "fact 0개 섹션은 완전히 숨김" 동작 통일만 한다. 자미두수의
-// EvidenceToggle과는 데이터 모양이 달라(confidence 필드 등) 억지로 합치지 않는다 — 사주
-// 내부(원국/월운/궁합) 3곳끼리만 통일한다.
+// 변경 없음), 중복 제거와 "fact 0개 섹션은 완전히 숨김" 동작 통일만 한다.
+// 21단계 — 토글의 셸(버튼 문구·열림 박스)은 공용 EvidenceDisclosure로 옮겨 자미두수·
+// 서양점성술과 통일했다. category→라벨 매핑처럼 사주만의 데이터 모양은 이 파일에 남긴다
+// (데이터 모델 자체를 억지로 합치지 않는다).
 
 const CATEGORY_LABEL: Record<SajuEvidenceItem["category"], string> = {
   strength: "강약",
@@ -30,51 +31,15 @@ function evidenceLabel(e: SajuEvidenceItem): string {
   return `[${CATEGORY_LABEL[e.category]}] ${e.label}`;
 }
 
-const PREVIEW_COUNT = 8;
-
 /** 사주 전용 근거 토글(원국/월운/궁합 공통) — "[왜 이런 결과인가요?]" 클릭 시 원자료를
  * chip 형태로 보여준다. 이전에는 SajuCoreSummary.tsx에 있었으나 12단계에서 이 파일로
  * 옮겨 순환 참조 없이 세 요약 컴포넌트가 동일하게 재사용한다. */
 export function SajuEvidenceToggle({ evidence }: { evidence: SajuEvidenceItem[] }) {
-  const [open, setOpen] = useState(false);
-  const [showAll, setShowAll] = useState(false);
   if (evidence.length === 0) return null;
-
-  const hasMore = evidence.length > PREVIEW_COUNT;
-  const shown = showAll ? evidence : evidence.slice(0, PREVIEW_COUNT);
-
   return (
-    <div className="mt-1.5">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="text-xs text-primary underline underline-offset-2"
-      >
-        {open ? "근거 숨기기" : "[왜 이런 결과인가요?]"}
-      </button>
-      {open && (
-        <div className="mt-2 rounded-lg border border-border/60 bg-muted/40 p-2.5">
-          <div className="flex flex-wrap gap-1.5">
-            {shown.map((e, i) => (
-              <span key={i} className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
-                {evidenceLabel(e)}
-              </span>
-            ))}
-          </div>
-          {hasMore && (
-            <button
-              type="button"
-              onClick={() => setShowAll((v) => !v)}
-              className="mt-2 text-[11px] font-semibold text-primary underline underline-offset-2"
-            >
-              {showAll
-                ? `근거 ${evidence.length}개 · 전체 표시 — 접기`
-                : `근거 ${evidence.length}개 · ${PREVIEW_COUNT}개 표시 — 전체보기`}
-            </button>
-          )}
-        </div>
-      )}
-    </div>
+    <EvidenceDisclosure>
+      <EvidenceChipList items={evidence.map(evidenceLabel)} />
+    </EvidenceDisclosure>
   );
 }
 

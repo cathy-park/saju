@@ -4552,20 +4552,37 @@ export function SajuReport({ record, showSaveStatus = false, hourMode: parentHou
     }
   }, [reportTab]);
 
+  // 21단계 — 오행·십성 구조는 기본 접힘으로 바꾸면서, "오행 분포로 이동" 같은 앵커
+  // 바로가기를 눌렀을 때 닫힌 채로 스크롤만 되는 것을 막기 위해 열림 상태를 이 레벨(카드를
+  // 감싸는 컴포넌트)에서 직접 들고 있는다. 닫혀 있으면 내부 앵커 id(yuan-five-el 등)가
+  // DOM에 아예 없으므로, 반드시 setYuanStructureOpen(true)로 먼저 열고 나서 스크롤해야
+  // 한다. rAF를 두 번 감싸는 것은 setState → 리렌더 → 레이아웃 계산까지 끝난 뒤에
+  // scrollIntoView가 실행되도록 보장하기 위함이다(한 번만 감싸면 리렌더 전에 실행되는
+  // 경우가 있었다).
+  const [yuanStructureOpen, setYuanStructureOpen] = useState(false);
+
   const scrollToYuanAnchor = useCallback((id: string) => {
+    if (id === "yuan-five-el") setYuanStructureOpen(true);
     requestAnimationFrame(() => {
-      document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+      requestAnimationFrame(() => {
+        document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
     });
   }, []);
 
   const scrollToStrengthOrStructure = useCallback(() => {
-    requestAnimationFrame(() => {
-      const strength = document.getElementById("yuan-strength");
-      if (strength) {
+    const strength = document.getElementById("yuan-strength");
+    if (strength) {
+      requestAnimationFrame(() => {
         strength.scrollIntoView({ behavior: "smooth", block: "start" });
-        return;
-      }
-      document.getElementById("yuan-oheung-card")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+      return;
+    }
+    setYuanStructureOpen(true);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        document.getElementById("yuan-oheung-card")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
     });
   }, []);
 
@@ -5578,10 +5595,24 @@ export function SajuReport({ record, showSaveStatus = false, hourMode: parentHou
           ) : null}
 
           <div id="yuan-oheung-card" className="ds-card shadow-none overflow-visible scroll-mt-4">
-            <div className="border-b border-border bg-muted/20 px-4 py-3">
-              <h2 className="text-sm font-bold text-foreground">오행·십성 구조</h2>
-              <p className="mt-1 text-[11px] text-muted-foreground">원국 표와 함께 읽는 구조 데이터(개수·비율 중심)</p>
-            </div>
+            <button
+              type="button"
+              onClick={() => setYuanStructureOpen((v) => !v)}
+              aria-expanded={yuanStructureOpen}
+              className="flex w-full items-center justify-between border-b border-border bg-muted/20 px-4 py-3 text-left"
+            >
+              <span>
+                <h2 className="text-sm font-bold text-foreground">오행·십성 구조</h2>
+                <p className="mt-1 text-[11px] text-muted-foreground">원국 표와 함께 읽는 구조 데이터(개수·비율 중심)</p>
+              </span>
+              <ChevronDown
+                className={cn(
+                  "h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200",
+                  yuanStructureOpen && "rotate-180",
+                )}
+              />
+            </button>
+            {yuanStructureOpen && (
             <div className="ds-card-pad space-y-6 overflow-visible">
               <div id="yuan-five-el" className="scroll-mt-4">
                 <h3 className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">오행 분포 (구조)</h3>
@@ -5685,6 +5716,7 @@ export function SajuReport({ record, showSaveStatus = false, hourMode: parentHou
               )}
               </div>
             </div>
+            )}
           </div>
 
           {/* 신강/신약 (single source: sajuPipelineResult.adjusted.strengthResult) */}

@@ -9,12 +9,24 @@ import { WesternRelationshipNav } from "@/components/western/WesternNavigation";
 import { WesternReportShell } from "@/components/western/WesternReportShell";
 import { WesternMissingContext } from "@/components/western/WesternMissingContext";
 import { monthInTimezone, monthRange, westernBirthSource, westernRoutes } from "@/lib/western/uiModel";
+import { createWesternSynthesisPolishCache, westernSynthesisContentKey } from "@/lib/western/synthesis/prosePolish";
+
+const requestPolishedTexts = createWesternSynthesisPolishCache("western-relationshipOverview");
 
 const findPerson = (id: string): PersonRecord | null => { const mine = getMyProfile(); return mine?.id === id ? mine : getPeople().find((person) => person.id === id) ?? null; };
 export default function WesternRelationshipOverview() {
   const { personId, otherPersonId } = useParams<{ personId: string; otherPersonId: string }>();
   const people = useMemo(() => ({ first: personId ? findPerson(personId) : null, second: otherPersonId ? findPerson(otherPersonId) : null }), [personId, otherPersonId]);
   const [state, setState] = useState<{ report?: WesternRelationshipSynthesisReport; errors?: WesternIssue[]; loading: boolean }>({ loading: true });
+  const [polishedTexts, setPolishedTexts] = useState<Record<string, string>>({});
+  useEffect(() => {
+    if (!state.report) return;
+    let cancelled = false;
+    requestPolishedTexts(state.report, westernSynthesisContentKey(state.report)).then((texts) => {
+      if (!cancelled) setPolishedTexts(texts);
+    });
+    return () => { cancelled = true; };
+  }, [state.report]);
   useEffect(() => {
     if (!people.first || !people.second) return;
     const firstBirth = westernBirthSource(people.first) satisfies WesternBirthSource, secondBirth = westernBirthSource(people.second) satisfies WesternBirthSource, timezone = firstBirth.timezone;
@@ -29,6 +41,6 @@ export default function WesternRelationshipOverview() {
   if (!people.first || !people.second) return <main className="ds-app-shell ds-page-pad py-8 text-center"><p className="text-sm text-muted-foreground">비교할 사람을 찾을 수 없습니다.</p><Link href="/people" className="mt-3 inline-flex min-h-11 items-center text-sm text-primary underline">사람 목록으로</Link></main>;
   const missingNames = [people.first, people.second].filter((person) => !person.westernLocation).map((person) => person.birthInput.name);
   return <WesternReportShell personId={people.first.id} sajuHref={people.first.id === getMyProfile()?.id ? "/saju" : `/people/${people.first.id}`} westernHref={westernRoutes.relationship(people.first.id, people.second.id).overview} synthesisHref={`/integrated/${people.first.id}/relationship/${people.second.id}/overview`} eyebrow="서양점성술 · 관계 종합" title={`${people.first.birthInput.name}님과 ${people.second.birthInput.name}님의 관계 구조`} description="점수나 결혼 판정 없이 각자의 성향과 실제 차트 상호작용을 함께 봅니다." navigation={<WesternRelationshipNav personId={people.first.id} otherPersonId={people.second.id} />}>
-    {state.loading ? <div className="ds-card ds-card-pad text-sm text-muted-foreground shadow-none" role="status" aria-live="polite">두 사람의 기존 분석 결과를 종합하고 있습니다.</div> : state.report ? <WesternSynthesisSummary report={state.report} /> : <WesternMissingContext personId={!people.first.westernLocation ? people.first.id : people.second.id} personNames={missingNames} issue={state.errors?.[0]} fallback="관계 종합을 만들 수 없습니다." />}
+    {state.loading ? <div className="ds-card ds-card-pad text-sm text-muted-foreground shadow-none" role="status" aria-live="polite">두 사람의 기존 분석 결과를 종합하고 있습니다.</div> : state.report ? <WesternSynthesisSummary report={state.report} polishedTexts={polishedTexts} /> : <WesternMissingContext personId={!people.first.westernLocation ? people.first.id : people.second.id} personNames={missingNames} issue={state.errors?.[0]} fallback="관계 종합을 만들 수 없습니다." />}
   </WesternReportShell>;
 }

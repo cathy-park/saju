@@ -5,16 +5,14 @@
 // 않은 경우 항상 deterministic 문장을 그대로 쓴다(리포트가 절대 깨지지 않는 것을 최우선으로 한다).
 import { supabase } from "@/lib/supabase";
 import type { ReportFact } from "@/lib/reportFacts";
+import { SHARED_PROSE_PROMPT_VERSION } from "@/lib/prosePromptVersion";
 
-/** 프롬프트를 바꿀 때마다 올린다 — sourceHash 계산에 포함되어 버전이 바뀌면 캐시가
- * 자동으로 무효화된다(서버가 source_hash·prompt_version 조합으로 재계산·재조회하므로
- * 클라이언트는 이 값만 최신으로 보내면 된다).
- * v2: 앱 전체 공통 AI 해석 출력 원칙(api/polish-prose.ts 참고 — 핵심 결론 2~4개 압축,
- * 유사 fact 병합, 상반 fact 관계 설명, 원자료 나열 대신 성향/행동 표현, 2~4문장) 적용.
- * v3: 메인 문장의 명리 기술용어 노출 방지(전문 용어 대신 fact에 이미 풀어쓴 표현 사용),
- * fact가 1개뿐인 결론은 확정적 어투 대신 완화된 어투 사용, fact가 적어 너무 짧으면 2~3문장
- * 허용(새 내용 추가 없이). */
-export const PROSE_PROMPT_VERSION = "v3";
+/** api/polish-prose.ts의 공유 프롬프트를 바꿀 때마다 올려야 하는 값은 이제
+ * src/lib/prosePromptVersion.ts(SHARED_PROSE_PROMPT_VERSION) 하나뿐이다 — 사주·자미두수·
+ * 서양점성술·종합이 전부 그 상수를 그대로 재노출한다(21단계, 캐시 버전 드리프트 방지).
+ * 과거 버전 이력(v2: 핵심 결론 2~4개 압축 등 공통 원칙 적용, v3: 명리 기술용어 노출 방지·
+ * 완화된 어투)은 prosePromptVersion.ts에 통합 기록한다. */
+export const PROSE_PROMPT_VERSION = SHARED_PROSE_PROMPT_VERSION;
 
 export interface PolishResult {
   text: string;

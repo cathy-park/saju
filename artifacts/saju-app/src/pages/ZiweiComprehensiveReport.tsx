@@ -5,9 +5,11 @@ import { buildZiweiChart } from "@/lib/ziwei/buildZiweiChart";
 import { zhongzhouV1 } from "@/lib/ziwei/ruleSets/zhongzhouV1";
 import { spouseReportTimingYears } from "@/lib/ziwei/reports/spouseReport";
 import { buildComprehensiveReport, type ComprehensiveReport, type ComprehensiveSection } from "@/lib/ziwei/reports/comprehensiveReport";
+import { buildZiweiCopyPrompt } from "@/lib/ziwei/reports/promptExport";
 import { polishStatementText } from "@/lib/ziwei/reports/proseLayer";
 import { ReportHeader } from "@/components/ziwei/ReportHeader";
 import { EvidenceToggle } from "@/components/ziwei/EvidenceToggle";
+import { CopyButton } from "@/components/CopyButton";
 
 const PROSE_TOPIC = "overview";
 
@@ -91,9 +93,14 @@ export default function ZiweiComprehensiveReport() {
       {error ? (
         <div className="ds-card ds-card-pad shadow-none text-sm text-muted-foreground">{error}</div>
       ) : (
-        report && report.sections.map((section) => (
-          <SectionCard key={section.key} section={section} polishedText={polishedTexts[section.key]} />
-        ))
+        report && (
+          <>
+            {report.sections.map((section) => (
+              <SectionCard key={section.key} section={section} polishedText={polishedTexts[section.key]} />
+            ))}
+            <CopyButton buildText={() => buildZiweiCopyPrompt(report)} label="자미두수 AI 해석 프롬프트 복사" toastTitle="자미두수 분석 데이터가 복사되었습니다." />
+          </>
+        )
       )}
     </div>
   );

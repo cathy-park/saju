@@ -12,28 +12,34 @@ import PersonDetail from "@/pages/PersonDetail";
 import Compatibility from "@/pages/Compatibility";
 import ZiweiHome from "@/pages/ZiweiHome";
 import ZiweiTopicSelect from "@/pages/ZiweiTopicSelect";
-import ZiweiSpouseReport from "@/pages/ZiweiSpouseReport";
-import ZiweiWealthReport from "@/pages/ZiweiWealthReport";
-import ZiweiCareerReport from "@/pages/ZiweiCareerReport";
-import ZiweiNatureReport from "@/pages/ZiweiNatureReport";
-import ZiweiRomanceReport from "@/pages/ZiweiRomanceReport";
-import ZiweiMarriageTimingReport from "@/pages/ZiweiMarriageTimingReport";
-import ZiweiComprehensiveReport from "@/pages/ZiweiComprehensiveReport";
-import WesternPersonality from "@/pages/WesternPersonality";
-import WesternRelationship from "@/pages/WesternRelationship";
-import WesternTransit from "@/pages/WesternTransit";
-import WesternSynastry from "@/pages/WesternSynastry";
-import WesternOverview from "@/pages/WesternOverview";
-import WesternRelationshipOverview from "@/pages/WesternRelationshipOverview";
-import WesternLocationSettings from "@/pages/WesternLocationSettings";
-import IntegratedOverview from "@/pages/IntegratedOverview";
-import IntegratedRelationshipOverview from "@/pages/IntegratedRelationshipOverview";
 import { WesternPersonalRedirect, WesternRelationshipEntry, WesternSynastryRedirect } from "@/pages/WesternRedirects";
 import AuthCallback from "@/pages/AuthCallback";
 import NotFound from "@/pages/not-found";
 import { Home as HomeIcon, User, Users } from "lucide-react";
 import { AuthBar } from "@/components/AuthBar";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, lazy, Suspense } from "react";
+
+// 21단계 — 자미두수 개별 리포트·서양점성술·종합 페이지는 홈/사주/상대 목록보다 훨씬 드물게
+// 방문되는데도 이전에는 전부 App.tsx 최상단에서 즉시 import되어 초기 번들(1.6MB)에 함께
+// 실렸다. 이 라우트들만 route-level React.lazy로 분리한다 — 계산 로직·화면 구성은 전혀
+// 바꾸지 않고 로딩 시점만 "그 라우트를 실제로 열 때"로 늦춘다. 자주 함께 오가는 핵심 흐름
+// (홈/사주/상대/궁합, 자미두수 홈·주제선택)은 로딩 깜빡임을 피하기 위해 그대로 즉시 로드한다.
+const ZiweiSpouseReport = lazy(() => import("@/pages/ZiweiSpouseReport"));
+const ZiweiWealthReport = lazy(() => import("@/pages/ZiweiWealthReport"));
+const ZiweiCareerReport = lazy(() => import("@/pages/ZiweiCareerReport"));
+const ZiweiNatureReport = lazy(() => import("@/pages/ZiweiNatureReport"));
+const ZiweiRomanceReport = lazy(() => import("@/pages/ZiweiRomanceReport"));
+const ZiweiMarriageTimingReport = lazy(() => import("@/pages/ZiweiMarriageTimingReport"));
+const ZiweiComprehensiveReport = lazy(() => import("@/pages/ZiweiComprehensiveReport"));
+const WesternPersonality = lazy(() => import("@/pages/WesternPersonality"));
+const WesternRelationship = lazy(() => import("@/pages/WesternRelationship"));
+const WesternTransit = lazy(() => import("@/pages/WesternTransit"));
+const WesternSynastry = lazy(() => import("@/pages/WesternSynastry"));
+const WesternOverview = lazy(() => import("@/pages/WesternOverview"));
+const WesternRelationshipOverview = lazy(() => import("@/pages/WesternRelationshipOverview"));
+const WesternLocationSettings = lazy(() => import("@/pages/WesternLocationSettings"));
+const IntegratedOverview = lazy(() => import("@/pages/IntegratedOverview"));
+const IntegratedRelationshipOverview = lazy(() => import("@/pages/IntegratedRelationshipOverview"));
 
 const queryClient = new QueryClient();
 
@@ -99,14 +105,28 @@ function AppHeader() {
 }
 
 function SyncedApp() {
-  const { dbSynced } = useAuth();
+  const { dbSynced, user } = useAuth();
   const [refreshKey, setRefreshKey] = useState(0);
   const [location] = useLocation();
 
-  // Increment key when sync completes to trigger child re-reads
+  // 21단계 — dbSynced는 로그인 직후뿐 아니라 탭이 다시 포커스될 때마다도 true로 바뀐다
+  // (authContext.tsx의 visibilitychange 재동기화). 예전에는 그때마다 <main key={refreshKey}>
+  // 전체를 remount해서, 단순히 탭을 갔다 왔을 뿐인데도 진행 중이던 폼 입력이나 리포트
+  // 페이지의 AI 다듬기 요청이 전부 초기화됐다. 실제로 remount가 필요한 경우는 "새로 로그인한
+  // 사용자의 클라우드 데이터를 mount 시점에 한 번만 읽는 컴포넌트(Home 등)에 반영하는 것"
+  // 뿐이므로, 같은 사용자에 대해서는 두 번째 이후의 dbSynced 완료를 remount 트리거로 쓰지
+  // 않는다(사용자가 바뀌면 다시 remount한다 — 로그아웃 후 다른 계정으로 로그인하는 경우).
+  const remountedForUserId = useRef<string | null>(null);
   useEffect(() => {
-    if (dbSynced) setRefreshKey((k) => k + 1);
-  }, [dbSynced]);
+    // 로그아웃하면 다음 로그인(같은 계정이어도) 때 반드시 한 번 더 remount하도록 기록을
+    // 지운다 — 재로그인은 탭 재포커스와 달리 클라우드 상태를 새로 반영해야 하는 진짜 전환이다.
+    if (!user) { remountedForUserId.current = null; return; }
+    if (!dbSynced) return;
+    const uid = user.id;
+    if (remountedForUserId.current === uid) return;
+    remountedForUserId.current = uid;
+    setRefreshKey((k) => k + 1);
+  }, [dbSynced, user]);
 
   // Always scroll to top on route change.
   useEffect(() => {
@@ -121,6 +141,7 @@ function SyncedApp() {
     <>
       <AppHeader />
       <main className="pb-14 pt-14" key={refreshKey}>
+        <Suspense fallback={<div className="ds-app-shell ds-page-pad py-8 text-center text-sm text-muted-foreground" role="status" aria-live="polite">불러오는 중...</div>}>
         <Switch>
           <Route path="/auth/callback"           component={AuthCallback} />
           <Route path="/"                        component={Home} />
@@ -154,6 +175,7 @@ function SyncedApp() {
           <Route path="/integrated/:personId/overview" component={IntegratedOverview} />
           <Route                                 component={NotFound} />
         </Switch>
+        </Suspense>
       </main>
       <BottomNav />
     </>

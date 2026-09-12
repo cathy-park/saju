@@ -14,6 +14,7 @@ import { charToElement, elementBgClass, elementTextClass } from "@/lib/element-c
 import type { FiveElKey } from "@/lib/element-color";
 import { cn } from "@/lib/utils";
 import { SystemSelector } from "@/components/SystemSelector";
+import { HomeTodayFlow } from "@/components/home/HomeTodayFlow";
 import gyeolDefault from "@assets/image_24_1774912053926.png";
 
 const NICK_KEY = "naheuleum_nickname";
@@ -125,11 +126,6 @@ function Dashboard({ record }: { record: PersonRecord }) {
   const [, navigate] = useLocation();
   const [showEditSheet, setShowEditSheet] = useState(false);
   const [showLuckSheet, setShowLuckSheet] = useState(false);
-
-  function goToTodayFortune() {
-    sessionStorage.setItem("openReportTab", "오늘운세");
-    navigate("/saju");
-  }
   const [nickname, setNickname] = useState(() => user ? loadNick() : "사용자");
   useEffect(() => { setNickname(user ? loadNick() : "사용자"); }, [user]);
 
@@ -150,7 +146,7 @@ function Dashboard({ record }: { record: PersonRecord }) {
     <div className="ds-app-shell bg-background">
       <div className="flex flex-col items-center bg-[url('/bg.png')] bg-cover bg-[position:center_bottom] px-4 pb-0 pt-6">
         <p className="ds-caption mb-2 text-center font-semibold tracking-wide text-[hsl(var(--app-label-accent))]">
-          ✨ 오늘의 운세 — {dateStr}
+          ✨ 오늘 나의 흐름 — {dateStr}
         </p>
 
         <div className="mb-4 flex items-center justify-center gap-1">
@@ -215,42 +211,12 @@ function Dashboard({ record }: { record: PersonRecord }) {
       {/* '오늘 해석' 라벨 제거 — 동일 구역 여백 유지 (간격 절반으로 축소) */}
       <div className="px-4 pt-0.5 mb-1 min-h-[13px]" aria-hidden />
 
-      {lifeFlow && (
-        <div className="px-4 pt-0">
-          <div className="ds-card relative overflow-hidden border-violet-200/80 p-5 shadow-none">
-            <div className="pointer-events-none absolute -right-5 -top-5 h-20 w-20 rounded-full bg-indigo-500/[0.08]" aria-hidden />
-            <div className="mb-4 flex items-center gap-2">
-              <span className="text-[13px] font-extrabold text-indigo-600">✦ 오늘의 전체 흐름</span>
-            </div>
-            <p className="ds-body mb-4 font-medium text-foreground leading-relaxed">
-              {lifeFlow.overall.fullText}
-            </p>
-            {lifeFlow.overall.activityFlow && (
-              <p className="mb-4 text-xs font-semibold text-indigo-600 leading-relaxed">
-                {lifeFlow.overall.activityFlow}
-              </p>
-            )}
-            <div className="grid grid-cols-2 gap-4">
-              {[
-                { label: "감정 흐름", text: lifeFlow.overall.emotional },
-                { label: "결정 타이밍", text: lifeFlow.overall.decisionTiming },
-              ].map(({ label, text }) => (
-                <div key={label} className="rounded-lg bg-violet-50/80 px-4 py-3.5">
-                  <p className="ds-caption mb-2 font-bold tracking-wide text-violet-600/90">{label}</p>
-                  <p className="text-xs leading-snug text-foreground/90">{text}</p>
-                </div>
-              ))}
-            </div>
-            <Button
-              type="button"
-              onClick={goToTodayFortune}
-              className="mt-4 w-full border-0 bg-gradient-to-r from-indigo-600 to-violet-600 text-primary-foreground shadow-none hover:from-indigo-600 hover:to-violet-600"
-            >
-              오늘 운세 보러가기 →
-            </Button>
-          </div>
-        </div>
-      )}
+      {/* 21단계 — 사주 전용 "오늘의 전체 흐름" 카드를 사주/자미두수/서양점성술/종합 4개 탭으로
+          확장한다(대표 지시). 각 탭은 이미 계산된 결과만 골라 2~4개 핵심 흐름으로 압축한다 —
+          새 운세 계산 로직은 만들지 않는다. */}
+      <div className="px-4 pt-0">
+        <HomeTodayFlow record={record} fortune={fortune} lifeFlow={lifeFlow} />
+      </div>
 
       {/* ── 오늘 일운 해석 (십성) ── */}
       {(() => {

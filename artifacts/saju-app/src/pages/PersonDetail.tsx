@@ -126,9 +126,9 @@ export default function PersonDetail() {
         </div>
 
         <div className="mt-4 border-t border-border pt-4">
-          <CopyButton 
-            buildText={() => buildPersonClipboardText(person, hourMode)} 
-            label="AI 해석 프롬프트 전체 복사" 
+          <CopyButton
+            buildText={() => buildPersonClipboardText(person, hourMode)}
+            label="사주 AI 해석 프롬프트 복사"
           />
         </div>
       </div>

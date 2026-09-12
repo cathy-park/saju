@@ -176,9 +176,11 @@ export default async function handler(req: VercelLikeRequest, res: VercelLikeRes
     return;
   }
 
-  // 앱 전체(사주·자미두수·향후 월운/궁합/서양점성술/3체계 종합) AI 해석 출력의 공통 원칙 —
+  // 앱 전체(사주·자미두수·서양점성술·3체계 종합) AI 해석 출력의 공통 원칙 —
   // 이 파일이 그 유일한 관문이라, 여기 한 곳만 지켜도 모든 리포트에 적용된다. 프롬프트를
-  // 바꿀 때는 PROSE_PROMPT_VERSION(prosePolish.ts)도 함께 올려서 캐시를 무효화한다.
+  // 바꿀 때는 src/lib/prosePromptVersion.ts(SHARED_PROSE_PROMPT_VERSION) 하나만 올리면
+  // 네 topic 계열(사주/자미두수/서양점성술/종합)의 캐시가 한꺼번에 무효화된다(21단계 —
+  // 이전에는 prosePolish.ts와 integrated/prompt.ts가 버전을 따로 관리해 드리프트 위험이 있었다).
   const factLines = facts.map((f) => `- (${f.polarity}${f.relationKind ? `, ${f.relationKind}` : ""}) ${f.meaning}${f.sourceSystems?.length ? ` [출처: ${f.sourceSystems.join(", ")}]` : ""}${f.provenanceLabels?.length ? ` [근거: ${f.provenanceLabels.join(" / ")}]` : ""}${f.timing ? ` [시기: ${f.timing}]` : ""}`).join("\n");
   const prompt = [
     "다음은 이미 확정된 사실(fact) 목록과, 그 사실들을 규칙 기반으로 이어붙인 초안 문장입니다.",
