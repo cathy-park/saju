@@ -155,10 +155,11 @@ export default async function handler(req: VercelLikeRequest, res: VercelLikeRes
   await supabase.from("ziwei_prose_requests_log").insert({ user_id: userId });
 
   // sourceHash는 서버가 직접 계산한다 — 클라이언트가 보낸 해시는 애초에 받지 않는다.
-  const normalized = facts
+  const normalizedFacts = facts
     .map((f) => `${f.domain}|${f.polarity}|${f.meaning}|${f.relationKind ?? ""}|${(f.sourceSystems ?? []).join(",")}|${(f.provenanceLabels ?? []).join(",")}|${f.timing ?? ""}`)
     .sort()
     .join("\n");
+  const normalized = `${normalizedFacts}\n---\n${deterministicText}`;
   const sourceHash = createHash("sha256").update(normalized).digest("hex");
 
   const { data: cached } = await supabase
@@ -213,8 +214,7 @@ export default async function handler(req: VercelLikeRequest, res: VercelLikeRes
       body: JSON.stringify({
         model: "gpt-5.6-terra",
         messages: [{ role: "user", content: prompt }],
-        temperature: 0.4,
-        max_tokens: 600,
+        max_completion_tokens: 600,
       }),
     });
     if (!aiRes.ok) { console.error("[prose-cache] openai-error", { status: aiRes.status, detail: (await aiRes.text()).slice(0, 500) }); throw new Error(`OpenAI error: ${aiRes.status}`); }

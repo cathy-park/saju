@@ -23,4 +23,20 @@ describe("OpenAI prose model routing", () => {
       expect(source).toContain('console.info("[prose-cache] openai-call"');
     }
   });
+
+  it("uses GPT-5.6 compatible completion limits", () => {
+    for (const path of ["api/polish-prose.ts", "api/integrated-holistic.ts"]) {
+      const source = readFileSync(path, "utf8");
+      expect(source).toContain("max_completion_tokens:");
+      expect(source).not.toContain("max_tokens:");
+      expect(source).not.toContain("temperature:");
+    }
+  });
+
+  it("includes the deterministic draft in the server-side source hash", () => {
+    for (const path of ["api/polish-prose.ts", "api/integrated-holistic.ts"]) {
+      const source = readFileSync(path, "utf8");
+      expect(source).toMatch(/normalized[\s\S]{0,1200}deterministicText/);
+    }
+  });
 });

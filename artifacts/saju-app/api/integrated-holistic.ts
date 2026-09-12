@@ -116,6 +116,7 @@ export default async function handler(req: VercelLikeRequest, res: VercelLikeRes
     missingSystems.slice().sort().join(","),
     facts.map((f) => `${f.theme}|${f.concept}|${f.relationKind}|${f.sourceSystems.slice().sort().join(",")}|${f.meaning}|${f.sources.map((s) => `${s.system}:${s.module}:${s.meaning}:${s.evidenceLabels.join(",")}`).sort().join(";")}`).sort().join("\n"),
     timing.map((t) => `${t.theme}|${t.meaning}`).sort().join("\n"),
+    deterministicText,
   ].join("\n---\n");
   const sourceHash = createHash("sha256").update(normalized).digest("hex");
 
@@ -175,8 +176,7 @@ export default async function handler(req: VercelLikeRequest, res: VercelLikeRes
       body: JSON.stringify({
         model: "gpt-5.6-sol",
         messages: [{ role: "user", content: prompt }],
-        temperature: 0.5,
-        max_tokens: 900,
+        max_completion_tokens: 900,
       }),
     });
     if (!aiRes.ok) { console.error("[prose-cache] openai-error", { status: aiRes.status, detail: (await aiRes.text()).slice(0, 500) }); throw new Error(`OpenAI error: ${aiRes.status}`); }
