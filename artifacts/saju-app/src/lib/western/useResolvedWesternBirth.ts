@@ -4,7 +4,7 @@
 // westernLocation에 저장하고 재사용한다 — 그 외(동명 후보 여러 개, 국가 내 시간대 여러 개,
 // 지오코딩 실패)에는 아무것도 추측하지 않고 기존처럼 [출생지 설정] 화면으로 안내한다(그
 // 화면에서 후보를 직접 고르거나 고급 설정으로 직접 입력할 수 있다).
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { getMyProfile, saveMyProfile, savePerson, type PersonRecord } from "@/lib/storage";
 import { useAuth } from "@/lib/authContext";
 import { upsertMyProfile, upsertPartnerProfile } from "@/lib/db";
@@ -72,7 +72,18 @@ export function useResolvedWesternBirth(person: PersonRecord | null): {
     return () => { cancelled = true; };
   }, [person, user]);
 
+  // birth는 반드시 참조 안정성을 지켜야 한다 — 호출부(리포트 페이지)가 이 값을 useEffect
+  // 의존성으로 쓰기 때문에, 매 렌더마다 새 객체를 만들면(location 값은 그대로인데도) effect가
+  // 계속 재실행되어 fetch → setState → 재렌더 → 새 객체 → effect 재실행이 무한 반복된다
+  // (실제로 production에서 이 버그로 /api/western-overview가 초당 수십 회 호출된 적 있음 —
+  // 21단계 회귀, useMemo로 고쳤다). location의 실제 값(문자열·숫자)이 바뀔 때만 새로 만든다.
+  const birth = useMemo(() => {
+    if (!person || !location) return null;
+    return westernBirthSource({ ...person, westernLocation: location });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [person?.id, location?.latitude, location?.longitude, location?.timezone, location?.placeLabel]);
+
   if (!person) return { birth: null, status: "unavailable" };
-  if (location) return { birth: westernBirthSource({ ...person, westernLocation: location }), status: "ready" };
+  if (birth) return { birth, status: "ready" };
   return { birth: null, status: resolving ? "resolving" : "unavailable" };
 }
