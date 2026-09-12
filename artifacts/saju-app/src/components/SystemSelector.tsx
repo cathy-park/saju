@@ -13,14 +13,14 @@ interface SystemItem {
  * 여기서 말하는 "종합"은 자미두수 내부의 "종합" 리포트(/ziwei/:id/overview)와는 다른,
  * 세 체계를 가로지르는 상위 종합이라 링크를 연결하지 않는다.
  * 나(MyProfile)/상대(PersonDetail) 화면 최상단에서 개인 분석 진입을 전담하는 탭 바. */
-export function SystemSelector({ personId, sajuHref, westernHref }: { personId: string; sajuHref: string; westernHref?: string }) {
+export function SystemSelector({ personId, sajuHref, westernHref, synthesisHref }: { personId: string; sajuHref: string; westernHref?: string; synthesisHref?: string }) {
   const [location] = useLocation();
 
   const items: SystemItem[] = [
     { key: "saju", label: "사주", status: "active", href: sajuHref },
     { key: "ziwei", label: "자미두수", status: "active", href: `/ziwei/${personId}` },
     { key: "western", label: "서양점성술", status: "active", href: westernHref ?? `/western/${personId}/overview` },
-    { key: "synthesis", label: "종합", status: "soon" },
+    { key: "synthesis", label: "종합", status: "active", href: synthesisHref ?? `/integrated/${personId}/overview` },
   ];
 
   return (
@@ -28,6 +28,7 @@ export function SystemSelector({ personId, sajuHref, westernHref }: { personId: 
       {items.map((item) => {
         const isActive = item.key === "western"
           ? location.startsWith("/western/")
+          : item.key === "synthesis" ? location.startsWith("/integrated/")
           : !!item.href && (location === item.href || location.startsWith(`${item.href}/`));
         const tab = (
           <div

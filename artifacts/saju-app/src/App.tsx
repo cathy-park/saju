@@ -26,6 +26,8 @@ import WesternSynastry from "@/pages/WesternSynastry";
 import WesternOverview from "@/pages/WesternOverview";
 import WesternRelationshipOverview from "@/pages/WesternRelationshipOverview";
 import WesternLocationSettings from "@/pages/WesternLocationSettings";
+import IntegratedOverview from "@/pages/IntegratedOverview";
+import IntegratedRelationshipOverview from "@/pages/IntegratedRelationshipOverview";
 import { WesternPersonalRedirect, WesternRelationshipEntry, WesternSynastryRedirect } from "@/pages/WesternRedirects";
 import AuthCallback from "@/pages/AuthCallback";
 import NotFound from "@/pages/not-found";
@@ -148,6 +150,8 @@ function SyncedApp() {
           <Route path="/western/:personId/location" component={WesternLocationSettings} />
           <Route path="/western/:personId/relationship" component={WesternRelationshipEntry} />
           <Route path="/western/:personId" component={WesternPersonalRedirect} />
+          <Route path="/integrated/:personId/relationship/:otherPersonId/overview" component={IntegratedRelationshipOverview} />
+          <Route path="/integrated/:personId/overview" component={IntegratedOverview} />
           <Route                                 component={NotFound} />
         </Switch>
       </main>
