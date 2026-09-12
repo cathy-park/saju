@@ -6,10 +6,9 @@ import { WesternMissingContext } from "@/components/western/WesternMissingContex
 import { WesternRelationshipSummary } from "@/components/western/WesternRelationshipSummary";
 import { createPolishRequestCache } from "@/lib/prosePolish";
 import { getMyProfile, getPeople, type PersonRecord } from "@/lib/storage";
-import type { WesternBirthSource } from "@/lib/western/adapter";
 import type { WesternIssue } from "@/lib/western/types";
 import type { WesternRelationshipReport } from "@/lib/western/interpretation/romance";
-import { westernBirthSource } from "@/lib/western/uiModel";
+import { useResolvedWesternBirth } from "@/lib/western/useResolvedWesternBirth";
 
 const requestPolishedTexts = createPolishRequestCache("westernRelationship");
 function findPerson(id: string): PersonRecord | null {
@@ -20,19 +19,22 @@ function findPerson(id: string): PersonRecord | null {
 export default function WesternRelationship() {
   const { personId } = useParams<{ personId: string }>();
   const person = useMemo(() => personId ? findPerson(personId) : null, [personId]);
+  const { birth, status: birthStatus } = useResolvedWesternBirth(person);
   const [state, setState] = useState<{ report?: WesternRelationshipReport; errors?: WesternIssue[]; loading: boolean }>({ loading: true });
   const [polishedTexts, setPolishedTexts] = useState<Record<string, string>>({});
   useEffect(() => {
     if (!person) return;
+    if (birthStatus === "resolving") { setState({ loading: true }); return; }
+    if (!birth) { setState({ errors: [{ code: "MISSING_LOCATION_CONTEXT", field: "location", message: "Explicit Western location is required" }], loading: false }); return; }
     let cancelled = false;
     setState({ loading: true });
-    fetch("/api/western-romance", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(westernBirthSource(person) satisfies WesternBirthSource) })
+    fetch("/api/western-romance", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(birth) })
       .then(async (response) => {
         const data = await response.json() as { report?: WesternRelationshipReport; errors?: WesternIssue[] };
         if (!cancelled) setState(response.ok && data.report ? { report: data.report, loading: false } : { errors: data.errors, loading: false });
       }).catch(() => { if (!cancelled) setState({ errors: [{ code: "CALCULATION_FAILED", message: "Western relationship service is unavailable" }], loading: false }); });
     return () => { cancelled = true; };
-  }, [person]);
+  }, [person, birth, birthStatus]);
   useEffect(() => {
     if (!state.report) return;
     let cancelled = false;

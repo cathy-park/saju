@@ -8,8 +8,7 @@ import { createPolishRequestCache } from "@/lib/prosePolish";
 import { getMyProfile, getPeople, type PersonRecord } from "@/lib/storage";
 import type { WesternIssue } from "@/lib/western/types";
 import type { WesternPersonalityReport } from "@/lib/western/interpretation";
-import type { WesternBirthSource } from "@/lib/western/adapter";
-import { westernBirthSource } from "@/lib/western/uiModel";
+import { useResolvedWesternBirth } from "@/lib/western/useResolvedWesternBirth";
 
 const requestPolishedTexts = createPolishRequestCache("westernPersonality");
 
@@ -22,22 +21,25 @@ function findPerson(personId: string): PersonRecord | null {
 export default function WesternPersonality() {
   const { personId } = useParams<{ personId: string }>();
   const person = useMemo(() => personId ? findPerson(personId) : null, [personId]);
+  const { birth, status: birthStatus } = useResolvedWesternBirth(person);
   const [result, setResult] = useState<{ report?: WesternPersonalityReport; errors?: WesternIssue[]; loading: boolean }>({ loading: true });
   const [polishedTexts, setPolishedTexts] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (!person) return;
+    if (birthStatus === "resolving") { setResult({ loading: true }); return; }
+    if (!birth) { setResult({ errors: [{ code: "MISSING_LOCATION_CONTEXT", field: "location", message: "Explicit Western location is required" }], loading: false }); return; }
     let cancelled = false;
     setResult({ loading: true });
     fetch("/api/western-personality", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(westernBirthSource(person) satisfies WesternBirthSource),
+      body: JSON.stringify(birth),
     }).then(async (response) => {
       const data = await response.json() as { report?: WesternPersonalityReport; errors?: WesternIssue[] };
       if (!cancelled) setResult(response.ok && data.report ? { report: data.report, loading: false } : { errors: data.errors, loading: false });
     }).catch(() => { if (!cancelled) setResult({ errors: [{ code: "CALCULATION_FAILED", message: "Western calculation service is unavailable" }], loading: false }); });
     return () => { cancelled = true; };
-  }, [person]);
+  }, [person, birth, birthStatus]);
 
   useEffect(() => {
     if (!result.report) return;

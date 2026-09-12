@@ -79,6 +79,7 @@
   "dependencies": {
     "@fullstackfamily/manseryeok": "^1.0.8",
     "@supabase/supabase-js": "^2.100.1",
-    "astronomy-engine": "2.1.19"
+    "astronomy-engine": "2.1.19",
+    "countries-and-timezones": "^3.10.0"
   }
 }

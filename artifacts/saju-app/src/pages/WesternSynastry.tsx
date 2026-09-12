@@ -3,13 +3,13 @@ import { Link, useParams } from "wouter";
 import { WesternSynastrySummary } from "@/components/western/WesternSynastrySummary";
 import { createPolishRequestCache } from "@/lib/prosePolish";
 import { getMyProfile, getPeople, type PersonRecord } from "@/lib/storage";
-import type { WesternBirthSource } from "@/lib/western/adapter";
 import type { WesternSynastryReport } from "@/lib/western/synastry";
 import type { WesternIssue } from "@/lib/western/types";
 import { WesternRelationshipNav } from "@/components/western/WesternNavigation";
 import { WesternReportShell } from "@/components/western/WesternReportShell";
 import { WesternMissingContext } from "@/components/western/WesternMissingContext";
-import { westernBirthSource, westernRoutes } from "@/lib/western/uiModel";
+import { westernRoutes } from "@/lib/western/uiModel";
+import { useResolvedWesternBirth } from "@/lib/western/useResolvedWesternBirth";
 
 const requestPolishedTexts = createPolishRequestCache("westernSynastry");
 function findPerson(id: string): PersonRecord | null { const mine = getMyProfile(); return mine?.id === id ? mine : getPeople().find((person) => person.id === id) ?? null; }
@@ -17,16 +17,20 @@ function findPerson(id: string): PersonRecord | null { const mine = getMyProfile
 export default function WesternSynastry() {
   const { personId, otherPersonId } = useParams<{ personId: string; otherPersonId: string }>();
   const people = useMemo(() => ({ first: personId ? findPerson(personId) : null, second: otherPersonId ? findPerson(otherPersonId) : null }), [personId, otherPersonId]);
+  const first = useResolvedWesternBirth(people.first);
+  const second = useResolvedWesternBirth(people.second);
   const [state, setState] = useState<{ report?: WesternSynastryReport; errors?: WesternIssue[]; loading: boolean }>({ loading: true });
   const [polishedTexts, setPolishedTexts] = useState<Record<string, string>>({});
   useEffect(() => {
     if (!people.first || !people.second) return;
+    if (first.status === "resolving" || second.status === "resolving") { setState({ loading: true }); return; }
+    if (!first.birth || !second.birth) { setState({ errors: [{ code: "MISSING_LOCATION_CONTEXT", field: "location", message: "Explicit Western location is required" }], loading: false }); return; }
     let cancelled = false; setState({ loading: true });
-    fetch("/api/western-synastry", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ first: { personId: people.first.id, birth: westernBirthSource(people.first) satisfies WesternBirthSource }, second: { personId: people.second.id, birth: westernBirthSource(people.second) satisfies WesternBirthSource } }) })
+    fetch("/api/western-synastry", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ first: { personId: people.first.id, birth: first.birth }, second: { personId: people.second.id, birth: second.birth } }) })
       .then(async (response) => { const data = await response.json() as { report?: WesternSynastryReport; errors?: WesternIssue[] }; if (!cancelled) setState(response.ok && data.report ? { report: data.report, loading: false } : { errors: data.errors, loading: false }); })
       .catch(() => { if (!cancelled) setState({ errors: [{ code: "CALCULATION_FAILED", message: "Western synastry service is unavailable" }], loading: false }); });
     return () => { cancelled = true; };
-  }, [people]);
+  }, [people, first.birth, first.status, second.birth, second.status]);
   useEffect(() => { if (!state.report) return; let cancelled = false; const report = state.report; requestPolishedTexts(report.sections, `${report.schemaVersion}:${report.pairId}`).then((texts) => { if (!cancelled) setPolishedTexts(texts); }); return () => { cancelled = true; }; }, [state.report]);
   if (!people.first || !people.second) return <div className="ds-app-shell ds-page-pad py-8 text-center"><p className="text-sm text-muted-foreground">비교할 사람을 찾을 수 없습니다.</p><Link href="/people" className="mt-3 inline-block text-sm text-primary underline">사람 목록으로</Link></div>;
   const missingNames = [people.first, people.second].filter((person) => !person.westernLocation).map((person) => person.birthInput.name);

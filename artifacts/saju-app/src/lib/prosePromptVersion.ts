@@ -11,3 +11,9 @@
 //
 // v4: 사주·자미두수·서양점성술·종합 4개 topic 계열의 promptVersion을 이 상수 하나로 통합.
 export const SHARED_PROSE_PROMPT_VERSION = "v4";
+
+// api/integrated-holistic.ts 전용 프롬프트 버전 — 섹션 하나를 다듬는 위 프롬프트와는 완전히
+// 다른 프롬프트(리포트 전체를 하나의 상담문으로 통합)라 별도 상수를 쓴다. 다만 "버전이
+// 여러 곳에 흩어져 드리프트되는 문제"를 반복하지 않기 위해 SHARED_PROSE_PROMPT_VERSION과
+// 같은 파일에 둔다 — api/integrated-holistic.ts의 프롬프트를 바꿀 때는 이 값만 올리면 된다.
+export const INTEGRATED_HOLISTIC_PROMPT_VERSION = "holistic-v1";

@@ -1,0 +1,17 @@
+-- production profiles 테이블에 email 컬럼이 실제로 존재하지 않아(PostgreSQL 42703
+-- undefined_column, PostgREST 응답은 PGRST204) 로그인/탭 재포커스마다 upsertUserProfile()의
+-- POST /rest/v1/profiles?on_conflict=id 가 400으로 실패하던 문제를 고친다.
+--
+-- 진단(2026-09-12, production 실제 API 응답으로 직접 확인 — 추측 아님):
+--   1) 정상 upsert 요청 응답: {"code":"PGRST204","message":"Could not find the 'email'
+--      column of 'profiles' in the schema cache"}
+--   2) select=email 직접 조회 응답: {"code":"42703","message":"column profiles.email
+--      does not exist"} — PostgreSQL 자체가 반환하는 코드이므로 PostgREST 캐시 문제가
+--      아니라 컬럼이 실제로 없는 것이 확정적 원인이다.
+--   3) supabase_schema.sql(리포지토리 원본)에는 처음부터 email text 컬럼이 선언돼
+--      있었다 — 즉 코드는 항상 올바른 스키마를 기준으로 작성돼 있었고, production에
+--      supabase_schema.sql을 적용할 당시(또는 그 이후 스키마를 수정하면서) 이 컬럼만
+--      실제로 반영되지 않은 것이다.
+--
+-- Supabase 대시보드 → SQL Editor에서 이 파일 내용을 그대로 실행할 것.
+alter table public.profiles add column if not exists email text;

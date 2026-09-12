@@ -6,16 +6,17 @@ import { WesternMissingContext } from "@/components/western/WesternMissingContex
 import { WesternTransitSummary } from "@/components/western/WesternTransitSummary";
 import { createPolishRequestCache } from "@/lib/prosePolish";
 import { getMyProfile, getPeople, type PersonRecord } from "@/lib/storage";
-import type { WesternBirthSource } from "@/lib/western/adapter";
 import type { WesternIssue } from "@/lib/western/types";
 import type { WesternTransitReport } from "@/lib/western/transit";
-import { monthFromSearch, monthInTimezone, monthRange, shiftMonth, westernBirthSource } from "@/lib/western/uiModel";
+import { monthFromSearch, monthInTimezone, monthRange, shiftMonth } from "@/lib/western/uiModel";
+import { useResolvedWesternBirth } from "@/lib/western/useResolvedWesternBirth";
 
 const requestPolishedTexts = createPolishRequestCache("westernTransit");
 const findPerson = (id: string): PersonRecord | null => { const mine = getMyProfile(); return mine?.id === id ? mine : getPeople().find((person) => person.id === id) ?? null; };
 export default function WesternTransit() {
   const { personId } = useParams<{ personId: string }>();
   const person = useMemo(() => personId ? findPerson(personId) : null, [personId]);
+  const { birth, status: birthStatus } = useResolvedWesternBirth(person);
   const [state, setState] = useState<{ report?: WesternTransitReport; errors?: WesternIssue[]; loading: boolean }>({ loading: true });
   const [polishedTexts, setPolishedTexts] = useState<Record<string, string>>({});
   const [, navigate] = useLocation();
@@ -25,13 +26,15 @@ export default function WesternTransit() {
   const chooseMonth = (value: string) => { setSelectedMonth(value); navigate(`/western/${personId}/transit?month=${value}`, { replace: true }); };
   useEffect(() => {
     if (!person) return;
-    const birth = westernBirthSource(person) satisfies WesternBirthSource, month = monthRange(selectedMonth);
+    if (birthStatus === "resolving") { setState({ loading: true }); return; }
+    if (!birth) { setState({ errors: [{ code: "MISSING_LOCATION_CONTEXT", field: "location", message: "Explicit Western location is required" }], loading: false }); return; }
+    const month = monthRange(selectedMonth);
     let cancelled = false; setState({ loading: true });
     fetch("/api/western-transit", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ birth, query: { startLocalDate: month.start, endLocalDate: month.end, timezone: birth.timezone } }) })
       .then(async (response) => { const data = await response.json() as { report?: WesternTransitReport; errors?: WesternIssue[] }; if (!cancelled) setState(response.ok && data.report ? { report: data.report, loading: false } : { errors: data.errors, loading: false }); })
       .catch(() => { if (!cancelled) setState({ errors: [{ code: "CALCULATION_FAILED", message: "Western transit service is unavailable" }], loading: false }); });
     return () => { cancelled = true; };
-  }, [person, selectedMonth]);
+  }, [person, birth, birthStatus, selectedMonth]);
   useEffect(() => { if (!state.report) return; let cancelled = false; const report = state.report; requestPolishedTexts(report.sections, `${report.timeline.schemaVersion}:${report.timeline.query.startUtcInstant}:${report.timeline.query.endUtcInstant}`).then((texts) => { if (!cancelled) setPolishedTexts(texts); }); return () => { cancelled = true; }; }, [state.report]);
   if (!person) return <div className="ds-app-shell ds-page-pad py-8 text-center"><p className="text-sm text-muted-foreground">사람을 찾을 수 없습니다.</p><Link href="/people" className="mt-3 inline-block text-sm text-primary underline">목록으로</Link></div>;
   const sajuHref = person.id === getMyProfile()?.id ? "/saju" : `/people/${person.id}`;
