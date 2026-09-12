@@ -1,6 +1,7 @@
 import { analyzeEvidenceIndependence } from "./provenance.js";
 import { personalitySources, romanceSources, synastrySources, transitSources } from "./sources.js";
 import type { PersonalSynthesisInput, RelationshipSynthesisInput, SynthesisRelationKind, SynthesisSourceRef, WesternPersonalSynthesisReport, WesternRelationshipSynthesisReport, WesternSynthesisFact, WesternSynthesisSection } from "./types.js";
+import type { SynastryEvidenceView, SynastrySectionKey, WesternSynastryReport } from "../synastry/types.js";
 
 const take = (refs: SynthesisSourceRef[], pattern: RegExp) => refs.find((ref) => pattern.test(ref.factId));
 const compact = <T>(items: (T | null | undefined)[]): T[] => items.filter((item): item is T => !!item);
@@ -17,6 +18,31 @@ function section(key: string, title: string, facts: WesternSynthesisFact[], refe
 function timingFor(refs: SynthesisSourceRef[], facts: SynthesisSourceRef[]) {
   const ids = new Set(refs.map((ref) => `${ref.personId}:${ref.factId}`));
   return facts.filter((ref) => ref.linkedNatalFactIds?.some((id) => ids.has(id)));
+}
+
+/** fact 안의 evidence 중 가장 타이트한 orb(가장 작은 값)를 대표값으로 쓴다. house-overlay처럼
+ * orb 개념이 없는 evidence만 있는 fact는 aspect 기반 evidence가 있는 fact보다 뒤로 밀린다. */
+function minOrb(evidence: SynastryEvidenceView[]): number {
+  return Math.min(...evidence.map((item) => "orb" in item.raw ? item.raw.orb : Infinity), Infinity);
+}
+
+/** 4개 preferred pattern(mars-venus 등)에 걸리는 fact가 없어도, 해당 관계 domain(raw synastry
+ * section)에 실제 evidence가 있는 fact가 하나라도 있으면 그것을 대표 evidence로 쓴다 — natal-only
+ * summary로 강등되는 것을 막는다. 선택 기준은 deterministic: orb가 타이트한 순, 동률이면 factId
+ * 오름차순(안정적인 순서, 매 요청 동일). 이미 다른 domain에서 쓰인 fact는 제외한다(used). */
+function synastryDomainFallback(synastry: WesternSynastryReport, syn: SynthesisSourceRef[], sectionKeys: SynastrySectionKey[], used: Set<string>): SynthesisSourceRef | undefined {
+  const candidates = synastry.sections
+    .filter((section) => sectionKeys.includes(section.key))
+    .flatMap((section) => section.facts)
+    .filter((fact) => fact.evidence.length > 0)
+    .map((fact) => ({ factId: fact.id, orb: minOrb(fact.evidence) }))
+    .sort((a, b) => a.orb - b.orb || a.factId.localeCompare(b.factId));
+  for (const candidate of candidates) {
+    if (used.has(candidate.factId)) continue;
+    const ref = syn.find((item) => item.factId === candidate.factId);
+    if (ref) return ref;
+  }
+  return undefined;
 }
 
 export function buildWesternPersonalSynthesis(input: PersonalSynthesisInput): WesternPersonalSynthesisReport {
@@ -51,10 +77,14 @@ export function buildWesternRelationshipSynthesis(input: RelationshipSynthesisIn
     if (fact) for (const ref of refs) ref.module === "synastry" ? used.add(ref.factId) : used.add(`${ref.personId}:${ref.factId}`);
     return compact([fact]);
   };
-  const attraction = build("attraction", "attractionIntimacy", "두 차트의 호감과 욕구가 실제로 맞물리고, 각자가 관계에서 표현하는 애정 방식이 그 끌림의 속도와 경계를 구체화합니다", "complement", [synRef(/mars.*venus|venus.*mars/), natalRef(subjects[0].personId, /^relationship:affection-drive$/)]);
-  const emotional = build("emotional", "emotionalCommunication", "두 사람 사이의 감정과 대화 통로는 각자의 정서적 안전 욕구를 말로 확인할 때 더 안정적으로 작동합니다", "complement", [synRef(/mercury.*moon|moon.*mercury/), natalRef(subjects[0].personId, /^relationship:emotional-safety$/), natalRef(subjects[1].personId, /^relationship:emotional-safety$/)]);
-  const conflict = build("conflict", "conflictAdjustment", "두 사람의 행동 속도와 주도권이 부딪힐 수 있으며, 각자의 기존 갈등 대응 방식이 맞물리기 전에 멈출 기준을 합의할 필요가 있습니다", "tension", [synRef(/mars.*mars/), anyNatalRef(/^relationship:power-pacing$/)]);
-  const longTerm = build("long-term", "longTerm", "책임과 행동을 연결하는 상호작용에 각자의 장기 관계 기준이 더해져, 역할과 생활 기반을 지속 가능한 형태로 조율하는 일이 핵심입니다", "complement", [synRef(/saturn.*mars|mars.*saturn/), natalRef(subjects[0].personId, /^relationship:seventh-ruler$/), natalRef(subjects[1].personId, /^relationship:seventh-ruler$/)]);
+  // 각 관계 fact는 먼저 4개 preferred pattern(mars-venus 등, 대표성이 높은 특정 조합)으로 대표
+  // evidence를 찾는다. 그 조합이 이 커플에 없어도, 같은 주제의 raw synastry section(attraction/
+  // emotionalSecurity/communication/intimacyDesire/conflictPatterns/longTerm)에 evidence가 있는
+  // fact가 있으면 그걸 대표로 쓴다(대표 지시 — synthesis selection만 변경, aspect 계산 그대로).
+  const attraction = build("attraction", "attractionIntimacy", "두 차트의 호감과 욕구가 실제로 맞물리고, 각자가 관계에서 표현하는 애정 방식이 그 끌림의 속도와 경계를 구체화합니다", "complement", [synRef(/mars.*venus|venus.*mars/) ?? synastryDomainFallback(input.synastry, syn, ["attraction", "intimacyDesire"], used), natalRef(subjects[0].personId, /^relationship:affection-drive$/)]);
+  const emotional = build("emotional", "emotionalCommunication", "두 사람 사이의 감정과 대화 통로는 각자의 정서적 안전 욕구를 말로 확인할 때 더 안정적으로 작동합니다", "complement", [synRef(/mercury.*moon|moon.*mercury/) ?? synastryDomainFallback(input.synastry, syn, ["emotionalSecurity", "communication"], used), natalRef(subjects[0].personId, /^relationship:emotional-safety$/), natalRef(subjects[1].personId, /^relationship:emotional-safety$/)]);
+  const conflict = build("conflict", "conflictAdjustment", "두 사람의 행동 속도와 주도권이 부딪힐 수 있으며, 각자의 기존 갈등 대응 방식이 맞물리기 전에 멈출 기준을 합의할 필요가 있습니다", "tension", [synRef(/mars.*mars/) ?? synastryDomainFallback(input.synastry, syn, ["conflictPatterns"], used), anyNatalRef(/^relationship:power-pacing$/)]);
+  const longTerm = build("long-term", "longTerm", "책임과 행동을 연결하는 상호작용에 각자의 장기 관계 기준이 더해져, 역할과 생활 기반을 지속 가능한 형태로 조율하는 일이 핵심입니다", "complement", [synRef(/saturn.*mars|mars.*saturn/) ?? synastryDomainFallback(input.synastry, syn, ["longTerm"], used), natalRef(subjects[0].personId, /^relationship:seventh-ruler$/), natalRef(subjects[1].personId, /^relationship:seventh-ruler$/)]);
   const relationshipFacts = [...attraction, ...emotional, ...conflict, ...longTerm];
   const transit = subjects.flatMap((subject) => transitSources(subject.personId, subject.transit));
   const currentFacts = transit.flatMap((transitRef, index) => {
