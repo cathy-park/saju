@@ -16,5 +16,5 @@ export const SHARED_PROSE_PROMPT_VERSION = "v5";
 // 다른 프롬프트(리포트 전체를 하나의 상담문으로 통합)라 별도 상수를 쓴다. 다만 "버전이
 // 여러 곳에 흩어져 드리프트되는 문제"를 반복하지 않기 위해 SHARED_PROSE_PROMPT_VERSION과
 // 같은 파일에 둔다 — api/integrated-holistic.ts의 프롬프트를 바꿀 때는 이 값만 올리면 된다.
-// holistic-v2: 종합 모델을 gpt-5.6-sol로 변경해 이전 모델 캐시와 분리.
-export const INTEGRATED_HOLISTIC_PROMPT_VERSION = "holistic-v2";
+// holistic-v3: client single-flight production 회귀 검증을 위해 이전 holistic cache와 분리.
+export const INTEGRATED_HOLISTIC_PROMPT_VERSION = "holistic-v3";

@@ -2,6 +2,24 @@ import type { IntegratedReport } from "./types";
 import { supabase } from "../supabase";
 import { SHARED_PROSE_PROMPT_VERSION, INTEGRATED_HOLISTIC_PROMPT_VERSION } from "../prosePromptVersion";
 
+const holisticInFlight = new Map<string, Promise<string>>();
+const holisticCompleted = new Map<string, string>();
+
+/** Module-scope single-flight: React unmount/remount 사이에도 동일 요청 Promise를 재사용한다. */
+export function runHolisticSingleFlight(key: string, request: () => Promise<string>): Promise<string> {
+  const completed = holisticCompleted.get(key);
+  if (completed !== undefined) return Promise.resolve(completed);
+  const active = holisticInFlight.get(key);
+  if (active) return active;
+  const promise = request().then((result) => {
+    holisticCompleted.set(key, result);
+    if (holisticCompleted.size > 50) holisticCompleted.delete(holisticCompleted.keys().next().value!);
+    return result;
+  }).finally(() => holisticInFlight.delete(key));
+  holisticInFlight.set(key, promise);
+  return promise;
+}
+
 /** api/polish-prose.ts의 공유 프롬프트를 바꿀 때마다 올려야 하는 값은 이제
  * src/lib/prosePromptVersion.ts(SHARED_PROSE_PROMPT_VERSION) 하나뿐이다 — 사주·자미두수·
  * 서양점성술과 같은 상수를 그대로 재노출한다(21단계, 캐시 버전 드리프트 방지). */
@@ -43,23 +61,30 @@ export async function polishIntegratedHolistic(report: IntegratedReport): Promis
   try {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.access_token) return deterministicText;
-    const response = await fetch("/api/integrated-holistic", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
-      body: JSON.stringify({
-        scope: report.scope,
-        availableSystems: report.availableSystems,
-        missingSystems: report.missingSystems,
-        facts,
-        timingConvergences: report.timingConvergences.map((t) => ({ theme: t.theme, meaning: t.meaning })),
-        deterministicText,
-        sectionKey: report.subjectId,
-        promptVersion: INTEGRATED_HOLISTIC_PROMPT_VERSION,
-      }),
+    const topic = `integrated-holistic-${report.scope}`;
+    const sectionKey = report.subjectId;
+    const timing = report.timingConvergences.map((t) => ({ theme: t.theme, meaning: t.meaning }));
+    // 서버 sourceHash와 같은 정규화 입력에 user/topic/version/section을 더해 화면 간 오염을 막는다.
+    const sourceIdentity = [
+      report.availableSystems.slice().sort().join(","),
+      report.missingSystems.slice().sort().join(","),
+      facts.map((f) => `${f.theme}|${f.concept}|${f.relationKind}|${f.sourceSystems.slice().sort().join(",")}|${f.meaning}|${f.sources.map((s) => `${s.system}:${s.module}:${s.meaning}:${s.evidenceLabels.join(",")}`).sort().join(";")}`).sort().join("\n"),
+      timing.map((t) => `${t.theme}|${t.meaning}`).sort().join("\n"),
+      deterministicText,
+    ].join("\n---\n");
+    const requestKey = [session.user.id, sourceIdentity, INTEGRATED_HOLISTIC_PROMPT_VERSION, topic, sectionKey].join("\n===\n");
+    return await runHolisticSingleFlight(requestKey, async () => {
+      const response = await fetch("/api/integrated-holistic", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ scope: report.scope, availableSystems: report.availableSystems, missingSystems: report.missingSystems, facts, timingConvergences: timing, deterministicText, sectionKey, promptVersion: INTEGRATED_HOLISTIC_PROMPT_VERSION }),
+      });
+      if (!response.ok) throw new Error(`AI holistic synthesis failed: ${response.status}`);
+      const responseData = await response.json() as { prose?: string };
+      const prose = responseData.prose?.trim();
+      if (!prose) throw new Error("AI holistic synthesis returned empty prose");
+      return prose;
     });
-    if (!response.ok) return deterministicText;
-    const data = await response.json() as { prose?: string };
-    return data.prose?.trim() || deterministicText;
   } catch {
     return deterministicText;
   }

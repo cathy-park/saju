@@ -1,6 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { buildIntegratedPersonalReport, buildIntegratedRelationshipReport } from "../report";
-import { buildHolisticDeterministicText, buildIntegratedCopyPrompt } from "../prompt";
+import { buildHolisticDeterministicText, buildIntegratedCopyPrompt, runHolisticSingleFlight } from "../prompt";
 import type { IntegratedSourceFact } from "../types";
 
 const source = (value: Partial<IntegratedSourceFact> & Pick<IntegratedSourceFact, "system" | "module" | "factId" | "meaning">): IntegratedSourceFact => ({
@@ -44,5 +44,27 @@ describe("buildHolisticDeterministicText — 21단계 종합 AI holistic 레이�
   it("fact가 전혀 없어 섹션이 비어 있으면 빈 문자열을 반환한다(새 문장을 지어내지 않음)", () => {
     const report = buildIntegratedPersonalReport({ personId: "p", sources: [] });
     expect(buildHolisticDeterministicText(report)).toBe("");
+  });
+});
+
+describe("integrated holistic single-flight", () => {
+  it("동일 key의 동시 요청과 완료 후 재요청은 하나의 실행 결과를 재사용한다", async () => {
+    const request = vi.fn(async () => "AI result");
+    const [first, second] = await Promise.all([
+      runHolisticSingleFlight("same-key", request),
+      runHolisticSingleFlight("same-key", request),
+    ]);
+    const third = await runHolisticSingleFlight("same-key", request);
+    expect([first, second, third]).toEqual(["AI result", "AI result", "AI result"]);
+    expect(request).toHaveBeenCalledTimes(1);
+  });
+
+  it("source key가 다르면 각각 별도 요청을 실행한다", async () => {
+    const request = vi.fn(async () => "AI result");
+    await Promise.all([
+      runHolisticSingleFlight("person-a", request),
+      runHolisticSingleFlight("person-b", request),
+    ]);
+    expect(request).toHaveBeenCalledTimes(2);
   });
 });
