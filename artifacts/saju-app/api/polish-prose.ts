@@ -209,7 +209,7 @@ export default async function handler(req: VercelLikeRequest, res: VercelLikeRes
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${OPENAI_API_KEY}` },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
+        model: "gpt-5.6-terra",
         messages: [{ role: "user", content: prompt }],
         temperature: 0.4,
         max_tokens: 600,
