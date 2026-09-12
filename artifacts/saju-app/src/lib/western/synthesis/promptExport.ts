@@ -4,6 +4,7 @@
 // 만들지 않는다.
 import type { WesternNatalChart } from "../types";
 import type { WesternSynastryReport } from "../synastry/types";
+import type { WesternTransitReport } from "../transit/types";
 import { calculateTransitTimeline } from "../transit/timeline";
 import { calculateSecondaryProgressions } from "../progressions";
 import { calculateSolarReturn, type SolarReturnLocation } from "../solarReturn";
@@ -24,12 +25,17 @@ function natalDataLines(chart: WesternNatalChart, placeLabel?: string): string[]
 /** 화면에서 "현재 월 흐름"을 따로 선택하지 않았더라도, 복사 버튼을 누르는 지금 이 순간
  * 기준으로 transit을 자동 계산한다(대표 지시) — 기존 transit 엔진(calculateTransitTimeline)을
  * 그대로 재사용하고, 조회 범위는 사람의 시간대 기준 "이번 달"(다른 화면들과 동일한 관례)로
- * 잡되 기준 시각(referenceLocalDateTime)은 실제 지금으로 준다. */
-function currentTransitDataLines(chart: WesternNatalChart): string[] {
+ * 잡되 기준 시각(referenceLocalDateTime)은 실제 지금으로 준다.
+ *
+ * override — WesternTransit.tsx처럼 화면에서 이미 특정 월을 선택해 WesternTransitReport를
+ * 계산해 둔 경우, 그 결과를 그대로 써서 화면에 보이는 시기와 복사되는 시기를 일치시킨다(대표
+ * 지시). override가 없는 개인/종합/관계 화면은 지금까지처럼 항상 현재 시점을 쓴다. */
+function currentTransitDataLines(chart: WesternNatalChart, override?: WesternTransitReport): string[] {
   const timezone = chart.normalizedBirth.timezone;
-  const referenceLocalDateTime = nowLocalDateTime(timezone);
   const range = monthRange(monthInTimezone(timezone));
-  const timeline = calculateTransitTimeline(chart, { startLocalDate: range.start, endLocalDate: range.end, timezone, referenceLocalDateTime });
+  const timeline = override
+    ? override.timeline
+    : calculateTransitTimeline(chart, { startLocalDate: range.start, endLocalDate: range.end, timezone, referenceLocalDateTime: nowLocalDateTime(timezone) });
   const lines = [`기준시각: ${timeline.query.referenceUtcInstant} (UTC)`, `조회 범위: ${timeline.query.startLocalDate} ~ ${timeline.query.endLocalDate} (${timezone})`, ""];
   if (timeline.events.length === 0) { lines.push("현재 활성화된 natal↔transit major aspect가 없습니다."); return lines; }
   for (const event of timeline.events) lines.push(`- ${title(event.transitPointId)} transit ${event.type} natal ${title(event.natalTargetId)} · orb ${event.orb.toFixed(3)}° / allowed ${event.allowedOrb.toFixed(3)}° · ${event.applying ? "applying" : "separating"} · window ${event.windowStart} ~ ${event.windowEnd} · exact ${event.exactHits.join(", ") || "없음"}`);
@@ -68,10 +74,10 @@ function solarReturnDataLines(chart: WesternNatalChart, year: number, location?:
   return lines;
 }
 
-export function buildWesternCopyPrompt(chart: WesternNatalChart, options?: { placeLabel?: string; omitIntro?: boolean; solarReturnLocation?: SolarReturnLocation }): string {
+export function buildWesternCopyPrompt(chart: WesternNatalChart, options?: { placeLabel?: string; omitIntro?: boolean; solarReturnLocation?: SolarReturnLocation; transit?: WesternTransitReport }): string {
   const body = [
     "## 1. Natal Chart", ...natalDataLines(chart, options?.placeLabel), "",
-    "## 2. Current Transits", ...currentTransitDataLines(chart), "",
+    "## 2. Current Transits", ...currentTransitDataLines(chart, options?.transit), "",
     "## 3. Secondary Progressions", ...progressionsDataLines(chart), "",
     "## 4. Solar Return", ...solarReturnDataLines(chart, new Date().getFullYear(), options?.solarReturnLocation),
   ];

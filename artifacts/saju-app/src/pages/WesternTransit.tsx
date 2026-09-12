@@ -49,7 +49,14 @@ export default function WesternTransit() {
       <button type="button" className="min-h-11 rounded-xl text-lg text-primary hover:bg-muted" onClick={() => chooseMonth(shiftMonth(selectedMonth, 1))} aria-label="다음 월">›</button>
     </div>
     {state.loading ? <div className="ds-card ds-card-pad text-sm text-muted-foreground shadow-none" role="status" aria-live="polite">현재 활성화된 차트 구조를 계산하고 있습니다.</div>
-      : state.report ? <><WesternTransitSummary report={state.report} polishedTexts={polishedTexts} /><CopyButton buildText={() => buildWesternCopyPrompt(state.report!.timeline.natalChart, { placeLabel: person.westernLocation?.placeLabel })} label="서양점성술 AI 해석 프롬프트 복사" toastTitle="서양점성술 계산 구조가 복사되었습니다." /></>
+      : state.report ? <><WesternTransitSummary report={state.report} polishedTexts={polishedTexts} /><CopyButton buildText={() => {
+          // 화면에 보이는 시기와 복사 결과를 일치시킨다(대표 지시) — URL에 ?month=가 실제로
+          // 있을 때만(사용자가 이전/다음 월을 명시적으로 골랐을 때만) 그 선택된 월의
+          // WesternTransitReport를 그대로 쓰고, 선택이 없는 기본 진입 상태(오늘이 속한 달을
+          // fallback으로만 보여주는 중)는 지금까지처럼 "지금 이 순간" 기준으로 자동 계산한다.
+          const hasExplicitMonth = monthFromSearch(window.location.search, "") !== "";
+          return buildWesternCopyPrompt(state.report!.timeline.natalChart, { placeLabel: person.westernLocation?.placeLabel, ...(hasExplicitMonth ? { transit: state.report } : {}) });
+        }} label="서양점성술 AI 해석 프롬프트 복사" toastTitle="서양점성술 계산 구조가 복사되었습니다." /></>
       : <WesternMissingContext personId={person.id} personNames={[person.birthInput.name]} issue={state.errors?.[0]} fallback="시기운 리포트를 만들 수 없습니다." />}
   </WesternReportShell>;
 }
