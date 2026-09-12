@@ -33,7 +33,8 @@ function synthesizeStatements(facts: InterpretationFact[]): SpouseStatement[] {
   return [{ text, evidence, confidence, facts }];
 }
 
-function buildFinalProfile(evidence: SpouseEvidenceBundle, facts: InterpretationFact[]): RomanceReportSection {
+function buildFinalProfile(evidence: SpouseEvidenceBundle, groups: { attraction: InterpretationFact[]; expression: InterpretationFact[]; conflict: InterpretationFact[]; management: InterpretationFact[] }): RomanceReportSection {
+  const facts = [...groups.attraction, ...groups.expression, ...groups.conflict, ...groups.management];
   const mingGong = evidence.mingGongRelation.mingGongPalace;
   const fude = evidence.trinePalaces.find((p) => p.palace === "福德宮");
   const majorEvidence: EvidenceItem[] = [
@@ -49,7 +50,7 @@ function buildFinalProfile(evidence: SpouseEvidenceBundle, facts: Interpretation
     key: "finalProfile",
     title: SECTION_TITLES.finalProfile,
     statements: [{
-      text: synthesizeText(facts),
+      text: [["마음이 움직이는 지점에는 ", groups.attraction], ["호감을 표현할 때는 ", groups.expression], ["갈등이 생기면 ", groups.conflict], ["관계를 오래 운영하려면 ", groups.management]].filter(([, items]) => items.length).map(([lead, items]) => `${lead}${synthesizeText(items as InterpretationFact[])}`).join(" "),
       evidence: [{ type: "palace", value: mingGong.palace }, ...majorEvidence, ...sihuaEvidence],
       confidence: "high",
       facts,
@@ -71,7 +72,7 @@ export function buildRomanceReport(chart: ZiweiChart, personName: string): Roman
     { key: "expression", title: SECTION_TITLES.expression, statements: synthesizeStatements(expression) },
     { key: "conflict", title: SECTION_TITLES.conflict, statements: synthesizeStatements(conflict) },
     { key: "management", title: SECTION_TITLES.management, statements: synthesizeStatements(management) },
-    buildFinalProfile(evidence, [...attraction, ...expression, ...conflict, ...management]),
+    buildFinalProfile(evidence, { attraction, expression, conflict, management }),
   ];
   return { personName, spouseEvidence: evidence, sections };
 }

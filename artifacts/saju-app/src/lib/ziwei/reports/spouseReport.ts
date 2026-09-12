@@ -73,6 +73,8 @@ const AGE_GAP_FALLBACK: SpouseStatement = {
 };
 
 function buildFinalProfile(evidence: SpouseEvidenceBundle, partnerFacts: InterpretationFact[], dynamicFacts: InterpretationFact[]): SpouseReportSection {
+  const uniqueByMeaning = (facts: InterpretationFact[]) => Array.from(new Map(facts.map((fact) => [fact.meaning, fact])).values());
+  const partnerTextFacts = uniqueByMeaning(partnerFacts), dynamicTextFacts = uniqueByMeaning(dynamicFacts);
   const majorEvidence: EvidenceItem[] = evidence.sanfangSizhengPalaces.flatMap((p) =>
     p.majorStars.map((s) => ({ type: "star" as const, value: `${s.name}@${p.palace}` })));
   const minorEvidence: EvidenceItem[] = evidence.sanfangSizhengPalaces.flatMap((p) =>
@@ -85,7 +87,7 @@ function buildFinalProfile(evidence: SpouseEvidenceBundle, partnerFacts: Interpr
     key: "matchProfile",
     title: SECTION_TITLES.matchProfile,
     statements: [{
-      text: `${synthesizeText(partnerFacts)} 관계에서는 ${synthesizeText(dynamicFacts)}`,
+      text: [partnerTextFacts.length ? `끌리거나 마주치기 쉬운 파트너 특성으로는 ${synthesizeText(partnerTextFacts)}` : "", dynamicTextFacts.length ? `관계가 시작된 뒤에는 ${synthesizeText(dynamicTextFacts)}` : ""].filter(Boolean).join(" "),
       evidence: [{ type: "palace", value: evidence.spousePalace.palace }, ...majorEvidence, ...minorEvidence, ...sihuaEvidence],
       confidence: "high",
       facts: [...partnerFacts, ...dynamicFacts],

@@ -32,7 +32,8 @@ function synthesizeStatements(facts: InterpretationFact[]): SpouseStatement[] {
   return [{ text, evidence, confidence, facts }];
 }
 
-function buildFinalProfile(evidence: WealthEvidenceBundle, facts: InterpretationFact[]): WealthReportSection {
+function buildFinalProfile(evidence: WealthEvidenceBundle, groups: { core: InterpretationFact[]; income: InterpretationFact[]; spending: InterpretationFact[]; volatility: InterpretationFact[] }): WealthReportSection {
+  const facts = [...groups.core, ...groups.income, ...groups.spending, ...groups.volatility];
   const majorEvidence: EvidenceItem[] = evidence.sanfangSizhengPalaces.flatMap((p) =>
     p.majorStars.map((s) => ({ type: "star" as const, value: `${s.name}@${p.palace}` })));
   const minorEvidence: EvidenceItem[] = evidence.sanfangSizhengPalaces.flatMap((p) =>
@@ -45,7 +46,7 @@ function buildFinalProfile(evidence: WealthEvidenceBundle, facts: Interpretation
     key: "finalProfile",
     title: SECTION_TITLES.finalProfile,
     statements: [{
-      text: synthesizeText(facts),
+      text: [["재물을 대하는 기본 태도에는 ", groups.core], ["수입을 만드는 방식에서는 ", groups.income], ["쓰고 관리할 때는 ", groups.spending], ["변화가 큰 국면에서는 ", groups.volatility]].filter(([, items]) => items.length).map(([lead, items]) => `${lead}${synthesizeText(items as InterpretationFact[])}`).join(" "),
       evidence: [{ type: "palace", value: evidence.wealthPalace.palace }, ...majorEvidence, ...minorEvidence, ...sihuaEvidence],
       confidence: "high",
       facts,
@@ -67,7 +68,7 @@ export function buildWealthReport(chart: ZiweiChart, personName: string): Wealth
     { key: "incomeStyle", title: SECTION_TITLES.incomeStyle, statements: synthesizeStatements(income) },
     { key: "spendingTendency", title: SECTION_TITLES.spendingTendency, statements: synthesizeStatements(spending) },
     { key: "volatility", title: SECTION_TITLES.volatility, statements: synthesizeStatements(volatility) },
-    buildFinalProfile(evidence, [...core, ...income, ...spending, ...volatility]),
+    buildFinalProfile(evidence, { core, income, spending, volatility }),
   ];
   return { personName, wealthEvidence: evidence, sections };
 }

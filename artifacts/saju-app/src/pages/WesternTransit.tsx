@@ -12,6 +12,7 @@ import { monthFromSearch, monthInTimezone, monthRange, shiftMonth } from "@/lib/
 import { useResolvedWesternBirth } from "@/lib/western/useResolvedWesternBirth";
 import { buildWesternCopyPrompt } from "@/lib/western/synthesis/promptExport";
 import { CopyButton } from "@/components/CopyButton";
+import { presentTransitSection } from "@/lib/western/transit/presentation";
 
 const requestPolishedTexts = createPolishRequestCache("westernTransit");
 const findPerson = (id: string): PersonRecord | null => { const mine = getMyProfile(); return mine?.id === id ? mine : getPeople().find((person) => person.id === id) ?? null; };
@@ -37,7 +38,7 @@ export default function WesternTransit() {
       .catch(() => { if (!cancelled) setState({ errors: [{ code: "CALCULATION_FAILED", message: "Western transit service is unavailable" }], loading: false }); });
     return () => { cancelled = true; };
   }, [person, birth, birthStatus, selectedMonth]);
-  useEffect(() => { if (!state.report) return; let cancelled = false; const report = state.report; requestPolishedTexts(report.sections, `${report.timeline.schemaVersion}:${report.timeline.query.startUtcInstant}:${report.timeline.query.endUtcInstant}`).then((texts) => { if (!cancelled) setPolishedTexts(texts); }); return () => { cancelled = true; }; }, [state.report]);
+  useEffect(() => { if (!state.report) return; let cancelled = false; const report = state.report; requestPolishedTexts(report.sections.map((section) => ({ ...section, text: presentTransitSection(report, section) })), `${report.timeline.schemaVersion}:${report.timeline.query.startUtcInstant}:${report.timeline.query.endUtcInstant}:user-facing-v2`).then((texts) => { if (!cancelled) setPolishedTexts(texts); }); return () => { cancelled = true; }; }, [state.report]);
   if (!person) return <div className="ds-app-shell ds-page-pad py-8 text-center"><p className="text-sm text-muted-foreground">사람을 찾을 수 없습니다.</p><Link href="/people" className="mt-3 inline-block text-sm text-primary underline">목록으로</Link></div>;
   const sajuHref = person.id === getMyProfile()?.id ? "/saju" : `/people/${person.id}`;
   const [yearLabel, monthLabel] = selectedMonth.split("-");

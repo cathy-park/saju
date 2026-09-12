@@ -35,7 +35,8 @@ function synthesizeStatements(facts: InterpretationFact[]): SpouseStatement[] {
   return [{ text, evidence, confidence, facts }];
 }
 
-function buildFinalProfile(evidence: CareerEvidenceBundle, facts: InterpretationFact[]): CareerReportSection {
+function buildFinalProfile(evidence: CareerEvidenceBundle, groups: { core: InterpretationFact[]; work: InterpretationFact[]; collaboration: InterpretationFact[]; volatility: InterpretationFact[] }): CareerReportSection {
+  const facts = [...groups.core, ...groups.work, ...groups.collaboration, ...groups.volatility];
   const majorEvidence: EvidenceItem[] = evidence.sanfangSizhengPalaces.flatMap((p) =>
     p.majorStars.map((s) => ({ type: "star" as const, value: `${s.name}@${p.palace}` })));
   const minorEvidence: EvidenceItem[] = evidence.sanfangSizhengPalaces.flatMap((p) =>
@@ -48,7 +49,7 @@ function buildFinalProfile(evidence: CareerEvidenceBundle, facts: Interpretation
     key: "finalProfile",
     title: SECTION_TITLES.finalProfile,
     statements: [{
-      text: synthesizeText(facts),
+      text: [["커리어의 중심에는 ", groups.core], ["실제로 일할 때는 ", groups.work], ["사람들과 함께할 때는 ", groups.collaboration], ["성취의 속도와 변화에서는 ", groups.volatility]].filter(([, items]) => items.length).map(([lead, items]) => `${lead}${synthesizeText(items as InterpretationFact[])}`).join(" "),
       evidence: [{ type: "palace", value: evidence.careerPalace.palace }, ...majorEvidence, ...minorEvidence, ...sihuaEvidence],
       confidence: "high",
       facts,
@@ -70,7 +71,7 @@ export function buildCareerReport(chart: ZiweiChart, personName: string): Career
     { key: "workStyle", title: SECTION_TITLES.workStyle, statements: synthesizeStatements(work) },
     { key: "collaborationEnvironment", title: SECTION_TITLES.collaborationEnvironment, statements: synthesizeStatements(collaboration) },
     { key: "achievementVolatility", title: SECTION_TITLES.achievementVolatility, statements: synthesizeStatements(volatility) },
-    buildFinalProfile(evidence, [...core, ...work, ...collaboration, ...volatility]),
+    buildFinalProfile(evidence, { core, work, collaboration, volatility }),
   ];
   return { personName, careerEvidence: evidence, sections };
 }

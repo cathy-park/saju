@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { calculateNatalChart } from "../../natalChart.js";
 import { buildWesternTransitReport } from "../report.js";
+import { presentTransitFactId, presentTransitSection } from "../presentation.js";
 
 const result = calculateNatalChart({ localDateTime: "1989-02-16T19:29:00", latitude: 37.4563, longitude: 126.7052, timezone: "Asia/Seoul" });
 if (!result.ok) throw new Error("golden natal chart failed");
@@ -33,5 +34,13 @@ describe("western transit report", () => {
     const evidence = report.sections.flatMap((section) => section.primaryEvidence);
     expect(evidence.some((item) => item.natalLink.kind === "natal-fact")).toBe(true);
     expect(evidence.some((item) => item.natalLink.kind === "structural-context" && item.natalLink.context?.house)).toBe(true);
+  });
+
+  it("presents actual transit roles as user language without internal activation wording", () => {
+    const relationship = report.sections.find((section) => section.key === "emotionalRelationships")!;
+    const text = presentTransitSection(report, relationship);
+    expect(text).toMatch(/관계에서 원하는 만족과 애정 표현|정서적 안정|이상과 현실의 경계/);
+    expect(text).not.toMatch(/timing activation|기존 차트에서 확인된|구조를 건드립니다/);
+    expect(presentTransitFactId("transit-fact:transit:v1:jupiter:venus:opposition:cycle-1")).toContain("관계에서 원하는 만족과 애정 표현");
   });
 });

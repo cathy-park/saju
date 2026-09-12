@@ -35,7 +35,8 @@ function synthesizeStatements(facts: InterpretationFact[]): SpouseStatement[] {
   return [{ text, evidence, confidence, facts }];
 }
 
-function buildFinalProfile(evidence: NatureEvidenceBundle, facts: InterpretationFact[]): NatureReportSection {
+function buildFinalProfile(evidence: NatureEvidenceBundle, groups: { core: InterpretationFact[]; direction: InterpretationFact[]; social: InterpretationFact[]; attitude: InterpretationFact[] }): NatureReportSection {
+  const facts = [...groups.core, ...groups.direction, ...groups.social, ...groups.attitude];
   const majorEvidence: EvidenceItem[] = evidence.sanfangSizhengPalaces.flatMap((p) =>
     p.majorStars.map((s) => ({ type: "star" as const, value: `${s.name}@${p.palace}` })));
   const minorEvidence: EvidenceItem[] = evidence.sanfangSizhengPalaces.flatMap((p) =>
@@ -51,7 +52,7 @@ function buildFinalProfile(evidence: NatureEvidenceBundle, facts: Interpretation
     key: "finalProfile",
     title: SECTION_TITLES.finalProfile,
     statements: [{
-      text: synthesizeText(facts),
+      text: [["타고난 성향의 중심에는 ", groups.core], ["후천적으로는 ", groups.direction], ["주변에는 ", groups.social], ["중요한 선택에서는 ", groups.attitude]].filter(([, items]) => items.length).map(([lead, items]) => `${lead}${synthesizeText(items as InterpretationFact[])}`).join(" "),
       evidence: [
         { type: "palace", value: evidence.naturePalace.palace },
         ...majorEvidence, ...minorEvidence, ...shenGongEvidence, ...sihuaEvidence,
@@ -76,7 +77,7 @@ export function buildNatureReport(chart: ZiweiChart, personName: string): Nature
     { key: "lifeDirection", title: SECTION_TITLES.lifeDirection, statements: synthesizeStatements(direction) },
     { key: "socialImpression", title: SECTION_TITLES.socialImpression, statements: synthesizeStatements(social) },
     { key: "lifeAttitude", title: SECTION_TITLES.lifeAttitude, statements: synthesizeStatements(attitude) },
-    buildFinalProfile(evidence, [...core, ...direction, ...social, ...attitude]),
+    buildFinalProfile(evidence, { core, direction, social, attitude }),
   ];
   return { personName, natureEvidence: evidence, sections };
 }

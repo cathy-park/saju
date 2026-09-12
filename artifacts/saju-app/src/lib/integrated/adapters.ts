@@ -3,6 +3,7 @@ import type { SajuCompatibilitySummarySection } from "../sajuCompatibilityFacts"
 import type { ComprehensiveReport } from "../ziwei/reports/comprehensiveReport";
 import type { WesternPersonalSynthesisReport, WesternRelationshipSynthesisReport } from "../western/synthesis";
 import type { IntegratedEvidenceRef, IntegratedSourceFact, TemporalScope } from "./types";
+import { presentTransitFactId } from "../western/transit/presentation";
 
 const safe = (value: string) => encodeURIComponent(value.trim().replace(/\s+/g, " "));
 const evidence = (system: IntegratedSourceFact["system"], items: { id?: string; label?: string; value?: string; type?: string; source?: string }[]): IntegratedEvidenceRef[] => items.map((item) => {
@@ -31,7 +32,7 @@ export function adaptWesternPersonal(report: WesternPersonalSynthesisReport, sel
   const base = report.sections.filter((section) => section.key !== "overview").flatMap((section) => section.facts.map((fact) => ({ system: "western" as const, module: "overview", factId: fact.id, personId: report.personId, meaning: fact.meaning, evidence: fact.independence.allEvidenceIds.map((id) => ({ id: `western:${id}`, label: id })), evidenceRole: "individual-context" as const, sourceKind: fact.sourceRefs.length ? undefined : "summary" as const })));
   if (!selectedScope) return base;
   const transitFacts = report.sections.find((section) => section.key === "currentFlow")?.facts ?? [];
-  return [...base, ...transitFacts.flatMap((fact) => fact.timing.transitFactIds.slice(0, 1).map((factId) => ({ system: "western" as const, module: "transit", factId, personId: report.personId, meaning: fact.meaning, evidence: fact.sourceRefs.flatMap((ref) => ref.ultimateEvidenceIds).map((id) => ({ id: `western:${id}`, label: fact.meaning })), evidenceRole: "individual-context" as const, temporalScope: selectedScope })))];
+  return [...base, ...transitFacts.flatMap((fact) => fact.timing.transitFactIds.slice(0, 1).map((factId) => { const meaning = presentTransitFactId(factId) ?? fact.meaning; return { system: "western" as const, module: "transit", factId, personId: report.personId, meaning, evidence: fact.sourceRefs.flatMap((ref) => ref.ultimateEvidenceIds).map((id) => ({ id: `western:${id}`, label: meaning })), evidenceRole: "individual-context" as const, temporalScope: selectedScope }; }))];
 }
 
 export function adaptWesternRelationship(report: WesternRelationshipSynthesisReport): IntegratedSourceFact[] {
