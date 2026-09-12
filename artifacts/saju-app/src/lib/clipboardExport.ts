@@ -59,7 +59,7 @@ function fmt2(n: number): string {
 function sanitizeAiCalculationLines(lines: string[]): string[] {
   let skip = false;
   return lines.filter((line) => {
-    if (/^\[(debug anchor|강약 검증 리포트|대표 요약|🎯 합격운 · 📝 계약운 월별 조견표)/i.test(line)) { skip = true; return false; }
+    if (/^\[(debug anchor|강약 검증 리포트|대표 요약|🎯 합격운 · 📝 계약운 월별 조견표|세운\(연간지\) 자동 계산 규칙)/i.test(line)) { skip = true; return false; }
     if (skip && /^\[/.test(line)) skip = false;
     if (skip) return false;
     return !/anchor|검증 예시|자동 세운 계산|^\s*(해석|요약):/.test(line);
@@ -958,7 +958,7 @@ export function buildPersonClipboardText(
     lines.push("당신은 20년 경력의 통찰력 있고 따뜻한 명리학 전문가입니다.");
     lines.push("위의 사주 구조 데이터를 바탕으로, 내담자에게 직접 말하듯 다정하고 이해하기 쉬운 현대적인 언어로 다음 목차에 따라 사주를 해석해 주세요.");
     lines.push("");
-    lines.push("1. 🔮 지금 당장의 운세 (현재 대운과 올해 세운을 중심으로 '지금 내 운의 흐름이 어떤지' 가장 먼저 브리핑해 주세요. 사용자가 다른 연도·나이를 물으면 위 [대운 전체 목록]과 [세운(연간지) 자동 계산 규칙]을 사용해 그 해의 세운을 직접 계산해서 답하고, 다른 달을 물으면 [월운(월간지) 조견표]에서 찾아 답하세요 — 표 범위 밖의 월과 일 단위(일운)는 데이터가 없으니 계산하지 말고 모른다고 답하세요.)");
+    lines.push("1. 🔮 지금 당장의 운세 (현재 대운과 올해 세운을 중심으로 '지금 내 운의 흐름이 어떤지' 가장 먼저 브리핑해 주세요. 사용자가 다른 연도·나이를 물으면 위 [대운 전체 목록]을 참고해 답하고, 다른 달을 물으면 [월운(월간지) 조견표]에서 찾아 답하세요 — 표 범위 밖의 월과 일 단위(일운)는 데이터가 없으니 계산하지 말고 모른다고 답하세요.)");
     lines.push("2. 💼 돈과 커리어 (어떤 일을 해야 돈을 벌기 좋은지, 내 사주의 재물 그릇과 재물 축적 방식에 대해 상세히 풀어주세요.)");
     lines.push("3. 💕 연애와 결혼운 (어떤 사람과 잘 맞는지, 나의 연애 성향과 다가오는 좋은 연애/결혼 타이밍에 대해 조언해 주세요.)");
     lines.push("4. 🌟 타고난 본성과 무기 (가장 강한 오행과 십성을 바탕으로 내가 가진 가장 강력한 무기와 잠재력을 알려주세요.)");
