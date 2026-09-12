@@ -35,4 +35,15 @@ describe("buildZiweiCopyPrompt — 21단계 자미두수 AI 해석 프롬프트 
     const prompt = buildZiweiCopyPrompt(chart);
     expect(prompt).not.toMatch(/coreWealth-|incomeStyle-|"meaning"|"polarity"/);
   });
+
+  // 대표 지시 — 궁합처럼 두 사람분을 이어붙일 때 안내 문구·섹션 헤더가 반복되지 않게 한다.
+  it("omitIntro=true면 안내 문구·섹션 헤더 없이 원자료 본문만 남는다(구조는 그대로)", () => {
+    const prompt = buildZiweiCopyPrompt(chart, { omitIntro: true });
+    expect(prompt).not.toContain("아래는 계산된 자미두수 명반 원자료입니다");
+    expect(prompt).not.toContain("# 자미두수 명반 구조");
+    expect(prompt).toContain("명궁:");
+    expect(prompt).toContain("## 12궁");
+    expect(prompt).toContain("현재 대한:");
+    expect(prompt).toContain("현재 유년:");
+  });
 });

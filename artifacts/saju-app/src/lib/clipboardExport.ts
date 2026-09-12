@@ -1320,11 +1320,61 @@ export function buildCompatibilityClipboardText(
   return lines.join("\n");
 }
 
+/** buildCompatibilityCalculationClipboardText 전용 — 화면이 이미 내린 조합 해석 자연어
+ * (요약/강점/주의 사항/조언/장기 전망)를 통째로 걷어낸다. "[헤더]"만 있는 줄을 블록 시작으로
+ * 보고, headersToRemove에 있으면 다음 헤더 전까지 skip한다. */
+function removeHeaderBlocks(text: string, headersToRemove: string[]): string {
+  const lines = text.split("\n");
+  const kept: string[] = [];
+  let skip = false;
+  for (const line of lines) {
+    const headerMatch = line.match(/^\[(.+)\]$/);
+    if (headerMatch) {
+      skip = headersToRemove.includes(headerMatch[1]);
+      if (!skip) kept.push(line);
+      continue;
+    }
+    if (!skip) kept.push(line);
+  }
+  return kept.join("\n").replace(/\n{3,}/g, "\n\n");
+}
+
+/** buildPersonClipboardText 한 사람분 전체(재물·커리어·합격운·계약운·구조 7영역·신살·대운
+ * 전체 목록·월운 조견표 등)에서, 궁합 프롬프트에 필요한 "원자료"만 남긴다 — 원국 8자·
+ * 일간/강약/격국·오행/십성·용신/희신/기신·배우자궁·합충형파해·배우자 활성도/안정도
+ * evidence. 계산은 새로 하지 않고 이미 만들어진 텍스트를 헤더 기준으로 골라낸다(대표 지시,
+ * "원자료 복사" 원칙). */
+const COMPATIBILITY_CORE_SAJU_HEADERS = ["사주팔자", "일간", "오행 분포", "십성 분포", "용신", "희신 / 기신 / 구신", "배우자궁 (일지)", "지지 합충형파해", "결혼·배우자 활성 구조"];
+function extractSajuCompatibilityCoreText(personBlock: string): string {
+  const lines = personBlock.split("\n");
+  const kept: string[] = [];
+  let keep = false;
+  for (const line of lines) {
+    const headerMatch = line.match(/^\[(.+)\]$/);
+    if (headerMatch) {
+      keep = COMPATIBILITY_CORE_SAJU_HEADERS.includes(headerMatch[1]);
+      if (keep) kept.push(line);
+      continue;
+    }
+    if (/^=== 사주 분석 데이터:/.test(line) || /^(생년월일|출생시|성별|출생지):/.test(line)) {
+      kept.push(line);
+      continue;
+    }
+    if (keep) kept.push(line);
+  }
+  return kept.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+}
+
 export function buildCompatibilityCalculationClipboardText(
   person1: PersonRecord, person2: PersonRecord, result: CompatibilityResult | AnyCompatibilityReport,
   hourMode1: "포함" | "제외" | "비교" = "포함", hourMode2: "포함" | "제외" | "비교" = "포함",
 ): string {
   const score = "scoreResult" in result ? result.scoreResult : result;
   const full = buildCompatibilityClipboardText(person1, person2, score, hourMode1, hourMode2);
-  return full.split("[새 궁합 전용 프롬프트]")[0].replace(/\n---\s*$/, "").trim();
+  const dataOnly = full.split("[새 궁합 전용 프롬프트]")[0].replace(/\n---\s*$/, "").trim();
+  const withoutNarrative = removeHeaderBlocks(dataOnly, ["궁합 요약", "강점", "주의 사항", "조언", "장기 전망"]);
+  const marker = "=== 사주 분석 데이터:";
+  const [before, ...personParts] = withoutNarrative.split(marker);
+  const shrunkPersonBlocks = personParts.map((part) => extractSajuCompatibilityCoreText(marker + part));
+  return [before.trimEnd(), ...shrunkPersonBlocks].join("\n\n").replace(/\n{3,}/g, "\n\n").trim();
 }

@@ -8,9 +8,15 @@ const SIGNS = ["Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo", "Libra", "
 const position = (longitude: number) => `${SIGNS[Math.floor(((longitude % 360) + 360) % 360 / 30)]} ${(longitude % 30).toFixed(3)}°`;
 const title = (id: string) => id === "ascendant" ? "ASC" : id === "midheaven" ? "MC" : id[0].toUpperCase() + id.slice(1);
 
-export function buildWesternCopyPrompt(chart: WesternNatalChart, options?: { transit?: WesternTransitReport; synastry?: WesternSynastryReport; placeLabel?: string }): string {
+export function buildWesternCopyPrompt(chart: WesternNatalChart, options?: { transit?: WesternTransitReport; synastry?: WesternSynastryReport; placeLabel?: string; omitIntro?: boolean }): string {
   const birth = chart.normalizedBirth;
-  const lines = ["아래는 계산된 서양점성술 원자료입니다. 제공된 구조 밖의 천체·하우스·aspect를 만들지 말고 종합적으로 해석해주세요.", "", "# 서양점성술 계산 구조", `출생 현지시각: ${birth.localDateTime}`, `출생지: ${options?.placeLabel || "좌표 기준"}`, `좌표: ${birth.latitude}, ${birth.longitude}`, `IANA timezone: ${birth.timezone}`, `UTC instant: ${birth.utcInstant}`, "Zodiac / Houses: Tropical / Placidus", "", "## Planets"];
+  // omitIntro — buildWesternRelationshipCopyPrompt처럼 이 함수를 두 번 이어붙여 쓰는
+  // 호출부는 자기 자신의 상단에 이미 같은 취지의 안내 문구를 한 번 써두므로, 여기서 또
+  // "아래는 계산된 서양점성술 원자료입니다..."/"# 서양점성술 계산 구조"를 사람마다 반복하지
+  // 않는다(중복 문구 제거, 구조는 그대로).
+  const lines = options?.omitIntro
+    ? [`출생 현지시각: ${birth.localDateTime}`, `출생지: ${options?.placeLabel || "좌표 기준"}`, `좌표: ${birth.latitude}, ${birth.longitude}`, `IANA timezone: ${birth.timezone}`, `UTC instant: ${birth.utcInstant}`, "Zodiac / Houses: Tropical / Placidus", "", "## Planets"]
+    : ["아래는 계산된 서양점성술 원자료입니다. 제공된 구조 밖의 천체·하우스·aspect를 만들지 말고 종합적으로 해석해주세요.", "", "# 서양점성술 계산 구조", `출생 현지시각: ${birth.localDateTime}`, `출생지: ${options?.placeLabel || "좌표 기준"}`, `좌표: ${birth.latitude}, ${birth.longitude}`, `IANA timezone: ${birth.timezone}`, `UTC instant: ${birth.utcInstant}`, "Zodiac / Houses: Tropical / Placidus", "", "## Planets"];
   for (const point of chart.points) lines.push(`- ${title(point.id)}: ${position(point.longitude)} · ${point.house}H${point.retrograde ? " · retrograde" : ""}`);
   lines.push("", "## Angles", `- ASC: ${position(chart.angles.ascendant.longitude)}`, `- MC: ${position(chart.angles.midheaven.longitude)}`, "", "## 12 House Cusps", ...chart.houses.map((h) => `- ${h.number}H: ${position(h.cuspLongitude)}`), "", "## Major Aspects", ...chart.aspects.map((a) => `- ${title(a.point1Id)} ${a.type} ${title(a.point2Id)} · orb ${a.orb.toFixed(3)}° / allowed ${a.allowedOrb.toFixed(3)}° · ${a.applying ? "applying" : "separating"}`));
   if (options?.transit) lines.push("", "## Transit", `조회 기간: ${options.transit.timeline.query.startLocalDate} ~ ${options.transit.timeline.query.endLocalDate} (${options.transit.timeline.query.timezone})`, ...options.transit.timeline.events.map((e) => `- ${title(e.transitPointId)} ${e.type} natal ${title(e.natalTargetId)} · orb ${e.orb.toFixed(3)}° · ${e.applying ? "applying" : "separating"} · window ${e.windowStart} ~ ${e.windowEnd} · exact ${e.exactHits.join(", ") || "없음"}`));
@@ -22,13 +28,13 @@ export function buildWesternRelationshipCopyPrompt(report: WesternSynastryReport
   const [first, second] = report.subjects;
   const firstLabel = subjects?.[first.personId]?.name ?? "첫 번째 사람";
   const secondLabel = subjects?.[second.personId]?.name ?? "두 번째 사람";
-  const relationshipStructure = buildWesternCopyPrompt(second.chart, { placeLabel: subjects?.[second.personId]?.placeLabel, synastry: report })
+  const relationshipStructure = buildWesternCopyPrompt(second.chart, { placeLabel: subjects?.[second.personId]?.placeLabel, synastry: report, omitIntro: true })
     .replaceAll(first.personId, firstLabel).replaceAll(second.personId, secondLabel);
   return [
     "아래는 두 사람의 서양점성술 계산 원자료입니다. 제공된 구조 밖의 천체·하우스·aspect를 만들지 말고 관계를 종합적으로 해석해주세요.",
     "",
     `# ${firstLabel} natal chart`,
-    buildWesternCopyPrompt(first.chart, { placeLabel: subjects?.[first.personId]?.placeLabel }),
+    buildWesternCopyPrompt(first.chart, { placeLabel: subjects?.[first.personId]?.placeLabel, omitIntro: true }),
     "",
     `# ${secondLabel} natal chart 및 관계 구조`,
     relationshipStructure,
