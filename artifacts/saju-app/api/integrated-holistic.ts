@@ -36,6 +36,36 @@ const VALID_RELATION_KIND = new Set(["consensus", "complement", "tension"]);
 const VALID_SCOPE = new Set(["personal", "relationship"]);
 const VALID_SYSTEM = new Set(["saju", "ziwei", "western"]);
 
+// src/lib/integrated/areas.ts와 내용을 그대로 맞춘 서버 전용 사본 — 원래는 그 파일 하나를
+// import해서 공유하려 했으나, `await import("../src/lib/integrated/areas.js")`가 production
+// 런타임에서 Error [ERR_REQUIRE_ESM]로 즉시 500을 냈다(2026-09-12 실제 확인 — saju-app/
+// package.json이 "type":"module"이라 areas.js가 ESM으로 로드되는데, api/tsconfig.json의
+// module:"commonjs" 출력이 그 dynamic import를 require()로 내려써서 충돌). 다른 api 파일들의
+// `../src/lib/western/...` dynamic import는 우연히 그 파일들의 무거운 의존성 그래프 덕에
+// 번들링 방식이 달라져 문제가 안 됐을 뿐, 일반적으로 안전하다고 보장된 패턴이 아니다. 이
+// 파일은 그 위험을 피하려고 값을 그대로 복제한다 — 7개 영역 목록을 바꿀 때는 두 파일을
+// 함께 고쳐야 한다(자주 바뀌는 목록이 아니라 드리프트 위험은 낮다고 판단).
+const AREA_DEFS: Record<"personal" | "relationship", { key: string; title: string; hint: string }[]> = {
+  personal: [
+    { key: "coreNatureAndLife", title: "핵심 성향과 삶의 방식", hint: "전반적인 성격 구조와 삶을 대하는 태도" },
+    { key: "emotionInner", title: "감정과 내면", hint: "감정 처리 방식, 불안/안정, 내적 갈등" },
+    { key: "relationshipRomance", title: "관계·연애·배우자", hint: "친밀감, 관계 욕구, 갈등 방식, 배우자 기준" },
+    { key: "careerWork", title: "일·커리어", hint: "추진 방식, 리더십, 조직/독립성, 성취 패턴" },
+    { key: "wealthReality", title: "재물·현실 감각", hint: "돈을 다루는 방식, 축적/확장 성향, 현실 판단" },
+    { key: "strengthWeaknessGrowth", title: "강점·약점·성장 포인트", hint: "반복되는 강점과 취약점, 보완 방향" },
+    { key: "currentFlow", title: "현재 흐름", hint: "타고난(natal) 구조와 지금 시기(timing)가 어떻게 맞물리는지" },
+  ],
+  relationship: [
+    { key: "relationshipCoreStructure", title: "관계의 핵심 구조", hint: "두 사람이 만나는 방식의 전반적인 골격" },
+    { key: "emotionAttachment", title: "감정·애착", hint: "서로에게 느끼는 정서적 안정감과 애착 방식" },
+    { key: "communicationConflict", title: "대화·갈등", hint: "대화 방식, 갈등이 생기고 풀리는 패턴" },
+    { key: "attractionIntimacy", title: "끌림·친밀감", hint: "서로 끌리는 지점과 친밀감을 쌓는 방식" },
+    { key: "longTermSustainability", title: "장기 지속성", hint: "관계를 오래 유지하는 데 영향을 주는 구조" },
+    { key: "realityCompatibility", title: "현실·생활 궁합", hint: "생활 방식, 현실적인 조율이 필요한 지점" },
+    { key: "currentRelationshipFlow", title: "현재 관계 흐름", hint: "지금 시기에 두 사람의 관계에 맞물리는 흐름" },
+  ],
+};
+
 interface HolisticFactInput {
   theme: string;
   concept: string;
@@ -162,8 +192,7 @@ export default async function handler(req: VercelLikeRequest, res: VercelLikeRes
 
   if (cached?.prose) { console.info("[prose-cache] hit", { topic, promptVersion, model: "gpt-5.6-sol" }); res.status(200).json({ areas: JSON.parse(cached.prose), cached: true }); return; }
 
-  const { areasForScope } = await import("../src/lib/integrated/areas.js");
-  const areaDefs = areasForScope(scope as "personal" | "relationship");
+  const areaDefs = AREA_DEFS[scope as "personal" | "relationship"];
   const allowedKeys = new Set(areaDefs.map((area) => area.key));
 
   const SYSTEM_LABEL: Record<string, string> = { saju: "사주", ziwei: "자미두수", western: "서양점성술" };
