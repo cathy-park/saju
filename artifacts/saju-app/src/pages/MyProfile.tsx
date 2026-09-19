@@ -21,6 +21,7 @@ import { upsertMyProfile, deleteMyProfileFromDb } from "@/lib/db";
 import { Pencil, Trash2 } from "lucide-react";
 import { MaritalField, MaritalBadge } from "@/components/MaritalField";
 import { CurrentLocationField } from "@/components/CurrentLocationField";
+import { resolveAndSaveCurrentLocation } from "@/lib/western/useResolvedCurrentLocation";
 import { charToElement, elementBgClass, type FiveElKey } from "@/lib/element-color";
 import { cn } from "@/lib/utils";
 import { GenderSymbol } from "@/components/GenderSymbol";
@@ -76,6 +77,9 @@ export default function MyProfile() {
     saveMyProfile(newRecord);
     setRecord(newRecord);
     setEditing(false);
+    // 현재 거주지역을 입력해두면 서양점성술 화면 방문을 기다리지 않고 저장 즉시
+    // 백그라운드에서 지오코딩한다(실패해도 무시 — 애매하면 [현재 지역 설정]에서 직접 고름).
+    resolveAndSaveCurrentLocation(newRecord, user).catch(() => {});
     if (user) {
       try {
         await upsertMyProfile(user.id, newRecord);

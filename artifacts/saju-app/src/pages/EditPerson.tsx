@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BirthForm } from "@/components/BirthForm";
 import { MaritalField, MaritalBadge } from "@/components/MaritalField";
 import { CurrentLocationField } from "@/components/CurrentLocationField";
+import { resolveAndSaveCurrentLocation } from "@/lib/western/useResolvedCurrentLocation";
 import { SajuDisplay } from "@/components/SajuDisplay";
 import { calculateProfileFromBirth, type BirthInput, type Pillar } from "@/lib/sajuEngine";
 import {
@@ -67,6 +68,7 @@ export default function EditPerson() {
       return;
     }
     savePerson(updated);
+    resolveAndSaveCurrentLocation(updated, user).catch(() => {});
     if (user) {
       upsertPartnerProfile(user.id, updated).catch((e) => {
         console.error("[EditPerson] upsert failed:", e);
@@ -86,6 +88,7 @@ export default function EditPerson() {
     };
     savePerson(updated);
     setRecord(updated);
+    resolveAndSaveCurrentLocation(updated, user).catch(() => {});
     if (user) {
       upsertPartnerProfile(user.id, updated).catch((e) => {
         console.error("[EditPerson] manual upsert failed:", e);

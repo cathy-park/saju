@@ -10,6 +10,41 @@ import { upsertMyProfile, upsertPartnerProfile } from "@/lib/db";
 import { geocodePlace } from "./geocode";
 import { selectUnambiguousCandidate } from "./useResolvedWesternBirth";
 
+/** 지오코딩해서 애매하지 않으면(동명 지역·시간대 여럿 아니면) 바로 저장까지 한다. 후보가
+ * 없거나 애매하면 아무것도 하지 않고 조용히 끝난다(추측 안 함 — [현재 지역 설정] 화면에서
+ * 사용자가 직접 고르는 경로로 남겨둔다). 프로필 저장 시점(즉시 반영)과 서양점성술 화면
+ * 진입 시점(뒤늦게라도 채우기) 두 군데에서 공통으로 쓴다. */
+export async function resolveAndSaveCurrentLocation(
+  person: PersonRecord,
+  user: { id: string } | null,
+): Promise<WesternGeoLocation | null> {
+  const placeName = person.currentPlaceName?.trim();
+  if (!placeName || person.currentLocation) return person.currentLocation ?? null;
+
+  const candidates = await geocodePlace(placeName);
+  const candidate = selectUnambiguousCandidate(candidates);
+  if (!candidate) return null;
+
+  const currentLocation: WesternGeoLocation = {
+    placeLabel: candidate.label,
+    latitude: candidate.latitude,
+    longitude: candidate.longitude,
+    timezone: candidate.timezones[0].value,
+    resolver: { provider: "nominatim", version: "1" },
+  };
+  const updated: PersonRecord = { ...person, currentLocation, updatedAt: new Date().toISOString() };
+  const isMine = getMyProfile()?.id === person.id;
+  isMine ? saveMyProfile(updated) : savePerson(updated);
+  if (user) {
+    try {
+      await (isMine ? upsertMyProfile(user.id, updated) : upsertPartnerProfile(user.id, updated));
+    } catch {
+      // 클라우드 동기화 실패는 무시 — 로컬 저장은 이미 끝났고 다음 방문 때 다시 시도된다.
+    }
+  }
+  return currentLocation;
+}
+
 export function useResolvedCurrentLocation(person: PersonRecord | null): WesternGeoLocation | null {
   const { user } = useAuth();
   const [location, setLocation] = useState(person?.currentLocation ?? null);
@@ -28,28 +63,8 @@ export function useResolvedCurrentLocation(person: PersonRecord | null): Western
     attemptedKey.current = key;
 
     let cancelled = false;
-    geocodePlace(placeName).then(async (candidates) => {
-      if (cancelled) return;
-      const candidate = selectUnambiguousCandidate(candidates);
-      if (!candidate) return;
-      const currentLocation: WesternGeoLocation = {
-        placeLabel: candidate.label,
-        latitude: candidate.latitude,
-        longitude: candidate.longitude,
-        timezone: candidate.timezones[0].value,
-        resolver: { provider: "nominatim", version: "1" },
-      };
-      const updated: PersonRecord = { ...person, currentLocation, updatedAt: new Date().toISOString() };
-      const isMine = getMyProfile()?.id === person.id;
-      isMine ? saveMyProfile(updated) : savePerson(updated);
-      if (user) {
-        try {
-          await (isMine ? upsertMyProfile(user.id, updated) : upsertPartnerProfile(user.id, updated));
-        } catch {
-          // 클라우드 동기화 실패는 무시 — 로컬 저장은 이미 끝났고 다음 방문 때 다시 시도된다.
-        }
-      }
-      if (!cancelled) setLocation(currentLocation);
+    resolveAndSaveCurrentLocation(person, user).then((resolved) => {
+      if (!cancelled && resolved) setLocation(resolved);
     });
     return () => { cancelled = true; };
   }, [person, user]);

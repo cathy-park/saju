@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, type MouseEvent } from "react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,11 +24,13 @@ import {
 } from "@/lib/storage";
 import { getZodiacFromDayPillar } from "@/lib/zodiacAnimal";
 import { GenderSymbol } from "@/components/GenderSymbol";
-import { Search, UserPlus, Trash2, Pencil, Heart, Check, Pin } from "lucide-react";
+import { Search, UserPlus, Trash2, Pencil, Heart, Check, Pin, Sparkles } from "lucide-react";
 import { Mascot } from "@/components/Mascot";
 import { useAuth } from "@/lib/authContext";
 import { deletePartnerProfile } from "@/lib/db";
 import { charToElement, elementBgClass, type FiveElKey } from "@/lib/element-color";
+import { buildIntegratedCopyPromptForPerson } from "@/lib/integrated/copyPrompt";
+import { useToast } from "@/hooks/use-toast";
 
 type TabKey = "전체" | RelationshipType;
 
@@ -42,6 +44,55 @@ const REL_TABS: { key: TabKey; label: string; emoji: string }[] = [
   { key: "family",    label: "가족",   emoji: RELATIONSHIP_TYPE_EMOJI["family"] },
   { key: "other",     label: "기타",   emoji: RELATIONSHIP_TYPE_EMOJI["other"] },
 ];
+
+/** 카드에서 상세 화면으로 안 들어가고 바로 세 체계(사주·자미두수·서양점성술) 종합
+ * 프롬프트를 복사한다 — IntegratedOverview.tsx의 복사 버튼과 같은 결과물을 만든다.
+ * 클릭 전에는 아무 계산도 하지 않는다(목록에 사람이 많을 때 카드마다 미리 계산·API
+ * 호출하는 낭비를 막기 위함). */
+function IntegratedCopyButton({ record }: { record: PersonRecord }) {
+  const [state, setState] = useState<"idle" | "loading" | "copied">("idle");
+  const { toast } = useToast();
+
+  const handleClick = async (e: MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (state === "loading") return;
+    setState("loading");
+    try {
+      const prompt = await buildIntegratedCopyPromptForPerson(record);
+      await navigator.clipboard.writeText(prompt);
+      setState("copied");
+      toast({
+        title: "세 체계 종합 프롬프트가 복사되었습니다.",
+        description: "GPT 또는 Gemini에 붙여넣어 종합 해석을 받을 수 있습니다.",
+        duration: 3000,
+      });
+      setTimeout(() => setState("idle"), 2000);
+    } catch {
+      setState("idle");
+      toast({
+        title: "복사 실패",
+        description: "잠시 후 다시 시도해주세요.",
+        variant: "destructive",
+        duration: 3000,
+      });
+    }
+  };
+
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      className="flex-1 gap-1 text-[13px]"
+      disabled={state === "loading"}
+      onClick={handleClick}
+    >
+      <Sparkles className="h-3 w-3 text-amber-400" />
+      {state === "loading" ? "준비 중..." : state === "copied" ? "복사됨!" : "종합"}
+    </Button>
+  );
+}
 
 function PersonCard({
   record,
@@ -161,15 +212,16 @@ function PersonCard({
         <div className="flex gap-2 mt-3">
           <Link href={`/people/${record.id}`} className="flex-1">
             <Button variant="outline" size="sm" className="w-full text-[13px]">
-              상세 보기
+              상세
             </Button>
           </Link>
           <Link href={`/compatibility/${record.id}`} className="flex-1">
             <Button variant="outline" size="sm" className="w-full gap-1 text-[13px]">
               <Heart className="h-3 w-3 text-rose-400" />
-              궁합 보기
+              궁합
             </Button>
           </Link>
+          <IntegratedCopyButton record={record} />
         </div>
       )}
     </div>

@@ -9,6 +9,7 @@ import type { WesternIssue } from "@/lib/western/types";
 import type { WesternTransitReport } from "@/lib/western/transit";
 import { monthFromSearch, monthInTimezone, monthRange, shiftMonth } from "@/lib/western/uiModel";
 import { useResolvedWesternBirth } from "@/lib/western/useResolvedWesternBirth";
+import { useResolvedCurrentLocation } from "@/lib/western/useResolvedCurrentLocation";
 import { buildWesternCopyPrompt } from "@/lib/western/synthesis/promptExport";
 import { CopyButton } from "@/components/CopyButton";
 
@@ -17,6 +18,7 @@ export default function WesternTransit() {
   const { personId } = useParams<{ personId: string }>();
   const person = useMemo(() => personId ? findPerson(personId) : null, [personId]);
   const { birth, status: birthStatus } = useResolvedWesternBirth(person);
+  const currentLocation = useResolvedCurrentLocation(person);
   const [state, setState] = useState<{ report?: WesternTransitReport; errors?: WesternIssue[]; loading: boolean }>({ loading: true });
   const [, navigate] = useLocation();
   const timezone = person?.westernLocation?.timezone;
@@ -50,7 +52,7 @@ export default function WesternTransit() {
           // WesternTransitReport를 그대로 쓰고, 선택이 없는 기본 진입 상태(오늘이 속한 달을
           // fallback으로만 보여주는 중)는 지금까지처럼 "지금 이 순간" 기준으로 자동 계산한다.
           const hasExplicitMonth = monthFromSearch(window.location.search, "") !== "";
-          return buildWesternCopyPrompt(state.report!.timeline.natalChart, { placeLabel: person.westernLocation?.placeLabel, solarReturnLocation: person.currentLocation, ...(hasExplicitMonth ? { transit: state.report } : {}) });
+          return buildWesternCopyPrompt(state.report!.timeline.natalChart, { placeLabel: person.westernLocation?.placeLabel, solarReturnLocation: currentLocation ?? undefined, ...(hasExplicitMonth ? { transit: state.report } : {}) });
         }} label="서양점성술 AI 해석 프롬프트 복사" toastTitle="서양점성술 계산 구조가 복사되었습니다." /></>
       : <WesternMissingContext personId={person.id} personNames={[person.birthInput.name]} issue={state.errors?.[0]} fallback="시기운 리포트를 만들 수 없습니다." />}
   </WesternReportShell>;

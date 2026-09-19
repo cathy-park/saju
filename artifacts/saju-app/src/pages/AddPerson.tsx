@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { BirthForm } from "@/components/BirthForm";
 import { MaritalField } from "@/components/MaritalField";
 import { CurrentLocationField } from "@/components/CurrentLocationField";
+import { resolveAndSaveCurrentLocation } from "@/lib/western/useResolvedCurrentLocation";
 import { calculateProfileFromBirth, type BirthInput } from "@/lib/sajuEngine";
 import {
   savePerson,
@@ -38,6 +39,7 @@ export default function AddPerson() {
       return;
     }
     savePerson(record);
+    resolveAndSaveCurrentLocation(record, user).catch(() => {});
     if (user) {
       upsertPartnerProfile(user.id, record).catch((e) => {
         console.error("[AddPerson] upsert failed:", e);
