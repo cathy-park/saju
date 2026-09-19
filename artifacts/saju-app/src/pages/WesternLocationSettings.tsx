@@ -9,7 +9,7 @@ export default function WesternLocationSettings() {
       personId={personId}
       field="westernLocation"
       heading="출생 위치"
-      description="출생한 시·도와 시·군·구를 선택해주세요. 선택한 지역의 중심 좌표를 계산에 사용합니다."
+      description="출생한 시·도를 선택해주세요. 시·군·구를 알면 추가로 선택할 수 있습니다. 선택한 범위의 대표 좌표를 계산에 사용합니다."
       overviewPath={(id) => `/western/${id}/overview`}
     />
   );

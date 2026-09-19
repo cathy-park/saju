@@ -21,4 +21,15 @@ describe("Korean region catalog", () => {
     expect(koreanRegionLocation("전라남도 영광군")?.placeLabel).toBe("전라남도 영광군");
     expect(koreanRegionLocation("서울특별시 중구")?.latitude).not.toBe(koreanRegionLocation("부산광역시 중구")?.latitude);
   });
+
+  it("resolves a province alone and uses the district coordinate when supplied", () => {
+    const province = koreanRegionLocation("전라남도");
+    const district = koreanRegionLocation("전라남도 영광군");
+    expect(parseKoreanRegion("전라남도")).toEqual({ province: "전라남도", district: null });
+    expect(province?.placeLabel).toBe("전라남도");
+    expect(province?.latitude).toBeGreaterThan(32);
+    expect(province?.longitude).toBeLessThan(132);
+    expect(province?.latitude).not.toBe(district?.latitude);
+    expect(district?.latitude).toBe(koreanRegions["전라남도"]["영광군"][0]);
+  });
 });

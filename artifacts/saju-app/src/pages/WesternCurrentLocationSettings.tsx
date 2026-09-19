@@ -11,7 +11,7 @@ export default function WesternCurrentLocationSettings() {
       personId={personId}
       field="currentLocation"
       heading="현재 지역"
-      description="솔라리턴(Solar Return)의 ASC/MC/12하우스는 출생지가 아니라 지금 살고 있는 지역을 기준으로 계산됩니다. 시·도와 시·군·구를 선택해주세요."
+      description="솔라리턴(Solar Return)의 ASC/MC/12하우스는 출생지가 아니라 지금 살고 있는 지역을 기준으로 계산됩니다. 시·도를 선택하고, 시·군·구는 알면 추가로 선택해주세요."
       overviewPath={(id) => `/western/${id}/overview`}
     />
   );

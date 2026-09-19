@@ -291,7 +291,7 @@ export function BirthForm({
           <KoreanRegionField id="birthplace" label="출생지 (선택)" value={field.value ?? ""} onChange={field.onChange} />
         } />
         <p className="text-[13px] text-muted-foreground mt-1">
-          시·도와 시·군·구를 선택하면 해당 지역의 중심 좌표를 계산에 사용합니다.
+          시·군·구는 선택사항입니다. 선택한 범위의 대표 좌표를 계산에 사용합니다.
         </p>
       </div>
 
