@@ -38,6 +38,7 @@ const WesternSynastry = lazy(() => import("@/pages/WesternSynastry"));
 const WesternOverview = lazy(() => import("@/pages/WesternOverview"));
 const WesternRelationshipOverview = lazy(() => import("@/pages/WesternRelationshipOverview"));
 const WesternLocationSettings = lazy(() => import("@/pages/WesternLocationSettings"));
+const WesternCurrentLocationSettings = lazy(() => import("@/pages/WesternCurrentLocationSettings"));
 const IntegratedOverview = lazy(() => import("@/pages/IntegratedOverview"));
 const IntegratedRelationshipOverview = lazy(() => import("@/pages/IntegratedRelationshipOverview"));
 
@@ -169,6 +170,7 @@ function SyncedApp() {
           <Route path="/western/:personId/transit" component={WesternTransit} />
           <Route path="/western/:personId/romance" component={WesternRelationship} />
           <Route path="/western/:personId/location" component={WesternLocationSettings} />
+          <Route path="/western/:personId/current-location" component={WesternCurrentLocationSettings} />
           <Route path="/western/:personId/relationship" component={WesternRelationshipEntry} />
           <Route path="/western/:personId" component={WesternPersonalRedirect} />
           <Route path="/integrated/:personId/relationship/:otherPersonId/overview" component={IntegratedRelationshipOverview} />

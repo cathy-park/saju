@@ -69,6 +69,16 @@ export interface ManualBranchRelation {
   branch2: string;
 }
 
+/** 서양점성술에서 쓰는 지오코딩된 위치 정보 — 출생지(westernLocation)와 현재
+ * 지역(currentLocation) 둘 다 같은 모양을 쓴다. */
+export interface WesternGeoLocation {
+  placeLabel: string;
+  latitude: number;
+  longitude: number;
+  timezone: string;
+  resolver?: { provider: string; version?: string };
+}
+
 export interface FortuneOptions {
   daewoonStartAgeOverride?: number | null;
   /**
@@ -134,13 +144,12 @@ export interface PersonRecord {
    * name string — always resolved via a real geocoding call (see
    * useResolvedWesternBirth.ts) when birthInput.birthplace is present, or entered
    * manually as a fallback. Stored inside the existing JSON payload. */
-  westernLocation?: {
-    placeLabel: string;
-    latitude: number;
-    longitude: number;
-    timezone: string;
-    resolver?: { provider: string; version?: string };
-  };
+  westernLocation?: WesternGeoLocation;
+  /** 솔라리턴(Solar Return) 계산의 "기준 지역" — 출생지가 아니라 지금 이 사람이 실제로
+   * 살고 있는 곳. 없으면 솔라리턴은 행성 위치까지만 계산하고 ASC/MC/12하우스는 비워
+   * 둔다(출생지로 대신 추측하지 않음 — westernLocation과 동일한 원칙). 입력 방식도
+   * westernLocation과 동일하게 지오코딩(geocode.ts)을 재사용한다. */
+  currentLocation?: WesternGeoLocation;
   createdAt: string;
   updatedAt: string;
 }

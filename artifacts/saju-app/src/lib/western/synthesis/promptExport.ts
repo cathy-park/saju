@@ -97,7 +97,7 @@ function synastryDataLines(report: WesternSynastryReport, labelOf: Record<string
   };
 }
 
-export function buildWesternRelationshipCopyPrompt(report: WesternSynastryReport, subjects?: Record<string, { name: string; placeLabel?: string }>): string {
+export function buildWesternRelationshipCopyPrompt(report: WesternSynastryReport, subjects?: Record<string, { name: string; placeLabel?: string; solarReturnLocation?: SolarReturnLocation }>): string {
   const [first, second] = report.subjects;
   const firstLabel = subjects?.[first.personId]?.name ?? "첫 번째 사람";
   const secondLabel = subjects?.[second.personId]?.name ?? "두 번째 사람";
@@ -117,7 +117,7 @@ export function buildWesternRelationshipCopyPrompt(report: WesternSynastryReport
     `## 7. ${secondLabel} Current Transits`, ...currentTransitDataLines(second.chart), "",
     `## 8. ${firstLabel} Secondary Progressions`, ...progressionsDataLines(first.chart), "",
     `## 9. ${secondLabel} Secondary Progressions`, ...progressionsDataLines(second.chart), "",
-    `## 10. ${firstLabel} Solar Return`, ...solarReturnDataLines(first.chart, year), "",
-    `## 11. ${secondLabel} Solar Return`, ...solarReturnDataLines(second.chart, year),
+    `## 10. ${firstLabel} Solar Return`, ...solarReturnDataLines(first.chart, year, subjects?.[first.personId]?.solarReturnLocation), "",
+    `## 11. ${secondLabel} Solar Return`, ...solarReturnDataLines(second.chart, year, subjects?.[second.personId]?.solarReturnLocation),
   ].join("\n");
 }
