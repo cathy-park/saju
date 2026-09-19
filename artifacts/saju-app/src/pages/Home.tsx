@@ -14,6 +14,7 @@ import { charToElement, elementBgClass, elementTextClass } from "@/lib/element-c
 import type { FiveElKey } from "@/lib/element-color";
 import { cn } from "@/lib/utils";
 import { HomeTodayFlow } from "@/components/home/HomeTodayFlow";
+import { useIntegratedCopyToClipboard } from "@/hooks/useIntegratedCopyToClipboard";
 import gyeolDefault from "@assets/image_24_1774912053926.png";
 
 const NICK_KEY = "naheuleum_nickname";
@@ -112,6 +113,27 @@ function NicknameSheet({ value, onSave, onClose }: {
         </div>
       </div>
     </div>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════════
+//  종합 프롬프트 복사 — 상세 화면(내 사주 → 통합)까지 들어가지 않고 바로
+//  세 체계(사주·자미두수·서양점성술) 종합 프롬프트를 클립보드에 복사한다.
+// ════════════════════════════════════════════════════════════════════
+function IntegratedCopyPill({ record }: { record: PersonRecord }) {
+  const { state, handleClick } = useIntegratedCopyToClipboard(record);
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      disabled={state === "loading"}
+      className="flex h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-full border border-amber-300/50 bg-amber-400/10 px-4 disabled:opacity-60"
+    >
+      <span className="text-base" aria-hidden>✨</span>
+      <span className="text-sm font-bold text-amber-600">
+        {state === "loading" ? "준비 중..." : state === "copied" ? "복사됨!" : "종합 프롬프트 복사"}
+      </span>
+    </button>
   );
 }
 
@@ -329,7 +351,8 @@ function Dashboard({ record }: { record: PersonRecord }) {
 
       {/* 개인/관계 진입 — 홈의 분석축은 위 주제 chip 하나로 통일한다. */}
       <div className="px-4 pt-4">
-        <Link href="/compatibility" className="block">
+        <IntegratedCopyPill record={record} />
+        <Link href="/compatibility" className="mt-2 block">
           <div className="flex h-12 cursor-pointer items-center justify-center gap-2 rounded-full border border-primary/25 bg-primary/10 px-4">
             <span className="text-base" aria-hidden>💞</span>
             <span className="text-sm font-bold text-primary">궁합 보기</span>

@@ -12,8 +12,12 @@ import { buildWesternCopyPrompt } from "@/lib/western/synthesis/promptExport";
 import { westernBirthSource } from "@/lib/western/uiModel";
 import type { WesternPersonalityReport } from "@/lib/western/interpretation";
 import type { PersonRecord } from "@/lib/storage";
+import { resolveAndSaveCurrentLocation } from "@/lib/western/useResolvedCurrentLocation";
 
-export async function buildIntegratedCopyPromptForPerson(person: PersonRecord): Promise<string> {
+export async function buildIntegratedCopyPromptForPerson(
+  person: PersonRecord,
+  user: { id: string } | null = null,
+): Promise<string> {
   const existing = buildExistingPersonalReports(person);
   const saju = buildPersonClipboardText(person, "포함", true);
   const ziwei = existing.ziweiChart
@@ -31,9 +35,13 @@ export async function buildIntegratedCopyPromptForPerson(person: PersonRecord): 
       });
       if (response.ok) {
         const data = (await response.json()) as { report: WesternPersonalityReport };
+        // 현재 지역이 아직 지오코딩 전이면(예: 텍스트만 입력해두고 이 화면을 처음 여는
+        // 경우) 여기서 한 번 더 시도한다 — 프로필 저장 시점에 이미 해석됐다면 이 호출은
+        // person.currentLocation을 그대로 돌려줄 뿐 추가 네트워크 요청을 하지 않는다.
+        const currentLocation = await resolveAndSaveCurrentLocation(person, user);
         western = buildWesternCopyPrompt(data.report.chart, {
           placeLabel: person.westernLocation.placeLabel,
-          solarReturnLocation: person.currentLocation,
+          solarReturnLocation: currentLocation ?? undefined,
         });
       }
     } catch {

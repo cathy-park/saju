@@ -29,8 +29,7 @@ import { Mascot } from "@/components/Mascot";
 import { useAuth } from "@/lib/authContext";
 import { deletePartnerProfile } from "@/lib/db";
 import { charToElement, elementBgClass, type FiveElKey } from "@/lib/element-color";
-import { buildIntegratedCopyPromptForPerson } from "@/lib/integrated/copyPrompt";
-import { useToast } from "@/hooks/use-toast";
+import { useIntegratedCopyToClipboard } from "@/hooks/useIntegratedCopyToClipboard";
 
 type TabKey = "전체" | RelationshipType;
 
@@ -50,33 +49,12 @@ const REL_TABS: { key: TabKey; label: string; emoji: string }[] = [
  * 클릭 전에는 아무 계산도 하지 않는다(목록에 사람이 많을 때 카드마다 미리 계산·API
  * 호출하는 낭비를 막기 위함). */
 function IntegratedCopyButton({ record }: { record: PersonRecord }) {
-  const [state, setState] = useState<"idle" | "loading" | "copied">("idle");
-  const { toast } = useToast();
+  const { state, handleClick: copy } = useIntegratedCopyToClipboard(record);
 
-  const handleClick = async (e: MouseEvent) => {
+  const handleClick = (e: MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (state === "loading") return;
-    setState("loading");
-    try {
-      const prompt = await buildIntegratedCopyPromptForPerson(record);
-      await navigator.clipboard.writeText(prompt);
-      setState("copied");
-      toast({
-        title: "세 체계 종합 프롬프트가 복사되었습니다.",
-        description: "GPT 또는 Gemini에 붙여넣어 종합 해석을 받을 수 있습니다.",
-        duration: 3000,
-      });
-      setTimeout(() => setState("idle"), 2000);
-    } catch {
-      setState("idle");
-      toast({
-        title: "복사 실패",
-        description: "잠시 후 다시 시도해주세요.",
-        variant: "destructive",
-        duration: 3000,
-      });
-    }
+    copy();
   };
 
   return (
