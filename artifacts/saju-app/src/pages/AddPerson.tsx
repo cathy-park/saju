@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { BirthForm } from "@/components/BirthForm";
 import { MaritalField } from "@/components/MaritalField";
+import { CurrentLocationField } from "@/components/CurrentLocationField";
 import { calculateProfileFromBirth, type BirthInput } from "@/lib/sajuEngine";
 import {
   savePerson,
@@ -22,6 +23,7 @@ export default function AddPerson() {
   const { user } = useAuth();
   const [relType, setRelType] = useState<RelationshipType>("friend");
   const [maritalStatus, setMaritalStatus] = useState<MaritalStatus | undefined>(undefined);
+  const [currentPlaceName, setCurrentPlaceName] = useState("");
 
   async function handleSubmit(input: BirthInput) {
     let record;
@@ -30,6 +32,7 @@ export default function AddPerson() {
       record = createRecord(input, profile);
       record.relationshipType = relType;
       record.maritalStatus = maritalStatus;
+      record.currentPlaceName = currentPlaceName;
     } catch (e: unknown) {
       alert("계산 오류: " + ((e as Error)?.message ?? "알 수 없는 오류"));
       return;
@@ -77,11 +80,14 @@ export default function AddPerson() {
             onSubmit={handleSubmit}
             submitLabel="사주 계산 & 저장"
             renderExtra={
-              <MaritalField
-                value={maritalStatus}
-                onChange={setMaritalStatus}
-                subjectLabel="현재 관계 상태"
-              />
+              <>
+                <MaritalField
+                  value={maritalStatus}
+                  onChange={setMaritalStatus}
+                  subjectLabel="현재 관계 상태"
+                />
+                <CurrentLocationField value={currentPlaceName} onChange={setCurrentPlaceName} />
+              </>
             }
           />
         </div>

@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BirthForm } from "@/components/BirthForm";
 import { MaritalField, MaritalBadge } from "@/components/MaritalField";
+import { CurrentLocationField } from "@/components/CurrentLocationField";
 import { SajuDisplay } from "@/components/SajuDisplay";
 import { calculateProfileFromBirth, type BirthInput, type Pillar } from "@/lib/sajuEngine";
 import {
@@ -37,6 +38,7 @@ export default function EditPerson() {
   const [manualPillars, setManualPillars] = useState(record?.manualPillars ?? {});
   const [relType, setRelType] = useState<RelationshipType>(record?.relationshipType ?? "friend");
   const [maritalStatus, setMaritalStatus] = useState<MaritalStatus | undefined>(record?.maritalStatus);
+  const [currentPlaceName, setCurrentPlaceName] = useState(record?.currentPlaceName ?? "");
 
   if (!record) {
     return (
@@ -57,6 +59,7 @@ export default function EditPerson() {
         manualPillars: {},
         relationshipType: relType,
         maritalStatus,
+        currentPlaceName,
         updatedAt: new Date().toISOString(),
       };
     } catch (e: unknown) {
@@ -78,6 +81,7 @@ export default function EditPerson() {
       manualPillars,
       relationshipType: relType,
       maritalStatus,
+      currentPlaceName,
       updatedAt: new Date().toISOString(),
     };
     savePerson(updated);
@@ -150,11 +154,14 @@ export default function EditPerson() {
                 onSubmit={handleBirthSubmit}
                 submitLabel="다시 계산 & 저장"
                 renderExtra={
-                  <MaritalField
-                    value={maritalStatus}
-                    onChange={setMaritalStatus}
-                    subjectLabel="현재 관계 상태"
-                  />
+                  <>
+                    <MaritalField
+                      value={maritalStatus}
+                      onChange={setMaritalStatus}
+                      subjectLabel="현재 관계 상태"
+                    />
+                    <CurrentLocationField value={currentPlaceName} onChange={setCurrentPlaceName} />
+                  </>
                 }
               />
             </div>
@@ -217,6 +224,7 @@ export default function EditPerson() {
               })}
 
               <MaritalField value={maritalStatus} onChange={setMaritalStatus} subjectLabel="현재 관계 상태" />
+              <CurrentLocationField value={currentPlaceName} onChange={setCurrentPlaceName} />
 
               <Button className="w-full shadow-none" onClick={handleManualSave}>
                 수정 저장

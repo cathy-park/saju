@@ -11,6 +11,7 @@ import type { WesternNatalChart } from "@/lib/western/types";
 import type { WesternPersonalityReport } from "@/lib/western/interpretation";
 import { monthInTimezone, monthRange } from "@/lib/western/uiModel";
 import { useResolvedWesternBirth } from "@/lib/western/useResolvedWesternBirth";
+import { useResolvedCurrentLocation } from "@/lib/western/useResolvedCurrentLocation";
 import { buildWesternCopyPrompt } from "@/lib/western/synthesis/promptExport";
 import { CopyButton } from "@/components/CopyButton";
 
@@ -19,6 +20,7 @@ export default function WesternOverview() {
   const { personId } = useParams<{ personId: string }>();
   const person = useMemo(() => personId ? findPerson(personId) : null, [personId]);
   const { birth, status: birthStatus } = useResolvedWesternBirth(person);
+  const currentLocation = useResolvedCurrentLocation(person);
   const [state, setState] = useState<{ report?: WesternPersonalSynthesisReport; chart?: WesternNatalChart; errors?: WesternIssue[]; loading: boolean }>({ loading: true });
   useEffect(() => {
     if (!person) return;
@@ -37,11 +39,11 @@ export default function WesternOverview() {
   return <WesternReportShell personId={person.id} sajuHref={person.id === getMyProfile()?.id ? "/saju" : `/people/${person.id}`} eyebrow="서양점성술 · 개인 종합" title={`${person.birthInput.name}님의 전체 흐름`} navigation={<WesternPersonalNav personId={person.id} />}>
     {state.loading ? <div className="ds-card ds-card-pad text-sm text-muted-foreground shadow-none" role="status" aria-live="polite">기존 분석 결과를 종합하고 있습니다.</div> : state.report ? (<>
       <WesternSynthesisSummary report={state.report} />
-      {state.chart && <CopyButton buildText={() => buildWesternCopyPrompt(state.chart!, { placeLabel: person.westernLocation?.placeLabel, solarReturnLocation: person.currentLocation })} label="서양점성술 AI 해석 프롬프트 복사" toastTitle="서양점성술 계산 구조가 복사되었습니다." />}
+      {state.chart && <CopyButton buildText={() => buildWesternCopyPrompt(state.chart!, { placeLabel: person.westernLocation?.placeLabel, solarReturnLocation: currentLocation ?? undefined })} label="서양점성술 AI 해석 프롬프트 복사" toastTitle="서양점성술 계산 구조가 복사되었습니다." />}
       <p className="text-xs text-muted-foreground">
-        솔라리턴(올해 운세) 기준 지역: {person.currentLocation?.placeLabel ?? "미설정"}{" "}
+        솔라리턴(올해 운세) 기준 지역: {currentLocation?.placeLabel ?? "미설정"}{" "}
         <Link href={`/western/${person.id}/current-location`} className="font-semibold text-primary underline">
-          {person.currentLocation ? "변경" : "설정하기"}
+          {currentLocation ? "변경" : "설정하기"}
         </Link>
       </p>
     </>) : <WesternMissingContext personId={person.id} personNames={[person.birthInput.name]} issue={state.errors?.[0]} fallback="종합 리포트를 만들 수 없습니다." />}

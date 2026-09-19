@@ -20,6 +20,7 @@ import { useAuth } from "@/lib/authContext";
 import { upsertMyProfile, deleteMyProfileFromDb } from "@/lib/db";
 import { Pencil, Trash2 } from "lucide-react";
 import { MaritalField, MaritalBadge } from "@/components/MaritalField";
+import { CurrentLocationField } from "@/components/CurrentLocationField";
 import { charToElement, elementBgClass, type FiveElKey } from "@/lib/element-color";
 import { cn } from "@/lib/utils";
 import { GenderSymbol } from "@/components/GenderSymbol";
@@ -32,6 +33,7 @@ export default function MyProfile() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [record, setRecord] = useState<PersonRecord | null>(() => getMyProfile());
   const [formMarital, setFormMarital] = useState<MaritalStatus | undefined>(() => getMyProfile()?.maritalStatus);
+  const [currentPlaceName, setCurrentPlaceName] = useState(() => getMyProfile()?.currentPlaceName ?? "");
   const [hourMode, setHourMode] = useState<"포함" | "제외" | "비교">("포함");
   const { user, dbSynced } = useAuth();
 
@@ -41,6 +43,7 @@ export default function MyProfile() {
       if (latest) {
         setRecord(latest);
         setFormMarital(latest.maritalStatus);
+        setCurrentPlaceName(latest.currentPlaceName ?? "");
       }
     }
   }, [dbSynced]);
@@ -58,12 +61,13 @@ export default function MyProfile() {
           birthInput: input,
           profile,
           maritalStatus: formMarital,
+          currentPlaceName,
           manualPillars:      {},
           manualFiveElements: undefined,
           updatedAt: now,
         };
       } else {
-        newRecord = { ...createRecord(input, profile), maritalStatus: formMarital };
+        newRecord = { ...createRecord(input, profile), maritalStatus: formMarital, currentPlaceName };
       }
     } catch (e: unknown) {
       alert("계산 오류: " + ((e as Error)?.message ?? "알 수 없는 오류"));
@@ -121,13 +125,16 @@ export default function MyProfile() {
               onSubmit={handleSubmit}
               submitLabel="내 사주 저장"
               renderExtra={
-                <MaritalField
-                  value={formMarital}
-                  onChange={(v) => {
-                    setFormMarital(v);
-                    if (record) saveMaritalStatus(record.id, v);
-                  }}
-                />
+                <>
+                  <MaritalField
+                    value={formMarital}
+                    onChange={(v) => {
+                      setFormMarital(v);
+                      if (record) saveMaritalStatus(record.id, v);
+                    }}
+                  />
+                  <CurrentLocationField value={currentPlaceName} onChange={setCurrentPlaceName} />
+                </>
               }
             />
           </div>

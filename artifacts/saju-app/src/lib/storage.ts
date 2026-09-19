@@ -145,6 +145,10 @@ export interface PersonRecord {
    * useResolvedWesternBirth.ts) when birthInput.birthplace is present, or entered
    * manually as a fallback. Stored inside the existing JSON payload. */
   westernLocation?: WesternGeoLocation;
+  /** "현재 거주지역" 입력칸의 원본 텍스트 — birthInput.birthplace와 같은 역할이지만
+   * 출생 정보가 아니라서 별도 필드로 둔다. useResolvedCurrentLocation이 이 텍스트를
+   * 백그라운드에서 지오코딩해 currentLocation을 채운다. */
+  currentPlaceName?: string;
   /** 솔라리턴(Solar Return) 계산의 "기준 지역" — 출생지가 아니라 지금 이 사람이 실제로
    * 살고 있는 곳. 없으면 솔라리턴은 행성 위치까지만 계산하고 ASC/MC/12하우스는 비워
    * 둔다(출생지로 대신 추측하지 않음 — westernLocation과 동일한 원칙). 입력 방식도
