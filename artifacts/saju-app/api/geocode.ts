@@ -79,12 +79,20 @@ export default async function handler(req: RequestLike, res: ResponseLike) {
       res.status(502).json({ error: "Geocoding service unavailable" });
       return;
     }
-    const results = (await nominatimRes.json()) as Array<{
+    const rawResults = (await nominatimRes.json()) as Array<{
       display_name: string;
       lat: string;
       lon: string;
       address?: { country_code?: string };
     }>;
+
+    // "영광"·"온성"처럼 한국에도 있고 북한에도 있는 흔한 지명은 Nominatim이 두 나라
+    // 결과를 섞어 돌려준다. 이 앱은 한국 사용자를 대상으로 하고(실제로 북한 주소를
+    // 의도해서 입력할 일이 사실상 없음), 이 노이즈 하나 때문에 "여러 나라 섞임 →
+    // 불확실"로 판정돼 자동 해석이 통째로 실패하는 문제가 있었다. 북한(KP) 결과만
+    // 제외한다 — 다른 나라(예: 미국·러시아처럼 실제로 여러 시간대가 있는 경우)는
+    // 그대로 두어 기존처럼 사용자가 직접 고르게 한다.
+    const results = rawResults.filter((item) => item.address?.country_code?.toLowerCase() !== "kp");
 
     const candidates: GeocodeCandidate[] = results.map((item) => {
       const countryCode = item.address?.country_code ? item.address.country_code.toUpperCase() : null;
