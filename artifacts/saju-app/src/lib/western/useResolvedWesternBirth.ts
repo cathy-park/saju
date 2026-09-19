@@ -12,6 +12,7 @@ import { upsertMyProfile, upsertPartnerProfile } from "@/lib/db";
 import { geocodePlace, type GeocodeCandidate } from "./geocode";
 import { westernBirthSource } from "./uiModel";
 import type { WesternBirthSource } from "./adapter";
+import { koreanRegionLocation } from "@/lib/koreanRegions";
 
 export type ResolvedWesternBirthStatus = "unavailable" | "resolving" | "ready";
 
@@ -51,18 +52,19 @@ export function useResolvedWesternBirth(person: PersonRecord | null): {
 
     let cancelled = false;
     setResolving(true);
-    geocodePlace(birthplace).then(async (candidates) => {
+    const local = koreanRegionLocation(birthplace);
+    (local ? Promise.resolve([] as GeocodeCandidate[]) : geocodePlace(birthplace)).then(async (candidates) => {
       if (cancelled) return;
-      const candidate = selectUnambiguousCandidate(candidates);
-      if (!candidate) {
+      const candidate = local ? null : selectUnambiguousCandidate(candidates);
+      if (!local && !candidate) {
         setResolving(false);
         return;
       }
-      const westernLocation: NonNullable<PersonRecord["westernLocation"]> = {
-        placeLabel: candidate.label,
-        latitude: candidate.latitude,
-        longitude: candidate.longitude,
-        timezone: candidate.timezones[0].value,
+      const westernLocation: NonNullable<PersonRecord["westernLocation"]> = local ?? {
+        placeLabel: candidate!.label,
+        latitude: candidate!.latitude,
+        longitude: candidate!.longitude,
+        timezone: candidate!.timezones[0].value,
         resolver: { provider: "nominatim", version: "1" },
       };
       const updated: PersonRecord = { ...person, westernLocation, updatedAt: new Date().toISOString() };

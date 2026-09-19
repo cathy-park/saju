@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BirthForm } from "@/components/BirthForm";
 import { MaritalField, MaritalBadge } from "@/components/MaritalField";
 import { CurrentLocationField } from "@/components/CurrentLocationField";
+import { applyKoreanLocations } from "@/lib/applyKoreanLocations";
 import { resolveAndSaveCurrentLocation } from "@/lib/western/useResolvedCurrentLocation";
 import { SajuDisplay } from "@/components/SajuDisplay";
 import { calculateProfileFromBirth, type BirthInput, type Pillar } from "@/lib/sajuEngine";
@@ -67,6 +68,7 @@ export default function EditPerson() {
       alert("계산 오류: " + ((e as Error)?.message ?? "알 수 없는 오류"));
       return;
     }
+    updated = applyKoreanLocations(updated);
     savePerson(updated);
     resolveAndSaveCurrentLocation(updated, user).catch(() => {});
     if (user) {
@@ -86,11 +88,12 @@ export default function EditPerson() {
       currentPlaceName,
       updatedAt: new Date().toISOString(),
     };
-    savePerson(updated);
-    setRecord(updated);
-    resolveAndSaveCurrentLocation(updated, user).catch(() => {});
+    const located = applyKoreanLocations(updated);
+    savePerson(located);
+    setRecord(located);
+    resolveAndSaveCurrentLocation(located, user).catch(() => {});
     if (user) {
-      upsertPartnerProfile(user.id, updated).catch((e) => {
+      upsertPartnerProfile(user.id, located).catch((e) => {
         console.error("[EditPerson] manual upsert failed:", e);
       });
     }

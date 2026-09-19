@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { BirthInput } from "@/lib/sajuEngine";
+import { KoreanRegionField } from "@/components/KoreanRegionField";
 
 const schema = z.object({
   name: z.string().min(1, "이름을 입력해주세요"),
@@ -286,15 +287,11 @@ export function BirthForm({
 
       {/* 출생지 */}
       <div>
-        <Label htmlFor="birthplace">출생지 (선택)</Label>
-        <Input
-          id="birthplace"
-          placeholder="예: 서울, 부산"
-          {...form.register("birthplace")}
-          className="mt-1"
-        />
+        <Controller name="birthplace" control={form.control} render={({ field }) =>
+          <KoreanRegionField id="birthplace" label="출생지 (선택)" value={field.value ?? ""} onChange={field.onChange} />
+        } />
         <p className="text-[13px] text-muted-foreground mt-1">
-          출생지 입력 시 진태양시 보정에 활용됩니다
+          시·도와 시·군·구를 선택하면 해당 지역의 중심 좌표를 계산에 사용합니다.
         </p>
       </div>
 

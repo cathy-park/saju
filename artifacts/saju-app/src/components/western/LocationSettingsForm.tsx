@@ -1,117 +1,42 @@
-// 출생지 설정(WesternLocationSettings)과 현재 지역 설정이 똑같은 지오코딩 흐름(장소 이름
-// 검색 → 후보 선택 → 시간대 확정 → 고급 설정 fallback)을 쓰기 때문에, 그 로직을 이 컴포넌트
-// 하나로 모으고 두 화면은 어떤 PersonRecord 필드에 저장할지(field)만 다르게 준다.
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { cn } from "@/lib/utils";
-import { getMyProfile, getPeople, saveMyProfile, savePerson, type PersonRecord, type WesternGeoLocation } from "@/lib/storage";
+import { KoreanRegionField } from "@/components/KoreanRegionField";
+import { koreanRegionLocation } from "@/lib/koreanRegions";
+import { getMyProfile, getPeople, saveMyProfile, savePerson, type PersonRecord } from "@/lib/storage";
 import { useAuth } from "@/lib/authContext";
 import { upsertMyProfile, upsertPartnerProfile } from "@/lib/db";
-import { validateWesternLocation } from "@/lib/western/uiModel";
-import { geocodePlace, type GeocodeCandidate } from "@/lib/western/geocode";
 
-const findPerson = (id: string) => { const mine = getMyProfile(); return mine?.id === id ? mine : getPeople().find((person) => person.id === id) ?? null; };
+const findPerson = (id: string) => {
+  const mine = getMyProfile();
+  return mine?.id === id ? mine : getPeople().find((person) => person.id === id) ?? null;
+};
 
-interface ResolvedLocation {
-  placeLabel: string;
-  latitude: number;
-  longitude: number;
-  timezone: string;
-  provider: "nominatim" | "manual-exact-input";
-}
-
-export function LocationSettingsForm({
-  personId,
-  field,
-  heading,
-  description,
-  searchPlaceholder = "예: 인천",
-  seedFromBirthplace = false,
-  overviewPath,
-}: {
+export function LocationSettingsForm({ personId, field, heading, description, overviewPath }: {
   personId: string;
   field: "westernLocation" | "currentLocation";
   heading: string;
   description: string;
-  searchPlaceholder?: string;
-  /** true면(출생지 설정) birthplace 텍스트로 처음 진입 시 자동 검색을 한 번 시도한다.
-   * 현재 지역은 출생지와 무관한 값이라 자동 시드를 하지 않는다. */
-  seedFromBirthplace?: boolean;
   overviewPath: (personId: string) => string;
 }) {
   const person = personId ? findPerson(personId) : null;
   const [, navigate] = useLocation();
   const { user } = useAuth();
-
-  const existing = person?.[field];
-  const [query, setQuery] = useState(existing?.placeLabel ?? (seedFromBirthplace ? person?.birthInput.birthplace ?? "" : ""));
-  const [searching, setSearching] = useState(false);
-  const [searchError, setSearchError] = useState<string | null>(null);
-  const [candidates, setCandidates] = useState<GeocodeCandidate[] | null>(null);
-  const [selectedPlace, setSelectedPlace] = useState<GeocodeCandidate | null>(null);
-  const [selectedTimezone, setSelectedTimezone] = useState<string | null>(null);
-
-  const [advancedOpen, setAdvancedOpen] = useState(false);
-  const [advanced, setAdvanced] = useState({
-    placeLabel: existing?.placeLabel ?? "",
-    latitude: existing?.latitude?.toString() ?? "",
-    longitude: existing?.longitude?.toString() ?? "",
-    timezone: existing?.timezone ?? "",
-  });
-
-  const [saveError, setSaveError] = useState<string | null>(null);
+  const [label, setLabel] = useState(person?.[field]?.placeLabel ?? (field === "westernLocation" ? person?.birthInput.birthplace : person?.currentPlaceName) ?? "");
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const selected = koreanRegionLocation(label);
 
-  async function runSearch(q: string) {
-    if (!q.trim()) return;
-    setSearching(true);
-    setSearchError(null);
-    setSelectedPlace(null);
-    setSelectedTimezone(null);
-    const results = await geocodePlace(q);
-    setSearching(false);
-    if (results.length === 0) {
-      setCandidates([]);
-      setSearchError("장소를 찾을 수 없습니다. 다른 이름으로 검색하거나 고급 설정에서 직접 입력해주세요.");
-      setAdvancedOpen(true);
-      return;
-    }
-    setCandidates(results);
-    if (results.length === 1) setSelectedPlace(results[0]);
-  }
-
-  // 출생지 설정 화면만 — 아직 westernLocation이 없고 birthInput.birthplace가 있으면 진입 시
-  // 자동으로 한 번 찾아본다. 현재 지역은 자동 시드 대상이 아니다(seedFromBirthplace=false).
-  useEffect(() => {
-    if (seedFromBirthplace && person && !person.westernLocation && person.birthInput.birthplace) {
-      runSearch(person.birthInput.birthplace);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [person?.id]);
-
-  if (!person) return <main className="ds-app-shell ds-page-pad py-8"><p>사람을 찾을 수 없습니다.</p></main>;
-
-  const resolved: ResolvedLocation | null = selectedPlace
-    ? (selectedPlace.timezones.length === 1
-      ? { placeLabel: selectedPlace.label, latitude: selectedPlace.latitude, longitude: selectedPlace.longitude, timezone: selectedPlace.timezones[0].value, provider: "nominatim" }
-      : selectedTimezone
-      ? { placeLabel: selectedPlace.label, latitude: selectedPlace.latitude, longitude: selectedPlace.longitude, timezone: selectedTimezone, provider: "nominatim" }
-      : null)
-    : null;
-
-  async function persist(location: ResolvedLocation) {
-    if (!person) return;
-    const value: WesternGeoLocation = {
-      placeLabel: location.placeLabel, latitude: location.latitude, longitude: location.longitude, timezone: location.timezone,
-      resolver: { provider: location.provider, version: "1" },
+  async function save() {
+    if (!person || !selected) return;
+    const updated: PersonRecord = {
+      ...person,
+      [field]: selected,
+      ...(field === "westernLocation"
+        ? { birthInput: { ...person.birthInput, birthplace: label } }
+        : { currentPlaceName: label }),
+      updatedAt: new Date().toISOString(),
     };
-    const issue = validateWesternLocation(value);
-    if (issue) { setSaveError(issue); return; }
-    const updated = { ...person, [field]: value, updatedAt: new Date().toISOString() } as PersonRecord;
     const isMine = getMyProfile()?.id === person.id;
     isMine ? saveMyProfile(updated) : savePerson(updated);
     setSaving(true);
@@ -120,118 +45,28 @@ export function LocationSettingsForm({
       navigate(overviewPath(person.id));
     } catch {
       setSaveError("로컬에는 저장했지만 클라우드 동기화에 실패했습니다. 다시 시도해주세요.");
-    } finally { setSaving(false); }
+    } finally {
+      setSaving(false);
+    }
   }
 
-  function saveAdvanced() {
-    persist({
-      placeLabel: advanced.placeLabel.trim(),
-      latitude: Number(advanced.latitude),
-      longitude: Number(advanced.longitude),
-      timezone: advanced.timezone.trim(),
-      provider: "manual-exact-input",
-    });
-  }
-
+  if (!person) return <main className="ds-app-shell ds-page-pad py-8"><p>사람을 찾을 수 없습니다.</p></main>;
   return <main className="ds-app-shell ds-page-pad py-8 ds-section-gap">
     <header>
       <p className="text-xs font-semibold text-primary">서양점성술 설정</p>
       <h1 className="mt-1 text-2xl font-bold">{person.birthInput.name}님의 {heading}</h1>
       <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{description}</p>
     </header>
-
     <section className="ds-card ds-card-pad space-y-4 shadow-none">
-      <div>
-        <Label htmlFor="location-search">{heading}</Label>
-        <div className="mt-1 flex gap-2">
-          <Input id="location-search" className="flex-1" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={searchPlaceholder} onKeyDown={(event) => { if (event.key === "Enter") runSearch(query); }} />
-          <Button type="button" onClick={() => runSearch(query)} disabled={searching || !query.trim()}>{searching ? "찾는 중" : "찾기"}</Button>
-        </div>
-        {searchError && <p className="mt-2 text-sm text-destructive" role="alert">{searchError}</p>}
-      </div>
-
-      {candidates && candidates.length > 1 && (
-        <div>
-          <p className="text-sm font-semibold text-foreground">같은 이름의 지역이 여러 곳 있습니다. 맞는 곳을 골라주세요.</p>
-          <div className="mt-2 space-y-2">
-            {candidates.map((candidate, i) => (
-              <button
-                key={i} type="button"
-                onClick={() => { setSelectedPlace(candidate); setSelectedTimezone(null); }}
-                className={cn(
-                  "flex w-full min-h-11 items-center rounded-xl border px-3 py-2 text-left text-sm transition-colors",
-                  selectedPlace === candidate ? "border-primary bg-primary/5 text-foreground" : "border-border text-muted-foreground hover:bg-muted/40",
-                )}
-              >
-                {candidate.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {selectedPlace && selectedPlace.timezones.length > 1 && (
-        <div>
-          <p className="text-sm font-semibold text-foreground">이 나라는 시간대가 여러 개입니다. 기준 시간대를 골라주세요.</p>
-          {selectedPlace.timezones.length <= 6 ? (
-            <div className="mt-2 space-y-2">
-              {selectedPlace.timezones.map((tz) => (
-                <button
-                  key={tz.value} type="button"
-                  onClick={() => setSelectedTimezone(tz.value)}
-                  className={cn(
-                    "flex w-full min-h-11 items-center rounded-xl border px-3 py-2 text-left text-sm transition-colors",
-                    selectedTimezone === tz.value ? "border-primary bg-primary/5 text-foreground" : "border-border text-muted-foreground hover:bg-muted/40",
-                  )}
-                >
-                  {tz.label}
-                </button>
-              ))}
-            </div>
-          ) : (
-            <select
-              className="mt-2 h-11 w-full rounded-xl border border-border bg-card px-3 text-sm"
-              value={selectedTimezone ?? ""}
-              onChange={(event) => setSelectedTimezone(event.target.value || null)}
-            >
-              <option value="">시간대를 선택하세요</option>
-              {selectedPlace.timezones.map((tz) => <option key={tz.value} value={tz.value}>{tz.label}</option>)}
-            </select>
-          )}
-        </div>
-      )}
-
-      {resolved && (
-        <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-3 text-sm">
-          <p className="font-semibold text-foreground">{resolved.placeLabel}</p>
-          <p className="mt-1 text-xs text-muted-foreground">{resolved.timezone} · 위도 {resolved.latitude.toFixed(4)} · 경도 {resolved.longitude.toFixed(4)}</p>
-        </div>
-      )}
-
+      <KoreanRegionField id="location" label={heading} value={label} onChange={setLabel} />
+      {selected && <p className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-3 text-sm">
+        {selected.placeLabel} · 위도 {selected.latitude.toFixed(4)} · 경도 {selected.longitude.toFixed(4)}
+      </p>}
       {saveError && <p className="text-sm text-destructive" role="alert">{saveError}</p>}
-
       <div className="flex gap-2">
         <Link href={overviewPath(person.id)} className="flex-1"><Button type="button" variant="outline" className="w-full">취소</Button></Link>
-        <Button type="button" className="flex-1" disabled={!resolved || saving} onClick={() => resolved && persist(resolved)}>{saving ? "저장 중" : "저장"}</Button>
+        <Button type="button" className="flex-1" disabled={!selected || saving} onClick={save}>{saving ? "저장 중" : "저장"}</Button>
       </div>
-    </section>
-
-    <section className="ds-card shadow-none overflow-visible">
-      <button type="button" onClick={() => setAdvancedOpen((v) => !v)} className="flex w-full items-center justify-between px-4 py-3 text-left">
-        <span>
-          <span className="text-sm font-bold text-foreground">고급 설정</span>
-          <span className="ml-2 text-xs text-muted-foreground">위도·경도·시간대 직접 입력</span>
-        </span>
-        <ChevronDown className={cn("h-4 w-4 shrink-0 text-muted-foreground transition-transform", advancedOpen && "rotate-180")} />
-      </button>
-      {advancedOpen && (
-        <div className="ds-card-pad space-y-4 border-t border-border">
-          <div><Label htmlFor="location-place">표시 이름</Label><Input id="location-place" className="mt-1" value={advanced.placeLabel} onChange={(event) => setAdvanced({ ...advanced, placeLabel: event.target.value })} placeholder="예: 인천, 대한민국" /></div>
-          <div className="grid grid-cols-2 gap-3"><div><Label htmlFor="location-latitude">위도</Label><Input id="location-latitude" inputMode="decimal" className="mt-1" value={advanced.latitude} onChange={(event) => setAdvanced({ ...advanced, latitude: event.target.value })} placeholder="37.4563" /></div><div><Label htmlFor="location-longitude">경도</Label><Input id="location-longitude" inputMode="decimal" className="mt-1" value={advanced.longitude} onChange={(event) => setAdvanced({ ...advanced, longitude: event.target.value })} placeholder="126.7052" /></div></div>
-          <div><Label htmlFor="location-timezone">IANA 시간대</Label><Input id="location-timezone" className="mt-1" value={advanced.timezone} onChange={(event) => setAdvanced({ ...advanced, timezone: event.target.value })} placeholder="Asia/Seoul" /><p className="mt-1 text-xs text-muted-foreground">UTC+9 같은 고정 오프셋이 아닌 `Asia/Seoul` 형식입니다.</p></div>
-          <Button type="button" className="w-full" disabled={saving} onClick={saveAdvanced}>{saving ? "저장 중" : "이 값으로 저장"}</Button>
-        </div>
-      )}
     </section>
   </main>;
 }

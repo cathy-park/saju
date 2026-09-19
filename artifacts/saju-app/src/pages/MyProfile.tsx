@@ -21,6 +21,7 @@ import { upsertMyProfile, deleteMyProfileFromDb } from "@/lib/db";
 import { Pencil, Trash2 } from "lucide-react";
 import { MaritalField, MaritalBadge } from "@/components/MaritalField";
 import { CurrentLocationField } from "@/components/CurrentLocationField";
+import { applyKoreanLocations } from "@/lib/applyKoreanLocations";
 import { resolveAndSaveCurrentLocation } from "@/lib/western/useResolvedCurrentLocation";
 import { charToElement, elementBgClass, type FiveElKey } from "@/lib/element-color";
 import { cn } from "@/lib/utils";
@@ -74,6 +75,7 @@ export default function MyProfile() {
       alert("계산 오류: " + ((e as Error)?.message ?? "알 수 없는 오류"));
       return;
     }
+    newRecord = applyKoreanLocations(newRecord);
     saveMyProfile(newRecord);
     setRecord(newRecord);
     setEditing(false);

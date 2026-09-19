@@ -9,6 +9,7 @@ import { useAuth } from "@/lib/authContext";
 import { upsertMyProfile, upsertPartnerProfile } from "@/lib/db";
 import { geocodePlace } from "./geocode";
 import { selectUnambiguousCandidate } from "./useResolvedWesternBirth";
+import { koreanRegionLocation } from "@/lib/koreanRegions";
 
 /** 지오코딩해서 애매하지 않으면(동명 지역·시간대 여럿 아니면) 바로 저장까지 한다. 후보가
  * 없거나 애매하면 아무것도 하지 않고 조용히 끝난다(추측 안 함 — [현재 지역 설정] 화면에서
@@ -21,15 +22,15 @@ export async function resolveAndSaveCurrentLocation(
   const placeName = person.currentPlaceName?.trim();
   if (!placeName || person.currentLocation) return person.currentLocation ?? null;
 
-  const candidates = await geocodePlace(placeName);
-  const candidate = selectUnambiguousCandidate(candidates);
-  if (!candidate) return null;
+  const local = koreanRegionLocation(placeName);
+  const candidate = local ? null : selectUnambiguousCandidate(await geocodePlace(placeName));
+  if (!local && !candidate) return null;
 
-  const currentLocation: WesternGeoLocation = {
-    placeLabel: candidate.label,
-    latitude: candidate.latitude,
-    longitude: candidate.longitude,
-    timezone: candidate.timezones[0].value,
+  const currentLocation: WesternGeoLocation = local ?? {
+    placeLabel: candidate!.label,
+    latitude: candidate!.latitude,
+    longitude: candidate!.longitude,
+    timezone: candidate!.timezones[0].value,
     resolver: { provider: "nominatim", version: "1" },
   };
   const updated: PersonRecord = { ...person, currentLocation, updatedAt: new Date().toISOString() };
