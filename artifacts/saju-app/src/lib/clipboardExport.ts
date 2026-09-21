@@ -795,15 +795,11 @@ export function buildPersonClipboardText(
   }
   lines.push("");
 
-  // 신살
+  // 신살 — 이름뿐 아니라 어느 자리(년/월/일/시의 천간·지지·주 전체)에 붙었는지도 함께 표시한다.
   lines.push(`[신살]`);
-  const allShinsalNames: string[] = [];
-  for (const ps of shinsalFull) {
-    allShinsalNames.push(...ps.stemItems, ...ps.branchItems, ...ps.pillarItems);
-  }
-  const uniqueShinsal = [...new Set(allShinsalNames)].filter(Boolean);
-  if (uniqueShinsal.length > 0) {
-    lines.push(`  ${uniqueShinsal.join("  ")}`);
+  const shinsalPositionLines = collectShinsalPositionLines(shinsalFull);
+  if (shinsalPositionLines.length > 0) {
+    for (const l of shinsalPositionLines) lines.push(l);
   } else {
     lines.push("  없음");
   }
@@ -910,15 +906,8 @@ export function buildPersonClipboardText(
   lines.push("대운·세운 활성화 가중이 적용되었습니다.");
 
   // ── debug anchor (append-only: 기존 payload 순서·필드 유지) ─────────
-  lines.push("");
-  lines.push("[debug anchor: 신살 발생 위치]");
-  const shinsalPosLines = collectShinsalPositionLines(shinsalFull);
-  if (shinsalPosLines.length > 0) {
-    for (const l of shinsalPosLines) lines.push(l);
-  } else {
-    lines.push("  (해당 없음 또는 신살 미검출)");
-  }
-
+  // 신살 위치는 이제 위쪽 [신살] 섹션에서 바로 보여주므로(2026-09-21) 여기서 중복
+  // 표시하지 않는다.
   lines.push("");
   lines.push("[debug anchor: 격국 성립 근거]");
   const gkDbg = pipelineSnapshot?.interpretation.gukguk;
