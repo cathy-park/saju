@@ -74,29 +74,38 @@ const PILLAR_POS: Record<string, { gan: string; ji: string; whole: string }> = {
   시주: { gan: "시천간", ji: "시지", whole: "시주" },
 };
 
-function collectShinsalPositionLines(shinsalFull: { pillar: string; stemItems: string[]; branchItems: string[]; pillarItems: string[] }[]): string[] {
+/** 신살명 (위치 + 실제 글자) 형식 — 예: "홍염 (일지 未)", "문창귀인 (시지 酉)". 같은
+ * 신살이 여러 자리에 붙으면(예: 역마가 년지·시지 둘 다) 위치별로 각각 한 줄씩 나온다 —
+ * dedup 키에 위치(pos.ji/gan/whole)가 포함돼 있어 자리가 다르면 같은 이름이어도 별도 행이다.
+ * pillarChars가 없는 자리(구형 데이터 등)는 글자 없이 위치만 표시한다. */
+function collectShinsalPositionLines(
+  shinsalFull: { pillar: string; stemItems: string[]; branchItems: string[]; pillarItems: string[] }[],
+  pillarChars: Record<string, { stem: string; branch: string }>,
+): string[] {
   const rows: string[] = [];
   const seen = new Set<string>();
   for (const ps of shinsalFull) {
     const pos = PILLAR_POS[ps.pillar];
     if (!pos) continue;
+    const chars = pillarChars[ps.pillar];
     for (const n of ps.branchItems) {
       const key = `${n}|${pos.ji}`;
       if (seen.has(key)) continue;
       seen.add(key);
-      rows.push(`  ${n} (${pos.ji})`);
+      rows.push(`  ${n} (${pos.ji}${chars?.branch ? ` ${chars.branch}` : ""})`);
     }
     for (const n of ps.stemItems) {
       const key = `${n}|${pos.gan}`;
       if (seen.has(key)) continue;
       seen.add(key);
-      rows.push(`  ${n} (${pos.gan})`);
+      rows.push(`  ${n} (${pos.gan}${chars?.stem ? ` ${chars.stem}` : ""})`);
     }
     for (const n of ps.pillarItems) {
       const key = `${n}|${pos.whole}`;
       if (seen.has(key)) continue;
       seen.add(key);
-      rows.push(`  ${n} (${pos.whole})`);
+      const whole = chars ? `${chars.stem}${chars.branch}` : "";
+      rows.push(`  ${n} (${pos.whole}${whole ? ` ${whole}` : ""})`);
     }
   }
   rows.sort((a, b) => a.localeCompare(b, "ko"));
@@ -330,6 +339,13 @@ export function buildPersonClipboardText(
       { pillar: "시주", stem: pillars.hour?.hangul?.[0] ?? "", branch: pillars.hour?.hangul?.[1] ?? "" },
     ],
   );
+  // 신살 위치 출력에 쓰는 "실제 글자" — 한자 표기(예: 未, 酉)를 쓴다.
+  const pillarHanjaChars: Record<string, { stem: string; branch: string }> = {
+    년주: { stem: pillars.year?.hanja?.[0] ?? "", branch: pillars.year?.hanja?.[1] ?? "" },
+    월주: { stem: pillars.month?.hanja?.[0] ?? "", branch: pillars.month?.hanja?.[1] ?? "" },
+    일주: { stem: pillars.day?.hanja?.[0] ?? "", branch: pillars.day?.hanja?.[1] ?? "" },
+    시주: { stem: pillars.hour?.hanja?.[0] ?? "", branch: pillars.hour?.hanja?.[1] ?? "" },
+  };
 
   const birthYear = input.year;
   const currentDaewoon = luckCycles.daewoon.find((d) => {
@@ -797,7 +813,7 @@ export function buildPersonClipboardText(
 
   // 신살 — 이름뿐 아니라 어느 자리(년/월/일/시의 천간·지지·주 전체)에 붙었는지도 함께 표시한다.
   lines.push(`[신살]`);
-  const shinsalPositionLines = collectShinsalPositionLines(shinsalFull);
+  const shinsalPositionLines = collectShinsalPositionLines(shinsalFull, pillarHanjaChars);
   if (shinsalPositionLines.length > 0) {
     for (const l of shinsalPositionLines) lines.push(l);
   } else {

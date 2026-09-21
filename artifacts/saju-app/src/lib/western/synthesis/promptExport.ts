@@ -36,9 +36,15 @@ function currentTransitDataLines(chart: WesternNatalChart, override?: WesternTra
   const timeline = override
     ? override.timeline
     : calculateTransitTimeline(chart, { startLocalDate: range.start, endLocalDate: range.end, timezone, referenceLocalDateTime: nowLocalDateTime(timezone) });
+  // Moon은 한 달에도 natal 전체를 훑고 지나가며 십수 건씩 aspect를 만들어내, 이 목록을
+  // "현재 흐름 종합"(개인/관계 종합 리포트, override 없이 호출되는 기본 경로)에 넣으면
+  // 노이즈가 대부분을 차지한다. override가 있는 경우(WesternTransit.tsx에서 사용자가 특정
+  // 월을 직접 골라 "시기운/단기운세"를 보는 중)만 Moon을 그대로 남긴다 — 계산 자체
+  // (calculateTransitTimeline)는 그대로 두고, 여기 텍스트 출력만 그 경우에 한해 거른다.
+  const events = override ? timeline.events : timeline.events.filter((event) => event.transitPointId !== "moon");
   const lines = [`기준시각: ${timeline.query.referenceUtcInstant} (UTC)`, `조회 범위: ${timeline.query.startLocalDate} ~ ${timeline.query.endLocalDate} (${timezone})`, ""];
-  if (timeline.events.length === 0) { lines.push("현재 활성화된 natal↔transit major aspect가 없습니다."); return lines; }
-  for (const event of timeline.events) lines.push(`- ${title(event.transitPointId)} transit ${event.type} natal ${title(event.natalTargetId)} · orb ${event.orb.toFixed(3)}° / allowed ${event.allowedOrb.toFixed(3)}° · ${event.applying ? "applying" : "separating"} · window ${event.windowStart} ~ ${event.windowEnd} · exact ${event.exactHits.join(", ") || "없음"}`);
+  if (events.length === 0) { lines.push("현재 활성화된 natal↔transit major aspect가 없습니다."); return lines; }
+  for (const event of events) lines.push(`- ${title(event.transitPointId)} transit ${event.type} natal ${title(event.natalTargetId)} · orb ${event.orb.toFixed(3)}° / allowed ${event.allowedOrb.toFixed(3)}° · ${event.applying ? "applying" : "separating"} · window ${event.windowStart} ~ ${event.windowEnd} · exact ${event.exactHits.join(", ") || "없음"}`);
   return lines;
 }
 
@@ -62,10 +68,13 @@ function progressionsDataLines(chart: WesternNatalChart): string[] {
 function solarReturnDataLines(chart: WesternNatalChart, year: number, location?: SolarReturnLocation): string[] {
   const solarReturn = calculateSolarReturn(chart, year, location);
   const lines = [`대상연도: ${solarReturn.year}`, `정확시각: ${solarReturn.exactUtcInstant} (UTC)`, "", "### Planets"];
-  for (const point of solarReturn.points) lines.push(`- ${title(point.id)}: ${position(point.longitude)}${point.retrograde ? " · retrograde" : ""}`);
+  for (const point of solarReturn.points) lines.push(`- ${title(point.id)}: ${position(point.longitude)}${point.house ? ` · ${point.house}H` : ""}${point.retrograde ? " · retrograde" : ""}`);
   lines.push("", "### Major Aspects");
   if (solarReturn.aspects.length === 0) lines.push("해당 없음");
   else for (const aspect of solarReturn.aspects) lines.push(`- ${title(aspect.point1Id)} ${aspect.type} ${title(aspect.point2Id)} · orb ${aspect.orb.toFixed(3)}° / allowed ${aspect.allowedOrb.toFixed(3)}°`);
+  lines.push("", "### Return → Natal Aspects");
+  if (solarReturn.natalAspects.length === 0) lines.push("해당 없음");
+  else for (const aspect of solarReturn.natalAspects) lines.push(`- return ${title(aspect.returnPointId)} ${aspect.type} natal ${title(aspect.natalPointId)} · orb ${aspect.orb.toFixed(3)}° / allowed ${aspect.allowedOrb.toFixed(3)}°`);
   if (!solarReturn.location || !solarReturn.angles || !solarReturn.houses) {
     lines.push("", "솔라리턴 기준 지역 없음 — houses/angles 미계산");
   } else {
