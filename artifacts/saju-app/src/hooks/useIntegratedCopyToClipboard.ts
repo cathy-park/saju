@@ -6,9 +6,19 @@ import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { buildIntegratedCopyPromptForPerson } from "@/lib/integrated/copyPrompt";
 import { useAuth } from "@/lib/authContext";
-import type { PersonRecord } from "@/lib/storage";
+import { getMyProfile, getPeople, type PersonRecord } from "@/lib/storage";
 
 export type IntegratedCopyState = "idle" | "loading" | "copied";
+
+/** 호출부가 들고 있는 person은 화면이 마운트된 시점의 스냅샷일 수 있다(홈 화면처럼
+ * 컴포넌트가 오래 떠 있는 화면에서 특히) — 프로필을 다른 화면에서 수정해도 이 스냅샷은
+ * 갱신되지 않아 방금 저장한 현재 지역이 반영 안 된 채로 복사되는 문제가 있었다. 복사
+ * 직전에 항상 localStorage에서 이 사람의 최신 레코드를 다시 읽는다. */
+function reloadLatest(person: PersonRecord): PersonRecord {
+  const mine = getMyProfile();
+  if (mine?.id === person.id) return mine;
+  return getPeople().find((p) => p.id === person.id) ?? person;
+}
 
 export function useIntegratedCopyToClipboard(person: PersonRecord) {
   const [state, setState] = useState<IntegratedCopyState>("idle");
@@ -19,7 +29,7 @@ export function useIntegratedCopyToClipboard(person: PersonRecord) {
     if (state === "loading") return;
     setState("loading");
     try {
-      const prompt = await buildIntegratedCopyPromptForPerson(person, user);
+      const prompt = await buildIntegratedCopyPromptForPerson(reloadLatest(person), user);
       await navigator.clipboard.writeText(prompt);
       setState("copied");
       toast({
