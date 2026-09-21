@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildWesternCopyPrompt, buildWesternRelationshipCopyPrompt } from "../promptExport";
+import { buildWesternCopyPrompt, buildWesternRelationshipCopyPrompt, filterTransitEventsForPrompt } from "../promptExport";
 import { calculateNatalChart } from "../../natalChart";
 import { resolveWesternSynastryForBirths } from "../../synastry/personAdapter";
 import { buildWesternTransitReport } from "../../transit/report";
@@ -82,6 +82,26 @@ describe("buildWesternCopyPrompt — 서양점성술 AI 해석 프롬프트 복�
     const withoutOverride = buildWesternCopyPrompt(chart);
     expect(withOverride.split("## 2. Current Transits")[1].split("## 3.")[0]).not.toBe(withoutOverride.split("## 2. Current Transits")[1].split("## 3.")[0]);
     expect(withoutOverride.split("## 2. Current Transits")[1]).not.toContain("2019-05");
+  });
+
+  it("종합 export는 Moon만 기준시각 ±3일로 제한하고 월간 화면 export는 월 전체를 유지한다", () => {
+    const timeline = buildWesternTransitReport(parkSoyeonChart(), {
+      startLocalDate: "2026-09-01", endLocalDate: "2026-09-30", timezone: "Asia/Seoul",
+      referenceLocalDateTime: "2026-09-15T12:00:00",
+    }).timeline;
+    const filtered = filterTransitEventsForPrompt(timeline);
+    const full = filterTransitEventsForPrompt(timeline, true);
+    const reference = Date.parse(timeline.query.referenceUtcInstant);
+    const threeDays = 3 * 24 * 60 * 60 * 1000;
+
+    expect(full).toEqual(timeline.events);
+    expect(filtered.filter((event) => event.transitPointId !== "moon"))
+      .toEqual(timeline.events.filter((event) => event.transitPointId !== "moon"));
+    expect(filtered.filter((event) => event.transitPointId === "moon").every((event) =>
+      Date.parse(event.windowStart) <= reference + threeDays
+      && Date.parse(event.windowEnd) >= reference - threeDays)).toBe(true);
+    expect(filtered.filter((event) => event.transitPointId === "moon").length)
+      .toBeLessThan(full.filter((event) => event.transitPointId === "moon").length);
   });
 
   it("solar return 기준 지역을 주면 ASC/MC/12 House Cusps가 포함된다", () => {

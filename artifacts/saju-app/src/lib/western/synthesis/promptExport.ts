@@ -4,7 +4,7 @@
 // 만들지 않는다.
 import type { WesternNatalChart } from "../types";
 import type { WesternSynastryReport } from "../synastry/types";
-import type { WesternTransitReport } from "../transit/types";
+import type { TransitTimeline, WesternTransitReport } from "../transit/types";
 import { calculateTransitTimeline } from "../transit/timeline";
 import { calculateSecondaryProgressions } from "../progressions";
 import { calculateSolarReturn, type SolarReturnLocation } from "../solarReturn";
@@ -30,18 +30,28 @@ function natalDataLines(chart: WesternNatalChart, placeLabel?: string): string[]
  * override — WesternTransit.tsx처럼 화면에서 이미 특정 월을 선택해 WesternTransitReport를
  * 계산해 둔 경우, 그 결과를 그대로 써서 화면에 보이는 시기와 복사되는 시기를 일치시킨다(대표
  * 지시). override가 없는 개인/종합/관계 화면은 지금까지처럼 항상 현재 시점을 쓴다. */
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** 종합 export에서 빠른 Moon 흐름은 기준시각 앞뒤 3일과 겹치는 이벤트만 남긴다.
+ * 월간 시기운 화면은 fullMoonRange=true로 원래 월 전체를 그대로 내보낸다. */
+export function filterTransitEventsForPrompt(timeline: TransitTimeline, fullMoonRange = false) {
+  if (fullMoonRange) return timeline.events;
+  const reference = Date.parse(timeline.query.referenceUtcInstant);
+  const start = reference - 3 * DAY_MS;
+  const end = reference + 3 * DAY_MS;
+  return timeline.events.filter((event) => event.transitPointId !== "moon"
+    || (Date.parse(event.windowStart) <= end && Date.parse(event.windowEnd) >= start));
+}
+
 function currentTransitDataLines(chart: WesternNatalChart, override?: WesternTransitReport): string[] {
   const timezone = chart.normalizedBirth.timezone;
   const range = monthRange(monthInTimezone(timezone));
   const timeline = override
     ? override.timeline
     : calculateTransitTimeline(chart, { startLocalDate: range.start, endLocalDate: range.end, timezone, referenceLocalDateTime: nowLocalDateTime(timezone) });
-  // Moon은 한 달에도 natal 전체를 훑고 지나가며 십수 건씩 aspect를 만들어내, 이 목록을
-  // "현재 흐름 종합"(개인/관계 종합 리포트, override 없이 호출되는 기본 경로)에 넣으면
-  // 노이즈가 대부분을 차지한다. override가 있는 경우(WesternTransit.tsx에서 사용자가 특정
-  // 월을 직접 골라 "시기운/단기운세"를 보는 중)만 Moon을 그대로 남긴다 — 계산 자체
-  // (calculateTransitTimeline)는 그대로 두고, 여기 텍스트 출력만 그 경우에 한해 거른다.
-  const events = override ? timeline.events : timeline.events.filter((event) => event.transitPointId !== "moon");
+  // 계산 결과는 건드리지 않고 export 직전에만 범위를 좁힌다. 특정 월을 명시적으로 선택한
+  // WesternTransit 화면은 override를 넘기므로 기존처럼 그 달의 Moon 이벤트를 모두 유지한다.
+  const events = filterTransitEventsForPrompt(timeline, Boolean(override));
   const lines = [`기준시각: ${timeline.query.referenceUtcInstant} (UTC)`, `조회 범위: ${timeline.query.startLocalDate} ~ ${timeline.query.endLocalDate} (${timezone})`, ""];
   if (events.length === 0) { lines.push("현재 활성화된 natal↔transit major aspect가 없습니다."); return lines; }
   for (const event of events) lines.push(`- ${title(event.transitPointId)} transit ${event.type} natal ${title(event.natalTargetId)} · orb ${event.orb.toFixed(3)}° / allowed ${event.allowedOrb.toFixed(3)}° · ${event.applying ? "applying" : "separating"} · window ${event.windowStart} ~ ${event.windowEnd} · exact ${event.exactHits.join(", ") || "없음"}`);
