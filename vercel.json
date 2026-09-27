@@ -1,4 +1,6 @@
 {
+  "buildCommand": "pnpm --filter @workspace/saju-app run build",
+  "installCommand": "pnpm install",
   "outputDirectory": "artifacts/saju-app/dist",
   "routes": [
     { "handle": "filesystem" },
