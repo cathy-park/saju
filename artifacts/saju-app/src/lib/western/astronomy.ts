@@ -2,7 +2,7 @@
 import * as AstronomyImport from "astronomy-engine";
 import type { PlanetId } from "./types.js";
 
-const A = ((AstronomyImport as unknown as { default?: typeof AstronomyImport }).default ?? AstronomyImport) as typeof AstronomyImport;
+const A = AstronomyImport;
 A.SetDeltaTFunction(A.DeltaT_JplHorizons);
 export const D2R = Math.PI / 180;
 export const R2D = 180 / Math.PI;

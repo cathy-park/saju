@@ -17,9 +17,11 @@ export interface TimeCalculationAudit {
   equationOfTimeMinutesApplied: number;
   libraryInput: SolarDateTime | null;
   effectiveTime: Pick<SolarDateTime, "hour" | "minute"> | null;
+  effectiveSolarDateTime?: SolarDateTime | null;
+  longitudeMinutesApplied?: number;
   hourBoundaryDistanceMinutes: number | null;
   timezoneVerification: "not-performed-by-this-wrapper";
-  longitudeDateRolloverVerification: "delegated-to-library-not-independently-verified";
+  longitudeDateRolloverVerification: "delegated-to-library-not-independently-verified" | "wrapper-calendar-arithmetic";
   warnings: string[];
 }
 

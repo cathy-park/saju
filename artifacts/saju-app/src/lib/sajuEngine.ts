@@ -34,6 +34,7 @@ export interface BirthInput {
   birthplace?: string;
   timeUnknown: boolean;
   longitude?: number;
+  leapMonth?: boolean;
   relationshipStatus?: "미혼" | "연애중" | "기혼";
 }
 
@@ -122,6 +123,12 @@ export interface TimeCorrectOpts {
 }
 
 export function calculateProfileFromBirth(input: BirthInput, timeOpts?: TimeCorrectOpts): SajuProfile {
+  if (!["solar", "lunar"].includes(input.calendarType) || !["남", "여"].includes(input.gender)) throw new RangeError("유효한 달력과 성별이 필요합니다.");
+  if (!Number.isInteger(input.year) || input.year < 1900 || input.year > 2050) throw new RangeError("지원 연도는 1900~2050년입니다.");
+  if (input.leapMonth) throw new RangeError("음력 윤달은 양력으로 변환해 입력해 주세요.");
+  if (input.longitude != null && (!Number.isFinite(input.longitude) || Math.abs(input.longitude) > 180)) throw new RangeError("유효한 경도가 필요합니다.");
+  if (!input.timeUnknown && (input.hour == null || input.minute == null)) throw new RangeError("출생 시각과 분이 필요합니다.");
+  if (input.calendarType === "solar") shiftSolarDateTime(input.year, input.month, input.day, input.timeUnknown ? 0 : input.hour!, input.timeUnknown ? 0 : input.minute!, 0);
   let solarYear = input.year;
   let solarMonth = input.month;
   let solarDay = input.day;
@@ -173,19 +180,19 @@ export function calculateProfileFromBirth(input: BirthInput, timeOpts?: TimeCorr
     eotOffsetMins = Math.round(equationOfTimeMins(solarYear, solarMonth, solarDay));
   }
 
-  let rawResult: SajuResult;
-
-  if (input.timeUnknown) {
-    rawResult = calculateSaju(solarYear, solarMonth, solarDay, undefined, undefined, options);
-  } else {
-    // 날짜까지 함께 이동한다. 시각만 %24 처리하면 전일/익일이 원래 날짜로 계산된다.
-    const shifted = shiftSolarDateTime(
-      solarYear, solarMonth, solarDay, input.hour ?? 0, input.minute ?? 0, eotOffsetMins,
-    );
-    rawResult = calculateSaju(
-      shifted.year, shifted.month, shifted.day, shifted.hour, shifted.minute, options,
-    );
-  }
+  // The dependency only normalizes a single negative minute/hour and discards
+  // date rollover. Apply both offsets here, then call its uncorrected calculator.
+  const longitudeOffsetMins = !input.timeUnknown && localMeridianOn
+    ? -Math.round((135 - (input.longitude ?? 127)) * 4) : 0;
+  const libraryInput = input.timeUnknown ? null : shiftSolarDateTime(
+    solarYear, solarMonth, solarDay, input.hour!, input.minute!, eotOffsetMins + longitudeOffsetMins,
+  );
+  const rawResult: SajuResult = input.timeUnknown
+    ? calculateSaju(solarYear, solarMonth, solarDay, undefined, undefined, { ...options, applyTimeCorrection: false })
+    : calculateSaju(libraryInput!.year, libraryInput!.month, libraryInput!.day, libraryInput!.hour, libraryInput!.minute, { ...options, applyTimeCorrection: false });
+  // Preserve legacy fields: these describe the longitude correction only.
+  rawResult.isTimeCorrected = longitudeOffsetMins !== 0;
+  if (rawResult.isTimeCorrected) rawResult.correctedTime = { hour: libraryInput!.hour, minute: libraryInput!.minute };
 
   const computedPillars: ComputedPillars = {
     year: { hangul: rawResult.yearPillar, hanja: rawResult.yearPillarHanja },
@@ -204,12 +211,8 @@ export function calculateProfileFromBirth(input: BirthInput, timeOpts?: TimeCorr
   const fiveElementDistribution = countFiveElements(computedPillars);
 
   // 원본 출생시각은 보존하고 보정의 단계/한계를 별도 노출한다.
-  const libraryInput = input.timeUnknown ? null : shiftSolarDateTime(
-    solarYear, solarMonth, solarDay, input.hour ?? 0, input.minute ?? 0, eotOffsetMins,
-  );
-  const effectiveTime = input.timeUnknown ? null : rawResult.correctedTime
-    ?? (!localMeridianOn && libraryInput ? { hour: libraryInput.hour, minute: libraryInput.minute } : null);
-  const warnings: string[] = [];
+  const effectiveTime = libraryInput ? { hour: libraryInput.hour, minute: libraryInput.minute } : null;
+  const warnings: string[] = ["SOLAR_TERM_INSTANT_NOT_SUPPORTED", "SAJU_FIXED_UTC9_TIMEZONE_NOT_VERIFIED"];
   if (!input.timeUnknown && localMeridianOn && input.longitude == null) warnings.push("DEFAULT_LONGITUDE_USED");
   if (trueSolarTimeOn) warnings.push("EQUATION_OF_TIME_APPROXIMATION");
   if (trueSolarTimeOn && !localMeridianOn) warnings.push("EOT_WITHOUT_LONGITUDE_NOT_TRUE_SOLAR_TIME");
@@ -228,9 +231,11 @@ export function calculateProfileFromBirth(input: BirthInput, timeOpts?: TimeCorr
     equationOfTimeMinutesApplied: eotOffsetMins,
     libraryInput,
     effectiveTime,
+    effectiveSolarDateTime: libraryInput,
+    longitudeMinutesApplied: longitudeOffsetMins,
     hourBoundaryDistanceMinutes: boundary,
     timezoneVerification: "not-performed-by-this-wrapper",
-    longitudeDateRolloverVerification: "delegated-to-library-not-independently-verified",
+    longitudeDateRolloverVerification: "wrapper-calendar-arithmetic",
     warnings,
   };
 

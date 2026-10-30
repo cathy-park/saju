@@ -1,3 +1,4 @@
+import { TimeCalculationAuditView } from "./TimeCalculationAuditView";
 import { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import type { CSSProperties, ReactNode } from "react";
 
@@ -5406,6 +5407,8 @@ export function SajuReport({ record, showSaveStatus = false, hourMode: parentHou
 
   return (
     <div className="space-y-4">
+
+      <TimeCalculationAuditView audit={profile.timeAudit} />
 
       {/* ── 시주 모드 토글 (탭 바 위, 출생 시간 있을 때만) ── */}
       {hasHourPillar && (

@@ -54,7 +54,7 @@ export const GEONROK_BRANCH: Record<string, string> = {
   갑: "인", 을: "묘", 병: "사", 정: "오", 무: "사",
   기: "오", 경: "신", 신: "유", 임: "해", 계: "자",
 };
-export const GUKGUK_RULE_VERSION = "strict-transparent-month-guard/v2";
+export const GUKGUK_RULE_VERSION = "strict-transparent-month-guard/v3";
 
 /** 십성 이름과 월령격은 동일하지 않다. 비겁은 월지 조건을 먼저 검증한다. */
 export function resolveGukgukName(
@@ -132,7 +132,11 @@ export function determineGukguk(
   if (!hiddenStems || hiddenStems.length === 0) return null;
 
   // 格局 투출 체크는 연간·월간·시간만 봐야 함 (일간 제외)
-  const heavenStemsNonDay = allStems.filter((s) => s !== dayStem);
+  // Callers use different pillar orders. Remove one day stem occurrence,
+  // preserving equal stems exposed by other pillars.
+  const heavenStemsNonDay = [...allStems];
+  const dayIndex = heavenStemsNonDay.indexOf(dayStem);
+  if (dayIndex >= 0) heavenStemsNonDay.splice(dayIndex, 1);
 
   // 1. 透出 확인: 지장간(초기→중기→정기) 중 연간·월간·시간에 있는지 확인
   //    여러 개 투출 시 정기(본기) 우선 → reversed(본기→중기→초기) 순서로 체크

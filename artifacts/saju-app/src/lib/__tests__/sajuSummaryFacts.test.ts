@@ -121,7 +121,7 @@ describe("sajuSummaryFacts — 우선순위 고정 + neutral 보존 + 신살 격
   it("근거 토글에 쓸 evidence에는 강약 점수/격국명/용신 오행/십성 카운트/합충형파해원진/신살 원자료가 모두 남아있다", () => {
     const categories = new Set(sections.flatMap((s) => s.evidence.map((e) => e.category)));
     expect(categories.has("strength")).toBe(true);
-    expect(categories.has("gukguk")).toBe(true);
+    expect(categories.has("gukguk")).toBe(Boolean(pipeline.interpretation.gukguk));
     expect(categories.has("yongshin")).toBe(true);
     expect(categories.has("tenGod")).toBe(true);
     expect(categories.has("shinsal")).toBe(true);

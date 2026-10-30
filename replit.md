@@ -155,3 +155,12 @@ Generated React Query hooks and fetch client from the OpenAPI spec.
 ### `scripts` (`@workspace/scripts`)
 
 Utility scripts package. Run scripts via `pnpm --filter @workspace/scripts run <script>`.
+
+## 2026-10-30 계산 경계 후속 검증
+
+- `pnpm run build`가 루트 타입 검사 및 앱/API 전체 빌드를 실행한다. 최종 Node 22.17.1 / pnpm 9.15.0에서 종료코드 0. Astronomy Engine의 존재하지 않는 default export 참조를 namespace import로 정리했다. 큰 클라이언트 chunk 경고는 남는다.
+- `pnpm --filter @workspace/saju-app test`: 53개 파일, 570개 시험 통과(신규 실제 의존성 경계시험 25개 포함). 전체 천문 정확도의 독립 검증을 뜻하지 않는다. 긴 천문 계산을 위해 공유 Intel 호스트에서 worker 2개/시험 제한 30초를 사용한다.
+- `node scripts/test-three-charts-calculation-guards.cjs`: 기존 모형 기반 38개 통과. 실제 의존성 통합시험과 별개다. 출력 JSON은 커밋하지 않는다.
+- 경도와 균시차의 날짜 이월은 래퍼에서 수행하고 의존성에는 보정 끔으로 전달해 중복 보정을 방지한다. 기존 경도 반올림, 기본 켬/끔과 원본 입력을 보존한다. 같은 일간 천간이 다른 주에 실제 투출한 경우까지 제거하던 필터를 고쳐 건록 월지 시험을 추가했다. 규칙 버전은 v3이다.
+- `TimeCalculationAuditView`로 기존 명반 화면에 기준/경계/미검증을 표시한다. 저장된 과거 명반에 감사 정보가 없으면 부재를 알리며 자동 초기화 전 수동값은 변경하지 않는다. API의 timeAudit와 화면 컴포넌트의 서버 렌더링을 시험했으며, 로그인 브라우저 전체 흐름·DB 동기화는 이번 변경에서 미실행이다.
+- 별도 Sites 엔진의 로컬 검증 소스와 승인 후 반영·롤백 절차는 [chatgpt-plugin/README.md](chatgpt-plugin/README.md)를 따른다. 플러그인 스킬 1.1.0, Vercel 앱 및 Sites 서버는 서로 별도 릴리스다.

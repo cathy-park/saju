@@ -54,7 +54,11 @@ export function determineLatentGukguk(
   const gukgukName = resolveGukgukName(dayStem, monthBranch, tg);
   if (!gukgukName) return null;
 
-  const heavenStemsNonDay = allStems.filter((s) => s !== dayStem);
+  // Callers use different pillar orders. Remove one day stem occurrence,
+  // preserving equal stems exposed by other pillars.
+  const heavenStemsNonDay = [...allStems];
+  const dayIndex = heavenStemsNonDay.indexOf(dayStem);
+  if (dayIndex >= 0) heavenStemsNonDay.splice(dayIndex, 1);
   const isTransparent = heavenStemsNonDay.includes(ilgiStem);
   const tone = GUKGUK_TONE[gukgukName] ?? "중";
 
