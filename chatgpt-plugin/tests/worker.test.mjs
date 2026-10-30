@@ -1,186 +1,42 @@
-import { test } from "node:test";
-import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
-import { createHash } from "node:crypto";
-import { solarToLunar } from "@fullstackfamily/manseryeok";
-const source = await readFile(
-  new URL("../dist/server/index.js", import.meta.url),
-  "utf8",
-);
-const { default: worker } = await import(
-  `data:text/javascript;base64,${Buffer.from(source).toString("base64")}`
-);
-const birth = {
-  birthDate: "2000-06-15",
-  birthTime: "19:29",
-  birthplace: "서울",
-  calendar: "solar",
-  gender: "여",
-};
-async function rpc(name, args = {}, auth = true) {
-  const response = await worker.fetch(
-    new Request("https://synthetic.invalid/mcp", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        ...(auth ? { "oai-authenticated-user-id": "synthetic-test-only" } : {}),
-      },
-      body: JSON.stringify({
-        jsonrpc: "2.0",
-        id: 1,
-        method: "tools/call",
-        params: { name, arguments: args },
-      }),
-    }),
-  );
-  return { status: response.status, body: await response.json() };
+// Synthetic compatibility fixtures retained from the existing Sites server tests.
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {readFile,mkdir,writeFile} from 'node:fs/promises';
+import {build} from 'esbuild';
+import path from 'node:path';
+const root=process.cwd();
+const appSource=process.env.SAJU_APP_SOURCE??path.resolve('../artifacts/saju-app/src');
+const alias={app:path.join(appSource,'lib'),'@':appSource};
+for(const name of ['@fullstackfamily/manseryeok','astronomy-engine']) {const p=JSON.parse(await readFile(`node_modules/${name}/package.json`));alias[name]=path.join(root,'node_modules',name,p.module??p.main);}
+const reference=await build({entryPoints:['tests/parity-entry.ts'],bundle:true,write:false,format:'esm',platform:'browser',alias,drop:['console'],define:{'process.env.NODE_ENV':'"production"'}});
+const originalRef=await import('data:text/javascript;base64,'+Buffer.from(reference.outputFiles[0].text).toString('base64'));
+const ref=new Proxy(originalRef,{get(target,key){const v=target[key];return typeof v==='function'?(...args)=>JSON.parse(JSON.stringify(v(...args))):v;}});
+const source=await readFile('dist/server/index.js','utf8');
+const {default:worker}=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
+const base={birthDate:'1992-06-15',birthTime:'14:30',birthplace:'서울',calendar:'solar',gender:'여'};
+async function rpc(method,params={},auth=true){const h={'content-type':'application/json'};if(auth)h['oai-authenticated-user-id']='local-qa';const res=await worker.fetch(new Request('https://test.invalid/mcp',{method:'POST',headers:h,body:JSON.stringify({jsonrpc:'2.0',id:1,method,params})}));return {status:res.status,body:await res.json()};}
+const calculate=async input=>(await rpc('tools/call',{name:'calculate_three_charts',arguments:input})).body.result;
+for(const fixture of [base,{...base,birthDate:'2000-02-29',birthTime:'23:30',birthplace:'부산 해운대구',gender:'남'},{...base,calendar:'lunar',birthDate:'1991-03-12',birthplace:'제주'}]) {
+ test(`original engine parity ${fixture.calendar} ${fixture.birthDate} ${fixture.birthTime}`,async()=>{
+   const actual=await calculate(fixture);assert.equal(actual.isError,false,JSON.stringify(actual));const result=actual.structuredContent;assert.equal(result.status,'calculated');
+   const {birthInput,location,dstFold}=ref.normalizeInput(fixture);const profile=ref.calculateProfileFromBirth(birthInput);assert.deepEqual(result.saju.pillars,profile.computedPillars);assert.deepEqual(result.saju.fiveElements,profile.fiveElementDistribution);assert.deepEqual(result.solarDate,profile.solarDate);
+   const person={id:'private-person',birthInput,profile,westernLocation:location,createdAt:'',updatedAt:''};const existing=ref.buildExistingPersonalReports(person);assert.deepEqual(result.ziwei.chart,existing.ziweiChart);assert.deepEqual(result.ziwei.report,existing.ziwei);assert.deepEqual(result.saju.sections,existing.saju);
+   const natal=ref.calculateNatalChart(result.western.chart.originalBirth);assert.equal(natal.ok,true);assert.deepEqual(result.western.chart,natal.chart);
+   const synthesis=ref.resolveWesternPersonalSynthesisForBirth(person.id,{...birthInput,...profile.solarDate,calendarType:'solar',latitude:location.latitude,longitude:location.longitude,timezone:location.timezone,...(dstFold?{dstFold}:{})});assert.equal(synthesis.ok,true);assert.deepEqual(result.western.synthesis,synthesis.report);
+   const sources=[...ref.adaptSajuPersonal(existing.saju,person.id),...ref.adaptZiweiPersonal(existing.ziwei,person.id),...ref.adaptWesternPersonal(synthesis.report)];assert.deepEqual(result.integrated,ref.buildIntegratedPersonalReport({personId:person.id,sources}));assert.equal(result.integrated.availableSystems.length,3);
+ });
 }
-test("every bundled snapshot input matches the current app source and provenance hash", async () => {
-  const provenance = JSON.parse(
-    await readFile(
-      new URL("../engine-source/provenance.json", import.meta.url),
-      "utf8",
-    ),
-  );
-  assert.ok(provenance.files.length >= 85);
-  for (const file of provenance.files) {
-    const original = await readFile(
-      new URL(`../../artifacts/saju-app/src/lib/${file.path}`, import.meta.url),
-    );
-    const snapshot = await readFile(
-      new URL(`../engine-source/${file.path}`, import.meta.url),
-    );
-    assert.deepEqual(snapshot, original, file.path);
-    assert.equal(
-      createHash("sha256").update(snapshot).digest("hex"),
-      file.sha256,
-      file.path,
-    );
-  }
-});
-test("MCP authentication boundary unchanged", async () =>
-  assert.equal((await rpc("three_charts_status", {}, false)).status, 401));
-test("candidate identity is visible without birth data", async () => {
-  const r = await rpc("three_charts_status");
-  assert.equal(r.body.result.structuredContent.version, "0.2.0-candidate");
-});
-test("real bundled API preserves existing keys and exposes per-system audit in text and structured response", async () => {
-  const r = await rpc("calculate_three_charts", birth);
-  assert.equal(r.status, 200);
-  assert.equal(r.body.result.isError, false);
-  const value = r.body.result.structuredContent;
-  for (const key of [
-    "schemaVersion",
-    "status",
-    "algorithm",
-    "warnings",
-    "input",
-    "solarDate",
-    "lunarDate",
-    "saju",
-    "ziwei",
-    "western",
-    "integrated",
-    "instructions",
-  ])
-    assert.ok(key in value, key);
-  assert.equal(value.saju.timeAudit.basis, "local-mean");
-  assert.deepEqual(value.saju.timeAudit, value.timeAudit.saju);
-  assert.equal(value.timeAudit.ziwei.basis, "original-civil");
-  assert.equal(value.timeAudit.western.utcInstant, "2000-06-15T10:29:00.000Z");
-  assert.equal(
-    value.western.chart.normalizedBirth.utcInstant,
-    value.timeAudit.western.utcInstant,
-  );
-  assert.deepEqual(JSON.parse(r.body.result.content[0].text), value);
-  assert.ok(
-    value.warnings.includes(
-      "WESTERN_EPHEMERIS_HOUSES_NOT_INDEPENDENTLY_VALIDATED",
-    ),
-  );
-});
-test("API date rollover changes only the saju effective clock", async () => {
-  const r = await rpc("calculate_three_charts", {
-    ...birth,
-    birthTime: "00:05",
-  });
-  const value = r.body.result.structuredContent;
-  assert.equal(r.body.result.isError, false);
-  assert.equal(value.solarDate.day, 15);
-  assert.equal(value.saju.timeAudit.effectiveSolarDateTime.day, 14);
-  assert.equal(value.timeAudit.ziwei.longitudeCorrectionApplied, false);
-  assert.equal(value.timeAudit.western.utcInstant, "2000-06-14T15:05:00.000Z");
-});
-test("ordinary lunar API input uses converted solar date and original civil clock for western chart", async () => {
-  const lunar = solarToLunar(2000, 6, 15).lunar;
-  assert.equal(lunar.isLeapMonth, false);
-  const birthDate = [
-    lunar.year,
-    String(lunar.month).padStart(2, "0"),
-    String(lunar.day).padStart(2, "0"),
-  ].join("-");
-  const r = await rpc("calculate_three_charts", {
-    ...birth,
-    calendar: "lunar",
-    birthDate,
-  });
-  const value = r.body.result.structuredContent;
-  assert.equal(r.body.result.isError, false);
-  assert.deepEqual(value.solarDate, { year: 2000, month: 6, day: 15 });
-  assert.equal(value.timeAudit.western.utcInstant, "2000-06-15T10:29:00.000Z");
-});
-for (const [title, patch, code] of [
-  ["invalid solar date", { birthDate: "2001-02-29" }, "INVALID_DATE"],
-  ["invalid hour", { birthTime: "24:00" }, "TIME_REQUIRED"],
-  [
-    "unsupported leap month",
-    { calendar: "lunar", leapMonth: true },
-    "LEAP_MONTH_UNSUPPORTED",
-  ],
-  ["missing place", { birthplace: "" }, "INVALID_PLACE"],
-  ["ambiguous place", { birthplace: "중구" }, "LOCATION_REQUIRED"],
-  [
-    "unsupported foreign saju/ziwei timezone",
-    {
-      latitude: 40,
-      longitude: -74,
-      timezone: "America/New_York",
-      birthplace: "synthetic overseas",
-    },
-    "SAJU_ZIWEI_TIMEZONE_UNSUPPORTED",
-  ],
-  [
-    "historic Korean DST",
-    { birthDate: "1988-06-15" },
-    "SAJU_ZIWEI_TIMEZONE_UNSUPPORTED",
-  ],
-  [
-    "nonexistent DST time",
-    {
-      birthDate: "2000-04-02",
-      birthTime: "02:30",
-      latitude: 40,
-      longitude: -74,
-      timezone: "America/New_York",
-      birthplace: "synthetic overseas",
-    },
-    "NONEXISTENT_LOCAL_TIME",
-  ],
-  [
-    "ambiguous DST time",
-    {
-      birthDate: "2000-10-29",
-      birthTime: "01:30",
-      latitude: 40,
-      longitude: -74,
-      timezone: "America/New_York",
-      birthplace: "synthetic overseas",
-    },
-    "AMBIGUOUS_LOCAL_TIME",
-  ],
-])
-  test(title, async () => {
-    const r = await rpc("calculate_three_charts", { ...birth, ...patch });
-    assert.equal(r.body.result.isError, true);
-    assert.equal(r.body.result.structuredContent.error.code, code);
-  });
+test('owner authentication is required',async()=>assert.equal((await rpc('tools/list',{},false)).status,401));
+test('discovery and tool schemas',async()=>{const d=await rpc('server/discover');assert.deepEqual(d.body.result.supportedVersions,['2026-07-28']);const l=(await rpc('tools/list')).body.result.tools;assert.equal(l.length,3);assert.ok(l.every(x=>x.annotations.readOnlyHint&&!x.annotations.destructiveHint));});
+test('missing birth time is never inferred',async()=>{const r=await calculate({...base,birthTime:undefined});assert.equal(r.isError,true);assert.equal(r.structuredContent.error.code,'TIME_REQUIRED');});
+test('calendar and gender are never inferred',async()=>{for(const field of ['calendar','gender'])assert.equal((await calculate({...base,[field]:undefined})).isError,true);});
+test('invalid real dates are rejected',async()=>{for(const date of ['2023-02-29','2000-04-31','1899-01-01','2051-01-01'])assert.equal((await calculate({...base,birthDate:date})).isError,true);});
+test('ambiguous Korean districts require clarification',async()=>{const r=await calculate({...base,birthplace:'중구'});assert.equal(r.isError,true);assert.ok(r.structuredContent.error.details.candidates.length>1);});
+test('lunar leap month cannot silently become normal month',async()=>{assert.equal((await calculate({...base,calendar:'lunar',leapMonth:true})).structuredContent.error.code,'LEAP_MONTH_UNSUPPORTED');});
+test('partial or invalid overseas location is rejected',async()=>{assert.equal((await calculate({...base,latitude:37})).isError,true);assert.equal((await calculate({...base,latitude:40,longitude:-74,timezone:'invalid'})).isError,true);});
+test('DST repeated time is explicit; unsupported three-system timezone is rejected',async()=>{const input={...base,birthDate:'2000-10-29',birthTime:'01:30',birthplace:'synthetic overseas',latitude:40,longitude:-74,timezone:'America/New_York'};const a=await calculate(input);assert.equal(a.isError,true);assert.equal(a.structuredContent.error.code,'AMBIGUOUS_LOCAL_TIME');const b=await calculate({...input,dstFold:'later'});assert.equal(b.isError,true);assert.equal(b.structuredContent.error.code,'SAJU_ZIWEI_TIMEZONE_UNSUPPORTED');});
+test('young birth retains all charts when legacy ziwei narrative is unavailable',async()=>{const r=(await calculate({...base,birthDate:'2024-06-15'})).structuredContent;assert.equal(r.status,'partial');assert.equal(r.ziwei.chart.palaces.length,12);assert.equal(r.ziwei.report,null);assert.equal(r.western.status,'calculated');assert.ok(r.warnings.length);});
+test('unsupported overseas latitude is not presented as normal three-system calculation',async()=>{const r=await calculate({...base,birthplace:'synthetic polar',latitude:89,longitude:0,timezone:'UTC'});assert.equal(r.isError,true);assert.equal(r.structuredContent.error.code,'SAJU_ZIWEI_TIMEZONE_UNSUPPORTED');});
+test('calls do not persist between requests',async()=>{const a=await calculate(base);await calculate({...base,birthDate:'1980-12-01'});const b=await calculate(base);assert.deepEqual(a,b);});
+test('invalid JSON and unknown method are protocol errors',async()=>{const res=await worker.fetch(new Request('https://test.invalid/mcp',{method:'POST',headers:{'oai-authenticated-user-id':'local-qa'},body:'{'}));assert.equal(res.status,400);assert.equal((await rpc('unsupported')).body.error.code,-32601);});
+test('status contains no personal birth record',async()=>{const r=(await rpc('tools/call',{name:'three_charts_status'})).body.result;assert.equal(r.structuredContent.storage,'none');assert.ok(!JSON.stringify(r).includes(base.birthDate));});

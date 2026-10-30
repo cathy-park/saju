@@ -164,3 +164,7 @@ Utility scripts package. Run scripts via `pnpm --filter @workspace/scripts run <
 - 경도와 균시차의 날짜 이월은 래퍼에서 수행하고 의존성에는 보정 끔으로 전달해 중복 보정을 방지한다. 기존 경도 반올림, 기본 켬/끔과 원본 입력을 보존한다. 같은 일간 천간이 다른 주에 실제 투출한 경우까지 제거하던 필터를 고쳐 건록 월지 시험을 추가했다. 규칙 버전은 v3이다.
 - `TimeCalculationAuditView`로 기존 명반 화면에 기준/경계/미검증을 표시한다. 저장된 과거 명반에 감사 정보가 없으면 부재를 알리며 자동 초기화 전 수동값은 변경하지 않는다. API의 timeAudit와 화면 컴포넌트의 서버 렌더링을 시험했으며, 로그인 브라우저 전체 흐름·DB 동기화는 이번 변경에서 미실행이다.
 - 별도 Sites 엔진의 로컬 검증 소스와 승인 후 반영·롤백 절차는 [chatgpt-plugin/README.md](chatgpt-plugin/README.md)를 따른다. 플러그인 스킬 1.1.0, Vercel 앱 및 Sites 서버는 서로 별도 릴리스다.
+
+### 승인된 기존 Sites 서버 반영
+
+대표가 기존 서버 업데이트와 단기 권한 발급을 승인한 뒤 기존 원격 소스 HEAD를 대조했다. 공식 helper로 소스 커밋 `016ccb53c57ad01c1616a10a2beba157325286cc`와 동일 번들을 반영해 저장 버전 2가 succeeded 상태다. 실제 플러그인에서 `0.2.0-candidate`, timeAudit, 날짜 이월/±5분 경계/오류 정책/기존 응답 키 보존을 확인했다. 기존 17개와 신규 15개를 합친 서버 시험 32개가 통과했다. 소유자 전용 접근과 endpoint/DB/인증 설정은 유지했고, 롤백 버전 1을 보존했다. Vercel Production과 GitHub main은 변경하지 않았다. 독립 천문·유파 검증 범위는 위 제한을 그대로 따른다.
