@@ -1,6 +1,7 @@
+import { lunarToSolarChecked as lunarToSolar } from "./calendarConversion";
 import type { BirthInput, ComputedPillars } from "./sajuEngine";
 import { equationOfTimeMins } from "./sajuEngine";
-import { lunarToSolar } from "@fullstackfamily/manseryeok";
+
 
 export const STEMS = ["갑", "을", "병", "정", "무", "기", "경", "신", "임", "계"];
 export const BRANCHES = ["자", "축", "인", "묘", "진", "사", "오", "미", "신", "유", "술", "해"];

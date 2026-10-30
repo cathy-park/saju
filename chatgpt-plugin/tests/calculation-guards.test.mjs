@@ -65,7 +65,7 @@ test("MCP authentication boundary unchanged", async () =>
   assert.equal((await rpc("three_charts_status", {}, false)).status, 401));
 test("candidate identity is visible without birth data", async () => {
   const r = await rpc("three_charts_status");
-  assert.equal(r.body.result.structuredContent.version, "0.2.0-candidate");
+  assert.equal(r.body.result.structuredContent.version, "0.2.1");
 });
 test("real bundled API preserves existing keys and exposes per-system audit in text and structured response", async () => {
   const r = await rpc("calculate_three_charts", birth);
@@ -131,6 +131,19 @@ test("ordinary lunar API input uses converted solar date and original civil cloc
   assert.equal(r.body.result.isError, false);
   assert.deepEqual(value.solarDate, { year: 2000, month: 6, day: 15 });
   assert.equal(value.timeAudit.western.utcInstant, "2000-06-15T10:29:00.000Z");
+});
+
+test("late lunar dates cross the solar year without changing time policies", async () => {
+  const r = await rpc("calculate_three_charts", { ...birth, calendar: "lunar", birthDate: "2000-12-15", birthTime: "12:00" });
+  assert.equal(r.body.result.isError, false);
+  assert.deepEqual(r.body.result.structuredContent.solarDate, { year: 2001, month: 1, day: 9 });
+  assert.equal(r.body.result.structuredContent.timeAudit.western.utcInstant, "2001-01-09T03:00:00.000Z");
+});
+
+test("known repaired calendar date still respects historical timezone limitations", async () => {
+  const r = await rpc("calculate_three_charts", { ...birth, birthDate: "1956-12-31", birthTime: "12:00" });
+  assert.equal(r.body.result.isError, true);
+  assert.equal(r.body.result.structuredContent.error.code, "SAJU_ZIWEI_TIMEZONE_UNSUPPORTED");
 });
 for (const [title, patch, code] of [
   ["invalid solar date", { birthDate: "2001-02-29" }, "INVALID_DATE"],

@@ -1,7 +1,5 @@
+import { lunarToSolarChecked as lunarToSolar, solarToLunarChecked as solarToLunar, calculateSajuChecked as calculateSaju, isKnownCalendarSourceGap } from "./calendarConversion";
 import {
-  calculateSaju,
-  solarToLunar,
-  lunarToSolar,
   type SajuResult,
   type SajuOptions,
 } from "@fullstackfamily/manseryeok";
@@ -213,6 +211,7 @@ export function calculateProfileFromBirth(input: BirthInput, timeOpts?: TimeCorr
   // 원본 출생시각은 보존하고 보정의 단계/한계를 별도 노출한다.
   const effectiveTime = libraryInput ? { hour: libraryInput.hour, minute: libraryInput.minute } : null;
   const warnings: string[] = ["SOLAR_TERM_INSTANT_NOT_SUPPORTED", "SAJU_FIXED_UTC9_TIMEZONE_NOT_VERIFIED"];
+  if (isKnownCalendarSourceGap(solarYear, solarMonth, solarDay) || (libraryInput && isKnownCalendarSourceGap(libraryInput.year, libraryInput.month, libraryInput.day))) warnings.push("CALENDAR_SOURCE_ROW_REPAIRED_1956_12_31");
   if (!input.timeUnknown && localMeridianOn && input.longitude == null) warnings.push("DEFAULT_LONGITUDE_USED");
   if (trueSolarTimeOn) warnings.push("EQUATION_OF_TIME_APPROXIMATION");
   if (trueSolarTimeOn && !localMeridianOn) warnings.push("EOT_WITHOUT_LONGITUDE_NOT_TRUE_SOLAR_TIME");
