@@ -5,12 +5,14 @@ import {
   type SajuResult,
   type SajuOptions,
 } from "@fullstackfamily/manseryeok";
+import { shiftSolarDateTime, hourBoundaryDistance, type TimeCalculationAudit } from "./timeCalculationAudit";
 
 // ── 균시차 (Equation of Time) ──────────────────────────────────────────────
 // Returns the difference in MINUTES between Apparent Solar Time and Mean Solar
-// Time for a given calendar date (Spencer 1971 approximation, accurate ±30 sec).
+// Time for a given calendar date using the existing approximate formula.
+// No sub-minute accuracy guarantee is asserted; boundary cases need sensitivity tests.
 // Positive value → sun is ahead of mean time (TST > LMT).
-// Range: approx −16 min (Nov) to +14 min (Feb).
+// Sign convention: apparent minus mean solar time (February negative, November positive).
 export function equationOfTimeMins(year: number, month: number, day: number): number {
   // Day-of-year (1 = Jan 1)
   const start = Date.UTC(year, 0, 1);
@@ -72,6 +74,7 @@ export interface SajuProfile {
   rawResult: SajuResult;
   isTimeCorrected: boolean;
   correctedTime?: { hour: number; minute: number };
+  timeAudit?: TimeCalculationAudit;
 }
 
 const STEM_ELEMENTS: Record<string, keyof FiveElementCount> = {
@@ -175,14 +178,13 @@ export function calculateProfileFromBirth(input: BirthInput, timeOpts?: TimeCorr
   if (input.timeUnknown) {
     rawResult = calculateSaju(solarYear, solarMonth, solarDay, undefined, undefined, options);
   } else {
-    // Apply EoT correction to hour/minute before calling library.
-    let calcHour   = input.hour   ?? 0;
-    let calcMinute = (input.minute ?? 0) + eotOffsetMins;
-    // Normalise minutes into valid range (handles cross-hour and cross-day)
-    while (calcMinute < 0)   { calcMinute += 60; calcHour -= 1; }
-    while (calcMinute >= 60) { calcMinute -= 60; calcHour += 1; }
-    calcHour = ((calcHour % 24) + 24) % 24;
-    rawResult = calculateSaju(solarYear, solarMonth, solarDay, calcHour, calcMinute, options);
+    // 날짜까지 함께 이동한다. 시각만 %24 처리하면 전일/익일이 원래 날짜로 계산된다.
+    const shifted = shiftSolarDateTime(
+      solarYear, solarMonth, solarDay, input.hour ?? 0, input.minute ?? 0, eotOffsetMins,
+    );
+    rawResult = calculateSaju(
+      shifted.year, shifted.month, shifted.day, shifted.hour, shifted.minute, options,
+    );
   }
 
   const computedPillars: ComputedPillars = {
@@ -201,6 +203,37 @@ export function calculateProfileFromBirth(input: BirthInput, timeOpts?: TimeCorr
 
   const fiveElementDistribution = countFiveElements(computedPillars);
 
+  // 원본 출생시각은 보존하고 보정의 단계/한계를 별도 노출한다.
+  const libraryInput = input.timeUnknown ? null : shiftSolarDateTime(
+    solarYear, solarMonth, solarDay, input.hour ?? 0, input.minute ?? 0, eotOffsetMins,
+  );
+  const effectiveTime = input.timeUnknown ? null : rawResult.correctedTime
+    ?? (!localMeridianOn && libraryInput ? { hour: libraryInput.hour, minute: libraryInput.minute } : null);
+  const warnings: string[] = [];
+  if (!input.timeUnknown && localMeridianOn && input.longitude == null) warnings.push("DEFAULT_LONGITUDE_USED");
+  if (trueSolarTimeOn) warnings.push("EQUATION_OF_TIME_APPROXIMATION");
+  if (trueSolarTimeOn && !localMeridianOn) warnings.push("EOT_WITHOUT_LONGITUDE_NOT_TRUE_SOLAR_TIME");
+  if (!input.timeUnknown && localMeridianOn && !effectiveTime) warnings.push("CORRECTED_TIME_UNAVAILABLE");
+  const boundary = effectiveTime ? hourBoundaryDistance(effectiveTime.hour, effectiveTime.minute) : null;
+  if (boundary !== null && boundary <= 5) warnings.push("HOUR_BRANCH_BOUNDARY_WITHIN_5_MINUTES");
+  const timeAudit: TimeCalculationAudit = {
+    schemaVersion: "time-calculation-audit/v1",
+    basis: input.timeUnknown ? "unknown" : trueSolarTimeOn
+      ? (localMeridianOn ? "apparent-solar-approximate" : "equation-only")
+      : (localMeridianOn ? "local-mean" : "civil"),
+    originalSolarDate: { year: solarYear, month: solarMonth, day: solarDay },
+    originalTime: input.timeUnknown ? null : { hour: input.hour ?? 0, minute: input.minute ?? 0 },
+    longitude: input.longitude ?? 127,
+    longitudeSource: input.longitude == null ? "legacy-default" : "input",
+    equationOfTimeMinutesApplied: eotOffsetMins,
+    libraryInput,
+    effectiveTime,
+    hourBoundaryDistanceMinutes: boundary,
+    timezoneVerification: "not-performed-by-this-wrapper",
+    longitudeDateRolloverVerification: "delegated-to-library-not-independently-verified",
+    warnings,
+  };
+
   return {
     computedPillars,
     fiveElementDistribution,
@@ -209,6 +242,7 @@ export function calculateProfileFromBirth(input: BirthInput, timeOpts?: TimeCorr
     rawResult,
     isTimeCorrected: rawResult.isTimeCorrected,
     correctedTime: rawResult.correctedTime,
+    timeAudit,
   };
 }
 
