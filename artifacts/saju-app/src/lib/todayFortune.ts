@@ -1,3 +1,4 @@
+import { selectDaewoonAt } from "./luckCycles";
 import type { PersonRecord } from "./storage";
 import { getFinalPillars } from "./storage";
 import { getDayGanZhi, getYearGanZhi, getMonthGanZhi, calculateDaewoon } from "./luckCycles";
@@ -219,7 +220,7 @@ export function getFortuneForDate(
 
   const birthYear = record.birthInput.year;
   const age = year - birthYear;
-  const currentDW = daewoon.find((d) => age >= d.startAge && age <= d.endAge);
+  const currentDW = selectDaewoonAt(daewoon, new Date(Date.UTC(year, month - 1, day, -9)));
 
   const dayTG = dayStem ? getTenGod(dayStem, dayGZ.stem) : null;
   const fortuneBase = dayTG ? (TG_FORTUNE[dayTG] ?? DEFAULT_FORTUNE) : DEFAULT_FORTUNE;

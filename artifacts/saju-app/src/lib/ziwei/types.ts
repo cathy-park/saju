@@ -57,7 +57,7 @@ export interface ZiweiBirthInput {
   year: number;
   month: number;
   day: number;
-  hour: number; // 0~23, 진태양시 보정된 시각(호출부 책임)
+  hour: number; // 0~23, original civil hour; midnight day boundary
   minute?: number;
   birthplace?: string;
 }
@@ -75,7 +75,11 @@ export interface MajorPeriod {
 }
 
 export interface AnnualPeriod {
+  /** Lunar-year label, not Gregorian Jan–Dec. */
   year: number;
+  basis?: "lunar-year-inclusive-age";
+  startCivilInclusive?: string;
+  endCivilExclusive?: string;
   palace: PalaceName;
   branch: Branch;
 }

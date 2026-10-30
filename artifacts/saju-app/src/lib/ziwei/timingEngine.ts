@@ -1,3 +1,4 @@
+import { ziweiInclusiveAge } from "./calendarPolicy";
 // 시기(timing) 신호 산출 — 원국(canonical payload)과 완전히 분리된 계산 레이어다. 이 파일은
 // "2027년에 결혼한다" 같은 문장을 생성하지 않는다. 활성도/안정도/공식화신호/변동성을 각각
 // weighted score + evidence로만 산출한다("활성도가 높음 ≠ 결혼하기 좋은 해" 원칙 유지 — 대표 지시).
@@ -90,7 +91,7 @@ function timingSignalForYear(chart: ZiweiChart, ruleSet: RuleSet, year: number):
   const natalSpouseBranch = spouseEvidence.spousePalace.branch;
   const sanfangBranches = new Set(spouseEvidence.sanfangSizhengPalaces.map((p) => p.branch));
 
-  const age = year - chart.birth.year;
+  const age = ziweiInclusiveAge(chart.lunarBirth.year, year);
   const majorPeriod = chart.majorPeriods.find((p) => age >= p.ageRange[0] && age <= p.ageRange[1]);
   const annualPeriod = chart.annualPeriods.find((p) => p.year === year);
   if (!majorPeriod) throw new Error(`대한 구간을 찾을 수 없습니다(year=${year}, age=${age}).`);

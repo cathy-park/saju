@@ -1,3 +1,4 @@
+import { selectDaewoonForYear, selectDaewoonForRange } from "../luckCycles";
 /**
  * 배우자·결혼 테마 활성도 (Marriage/Spouse Activation) — 기존 배우자궁 안정도와 독립된 지표.
  *
@@ -333,20 +334,13 @@ export interface SpouseActivationYearRangeContext {
 export function computeSpouseActivationByYearRange(
   ctx: SpouseActivationYearRangeContext,
 ): SpouseActivationYearEntry[] {
-  const dw0 = ctx.daewoon[0]?.startAge ?? 0;
-  const adjustedDw = ctx.daewoon.map((entry, i) => ({
-    ...entry,
-    startAge: dw0 + i * 10,
-    endAge: dw0 + i * 10 + 9,
-  }));
   const count = ctx.count ?? 10;
 
   return ctx.seunEntries
     .filter((e) => e.year >= ctx.fromYear)
     .slice(0, count)
     .map((e) => {
-      const age = e.year - ctx.birthYear;
-      const dw = adjustedDw.find((d) => age >= d.startAge && age <= d.endAge);
+      const dw = selectDaewoonForYear(ctx.daewoon, e.year, ctx.birthYear);
       const timing = computeLuckTimingActivation(
         ctx.evaluations,
         dw?.ganZhi.hangul,
@@ -387,14 +381,7 @@ export interface SpouseActivationMonthContext extends Omit<SpouseActivationYearR
 export function computeSpouseActivationForMonth(
   ctx: SpouseActivationMonthContext,
 ): SpouseActivationResult {
-  const dw0 = ctx.daewoon[0]?.startAge ?? 0;
-  const adjustedDw = ctx.daewoon.map((entry, i) => ({
-    ...entry,
-    startAge: dw0 + i * 10,
-    endAge: dw0 + i * 10 + 9,
-  }));
-  const age = ctx.year - ctx.birthYear;
-  const dw = adjustedDw.find((d) => age >= d.startAge && age <= d.endAge);
+  const dw = selectDaewoonForRange(ctx.daewoon, new Date(Date.UTC(ctx.year, ctx.month - 1, 1, -9)), new Date(Date.UTC(ctx.year, ctx.month, 1, -9)), ctx.year - ctx.birthYear);
   const seYear = getYearGanZhi(ctx.year);
   const woYear = getMonthGanZhi(ctx.year, ctx.month);
 

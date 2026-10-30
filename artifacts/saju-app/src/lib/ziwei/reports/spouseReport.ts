@@ -1,3 +1,4 @@
+import { ziweiQueryLunarYear } from "../calendarPolicy";
 // 배우자(夫妻宮) 주제 리포트 — 계산 엔진(engine)이 만든 canonical payload + evidence를
 // interpretationFacts.ts의 semantic fact 레이어를 거쳐 사람이 읽는 문장으로 합성한다.
 // (재설계, 2026-09-08 대표 지시) 카테고리별 canned text를 그대로 나열하던 이전 방식을 폐기하고,
@@ -104,8 +105,8 @@ export interface SpouseTimingSection {
 /** buildZiweiChart(..., annualYears) 호출 시 넘겨야 하는 연도 범위 — 이 리포트의 결혼 활성
  * 시기 섹션이 다루는 범위와 반드시 같아야 한다(다르면 chart.annualPeriods에 해당 연도가 없어
  * timingEngine이 에러를 던진다). */
-export function spouseReportTimingYears(): number[] {
-  const currentYear = new Date().getFullYear();
+export function spouseReportTimingYears(at: Date = new Date()): number[] {
+  const currentYear = ziweiQueryLunarYear(at);
   return Array.from({ length: 15 }, (_, i) => currentYear + i);
 }
 
@@ -113,7 +114,7 @@ function buildTimingSection(chart: ZiweiChart): SpouseTimingSection {
   const years = spouseReportTimingYears();
   const signals = computeRelationshipTimingSignals(chart, zhongzhouV1, years);
   const highlights: TimingHighlights = computeTimingHighlights(signals);
-  return { title: "결혼 활성 시기(연도별 신호)", signals, highlights };
+  return { title: "결혼 활성 시기(음력년별 신호 · 설부터 다음 설 직전)", signals, highlights };
 }
 
 export interface SpouseReport {

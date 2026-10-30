@@ -1,3 +1,4 @@
+import { selectDaewoonForYear } from "../luckCycles";
 /**
  * 커플 관계 상호작용 활성도 (Relationship Interaction Activation).
  *
@@ -493,8 +494,8 @@ function computeRelationshipInteractionCore(
 
   const ageA = year - a.birthYear;
   const ageB = year - b.birthYear;
-  const dwA = adjustDaewoon(a.daewoon).find((d) => ageA >= d.startAge && ageA <= d.endAge);
-  const dwB = adjustDaewoon(b.daewoon).find((d) => ageB >= d.startAge && ageB <= d.endAge);
+  const dwA = selectDaewoonForYear(a.daewoon, year, a.birthYear);
+  const dwB = selectDaewoonForYear(b.daewoon, year, b.birthYear);
   const seYear = getYearGanZhi(year);
 
   const aPoints = luckPointsFor(dwA?.ganZhi.hangul, seYear.hangul, wolunHangul);

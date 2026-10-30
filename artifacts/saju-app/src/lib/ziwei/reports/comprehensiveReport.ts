@@ -1,3 +1,4 @@
+import { ziweiQueryLunarYear, ziweiInclusiveAge } from "../calendarPolicy";
 // 종합 리포트 — 이미 완료된 6개 주제(타고난 성향/재물/커리어/연애/배우자/결혼시기)의 fact
 // 생성기와 evidence 추출을 그대로 재사용한다. 새 계산 로직·새 채점 기준은 만들지 않는다(대표
 // 지시). 5개 축(핵심 성향/일·재물/연애·배우자/현재 삶의 중심축/앞으로의 주요 시기)으로
@@ -192,7 +193,7 @@ const THEME_PALACE_LABEL: Partial<Record<PalaceName, string>> = {
   福德宮: "내면의 안정과 취향을 채우는 것",
 };
 
-function buildCurrentFocusSection(chart: ZiweiChart, marriageTiming: MarriageTimingReport): ComprehensiveSection {
+function buildCurrentFocusSection(chart: ZiweiChart, marriageTiming: MarriageTimingReport, at: Date): ComprehensiveSection {
   const facts: InterpretationFact[] = [];
   const evidence: EvidenceItem[] = [];
 
@@ -210,7 +211,7 @@ function buildCurrentFocusSection(chart: ZiweiChart, marriageTiming: MarriageTim
     evidence.push({ type: "palace", value: chart.shenGong.palace, source: "natal" });
   }
 
-  const age = new Date().getFullYear() - chart.birth.year;
+  const age = ziweiInclusiveAge(chart.lunarBirth.year, ziweiQueryLunarYear(at));
   const majorPeriod = chart.majorPeriods.find((p) => age >= p.ageRange[0] && age <= p.ageRange[1]);
   const majorLabel = majorPeriod ? THEME_PALACE_LABEL[majorPeriod.palace] : undefined;
   if (majorPeriod && majorLabel) {
@@ -225,7 +226,7 @@ function buildCurrentFocusSection(chart: ZiweiChart, marriageTiming: MarriageTim
     evidence.push({ type: "period", value: `大限=${majorPeriod.palace}`, source: "major" });
   }
 
-  const currentYear = spouseReportTimingYears()[0];
+  const currentYear = spouseReportTimingYears(at)[0];
   const activeAxes = (["activationYears", "stabilityYears", "formalizationYears", "volatilityYears"] as const)
     .filter((key) => marriageTiming.highlights[key].includes(currentYear));
   if (activeAxes.length > 0) {
@@ -264,12 +265,12 @@ function buildUpcomingTimingSection(marriageTiming: MarriageTimingReport): Compr
   return { key: "upcomingTiming", title: "앞으로의 주요 시기", text, facts, evidence: facts.flatMap((f) => f.evidence) };
 }
 
-export function buildComprehensiveReport(chart: ZiweiChart, ruleSet: RuleSet, personName: string): ComprehensiveReport {
+export function buildComprehensiveReport(chart: ZiweiChart, ruleSet: RuleSet, personName: string, at: Date = new Date()): ComprehensiveReport {
   const natureEvidence = extractNatureEvidence(chart);
   const wealthEvidence = extractWealthEvidence(chart);
   const careerEvidence = extractCareerEvidence(chart);
   const spouseEvidence = extractSpouseEvidence(chart);
-  const marriageTiming = buildMarriageTimingReport(chart, ruleSet, personName);
+  const marriageTiming = buildMarriageTimingReport(chart, ruleSet, personName, at);
 
   // ── 핵심 성향(nature 계열만 — 배우자상 절대 섞지 않음) ──
   const natureFactsAll = [
@@ -321,7 +322,7 @@ export function buildComprehensiveReport(chart: ZiweiChart, ruleSet: RuleSet, pe
     true,
   );
 
-  const currentFocus = buildCurrentFocusSection(chart, marriageTiming);
+  const currentFocus = buildCurrentFocusSection(chart, marriageTiming, at);
   const upcomingTiming = buildUpcomingTimingSection(marriageTiming);
 
   const sections: ComprehensiveSection[] = [

@@ -65,7 +65,7 @@ test("MCP authentication boundary unchanged", async () =>
   assert.equal((await rpc("three_charts_status", {}, false)).status, 401));
 test("candidate identity is visible without birth data", async () => {
   const r = await rpc("three_charts_status");
-  assert.equal(r.body.result.structuredContent.version, "0.2.1");
+  assert.equal(r.body.result.structuredContent.version, "0.4.0");
 });
 test("real bundled API preserves existing keys and exposes per-system audit in text and structured response", async () => {
   const r = await rpc("calculate_three_charts", birth);
@@ -200,3 +200,36 @@ for (const [title, patch, code] of [
     assert.equal(r.body.result.isError, true);
     assert.equal(r.body.result.structuredContent.error.code, code);
   });
+
+const base = birth;
+const calculate = async args => (await rpc("calculate_three_charts", args)).body.result;
+
+test("approved solar-term policy crosses physical lichun while preserving the original UTC clock", async () => {
+  const before = (await calculate({ ...base, birthDate:"2000-02-04", birthTime:"21:39" })).structuredContent;
+  const after = (await calculate({ ...base, birthDate:"2000-02-04", birthTime:"21:42" })).structuredContent;
+  assert.equal(before.saju.pillars.year.hangul,"기묘");
+  assert.equal(after.saju.pillars.year.hangul,"경진");
+  assert.equal(after.timeAudit.western.utcInstant,"2000-02-04T12:42:00.000Z");
+  assert.equal(after.timeAudit.saju.solarTerm.basis,"original-civil-fixed-utc9");
+  assert.ok(!after.warnings.includes("SOLAR_TERM_INSTANT_NOT_SUPPORTED"));
+});
+test("continuous daewoon audit exposes actual start and half-open current period", async () => {
+  const r = (await calculate(base)).structuredContent;
+  const a = r.timeAudit.daewoon;
+  assert.equal(a.basis,"civil-instant-three-days-per-year");
+  assert.equal(a.ageYears,a.elapsedDays/3);
+  assert.equal(a.periodBoundary,"start-inclusive-end-exclusive");
+  assert.ok(a.currentPeriod.startInstantUtc);
+  assert.ok(a.currentPeriod.endInstantUtcExclusive);
+  assert.match(a.display,/년 .*개월 후/);
+});
+test("Ziwei annual API labels lunar-new-year intervals and inclusive lunar age", async () => {
+  const r = (await calculate(base)).structuredContent;
+  assert.equal(r.timeAudit.ziwei.yearBoundary,"lunar-new-year");
+  assert.equal(r.timeAudit.ziwei.ageBasis,"lunar-year-inclusive");
+  assert.equal(r.timeAudit.ziwei.inclusiveAge,r.timeAudit.ziwei.queryLunarYear-r.ziwei.chart.lunarBirth.year+1);
+  for(const p of r.ziwei.chart.annualPeriods){
+    assert.equal(p.basis,"lunar-year-inclusive-age");
+    assert.ok(Date.parse(p.endCivilExclusive)>Date.parse(p.startCivilInclusive));
+  }
+});

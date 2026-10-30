@@ -1,3 +1,4 @@
+import { selectDaewoonAt } from "./luckCycles";
 import type { PersonRecord } from "./storage";
 import { getFinalPillars } from "./storage";
 import { getDayGanZhi, getYearGanZhi, getMonthGanZhi, calculateDaewoon } from "./luckCycles";
@@ -700,7 +701,7 @@ export function buildLifeFlowInsights(
   // manualPillars 반영을 위해 raw computedPillars가 아니라 위에서 이미 병합한 pillars를 사용한다.
   const daewoon = calculateDaewoon(record.birthInput, pillars);
   const age = year - record.birthInput.year;
-  const currentDW = daewoon.find((d) => age >= d.startAge && age <= d.endAge);
+  const currentDW = selectDaewoonAt(daewoon, new Date(Date.UTC(year, month - 1, day, -9)));
 
   const ctx: LuckContext = {
     daewoonTG: currentDW ? getTenGod(dayStem, currentDW.ganZhi.stem) : null,

@@ -42,13 +42,14 @@ export function toLunarBirth(
           return { lunar: { year, month, day, isLeapMonth }, gapja: r.gapja };
         })();
 
+  const yearIndex = ((result.lunar.year - 1984) % 60 + 60) % 60;
   return {
     year: result.lunar.year,
     month: result.lunar.month,
     day: result.lunar.day,
     isLeapMonth: result.lunar.isLeapMonth,
     hourBranch: hourToBranch(hour),
-    yearStem: hanjaToStem(result.gapja.yearPillarHanja),
-    yearBranch: hanjaToBranch(result.gapja.yearPillarHanja),
+    yearStem: STEMS[yearIndex % 10],
+    yearBranch: BRANCHES[yearIndex % 12],
   };
 }

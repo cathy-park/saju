@@ -146,7 +146,7 @@ describe("real manseryeok guards", () => {
         "2000-02-16T10:29:00.000Z",
       );
   });
-  it("labels the dependency date-only solar term limitation instead of claiming instant precision", () => {
+  it("uses the physical birth instant across lichun while retaining timezone limits", () => {
     const before = calculateProfileFromBirth(
       { ...birth, day: 4, hour: 0 },
       { localMeridianOn: false },
@@ -155,9 +155,10 @@ describe("real manseryeok guards", () => {
       { ...birth, day: 4, hour: 23 },
       { localMeridianOn: false },
     );
-    expect(before.computedPillars.month).toEqual(after.computedPillars.month);
+    expect(before.computedPillars.month).not.toEqual(after.computedPillars.month);
+    expect(before.timeAudit?.solarTerm?.basis).toBe("original-civil-fixed-utc9");
     expect(before.timeAudit?.warnings).toContain(
-      "SOLAR_TERM_INSTANT_NOT_SUPPORTED",
+      "SAJU_FIXED_UTC9_TIMEZONE_NOT_VERIFIED",
     );
   });
 });
@@ -236,7 +237,7 @@ it("renders the actual engine audit and missing-audit state in the UI component"
     createElement(TimeCalculationAuditView, { audit }),
   );
   expect(html).toContain("local-mean");
-  expect(html).toContain("SOLAR_TERM_INSTANT_NOT_SUPPORTED");
+  expect(html).toContain("SAJU_FIXED_UTC9_TIMEZONE_NOT_VERIFIED");
   expect(html).toContain("독립 검증은 완료되지 않았습니다");
   expect(
     renderToStaticMarkup(createElement(TimeCalculationAuditView)),

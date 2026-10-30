@@ -1,222 +1,53 @@
 import { lunarToSolarChecked as lunarToSolar } from "./calendarConversion";
+import { surroundingMonthTerms } from "./solarTerms";
 import type { BirthInput, ComputedPillars } from "./sajuEngine";
-import { equationOfTimeMins } from "./sajuEngine";
-
 
 export const STEMS = ["갑", "을", "병", "정", "무", "기", "경", "신", "임", "계"];
 export const BRANCHES = ["자", "축", "인", "묘", "진", "사", "오", "미", "신", "유", "술", "해"];
-const STEMS_HANJA = ["甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸"];
-const BRANCHES_HANJA = ["子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"];
-
+const STEMS_HANJA = [..."甲乙丙丁戊己庚辛壬癸"];
+const BRANCHES_HANJA = [..."子丑寅卯辰巳午未申酉戌亥"];
 const YANG_STEMS = new Set(["갑", "병", "무", "경", "임"]);
-
-// ── Solar term calculator for accurate 대운수 ─────────────────────
-// Computes sun's ecliptic longitude (degrees) for a given Date (UTC)
-// Uses simplified VSOP87 — accurate to ~0.01° for years 1900–2100
-function sunLongitudeDeg(date: Date): number {
-  const JD = date.getTime() / 86400000 + 2440587.5;
-  const T = (JD - 2451545.0) / 36525;
-  const L0 = 280.46646 + 36000.76983 * T + 0.0003032 * T * T;
-  const M = (((357.52911 + 35999.05029 * T - 0.0001537 * T * T) % 360) + 360) % 360;
-  const Mrad = M * Math.PI / 180;
-  const C = Math.sin(Mrad) * (1.9146 - 0.004817 * T - 0.000014 * T * T)
-          + Math.sin(2 * Mrad) * (0.019993 - 0.000101 * T)
-          + Math.sin(3 * Mrad) * 0.00029;
-  return ((L0 + C) % 360 + 360) % 360;
-}
-
-// 12 month-boundary 절기 (節) — solar longitudes where month pillar changes
-// 소한(285)→축, 입춘(315)→인, 경칩(345)→묘, 청명(15)→진,
-// 입하(45)→사,  망종(75)→오,  소서(105)→미, 입추(135)→신,
-// 백로(165)→유, 한로(195)→술, 입동(225)→해, 대설(255)→자
-const JULGGI_LONS = [285, 315, 345, 15, 45, 75, 105, 135, 165, 195, 225, 255] as const;
-
-// Find the date when the sun reaches targetLon (degrees), searching near year.
-// FIXED: use Jan 1 (lon ≈ 280°) as reference instead of March equinox (lon ≈ 0°).
-// The old March-equinox reference caused 소한/입춘/경칩 (285°/315°/345°) to always
-// resolve to the NEXT year, inflating 대운수 to 10 for early-year births.
-function findSolarTermDate(year: number, targetLon: number): Date {
-  // Compute actual sun longitude on Jan 1 of the target year (KST noon = UTC 03:00)
-  const jan1 = new Date(Date.UTC(year, 0, 1, 12));
-  const jan1Lon = sunLongitudeDeg(jan1);
-  // Forward distance from jan1Lon to targetLon (always positive, 0–360)
-  const daysFromJan1 = ((targetLon - jan1Lon + 360) % 360) / 360 * 365.25;
-  let d = new Date(jan1.getTime() + daysFromJan1 * 86400000);
-  // Newton-Raphson refinement (converges in ~5 iterations)
-  for (let i = 0; i < 12; i++) {
-    const lon = sunLongitudeDeg(d);
-    let diff = targetLon - lon;
-    if (diff > 180) diff -= 360;
-    if (diff < -180) diff += 360;
-    d = new Date(d.getTime() + (diff / 360) * 365.25 * 86400000);
-  }
-  return d;
-}
-
 export interface DaewoonSuOpts {
-  /**
-   * Use actual birth hour/minute (KST→UTC) for solar-term distance.
-   * When false, falls back to fixed noon UTC (old, less accurate behaviour).
-   * Default: true.
-   */
+  /** Retained for compatibility; actual civil birth time always defines term distance. */
   exactSolarTermBoundaryOn?: boolean;
-  /**
-   * Add Equation of Time offset to birth moment before computing distance.
-   * Requires actual birth time to be meaningful.
-   * Default: false.
-   */
+  /** Retained for compatibility; EOT affects day/hour, never the physical birth instant. */
   trueSolarTimeOn?: boolean;
 }
-
-// ── 12 절기(節) 이름 테이블 ──────────────────────────────────────────
-const JULGGI_NAMES: Record<number, string> = {
-  285: "소한(小寒)", 315: "입춘(立春)", 345: "경칩(驚蟄)",
-   15: "청명(淸明)",  45: "입하(立夏)",  75: "망종(芒種)",
-  105: "소서(小暑)", 135: "입추(立秋)", 165: "백로(白露)",
-  195: "한로(寒露)", 225: "입동(立冬)", 255: "대설(大雪)",
-};
-
-/**
- * ═══════════════════════════════════════════════════════════════
- * 대운수 (Daewoon start age) — 범용 표준 알고리즘
- * ═══════════════════════════════════════════════════════════════
- *
- * [방향 결정 — 양남음녀 / 음남양녀 원칙]
- *   순행(Forward): (남성 AND 양년간) OR (여성 AND 음년간)
- *   역행(Backward): (남성 AND 음년간) OR (여성 AND 양년간)
- *   양년간: 갑·병·무·경·임 / 음년간: 을·정·기·신·계
- *
- * [대상 절기 선택]
- *   순행 → 출생 시각 직후(直後) 첫 번째 절기(節)
- *   역행 → 출생 시각 직전(直前) 마지막 절기(節)
- *
- * [절기 탐색 방법 — 핵심]
- *   (출생연도-1)·(출생연도)·(출생연도+1) 각 12절기 = 36개를 모두 계산.
- *   시간순 정렬 후 "출생 이후 첫 번째" 또는 "출생 이전 마지막"을 선택.
- *   → 연도 경계, 소한·입춘·경칩 등 연초 절기 모두 정확 처리.
- *   (구 알고리즘은 3월춘분 기준점 사용 → 소한/입춘/경칩을 다음 해로 오인)
- *
- * [대운수 공식]
- *   diffDays = |절기 일시 − 출생 일시|  (소수점 포함 일 단위)
- *   대운수   = ⌈ diffDays / 3 ⌉         (올림, 최소 1)
- *   (전통 규칙: 3일 = 1년, 올림 적용)
- *
- * [회귀 테스트 — 검증된 기준값]
- *   TC1  1990-01-23 19:29 KST 여 경(양) → 역행 소한  17.8일 → 6
- *   TC2  1990-01-04 12:00 KST 남 경(양) → 순행 소한   1.5일 → 1
- *   TC3  1990-01-07 23:00 KST 여 경(양) → 역행 소한   2.0일 → 1
- *   TC4  2000-04-11 12:00 KST 남 경(양) → 순행 입하  24.1일 → 8  (24일, 나머지0 → 그대로)
- *   TC5  2004-10-28 12:00 KST 여 갑(양) → 역행 한로  20.2일 → 7
- * ═══════════════════════════════════════════════════════════════
+function civilBirthInstant(input: BirthInput): Date {
+  if (input.timeUnknown || input.hour == null || input.minute == null) throw new RangeError("대운 시작 일시에는 실제 출생 시각이 필요합니다.");
+  const solar = input.calendarType === "lunar" ? lunarToSolar(input.year, input.month, input.day, false).solar : input;
+  return new Date(Date.UTC(solar.year, solar.month - 1, solar.day, input.hour - 9, input.minute));
+}
+/** Calendar-year age: interpolate only the fractional year between UTC anniversaries.
+ * Feb 29 anniversaries clamp to Feb 28. This is date arithmetic, not an accuracy claim.
  */
-export function calculateDaewoonSu(birthInput: BirthInput, pillars: ComputedPillars, opts?: DaewoonSuOpts): number {
-  try {
-    // ── 0. 음력 → 양력 변환 (음력 입력 시 절기 계산이 틀리는 버그 방지) ──
-    //    birthInput.year/month/day 가 음력이면 양력으로 먼저 변환
-    let solarYear  = birthInput.year;
-    let solarMonth = birthInput.month;
-    let solarDay   = birthInput.day;
-    if (birthInput.calendarType === "lunar") {
-      try {
-        const conv = lunarToSolar(birthInput.year, birthInput.month, birthInput.day, false);
-        solarYear  = conv.solar.year;
-        solarMonth = conv.solar.month;
-        solarDay   = conv.solar.day;
-      } catch {
-        // 변환 실패 시 원본 날짜 그대로 사용
-      }
-    }
-
-    // ── 1. 출생 시각을 UTC로 변환 (KST = UTC+9) ──────────────────────
-    const useExact = opts?.exactSolarTermBoundaryOn ?? true;
-    let hKST = useExact && !birthInput.timeUnknown ? (birthInput.hour   ?? 12) : 12;
-    let mKST = useExact && !birthInput.timeUnknown ? (birthInput.minute ?? 0)  : 0;
-
-    // 균시차(Equation of Time) 보정 — 옵션 활성화 시
-    if (useExact && !birthInput.timeUnknown && (opts?.trueSolarTimeOn ?? false)) {
-      // 균시차 보정은 양력 날짜 기준으로 계산
-      mKST += Math.round(equationOfTimeMins(solarYear, solarMonth, solarDay));
-    }
-    while (mKST < 0)   { mKST += 60; hKST -= 1; }
-    while (mKST >= 60) { mKST -= 60; hKST += 1; }
-
-    // 양력 날짜(solarYear/Month/Day) 기준으로 UTC 생성
-    const birthDate = new Date(Date.UTC(
-      solarYear, solarMonth - 1, solarDay,
-      hKST - 9, mKST,   // KST → UTC (−9h)
-    ));
-
-    // ── 2. 방향 결정 (양남음녀 원칙) ────────────────────────────────
-    const yearStem = pillars.year?.hangul?.[0];
-    if (!yearStem) return 5;
-    const isYangYear = YANG_STEMS.has(yearStem);
-    const isMale     = birthInput.gender === "남";
-    // 순행: (양년간+남) OR (음년간+여)
-    // 역행: (음년간+남) OR (양년간+여)
-    const isForward  = (isMale && isYangYear) || (!isMale && !isYangYear);
-
-    // ── 3. 양력 출생연도 ±1년 범위의 모든 절기 36개를 시간순 정렬 ────
-    //    → 연도 경계·연초 절기(소한·입춘·경칩) 오인 문제 원천 차단
-    //    → 반드시 양력 solarYear 기준으로 탐색 (음력 year 사용 금지)
-    const allTerms: { lon: number; name: string; date: Date }[] = [];
-    for (const lon of JULGGI_LONS) {
-      for (const y of [solarYear - 1, solarYear, solarYear + 1]) {
-        allTerms.push({ lon, name: JULGGI_NAMES[lon] ?? String(lon), date: findSolarTermDate(y, lon) });
-      }
-    }
-    allTerms.sort((a, b) => a.date.getTime() - b.date.getTime());
-
-    // ── 4. 방향에 따라 대상 절기 선택 ───────────────────────────────
-    let targetTerm: { lon: number; name: string; date: Date } | undefined;
-    if (isForward) {
-      // 순행: 출생 시각 이후 최초 절기
-      targetTerm = allTerms.find(t => t.date.getTime() > birthDate.getTime());
-    } else {
-      // 역행: 출생 시각 이전 최후 절기
-      targetTerm = [...allTerms].reverse().find(t => t.date.getTime() < birthDate.getTime());
-    }
-    if (!targetTerm) return 5;
-
-    // ── 5. 대운수 계산 ───────────────────────────────────────────────
-    // 전통 명리 규칙 (3일 = 1년):
-    //   정수 일수(wholeDays) 기준으로 나머지를 처리
-    //   나머지 0 → 그대로  (9일÷3 = 3)
-    //   나머지 1 → 버림    (10일÷3 → 3, 약함)
-    //   나머지 2 → 올림    (11일÷3 → 4, 강함)
-    //   공식: floor((wholeDays + 1) / 3)  ← 위 규칙을 한 줄로 구현
-    //   주의: Math.ceil(diffDays/3) 는 나머지1 케이스에서 1년 과산됨 → 사용 안 함
-    const diffDays   = Math.abs(targetTerm.date.getTime() - birthDate.getTime()) / 86400000;
-    const wholeDays  = Math.floor(diffDays);           // 소수점 이하 시/분 제거
-    const remainder  = wholeDays % 3;                  // 0·1·2
-    const rawSu      = Math.floor((wholeDays + 1) / 3);
-    // 0대운 처리 (전통 명리):
-    //   wholeDays=0 (절기와 동일일): rawSu=0 → 10으로 치환 (0대운 없음)
-    //   wholeDays=1, 나머지1→버림→rawSu=0: 최소 1 (1~2일 차이는 대운수 1세)
-    const su         = wholeDays === 0 ? 10 : Math.max(1, rawSu);
-
-    // ── 디버그 로그 (브라우저 콘솔 F12에서 확인) ─────────────────────
-    const kst = 9 * 3600000;
-    console.group("🔢 대운수 계산");
-    if (birthInput.calendarType === "lunar") {
-      console.log("입력(음력):", birthInput.year + "-" + birthInput.month + "-" + birthInput.day,
-        "→ 양력 변환:", solarYear + "-" + solarMonth + "-" + solarDay);
-    }
-    console.log("출생 KST :", new Date(birthDate.getTime() + kst).toISOString().slice(0, 16) + " KST");
-    console.log("방향     :", isForward ? "순행(Forward)" : "역행(Backward)",
-      `[${isMale ? "남" : "여"}, 년간 ${yearStem}(${isYangYear ? "양" : "음"})]`);
-    console.log("대상 절기:", targetTerm.name,
-      "→", new Date(targetTerm.date.getTime() + kst).toISOString().slice(0, 16) + " KST");
-    console.log("차이     :", diffDays.toFixed(3) + "일 (정수: " + wholeDays + "일, 나머지: " + remainder + ")");
-    console.log("대운수   : floor((" + wholeDays + "+1)/3) = " + rawSu + (rawSu === 0 ? " → 0대운 없음→10으로 치환" : ""),
-      "→ 최종:", su,
-      remainder === 0 ? "(나머지0 → 그대로)" : remainder === 1 ? "(나머지1 → 버림)" : "(나머지2 → 올림)");
-    console.groupEnd();
-
-    return su;
-  } catch (e) {
-    console.error("대운수 계산 오류:", e);
-    return 5;
-  }
+export function instantAtAge(birth: Date, age: number): Date {
+  if (!Number.isFinite(age) || age < 0) throw new RangeError("유효한 연속 나이가 필요합니다.");
+  const whole = Math.floor(age);
+  const anniversary = (offset: number) => {
+    const y = birth.getUTCFullYear() + offset, m = birth.getUTCMonth();
+    const d = Math.min(birth.getUTCDate(), new Date(Date.UTC(y, m + 1, 0)).getUTCDate());
+    return Date.UTC(y, m, d, birth.getUTCHours(), birth.getUTCMinutes(), birth.getUTCSeconds(), birth.getUTCMilliseconds());
+  };
+  const lo = anniversary(whole), hi = anniversary(whole + 1);
+  return new Date(lo + (hi - lo) * (age - whole));
+}
+export function calculateDaewoonStart(birth: BirthInput, pillars: ComputedPillars) {
+  const birthInstant = civilBirthInstant(birth);
+  const stem = pillars.year?.hangul?.[0];
+  if (!STEMS.includes(stem)) throw new RangeError("대운 방향의 년간이 필요합니다.");
+  const forward = (birth.gender === "남") === YANG_STEMS.has(stem);
+  const terms = surroundingMonthTerms(birthInstant);
+  // Equality belongs to the new term and gives zero elapsed age, never ten years.
+  const target = forward ? terms.find(t => t.instant >= birthInstant) : [...terms].reverse().find(t => t.instant <= birthInstant);
+  if (!target) throw new RangeError("대상 절기가 없습니다.");
+  const elapsedDays = Math.abs(target.instant.getTime() - birthInstant.getTime()) / 86400000;
+  const ageYears = elapsedDays / 3;
+  const totalMonths = Math.floor(ageYears * 12 + 1e-10);
+  return { basis: "civil-instant-three-days-per-year" as const, birthInstantUtc: birthInstant.toISOString(), targetTermUtc: target.instant.toISOString(), direction: forward ? "forward" as const : "backward" as const, elapsedDays, ageYears, years: Math.floor(totalMonths / 12), months: totalMonths % 12, startInstantUtc: instantAtAge(birthInstant, ageYears).toISOString(), display: Math.floor(totalMonths / 12) + "년 " + (totalMonths % 12) + "개월 후 (월 미만 생략)", calendarArithmetic: "utc-anniversary-fraction; feb29-clamped" as const };
+}
+export function calculateDaewoonSu(birth: BirthInput, pillars: ComputedPillars, _opts?: DaewoonSuOpts): number {
+  return calculateDaewoonStart(birth, pillars).ageYears;
 }
 
 export interface GanZhi {
@@ -253,9 +84,13 @@ export interface DaewoonEntry {
   startAge: number;
   endAge: number;
   ganZhi: GanZhi;
+  startInstantUtc?: string;
+  endInstantUtcExclusive?: string;
+  startDescription?: string;
 }
 
 export function calculateDaewoon(birthInput: BirthInput, pillars: ComputedPillars, opts?: DaewoonSuOpts): DaewoonEntry[] {
+  if (birthInput.timeUnknown) return [];
   const monthPillar = pillars.month;
   if (!monthPillar) return [];
   const yearStem = pillars.year?.hangul?.[0];
@@ -266,16 +101,37 @@ export function calculateDaewoon(birthInput: BirthInput, pillars: ComputedPillar
   const startIdx = ganZhiIndex(monthPillar.hangul[0], monthPillar.hangul[1]);
 
   // Calculate proper 대운수 from solar term distance (replaces hardcoded 5)
-  const daewoonSu = calculateDaewoonSu(birthInput, pillars, opts);
+  const timing = calculateDaewoonStart(birthInput, pillars);
+  const daewoonSu = timing.ageYears;
+  const firstStart = new Date(timing.startInstantUtc);
 
   const entries: DaewoonEntry[] = [];
   for (let i = 0; i < 10; i++) {
     const offset = isForward ? i + 1 : -(i + 1);
     const ganzhi = ganZhiFromIndex(startIdx + offset);
     const startAge = daewoonSu + i * 10;
-    entries.push({ startAge, endAge: startAge + 9, ganZhi: ganzhi });
+    entries.push({ startAge, endAge: startAge + 10, ganZhi: ganzhi, startInstantUtc: instantAtAge(firstStart, i * 10).toISOString(), endInstantUtcExclusive: instantAtAge(firstStart, (i + 1) * 10).toISOString(), startDescription: timing.display });
   }
   return entries;
+}
+
+/** Half-open physical intervals: the transition instant belongs to the next period. */
+export function selectDaewoonAt(entries: DaewoonEntry[], at: Date): DaewoonEntry | undefined {
+  const ms = at.getTime();
+  if (!Number.isFinite(ms)) throw new RangeError("유효한 조회 일시가 필요합니다.");
+  return entries.find(e => e.startInstantUtc && e.endInstantUtcExclusive && ms >= Date.parse(e.startInstantUtc) && ms < Date.parse(e.endInstantUtcExclusive));
+}
+
+/** Use a single period for a calendar summary only when its entire interval belongs to it. */
+export function selectDaewoonForRange(entries: DaewoonEntry[], start: Date, endExclusive: Date, legacyAge?: number): DaewoonEntry | undefined {
+  if (entries.some(e => e.startInstantUtc)) {
+    const first = selectDaewoonAt(entries, start), last = selectDaewoonAt(entries, new Date(endExclusive.getTime() - 1));
+    return first === last ? first : undefined;
+  }
+  return legacyAge === undefined ? undefined : entries.find(e => legacyAge >= e.startAge && legacyAge <= e.endAge);
+}
+export function selectDaewoonForYear(entries: DaewoonEntry[], year: number, birthYear: number) {
+  return selectDaewoonForRange(entries, new Date(Date.UTC(year, 0, 1, -9)), new Date(Date.UTC(year + 1, 0, 1, -9)), year - birthYear);
 }
 
 export function getYearGanZhi(year: number): GanZhi {

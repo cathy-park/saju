@@ -22,6 +22,7 @@ export interface TimeCalculationAudit {
   hourBoundaryDistanceMinutes: number | null;
   timezoneVerification: "not-performed-by-this-wrapper";
   longitudeDateRolloverVerification: "delegated-to-library-not-independently-verified" | "wrapper-calendar-arithmetic";
+  solarTerm?: { basis: "original-civil-fixed-utc9"; birthInstantUtc: string | null; activeTermUtc: string | null; nextTermUtc: string | null; yearBoundary: "lichun-instant"; monthBoundary: "jie-instant"; dayBoundary: "corrected-clock-midnight" };
   warnings: string[];
 }
 

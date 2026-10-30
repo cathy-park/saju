@@ -7,12 +7,12 @@ import type { ComputedPillars } from "./sajuEngine";
 import { countFiveElements } from "./sajuEngine";
 import type { PersonRecord } from "./storage";
 import { getFinalPillars } from "./storage";
-import { calculateLuckCycles, type DaewoonSuOpts } from "./luckCycles";
+import { calculateLuckCycles, selectDaewoonAt, type DaewoonSuOpts } from "./luckCycles";
 import { computeSajuPipeline, type SajuPipelineResult } from "./sajuPipeline";
 
 export function computePersonPipelineSnapshot(
   record: PersonRecord,
-  opts?: { daewoonSuOpts?: DaewoonSuOpts; hourMode?: "포함" | "제외" | "비교" },
+  opts?: { daewoonSuOpts?: DaewoonSuOpts; hourMode?: "포함" | "제외" | "비교"; at?: Date },
 ): SajuPipelineResult | null {
   const fullPillars = getFinalPillars(record);
   const hourMode = opts?.hourMode ?? "포함";
@@ -33,14 +33,7 @@ export function computePersonPipelineSnapshot(
   const refYear = luckCycles.wolun.year;
   const seunEntry = luckCycles.seun.find((e) => e.year === refYear) ?? luckCycles.seun[2];
 
-  const dw0 = luckCycles.daewoon[0]?.startAge ?? 0;
-  const adjustedDw = luckCycles.daewoon.map((entry, i) => ({
-    ...entry,
-    startAge: dw0 + i * 10,
-    endAge: dw0 + i * 10 + 9,
-  }));
-  const age = refYear - input.year;
-  const curDw = adjustedDw.find((e) => age >= e.startAge && age <= e.endAge);
+  const curDw = selectDaewoonAt(luckCycles.daewoon, opts?.at ?? new Date());
 
   const allStems = [
     pillars.hour?.hangul?.[0],

@@ -1,3 +1,4 @@
+import { selectDaewoonAt } from "./luckCycles";
 /**
  * dynamicCompatibility.ts
  *
@@ -204,7 +205,7 @@ export function computePersonCurrentFlow(
   // manualPillars 반영을 위해 raw computedPillars가 아니라 위에서 이미 병합한 pillars를 사용한다.
   const daewoonList = calculateDaewoon(record.birthInput, pillars);
   const age = yr - record.birthInput.year;
-  const daywoon = daewoonList.find((d) => age >= d.startAge && age <= d.endAge) ?? null;
+  const daywoon = selectDaewoonAt(daewoonList, now) ?? null;
 
   const daywoonTenGod = dayStem && daywoon ? getTenGod(dayStem, daywoon.ganZhi.stem) : null;
   const sewoonTenGod = dayStem ? getTenGod(dayStem, sewoon.stem) : null;

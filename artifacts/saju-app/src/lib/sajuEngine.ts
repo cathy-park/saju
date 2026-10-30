@@ -1,3 +1,4 @@
+import { solarTermYearMonth } from "./solarTerms";
 import { lunarToSolarChecked as lunarToSolar, solarToLunarChecked as solarToLunar, calculateSajuChecked as calculateSaju, isKnownCalendarSourceGap } from "./calendarConversion";
 import {
   type SajuResult,
@@ -188,6 +189,15 @@ export function calculateProfileFromBirth(input: BirthInput, timeOpts?: TimeCorr
   const rawResult: SajuResult = input.timeUnknown
     ? calculateSaju(solarYear, solarMonth, solarDay, undefined, undefined, { ...options, applyTimeCorrection: false })
     : calculateSaju(libraryInput!.year, libraryInput!.month, libraryInput!.day, libraryInput!.hour, libraryInput!.minute, { ...options, applyTimeCorrection: false });
+  const birthInstant = input.timeUnknown ? null : new Date(Date.UTC(solarYear, solarMonth - 1, solarDay, input.hour! - 9, input.minute!));
+  const termPillars = birthInstant ? solarTermYearMonth(birthInstant) : null;
+  if (termPillars) {
+    rawResult.yearPillar = termPillars.year.hangul;
+    rawResult.yearPillarHanja = termPillars.year.hanja;
+    rawResult.monthPillar = termPillars.month.hangul;
+    rawResult.monthPillarHanja = termPillars.month.hanja;
+    Object.assign(rawResult.gapja, { yearPillar: rawResult.yearPillar, yearPillarHanja: rawResult.yearPillarHanja, monthPillar: rawResult.monthPillar, monthPillarHanja: rawResult.monthPillarHanja });
+  }
   // Preserve legacy fields: these describe the longitude correction only.
   rawResult.isTimeCorrected = longitudeOffsetMins !== 0;
   if (rawResult.isTimeCorrected) rawResult.correctedTime = { hour: libraryInput!.hour, minute: libraryInput!.minute };
@@ -210,7 +220,9 @@ export function calculateProfileFromBirth(input: BirthInput, timeOpts?: TimeCorr
 
   // 원본 출생시각은 보존하고 보정의 단계/한계를 별도 노출한다.
   const effectiveTime = libraryInput ? { hour: libraryInput.hour, minute: libraryInput.minute } : null;
-  const warnings: string[] = ["SOLAR_TERM_INSTANT_NOT_SUPPORTED", "SAJU_FIXED_UTC9_TIMEZONE_NOT_VERIFIED"];
+  const warnings: string[] = ["SAJU_FIXED_UTC9_TIMEZONE_NOT_VERIFIED"];
+  if (input.timeUnknown) warnings.push("SOLAR_TERM_INSTANT_REQUIRES_BIRTH_TIME");
+  if (birthInstant && termPillars && Math.min(Math.abs(birthInstant.getTime() - Date.parse(termPillars.activeTermUtc)), Math.abs(birthInstant.getTime() - Date.parse(termPillars.nextTermUtc))) <= 60000) warnings.push("SOLAR_TERM_BOUNDARY_WITHIN_1_MINUTE_NUMERICAL_SENSITIVITY");
   if (isKnownCalendarSourceGap(solarYear, solarMonth, solarDay) || (libraryInput && isKnownCalendarSourceGap(libraryInput.year, libraryInput.month, libraryInput.day))) warnings.push("CALENDAR_SOURCE_ROW_REPAIRED_1956_12_31");
   if (!input.timeUnknown && localMeridianOn && input.longitude == null) warnings.push("DEFAULT_LONGITUDE_USED");
   if (trueSolarTimeOn) warnings.push("EQUATION_OF_TIME_APPROXIMATION");
@@ -235,6 +247,7 @@ export function calculateProfileFromBirth(input: BirthInput, timeOpts?: TimeCorr
     hourBoundaryDistanceMinutes: boundary,
     timezoneVerification: "not-performed-by-this-wrapper",
     longitudeDateRolloverVerification: "wrapper-calendar-arithmetic",
+    solarTerm: { basis: "original-civil-fixed-utc9", birthInstantUtc: birthInstant?.toISOString() ?? null, activeTermUtc: termPillars?.activeTermUtc ?? null, nextTermUtc: termPillars?.nextTermUtc ?? null, yearBoundary: "lichun-instant", monthBoundary: "jie-instant", dayBoundary: "corrected-clock-midnight" },
     warnings,
   };
 

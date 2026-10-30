@@ -290,11 +290,11 @@ export interface MarriageTimingReport {
   yearCards: MarriageTimingYearCard[];
 }
 
-export function buildMarriageTimingReport(chart: ZiweiChart, ruleSet: RuleSet, personName: string): MarriageTimingReport {
+export function buildMarriageTimingReport(chart: ZiweiChart, ruleSet: RuleSet, personName: string, at: Date = new Date()): MarriageTimingReport {
   const spouseEvidence = extractSpouseEvidence(chart);
   const natalBaseline = buildNatalBaseline(spouseEvidence);
 
-  const years = spouseReportTimingYears();
+  const years = spouseReportTimingYears(at);
   const signals = computeRelationshipTimingSignals(chart, ruleSet, years);
   const highlights = computeTimingHighlights(signals);
 

@@ -1,3 +1,5 @@
+import { calculateDaewoonStart, calculateDaewoon, selectDaewoonAt } from "app/luckCycles.ts";
+import { ziweiQueryLunarYear, ziweiInclusiveAge } from "app/ziwei/calendarPolicy.ts";
 import { resolveLocalDateTime } from "app/western/time.ts";
 import { calculateProfileFromBirth } from "app/sajuEngine.ts";
 import { computePersonPipelineSnapshot } from "app/personPipelineSnapshot.ts";
@@ -188,6 +190,7 @@ export function normalizeInput(raw: any) {
   return { birthInput, location, dstFold: raw.dstFold };
 }
 export function calculateThreeCharts(raw: unknown) {
+  const queryInstant = new Date();
   const { birthInput, location, dstFold } = normalizeInput(raw);
   const profile = calculateProfileFromBirth(birthInput);
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -226,13 +229,13 @@ export function calculateThreeCharts(raw: unknown) {
     "WESTERN_EPHEMERIS_HOUSES_NOT_INDEPENDENTLY_VALIDATED",
   ];
   try {
-    existing = buildExistingPersonalReports(person);
+    existing = buildExistingPersonalReports(person, queryInstant);
   } catch {
-    const pipeline = computePersonPipelineSnapshot(person);
+    const pipeline = computePersonPipelineSnapshot(person, { at: queryInstant });
     const ziweiChart = buildZiweiChart(
       birthInput,
       zhongzhouV1,
-      spouseReportTimingYears(),
+      spouseReportTimingYears(queryInstant),
     );
     existing = {
       saju: pipeline ? buildSajuSummarySections(pipeline, [], []) : [],
@@ -295,13 +298,17 @@ export function calculateThreeCharts(raw: unknown) {
         ? "calculated"
         : "partial",
     algorithm: "existing-saju-app",
-    engineVersion: "0.2.1",
+    engineVersion: "0.4.0",
     timeAudit: {
       saju: profile.timeAudit,
+      daewoon: { ...calculateDaewoonStart(birthInput, profile.computedPillars), periodBoundary: "start-inclusive-end-exclusive", currentPeriod: selectDaewoonAt(calculateDaewoon(birthInput, profile.computedPillars), queryInstant) ?? null },
       ziwei: {
         basis: "original-civil",
         longitudeCorrectionApplied: false,
         ruleSet: zhongzhouV1,
+        yearBoundary: "lunar-new-year", dayBoundary: "civil-midnight", ageBasis: "lunar-year-inclusive",
+        queryLunarYear: ziweiQueryLunarYear(queryInstant), inclusiveAge: ziweiInclusiveAge(existing.ziweiChart.lunarBirth.year, ziweiQueryLunarYear(queryInstant)),
+        annualTableBasis: "lunar-year-start-inclusive-next-new-year-exclusive",
       },
       western: { basis: "original-civil-to-utc", ...resolved },
       validation: {
@@ -333,6 +340,6 @@ export function calculateThreeCharts(raw: unknown) {
     western,
     integrated,
     instructions:
-      "미검증 경고가 있는 점수·용신·유파·천문력 항목은 검증 완료 또는 확정 해석으로 쓰지 않는다. 시진 경계 경고가 있으면 원본 날짜를 함께 이월해 ±5분 민감도 재계산을 수행하고 바뀐 항목만 비교한다. 계산값과 근거를 우선한다. 사주·자미두수·서양점성술을 각각 설명한 뒤 통합한다. 일치·차이·누락을 구분하고, 없는 계산값이나 사건·시기를 만들지 않는다. 출생정보는 서버에서 저장하지 않는다. 기존 앱의 자동 계산 기준이며 앱에서 수동 수정한 개인 설정은 포함하지 않는다.",
+      "대운은 표시된 실제 시작 일시 이상·다음 시작 일시 미만 구간으로 읽고, 자미 연간 표의 연도는 설부터 다음 설 직전까지의 음력년이다. 시작 일시의 세부 자릿수는 사건 예측 정확도를 보장하지 않는다. 미검증 경고가 있는 점수·용신·유파·천문력 항목은 검증 완료 또는 확정 해석으로 쓰지 않는다. 시진 경계 경고가 있으면 원본 날짜를 함께 이월해 ±5분 민감도 재계산을 수행하고 바뀐 항목만 비교한다. 계산값과 근거를 우선한다. 사주·자미두수·서양점성술을 각각 설명한 뒤 통합한다. 일치·차이·누락을 구분하고, 없는 계산값이나 사건·시기를 만들지 않는다. 출생정보는 서버에서 저장하지 않는다. 기존 앱의 자동 계산 기준이며 앱에서 수동 수정한 개인 설정은 포함하지 않는다.",
   };
 }
