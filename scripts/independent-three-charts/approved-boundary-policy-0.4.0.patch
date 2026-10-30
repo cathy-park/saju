@@ -1,0 +1,1097 @@
+diff --git a/artifacts/saju-app/src/lib/__tests__/approvedBoundaryPolicy.test.ts b/artifacts/saju-app/src/lib/__tests__/approvedBoundaryPolicy.test.ts
+new file mode 100644
+index 0000000..63e42fa
+--- /dev/null
++++ b/artifacts/saju-app/src/lib/__tests__/approvedBoundaryPolicy.test.ts
+@@ -0,0 +1,76 @@
++import { describe, it, expect, vi } from "vitest";
++import { calculateProfileFromBirth, type BirthInput } from "../sajuEngine";
++import { solarTermInstant, solarTermYearMonth } from "../solarTerms";
++import { calculateDaewoonStart, calculateDaewoon, selectDaewoonAt, selectDaewoonForRange } from "../luckCycles";
++import { toLunarBirth } from "../ziwei/lunarConvert";
++import { ziweiQueryLunarYear, ziweiInclusiveAge, ziweiLunarYearRange } from "../ziwei/calendarPolicy";
++import { buildZiweiChart } from "../ziwei/buildZiweiChart";
++import { zhongzhouV1 } from "../ziwei/ruleSets/zhongzhouV1";
++import { spouseReportTimingYears } from "../ziwei/reports/spouseReport";
++const base: BirthInput = { name:"synthetic", gender:"여", calendarType:"solar", year:2000, month:6, day:15, hour:12, minute:0, timeUnknown:false, longitude:127 };
++const independentTerms = [{"longitude":15,"iso":"2000-04-04T11:31:57.775691Z"},{"longitude":45,"iso":"2000-05-05T04:50:09.516674Z"},{"longitude":75,"iso":"2000-06-05T08:58:33.750699Z"},{"longitude":105,"iso":"2000-07-06T19:13:56.460266Z"},{"longitude":135,"iso":"2000-08-07T05:02:59.569951Z"},{"longitude":165,"iso":"2000-09-07T07:59:09.634203Z"},{"longitude":195,"iso":"2000-10-07T23:38:11.965011Z"},{"longitude":225,"iso":"2000-11-07T02:48:03.345589Z"},{"longitude":255,"iso":"2000-12-06T19:37:01.694031Z"},{"longitude":285,"iso":"2000-01-06T01:00:41.224346Z"},{"longitude":315,"iso":"2000-02-04T12:40:23.015946Z"},{"longitude":345,"iso":"2000-03-05T06:42:38.966124Z"}];
++describe("approved physical-time and lunar-year policy",()=>{
++ it.each(independentTerms)("crosses independent Swiss month term $longitude at minute-scale separation",({longitude,iso})=>{
++   const ref=Date.parse(iso);
++   expect(Math.abs(solarTermInstant(2000,longitude).getTime()-ref)).toBeLessThan(30000);
++   const before=solarTermYearMonth(new Date(ref-60000)),after=solarTermYearMonth(new Date(ref+60000));
++   expect(before.month).not.toEqual(after.month);
++   if(longitude===315){expect(before.year.hangul).toBe("기묘");expect(after.year.hangul).toBe("경진");}
++   else expect(before.year).toEqual(after.year);
++ });
++ it("uses civil instant for year/month and preserves corrected day/hour",()=>{
++   const b={...base,month:2,day:4,hour:21,minute:41};
++   const civil=calculateProfileFromBirth(b,{localMeridianOn:false});
++   const corrected=calculateProfileFromBirth(b);
++   expect(corrected.computedPillars.year).toEqual(civil.computedPillars.year);
++   expect(corrected.computedPillars.month).toEqual(civil.computedPillars.month);
++   expect(corrected.computedPillars.year.hangul).toBe("경진");
++   expect(corrected.timeAudit?.longitudeMinutesApplied).toBe(-32);
++   expect(corrected.rawResult.gapja.yearPillar).toBe(corrected.computedPillars.year.hangul);
++ });
++ it("removes the 24-hour 10-to-1 discontinuity",()=>{
++   const term=solarTermInstant(2000,315).getTime();
++   const ages=[-1,1].map(offset=>{
++     const local=new Date(term+86400000+offset*60000+9*3600000);
++     const b={...base,month:local.getUTCMonth()+1,day:local.getUTCDate(),hour:local.getUTCHours(),minute:local.getUTCMinutes()};
++     return calculateDaewoonStart(b,calculateProfileFromBirth(b).computedPillars).ageYears;
++   });
++   expect(ages[0]).toBeGreaterThan(.32);expect(ages[1]).toBeLessThan(.35);
++   expect(ages[1]-ages[0]).toBeCloseTo(2/4320,8);
++ });
++ it("selects every physical transition exactly once with no age gaps",()=>{
++   const entries=calculateDaewoon(base,calculateProfileFromBirth(base).computedPillars);
++   for(let i=1;i<entries.length;i++){
++     expect(entries[i-1].endInstantUtcExclusive).toBe(entries[i].startInstantUtc);
++     const boundary=Date.parse(entries[i].startInstantUtc!);
++     expect(selectDaewoonAt(entries,new Date(boundary-1))).toBe(entries[i-1]);
++     expect(selectDaewoonAt(entries,new Date(boundary))).toBe(entries[i]);
++     expect(selectDaewoonAt(entries,new Date(boundary+1))).toBe(entries[i]);
++     expect(selectDaewoonForRange(entries,new Date(boundary-1),new Date(boundary+1))).toBeUndefined();
++   }
++ });
++ it("does not invent noon or age five when required birth data is absent",()=>{
++   expect(calculateDaewoon({...base,timeUnknown:true},calculateProfileFromBirth({...base,timeUnknown:true}).computedPillars)).toEqual([]);
++   expect(()=>calculateDaewoonStart({...base,timeUnknown:true},calculateProfileFromBirth(base).computedPillars)).toThrow();
++   expect(()=>calculateDaewoonStart({...base,calendarType:"lunar",month:2,day:31},calculateProfileFromBirth(base).computedPillars)).toThrow();
++ });
++ it("derives Ziwei year stem/branch from lunar year on either side of 설 and 입춘",()=>{
++   const before=toLunarBirth("solar",2025,1,28,23),after=toLunarBirth("solar",2025,1,29,0);
++   expect([before.year,before.yearStem,before.yearBranch]).toEqual([2024,"甲","辰"]);
++   expect([after.year,after.yearStem,after.yearBranch]).toEqual([2025,"乙","巳"]);
++   expect(toLunarBirth("solar",2025,2,3,12).yearStem).toBe("乙");
++   expect(toLunarBirth("solar",2025,2,4,12).yearStem).toBe("乙");
++ });
++ it("uses midnight Korean civil date and lunar inclusive age for current reports",()=>{
++   const before=new Date("2025-01-28T23:59:59+09:00"),after=new Date("2025-01-29T00:00:00+09:00");
++   expect(ziweiQueryLunarYear(before)).toBe(2024);expect(ziweiQueryLunarYear(after)).toBe(2025);
++   expect(ziweiInclusiveAge(2000,ziweiQueryLunarYear(before))).toBe(25);
++   expect(ziweiInclusiveAge(2000,ziweiQueryLunarYear(after))).toBe(26);
++   vi.useFakeTimers();try{vi.setSystemTime(before);expect(spouseReportTimingYears()[0]).toBe(2024);vi.setSystemTime(after);expect(spouseReportTimingYears()[0]).toBe(2025);}finally{vi.useRealTimers();}
++ });
++ it("labels annual table with actual lunar-new-year half-open civil ranges",()=>{
++   expect(ziweiLunarYearRange(2025)).toEqual({basis:"lunar-year-inclusive-age",startCivilInclusive:"2025-01-29T00:00:00+09:00",endCivilExclusive:"2026-02-17T00:00:00+09:00"});
++   const chart=buildZiweiChart(base,zhongzhouV1,[2025]);
++   expect(chart.annualPeriods[0].startCivilInclusive).toBe("2025-01-29T00:00:00+09:00");
++ });
++});
+diff --git a/artifacts/saju-app/src/lib/__tests__/threeChartsGuards.integration.test.ts b/artifacts/saju-app/src/lib/__tests__/threeChartsGuards.integration.test.ts
+index 1e03d35..d4a4671 100644
+--- a/artifacts/saju-app/src/lib/__tests__/threeChartsGuards.integration.test.ts
++++ b/artifacts/saju-app/src/lib/__tests__/threeChartsGuards.integration.test.ts
+@@ -146,7 +146,7 @@ describe("real manseryeok guards", () => {
+         "2000-02-16T10:29:00.000Z",
+       );
+   });
+-  it("labels the dependency date-only solar term limitation instead of claiming instant precision", () => {
++  it("uses the physical birth instant across lichun while retaining timezone limits", () => {
+     const before = calculateProfileFromBirth(
+       { ...birth, day: 4, hour: 0 },
+       { localMeridianOn: false },
+@@ -155,9 +155,10 @@ describe("real manseryeok guards", () => {
+       { ...birth, day: 4, hour: 23 },
+       { localMeridianOn: false },
+     );
+-    expect(before.computedPillars.month).toEqual(after.computedPillars.month);
++    expect(before.computedPillars.month).not.toEqual(after.computedPillars.month);
++    expect(before.timeAudit?.solarTerm?.basis).toBe("original-civil-fixed-utc9");
+     expect(before.timeAudit?.warnings).toContain(
+-      "SOLAR_TERM_INSTANT_NOT_SUPPORTED",
++      "SAJU_FIXED_UTC9_TIMEZONE_NOT_VERIFIED",
+     );
+   });
+ });
+@@ -236,7 +237,7 @@ it("renders the actual engine audit and missing-audit state in the UI component"
+     createElement(TimeCalculationAuditView, { audit }),
+   );
+   expect(html).toContain("local-mean");
+-  expect(html).toContain("SOLAR_TERM_INSTANT_NOT_SUPPORTED");
++  expect(html).toContain("SAJU_FIXED_UTC9_TIMEZONE_NOT_VERIFIED");
+   expect(html).toContain("독립 검증은 완료되지 않았습니다");
+   expect(
+     renderToStaticMarkup(createElement(TimeCalculationAuditView)),
+diff --git a/artifacts/saju-app/src/lib/dynamicCompatibility.ts b/artifacts/saju-app/src/lib/dynamicCompatibility.ts
+index 0425436..d5c7ffa 100644
+--- a/artifacts/saju-app/src/lib/dynamicCompatibility.ts
++++ b/artifacts/saju-app/src/lib/dynamicCompatibility.ts
+@@ -1,3 +1,4 @@
++import { selectDaewoonAt } from "./luckCycles";
+ /**
+  * dynamicCompatibility.ts
+  *
+@@ -204,7 +205,7 @@ export function computePersonCurrentFlow(
+   // manualPillars 반영을 위해 raw computedPillars가 아니라 위에서 이미 병합한 pillars를 사용한다.
+   const daewoonList = calculateDaewoon(record.birthInput, pillars);
+   const age = yr - record.birthInput.year;
+-  const daywoon = daewoonList.find((d) => age >= d.startAge && age <= d.endAge) ?? null;
++  const daywoon = selectDaewoonAt(daewoonList, now) ?? null;
+ 
+   const daywoonTenGod = dayStem && daywoon ? getTenGod(dayStem, daywoon.ganZhi.stem) : null;
+   const sewoonTenGod = dayStem ? getTenGod(dayStem, sewoon.stem) : null;
+diff --git a/artifacts/saju-app/src/lib/evaluations/relationshipInteractionActivation.ts b/artifacts/saju-app/src/lib/evaluations/relationshipInteractionActivation.ts
+index 089cc78..a882d82 100644
+--- a/artifacts/saju-app/src/lib/evaluations/relationshipInteractionActivation.ts
++++ b/artifacts/saju-app/src/lib/evaluations/relationshipInteractionActivation.ts
+@@ -1,3 +1,4 @@
++import { selectDaewoonForYear } from "../luckCycles";
+ /**
+  * 커플 관계 상호작용 활성도 (Relationship Interaction Activation).
+  *
+@@ -493,8 +494,8 @@ function computeRelationshipInteractionCore(
+ 
+   const ageA = year - a.birthYear;
+   const ageB = year - b.birthYear;
+-  const dwA = adjustDaewoon(a.daewoon).find((d) => ageA >= d.startAge && ageA <= d.endAge);
+-  const dwB = adjustDaewoon(b.daewoon).find((d) => ageB >= d.startAge && ageB <= d.endAge);
++  const dwA = selectDaewoonForYear(a.daewoon, year, a.birthYear);
++  const dwB = selectDaewoonForYear(b.daewoon, year, b.birthYear);
+   const seYear = getYearGanZhi(year);
+ 
+   const aPoints = luckPointsFor(dwA?.ganZhi.hangul, seYear.hangul, wolunHangul);
+diff --git a/artifacts/saju-app/src/lib/evaluations/spouseActivation.ts b/artifacts/saju-app/src/lib/evaluations/spouseActivation.ts
+index f22925b..cb9241a 100644
+--- a/artifacts/saju-app/src/lib/evaluations/spouseActivation.ts
++++ b/artifacts/saju-app/src/lib/evaluations/spouseActivation.ts
+@@ -1,3 +1,4 @@
++import { selectDaewoonForYear, selectDaewoonForRange } from "../luckCycles";
+ /**
+  * 배우자·결혼 테마 활성도 (Marriage/Spouse Activation) — 기존 배우자궁 안정도와 독립된 지표.
+  *
+@@ -333,20 +334,13 @@ export interface SpouseActivationYearRangeContext {
+ export function computeSpouseActivationByYearRange(
+   ctx: SpouseActivationYearRangeContext,
+ ): SpouseActivationYearEntry[] {
+-  const dw0 = ctx.daewoon[0]?.startAge ?? 0;
+-  const adjustedDw = ctx.daewoon.map((entry, i) => ({
+-    ...entry,
+-    startAge: dw0 + i * 10,
+-    endAge: dw0 + i * 10 + 9,
+-  }));
+   const count = ctx.count ?? 10;
+ 
+   return ctx.seunEntries
+     .filter((e) => e.year >= ctx.fromYear)
+     .slice(0, count)
+     .map((e) => {
+-      const age = e.year - ctx.birthYear;
+-      const dw = adjustedDw.find((d) => age >= d.startAge && age <= d.endAge);
++      const dw = selectDaewoonForYear(ctx.daewoon, e.year, ctx.birthYear);
+       const timing = computeLuckTimingActivation(
+         ctx.evaluations,
+         dw?.ganZhi.hangul,
+@@ -387,14 +381,7 @@ export interface SpouseActivationMonthContext extends Omit<SpouseActivationYearR
+ export function computeSpouseActivationForMonth(
+   ctx: SpouseActivationMonthContext,
+ ): SpouseActivationResult {
+-  const dw0 = ctx.daewoon[0]?.startAge ?? 0;
+-  const adjustedDw = ctx.daewoon.map((entry, i) => ({
+-    ...entry,
+-    startAge: dw0 + i * 10,
+-    endAge: dw0 + i * 10 + 9,
+-  }));
+-  const age = ctx.year - ctx.birthYear;
+-  const dw = adjustedDw.find((d) => age >= d.startAge && age <= d.endAge);
++  const dw = selectDaewoonForRange(ctx.daewoon, new Date(Date.UTC(ctx.year, ctx.month - 1, 1, -9)), new Date(Date.UTC(ctx.year, ctx.month, 1, -9)), ctx.year - ctx.birthYear);
+   const seYear = getYearGanZhi(ctx.year);
+   const woYear = getMonthGanZhi(ctx.year, ctx.month);
+ 
+diff --git a/artifacts/saju-app/src/lib/integrated/personReports.ts b/artifacts/saju-app/src/lib/integrated/personReports.ts
+index ba145bf..e72cc33 100644
+--- a/artifacts/saju-app/src/lib/integrated/personReports.ts
++++ b/artifacts/saju-app/src/lib/integrated/personReports.ts
+@@ -7,15 +7,15 @@ import { zhongzhouV1 } from "../ziwei/ruleSets/zhongzhouV1";
+ import { spouseReportTimingYears } from "../ziwei/reports/spouseReport";
+ import { buildComprehensiveReport, type ComprehensiveReport } from "../ziwei/reports/comprehensiveReport";
+ 
+-export function buildExistingPersonalReports(person: PersonRecord) {
+-  const pipeline = computePersonPipelineSnapshot(person);
++export function buildExistingPersonalReports(person: PersonRecord, at: Date = new Date()) {
++  const pipeline = computePersonPipelineSnapshot(person, { at });
+   const saju = pipeline ? buildSajuSummarySections(pipeline, [], []) : [];
+   let ziwei: ComprehensiveReport | null = null;
+   let ziweiChart: ZiweiChart | null = null;
+   const input = person.birthInput;
+   if (!input.timeUnknown && input.hour !== undefined) {
+-    ziweiChart = buildZiweiChart({ name: input.name, gender: input.gender, calendarType: input.calendarType, year: input.year, month: input.month, day: input.day, hour: input.hour, minute: input.minute, birthplace: input.birthplace }, zhongzhouV1, spouseReportTimingYears());
+-    ziwei = buildComprehensiveReport(ziweiChart, zhongzhouV1, input.name);
++    ziweiChart = buildZiweiChart({ name: input.name, gender: input.gender, calendarType: input.calendarType, year: input.year, month: input.month, day: input.day, hour: input.hour, minute: input.minute, birthplace: input.birthplace }, zhongzhouV1, spouseReportTimingYears(at));
++    ziwei = buildComprehensiveReport(ziweiChart, zhongzhouV1, input.name, at);
+   }
+   return { saju, ziwei, ziweiChart };
+ }
+diff --git a/artifacts/saju-app/src/lib/lifeFlowInsight.ts b/artifacts/saju-app/src/lib/lifeFlowInsight.ts
+index 4b66925..7743ddb 100644
+--- a/artifacts/saju-app/src/lib/lifeFlowInsight.ts
++++ b/artifacts/saju-app/src/lib/lifeFlowInsight.ts
+@@ -1,3 +1,4 @@
++import { selectDaewoonAt } from "./luckCycles";
+ import type { PersonRecord } from "./storage";
+ import { getFinalPillars } from "./storage";
+ import { getDayGanZhi, getYearGanZhi, getMonthGanZhi, calculateDaewoon } from "./luckCycles";
+@@ -700,7 +701,7 @@ export function buildLifeFlowInsights(
+   // manualPillars 반영을 위해 raw computedPillars가 아니라 위에서 이미 병합한 pillars를 사용한다.
+   const daewoon = calculateDaewoon(record.birthInput, pillars);
+   const age = year - record.birthInput.year;
+-  const currentDW = daewoon.find((d) => age >= d.startAge && age <= d.endAge);
++  const currentDW = selectDaewoonAt(daewoon, new Date(Date.UTC(year, month - 1, day, -9)));
+ 
+   const ctx: LuckContext = {
+     daewoonTG: currentDW ? getTenGod(dayStem, currentDW.ganZhi.stem) : null,
+diff --git a/artifacts/saju-app/src/lib/luckCycles.ts b/artifacts/saju-app/src/lib/luckCycles.ts
+index c093020..8fd3ce4 100644
+--- a/artifacts/saju-app/src/lib/luckCycles.ts
++++ b/artifacts/saju-app/src/lib/luckCycles.ts
+@@ -1,222 +1,53 @@
+ import { lunarToSolarChecked as lunarToSolar } from "./calendarConversion";
++import { surroundingMonthTerms } from "./solarTerms";
+ import type { BirthInput, ComputedPillars } from "./sajuEngine";
+-import { equationOfTimeMins } from "./sajuEngine";
+-
+ 
+ export const STEMS = ["갑", "을", "병", "정", "무", "기", "경", "신", "임", "계"];
+ export const BRANCHES = ["자", "축", "인", "묘", "진", "사", "오", "미", "신", "유", "술", "해"];
+-const STEMS_HANJA = ["甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸"];
+-const BRANCHES_HANJA = ["子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"];
+-
++const STEMS_HANJA = [..."甲乙丙丁戊己庚辛壬癸"];
++const BRANCHES_HANJA = [..."子丑寅卯辰巳午未申酉戌亥"];
+ const YANG_STEMS = new Set(["갑", "병", "무", "경", "임"]);
+-
+-// ── Solar term calculator for accurate 대운수 ─────────────────────
+-// Computes sun's ecliptic longitude (degrees) for a given Date (UTC)
+-// Uses simplified VSOP87 — accurate to ~0.01° for years 1900–2100
+-function sunLongitudeDeg(date: Date): number {
+-  const JD = date.getTime() / 86400000 + 2440587.5;
+-  const T = (JD - 2451545.0) / 36525;
+-  const L0 = 280.46646 + 36000.76983 * T + 0.0003032 * T * T;
+-  const M = (((357.52911 + 35999.05029 * T - 0.0001537 * T * T) % 360) + 360) % 360;
+-  const Mrad = M * Math.PI / 180;
+-  const C = Math.sin(Mrad) * (1.9146 - 0.004817 * T - 0.000014 * T * T)
+-          + Math.sin(2 * Mrad) * (0.019993 - 0.000101 * T)
+-          + Math.sin(3 * Mrad) * 0.00029;
+-  return ((L0 + C) % 360 + 360) % 360;
+-}
+-
+-// 12 month-boundary 절기 (節) — solar longitudes where month pillar changes
+-// 소한(285)→축, 입춘(315)→인, 경칩(345)→묘, 청명(15)→진,
+-// 입하(45)→사,  망종(75)→오,  소서(105)→미, 입추(135)→신,
+-// 백로(165)→유, 한로(195)→술, 입동(225)→해, 대설(255)→자
+-const JULGGI_LONS = [285, 315, 345, 15, 45, 75, 105, 135, 165, 195, 225, 255] as const;
+-
+-// Find the date when the sun reaches targetLon (degrees), searching near year.
+-// FIXED: use Jan 1 (lon ≈ 280°) as reference instead of March equinox (lon ≈ 0°).
+-// The old March-equinox reference caused 소한/입춘/경칩 (285°/315°/345°) to always
+-// resolve to the NEXT year, inflating 대운수 to 10 for early-year births.
+-function findSolarTermDate(year: number, targetLon: number): Date {
+-  // Compute actual sun longitude on Jan 1 of the target year (KST noon = UTC 03:00)
+-  const jan1 = new Date(Date.UTC(year, 0, 1, 12));
+-  const jan1Lon = sunLongitudeDeg(jan1);
+-  // Forward distance from jan1Lon to targetLon (always positive, 0–360)
+-  const daysFromJan1 = ((targetLon - jan1Lon + 360) % 360) / 360 * 365.25;
+-  let d = new Date(jan1.getTime() + daysFromJan1 * 86400000);
+-  // Newton-Raphson refinement (converges in ~5 iterations)
+-  for (let i = 0; i < 12; i++) {
+-    const lon = sunLongitudeDeg(d);
+-    let diff = targetLon - lon;
+-    if (diff > 180) diff -= 360;
+-    if (diff < -180) diff += 360;
+-    d = new Date(d.getTime() + (diff / 360) * 365.25 * 86400000);
+-  }
+-  return d;
+-}
+-
+ export interface DaewoonSuOpts {
+-  /**
+-   * Use actual birth hour/minute (KST→UTC) for solar-term distance.
+-   * When false, falls back to fixed noon UTC (old, less accurate behaviour).
+-   * Default: true.
+-   */
++  /** Retained for compatibility; actual civil birth time always defines term distance. */
+   exactSolarTermBoundaryOn?: boolean;
+-  /**
+-   * Add Equation of Time offset to birth moment before computing distance.
+-   * Requires actual birth time to be meaningful.
+-   * Default: false.
+-   */
++  /** Retained for compatibility; EOT affects day/hour, never the physical birth instant. */
+   trueSolarTimeOn?: boolean;
+ }
+-
+-// ── 12 절기(節) 이름 테이블 ──────────────────────────────────────────
+-const JULGGI_NAMES: Record<number, string> = {
+-  285: "소한(小寒)", 315: "입춘(立春)", 345: "경칩(驚蟄)",
+-   15: "청명(淸明)",  45: "입하(立夏)",  75: "망종(芒種)",
+-  105: "소서(小暑)", 135: "입추(立秋)", 165: "백로(白露)",
+-  195: "한로(寒露)", 225: "입동(立冬)", 255: "대설(大雪)",
+-};
+-
+-/**
+- * ═══════════════════════════════════════════════════════════════
+- * 대운수 (Daewoon start age) — 범용 표준 알고리즘
+- * ═══════════════════════════════════════════════════════════════
+- *
+- * [방향 결정 — 양남음녀 / 음남양녀 원칙]
+- *   순행(Forward): (남성 AND 양년간) OR (여성 AND 음년간)
+- *   역행(Backward): (남성 AND 음년간) OR (여성 AND 양년간)
+- *   양년간: 갑·병·무·경·임 / 음년간: 을·정·기·신·계
+- *
+- * [대상 절기 선택]
+- *   순행 → 출생 시각 직후(直後) 첫 번째 절기(節)
+- *   역행 → 출생 시각 직전(直前) 마지막 절기(節)
+- *
+- * [절기 탐색 방법 — 핵심]
+- *   (출생연도-1)·(출생연도)·(출생연도+1) 각 12절기 = 36개를 모두 계산.
+- *   시간순 정렬 후 "출생 이후 첫 번째" 또는 "출생 이전 마지막"을 선택.
+- *   → 연도 경계, 소한·입춘·경칩 등 연초 절기 모두 정확 처리.
+- *   (구 알고리즘은 3월춘분 기준점 사용 → 소한/입춘/경칩을 다음 해로 오인)
+- *
+- * [대운수 공식]
+- *   diffDays = |절기 일시 − 출생 일시|  (소수점 포함 일 단위)
+- *   대운수   = ⌈ diffDays / 3 ⌉         (올림, 최소 1)
+- *   (전통 규칙: 3일 = 1년, 올림 적용)
+- *
+- * [회귀 테스트 — 검증된 기준값]
+- *   TC1  1990-01-23 19:29 KST 여 경(양) → 역행 소한  17.8일 → 6
+- *   TC2  1990-01-04 12:00 KST 남 경(양) → 순행 소한   1.5일 → 1
+- *   TC3  1990-01-07 23:00 KST 여 경(양) → 역행 소한   2.0일 → 1
+- *   TC4  2000-04-11 12:00 KST 남 경(양) → 순행 입하  24.1일 → 8  (24일, 나머지0 → 그대로)
+- *   TC5  2004-10-28 12:00 KST 여 갑(양) → 역행 한로  20.2일 → 7
+- * ═══════════════════════════════════════════════════════════════
++function civilBirthInstant(input: BirthInput): Date {
++  if (input.timeUnknown || input.hour == null || input.minute == null) throw new RangeError("대운 시작 일시에는 실제 출생 시각이 필요합니다.");
++  const solar = input.calendarType === "lunar" ? lunarToSolar(input.year, input.month, input.day, false).solar : input;
++  return new Date(Date.UTC(solar.year, solar.month - 1, solar.day, input.hour - 9, input.minute));
++}
++/** Calendar-year age: interpolate only the fractional year between UTC anniversaries.
++ * Feb 29 anniversaries clamp to Feb 28. This is date arithmetic, not an accuracy claim.
+  */
+-export function calculateDaewoonSu(birthInput: BirthInput, pillars: ComputedPillars, opts?: DaewoonSuOpts): number {
+-  try {
+-    // ── 0. 음력 → 양력 변환 (음력 입력 시 절기 계산이 틀리는 버그 방지) ──
+-    //    birthInput.year/month/day 가 음력이면 양력으로 먼저 변환
+-    let solarYear  = birthInput.year;
+-    let solarMonth = birthInput.month;
+-    let solarDay   = birthInput.day;
+-    if (birthInput.calendarType === "lunar") {
+-      try {
+-        const conv = lunarToSolar(birthInput.year, birthInput.month, birthInput.day, false);
+-        solarYear  = conv.solar.year;
+-        solarMonth = conv.solar.month;
+-        solarDay   = conv.solar.day;
+-      } catch {
+-        // 변환 실패 시 원본 날짜 그대로 사용
+-      }
+-    }
+-
+-    // ── 1. 출생 시각을 UTC로 변환 (KST = UTC+9) ──────────────────────
+-    const useExact = opts?.exactSolarTermBoundaryOn ?? true;
+-    let hKST = useExact && !birthInput.timeUnknown ? (birthInput.hour   ?? 12) : 12;
+-    let mKST = useExact && !birthInput.timeUnknown ? (birthInput.minute ?? 0)  : 0;
+-
+-    // 균시차(Equation of Time) 보정 — 옵션 활성화 시
+-    if (useExact && !birthInput.timeUnknown && (opts?.trueSolarTimeOn ?? false)) {
+-      // 균시차 보정은 양력 날짜 기준으로 계산
+-      mKST += Math.round(equationOfTimeMins(solarYear, solarMonth, solarDay));
+-    }
+-    while (mKST < 0)   { mKST += 60; hKST -= 1; }
+-    while (mKST >= 60) { mKST -= 60; hKST += 1; }
+-
+-    // 양력 날짜(solarYear/Month/Day) 기준으로 UTC 생성
+-    const birthDate = new Date(Date.UTC(
+-      solarYear, solarMonth - 1, solarDay,
+-      hKST - 9, mKST,   // KST → UTC (−9h)
+-    ));
+-
+-    // ── 2. 방향 결정 (양남음녀 원칙) ────────────────────────────────
+-    const yearStem = pillars.year?.hangul?.[0];
+-    if (!yearStem) return 5;
+-    const isYangYear = YANG_STEMS.has(yearStem);
+-    const isMale     = birthInput.gender === "남";
+-    // 순행: (양년간+남) OR (음년간+여)
+-    // 역행: (음년간+남) OR (양년간+여)
+-    const isForward  = (isMale && isYangYear) || (!isMale && !isYangYear);
+-
+-    // ── 3. 양력 출생연도 ±1년 범위의 모든 절기 36개를 시간순 정렬 ────
+-    //    → 연도 경계·연초 절기(소한·입춘·경칩) 오인 문제 원천 차단
+-    //    → 반드시 양력 solarYear 기준으로 탐색 (음력 year 사용 금지)
+-    const allTerms: { lon: number; name: string; date: Date }[] = [];
+-    for (const lon of JULGGI_LONS) {
+-      for (const y of [solarYear - 1, solarYear, solarYear + 1]) {
+-        allTerms.push({ lon, name: JULGGI_NAMES[lon] ?? String(lon), date: findSolarTermDate(y, lon) });
+-      }
+-    }
+-    allTerms.sort((a, b) => a.date.getTime() - b.date.getTime());
+-
+-    // ── 4. 방향에 따라 대상 절기 선택 ───────────────────────────────
+-    let targetTerm: { lon: number; name: string; date: Date } | undefined;
+-    if (isForward) {
+-      // 순행: 출생 시각 이후 최초 절기
+-      targetTerm = allTerms.find(t => t.date.getTime() > birthDate.getTime());
+-    } else {
+-      // 역행: 출생 시각 이전 최후 절기
+-      targetTerm = [...allTerms].reverse().find(t => t.date.getTime() < birthDate.getTime());
+-    }
+-    if (!targetTerm) return 5;
+-
+-    // ── 5. 대운수 계산 ───────────────────────────────────────────────
+-    // 전통 명리 규칙 (3일 = 1년):
+-    //   정수 일수(wholeDays) 기준으로 나머지를 처리
+-    //   나머지 0 → 그대로  (9일÷3 = 3)
+-    //   나머지 1 → 버림    (10일÷3 → 3, 약함)
+-    //   나머지 2 → 올림    (11일÷3 → 4, 강함)
+-    //   공식: floor((wholeDays + 1) / 3)  ← 위 규칙을 한 줄로 구현
+-    //   주의: Math.ceil(diffDays/3) 는 나머지1 케이스에서 1년 과산됨 → 사용 안 함
+-    const diffDays   = Math.abs(targetTerm.date.getTime() - birthDate.getTime()) / 86400000;
+-    const wholeDays  = Math.floor(diffDays);           // 소수점 이하 시/분 제거
+-    const remainder  = wholeDays % 3;                  // 0·1·2
+-    const rawSu      = Math.floor((wholeDays + 1) / 3);
+-    // 0대운 처리 (전통 명리):
+-    //   wholeDays=0 (절기와 동일일): rawSu=0 → 10으로 치환 (0대운 없음)
+-    //   wholeDays=1, 나머지1→버림→rawSu=0: 최소 1 (1~2일 차이는 대운수 1세)
+-    const su         = wholeDays === 0 ? 10 : Math.max(1, rawSu);
+-
+-    // ── 디버그 로그 (브라우저 콘솔 F12에서 확인) ─────────────────────
+-    const kst = 9 * 3600000;
+-    console.group("🔢 대운수 계산");
+-    if (birthInput.calendarType === "lunar") {
+-      console.log("입력(음력):", birthInput.year + "-" + birthInput.month + "-" + birthInput.day,
+-        "→ 양력 변환:", solarYear + "-" + solarMonth + "-" + solarDay);
+-    }
+-    console.log("출생 KST :", new Date(birthDate.getTime() + kst).toISOString().slice(0, 16) + " KST");
+-    console.log("방향     :", isForward ? "순행(Forward)" : "역행(Backward)",
+-      `[${isMale ? "남" : "여"}, 년간 ${yearStem}(${isYangYear ? "양" : "음"})]`);
+-    console.log("대상 절기:", targetTerm.name,
+-      "→", new Date(targetTerm.date.getTime() + kst).toISOString().slice(0, 16) + " KST");
+-    console.log("차이     :", diffDays.toFixed(3) + "일 (정수: " + wholeDays + "일, 나머지: " + remainder + ")");
+-    console.log("대운수   : floor((" + wholeDays + "+1)/3) = " + rawSu + (rawSu === 0 ? " → 0대운 없음→10으로 치환" : ""),
+-      "→ 최종:", su,
+-      remainder === 0 ? "(나머지0 → 그대로)" : remainder === 1 ? "(나머지1 → 버림)" : "(나머지2 → 올림)");
+-    console.groupEnd();
+-
+-    return su;
+-  } catch (e) {
+-    console.error("대운수 계산 오류:", e);
+-    return 5;
+-  }
++export function instantAtAge(birth: Date, age: number): Date {
++  if (!Number.isFinite(age) || age < 0) throw new RangeError("유효한 연속 나이가 필요합니다.");
++  const whole = Math.floor(age);
++  const anniversary = (offset: number) => {
++    const y = birth.getUTCFullYear() + offset, m = birth.getUTCMonth();
++    const d = Math.min(birth.getUTCDate(), new Date(Date.UTC(y, m + 1, 0)).getUTCDate());
++    return Date.UTC(y, m, d, birth.getUTCHours(), birth.getUTCMinutes(), birth.getUTCSeconds(), birth.getUTCMilliseconds());
++  };
++  const lo = anniversary(whole), hi = anniversary(whole + 1);
++  return new Date(lo + (hi - lo) * (age - whole));
++}
++export function calculateDaewoonStart(birth: BirthInput, pillars: ComputedPillars) {
++  const birthInstant = civilBirthInstant(birth);
++  const stem = pillars.year?.hangul?.[0];
++  if (!STEMS.includes(stem)) throw new RangeError("대운 방향의 년간이 필요합니다.");
++  const forward = (birth.gender === "남") === YANG_STEMS.has(stem);
++  const terms = surroundingMonthTerms(birthInstant);
++  // Equality belongs to the new term and gives zero elapsed age, never ten years.
++  const target = forward ? terms.find(t => t.instant >= birthInstant) : [...terms].reverse().find(t => t.instant <= birthInstant);
++  if (!target) throw new RangeError("대상 절기가 없습니다.");
++  const elapsedDays = Math.abs(target.instant.getTime() - birthInstant.getTime()) / 86400000;
++  const ageYears = elapsedDays / 3;
++  const totalMonths = Math.floor(ageYears * 12 + 1e-10);
++  return { basis: "civil-instant-three-days-per-year" as const, birthInstantUtc: birthInstant.toISOString(), targetTermUtc: target.instant.toISOString(), direction: forward ? "forward" as const : "backward" as const, elapsedDays, ageYears, years: Math.floor(totalMonths / 12), months: totalMonths % 12, startInstantUtc: instantAtAge(birthInstant, ageYears).toISOString(), display: Math.floor(totalMonths / 12) + "년 " + (totalMonths % 12) + "개월 후 (월 미만 생략)", calendarArithmetic: "utc-anniversary-fraction; feb29-clamped" as const };
++}
++export function calculateDaewoonSu(birth: BirthInput, pillars: ComputedPillars, _opts?: DaewoonSuOpts): number {
++  return calculateDaewoonStart(birth, pillars).ageYears;
+ }
+ 
+ export interface GanZhi {
+@@ -253,9 +84,13 @@ export interface DaewoonEntry {
+   startAge: number;
+   endAge: number;
+   ganZhi: GanZhi;
++  startInstantUtc?: string;
++  endInstantUtcExclusive?: string;
++  startDescription?: string;
+ }
+ 
+ export function calculateDaewoon(birthInput: BirthInput, pillars: ComputedPillars, opts?: DaewoonSuOpts): DaewoonEntry[] {
++  if (birthInput.timeUnknown) return [];
+   const monthPillar = pillars.month;
+   if (!monthPillar) return [];
+   const yearStem = pillars.year?.hangul?.[0];
+@@ -266,18 +101,39 @@ export function calculateDaewoon(birthInput: BirthInput, pillars: ComputedPillar
+   const startIdx = ganZhiIndex(monthPillar.hangul[0], monthPillar.hangul[1]);
+ 
+   // Calculate proper 대운수 from solar term distance (replaces hardcoded 5)
+-  const daewoonSu = calculateDaewoonSu(birthInput, pillars, opts);
++  const timing = calculateDaewoonStart(birthInput, pillars);
++  const daewoonSu = timing.ageYears;
++  const firstStart = new Date(timing.startInstantUtc);
+ 
+   const entries: DaewoonEntry[] = [];
+   for (let i = 0; i < 10; i++) {
+     const offset = isForward ? i + 1 : -(i + 1);
+     const ganzhi = ganZhiFromIndex(startIdx + offset);
+     const startAge = daewoonSu + i * 10;
+-    entries.push({ startAge, endAge: startAge + 9, ganZhi: ganzhi });
++    entries.push({ startAge, endAge: startAge + 10, ganZhi: ganzhi, startInstantUtc: instantAtAge(firstStart, i * 10).toISOString(), endInstantUtcExclusive: instantAtAge(firstStart, (i + 1) * 10).toISOString(), startDescription: timing.display });
+   }
+   return entries;
+ }
+ 
++/** Half-open physical intervals: the transition instant belongs to the next period. */
++export function selectDaewoonAt(entries: DaewoonEntry[], at: Date): DaewoonEntry | undefined {
++  const ms = at.getTime();
++  if (!Number.isFinite(ms)) throw new RangeError("유효한 조회 일시가 필요합니다.");
++  return entries.find(e => e.startInstantUtc && e.endInstantUtcExclusive && ms >= Date.parse(e.startInstantUtc) && ms < Date.parse(e.endInstantUtcExclusive));
++}
++
++/** Use a single period for a calendar summary only when its entire interval belongs to it. */
++export function selectDaewoonForRange(entries: DaewoonEntry[], start: Date, endExclusive: Date, legacyAge?: number): DaewoonEntry | undefined {
++  if (entries.some(e => e.startInstantUtc)) {
++    const first = selectDaewoonAt(entries, start), last = selectDaewoonAt(entries, new Date(endExclusive.getTime() - 1));
++    return first === last ? first : undefined;
++  }
++  return legacyAge === undefined ? undefined : entries.find(e => legacyAge >= e.startAge && legacyAge <= e.endAge);
++}
++export function selectDaewoonForYear(entries: DaewoonEntry[], year: number, birthYear: number) {
++  return selectDaewoonForRange(entries, new Date(Date.UTC(year, 0, 1, -9)), new Date(Date.UTC(year + 1, 0, 1, -9)), year - birthYear);
++}
++
+ export function getYearGanZhi(year: number): GanZhi {
+   const offset = year - 1984;
+   return ganZhiFromIndex(((offset % 60) + 60) % 60);
+diff --git a/artifacts/saju-app/src/lib/personPipelineSnapshot.ts b/artifacts/saju-app/src/lib/personPipelineSnapshot.ts
+index 78c834b..cd5f6a8 100644
+--- a/artifacts/saju-app/src/lib/personPipelineSnapshot.ts
++++ b/artifacts/saju-app/src/lib/personPipelineSnapshot.ts
+@@ -7,12 +7,12 @@ import type { ComputedPillars } from "./sajuEngine";
+ import { countFiveElements } from "./sajuEngine";
+ import type { PersonRecord } from "./storage";
+ import { getFinalPillars } from "./storage";
+-import { calculateLuckCycles, type DaewoonSuOpts } from "./luckCycles";
++import { calculateLuckCycles, selectDaewoonAt, type DaewoonSuOpts } from "./luckCycles";
+ import { computeSajuPipeline, type SajuPipelineResult } from "./sajuPipeline";
+ 
+ export function computePersonPipelineSnapshot(
+   record: PersonRecord,
+-  opts?: { daewoonSuOpts?: DaewoonSuOpts; hourMode?: "포함" | "제외" | "비교" },
++  opts?: { daewoonSuOpts?: DaewoonSuOpts; hourMode?: "포함" | "제외" | "비교"; at?: Date },
+ ): SajuPipelineResult | null {
+   const fullPillars = getFinalPillars(record);
+   const hourMode = opts?.hourMode ?? "포함";
+@@ -33,14 +33,7 @@ export function computePersonPipelineSnapshot(
+   const refYear = luckCycles.wolun.year;
+   const seunEntry = luckCycles.seun.find((e) => e.year === refYear) ?? luckCycles.seun[2];
+ 
+-  const dw0 = luckCycles.daewoon[0]?.startAge ?? 0;
+-  const adjustedDw = luckCycles.daewoon.map((entry, i) => ({
+-    ...entry,
+-    startAge: dw0 + i * 10,
+-    endAge: dw0 + i * 10 + 9,
+-  }));
+-  const age = refYear - input.year;
+-  const curDw = adjustedDw.find((e) => age >= e.startAge && age <= e.endAge);
++  const curDw = selectDaewoonAt(luckCycles.daewoon, opts?.at ?? new Date());
+ 
+   const allStems = [
+     pillars.hour?.hangul?.[0],
+diff --git a/artifacts/saju-app/src/lib/sajuEngine.ts b/artifacts/saju-app/src/lib/sajuEngine.ts
+index 1e7ce14..1f41636 100644
+--- a/artifacts/saju-app/src/lib/sajuEngine.ts
++++ b/artifacts/saju-app/src/lib/sajuEngine.ts
+@@ -1,3 +1,4 @@
++import { solarTermYearMonth } from "./solarTerms";
+ import { lunarToSolarChecked as lunarToSolar, solarToLunarChecked as solarToLunar, calculateSajuChecked as calculateSaju, isKnownCalendarSourceGap } from "./calendarConversion";
+ import {
+   type SajuResult,
+@@ -188,6 +189,15 @@ export function calculateProfileFromBirth(input: BirthInput, timeOpts?: TimeCorr
+   const rawResult: SajuResult = input.timeUnknown
+     ? calculateSaju(solarYear, solarMonth, solarDay, undefined, undefined, { ...options, applyTimeCorrection: false })
+     : calculateSaju(libraryInput!.year, libraryInput!.month, libraryInput!.day, libraryInput!.hour, libraryInput!.minute, { ...options, applyTimeCorrection: false });
++  const birthInstant = input.timeUnknown ? null : new Date(Date.UTC(solarYear, solarMonth - 1, solarDay, input.hour! - 9, input.minute!));
++  const termPillars = birthInstant ? solarTermYearMonth(birthInstant) : null;
++  if (termPillars) {
++    rawResult.yearPillar = termPillars.year.hangul;
++    rawResult.yearPillarHanja = termPillars.year.hanja;
++    rawResult.monthPillar = termPillars.month.hangul;
++    rawResult.monthPillarHanja = termPillars.month.hanja;
++    Object.assign(rawResult.gapja, { yearPillar: rawResult.yearPillar, yearPillarHanja: rawResult.yearPillarHanja, monthPillar: rawResult.monthPillar, monthPillarHanja: rawResult.monthPillarHanja });
++  }
+   // Preserve legacy fields: these describe the longitude correction only.
+   rawResult.isTimeCorrected = longitudeOffsetMins !== 0;
+   if (rawResult.isTimeCorrected) rawResult.correctedTime = { hour: libraryInput!.hour, minute: libraryInput!.minute };
+@@ -210,7 +220,9 @@ export function calculateProfileFromBirth(input: BirthInput, timeOpts?: TimeCorr
+ 
+   // 원본 출생시각은 보존하고 보정의 단계/한계를 별도 노출한다.
+   const effectiveTime = libraryInput ? { hour: libraryInput.hour, minute: libraryInput.minute } : null;
+-  const warnings: string[] = ["SOLAR_TERM_INSTANT_NOT_SUPPORTED", "SAJU_FIXED_UTC9_TIMEZONE_NOT_VERIFIED"];
++  const warnings: string[] = ["SAJU_FIXED_UTC9_TIMEZONE_NOT_VERIFIED"];
++  if (input.timeUnknown) warnings.push("SOLAR_TERM_INSTANT_REQUIRES_BIRTH_TIME");
++  if (birthInstant && termPillars && Math.min(Math.abs(birthInstant.getTime() - Date.parse(termPillars.activeTermUtc)), Math.abs(birthInstant.getTime() - Date.parse(termPillars.nextTermUtc))) <= 60000) warnings.push("SOLAR_TERM_BOUNDARY_WITHIN_1_MINUTE_NUMERICAL_SENSITIVITY");
+   if (isKnownCalendarSourceGap(solarYear, solarMonth, solarDay) || (libraryInput && isKnownCalendarSourceGap(libraryInput.year, libraryInput.month, libraryInput.day))) warnings.push("CALENDAR_SOURCE_ROW_REPAIRED_1956_12_31");
+   if (!input.timeUnknown && localMeridianOn && input.longitude == null) warnings.push("DEFAULT_LONGITUDE_USED");
+   if (trueSolarTimeOn) warnings.push("EQUATION_OF_TIME_APPROXIMATION");
+@@ -235,6 +247,7 @@ export function calculateProfileFromBirth(input: BirthInput, timeOpts?: TimeCorr
+     hourBoundaryDistanceMinutes: boundary,
+     timezoneVerification: "not-performed-by-this-wrapper",
+     longitudeDateRolloverVerification: "wrapper-calendar-arithmetic",
++    solarTerm: { basis: "original-civil-fixed-utc9", birthInstantUtc: birthInstant?.toISOString() ?? null, activeTermUtc: termPillars?.activeTermUtc ?? null, nextTermUtc: termPillars?.nextTermUtc ?? null, yearBoundary: "lichun-instant", monthBoundary: "jie-instant", dayBoundary: "corrected-clock-midnight" },
+     warnings,
+   };
+ 
+diff --git a/artifacts/saju-app/src/lib/solarTerms.ts b/artifacts/saju-app/src/lib/solarTerms.ts
+new file mode 100644
+index 0000000..8c04dce
+--- /dev/null
++++ b/artifacts/saju-app/src/lib/solarTerms.ts
+@@ -0,0 +1,42 @@
++import { SearchSunLongitude } from "astronomy-engine";
++
++export const MONTH_TERM_LONGITUDES = [285, 315, 345, 15, 45, 75, 105, 135, 165, 195, 225, 255] as const;
++const cache = new Map<string, number>();
++export function solarTermInstant(year: number, longitude: number): Date {
++  const key = `${year}:${longitude}`;
++  let ms = cache.get(key);
++  if (ms === undefined) {
++    const result = SearchSunLongitude(longitude, new Date(Date.UTC(year, 0, 1)), 370);
++    if (!result) throw new RangeError("절기 시각을 계산할 수 없습니다.");
++    ms = result.date.getTime();
++    if (cache.size >= 4096) cache.delete(cache.keys().next().value!);
++    cache.set(key, ms);
++  }
++  return new Date(ms);
++}
++export function surroundingMonthTerms(instant: Date) {
++  if (!Number.isFinite(instant.getTime())) throw new RangeError("유효한 실제 시각이 필요합니다.");
++  const year = instant.getUTCFullYear();
++  return [year - 1, year, year + 1].flatMap(y => MONTH_TERM_LONGITUDES.map(longitude => ({
++    year: y, longitude, instant: solarTermInstant(y, longitude),
++  }))).sort((a, b) => a.instant.getTime() - b.instant.getTime());
++}
++const stems = ["갑", "을", "병", "정", "무", "기", "경", "신", "임", "계"];
++const branches = ["자", "축", "인", "묘", "진", "사", "오", "미", "신", "유", "술", "해"];
++const stemHanja = [..."甲乙丙丁戊己庚辛壬癸"];
++const branchHanja = [..."子丑寅卯辰巳午未申酉戌亥"];
++const mod = (n: number, d: number) => ((n % d) + d) % d;
++export function solarTermYearMonth(instant: Date) {
++  const terms = surroundingMonthTerms(instant);
++  const active = [...terms].reverse().find(t => t.instant.getTime() <= instant.getTime())!;
++  const lichun = [...terms].reverse().find(t => t.longitude === 315 && t.instant.getTime() <= instant.getTime())!;
++  const ys = mod(lichun.year - 4, 10), yb = mod(lichun.year - 4, 12);
++  const monthOffset = mod(active.longitude + 45, 360) / 30;
++  const ms = mod([2, 4, 6, 8, 0][ys % 5] + monthOffset, 10), mb = mod(monthOffset + 2, 12);
++  return {
++    year: { hangul: stems[ys] + branches[yb], hanja: stemHanja[ys] + branchHanja[yb] },
++    month: { hangul: stems[ms] + branches[mb], hanja: stemHanja[ms] + branchHanja[mb] },
++    activeTermUtc: active.instant.toISOString(),
++    nextTermUtc: terms.find(t => t.instant.getTime() > instant.getTime())!.instant.toISOString(),
++  };
++}
+diff --git a/artifacts/saju-app/src/lib/timeCalculationAudit.ts b/artifacts/saju-app/src/lib/timeCalculationAudit.ts
+index 275469d..5ea9c17 100644
+--- a/artifacts/saju-app/src/lib/timeCalculationAudit.ts
++++ b/artifacts/saju-app/src/lib/timeCalculationAudit.ts
+@@ -22,6 +22,7 @@ export interface TimeCalculationAudit {
+   hourBoundaryDistanceMinutes: number | null;
+   timezoneVerification: "not-performed-by-this-wrapper";
+   longitudeDateRolloverVerification: "delegated-to-library-not-independently-verified" | "wrapper-calendar-arithmetic";
++  solarTerm?: { basis: "original-civil-fixed-utc9"; birthInstantUtc: string | null; activeTermUtc: string | null; nextTermUtc: string | null; yearBoundary: "lichun-instant"; monthBoundary: "jie-instant"; dayBoundary: "corrected-clock-midnight" };
+   warnings: string[];
+ }
+ 
+diff --git a/artifacts/saju-app/src/lib/todayFortune.ts b/artifacts/saju-app/src/lib/todayFortune.ts
+index 1305710..5a4541c 100644
+--- a/artifacts/saju-app/src/lib/todayFortune.ts
++++ b/artifacts/saju-app/src/lib/todayFortune.ts
+@@ -1,3 +1,4 @@
++import { selectDaewoonAt } from "./luckCycles";
+ import type { PersonRecord } from "./storage";
+ import { getFinalPillars } from "./storage";
+ import { getDayGanZhi, getYearGanZhi, getMonthGanZhi, calculateDaewoon } from "./luckCycles";
+@@ -219,7 +220,7 @@ export function getFortuneForDate(
+ 
+   const birthYear = record.birthInput.year;
+   const age = year - birthYear;
+-  const currentDW = daewoon.find((d) => age >= d.startAge && age <= d.endAge);
++  const currentDW = selectDaewoonAt(daewoon, new Date(Date.UTC(year, month - 1, day, -9)));
+ 
+   const dayTG = dayStem ? getTenGod(dayStem, dayGZ.stem) : null;
+   const fortuneBase = dayTG ? (TG_FORTUNE[dayTG] ?? DEFAULT_FORTUNE) : DEFAULT_FORTUNE;
+diff --git a/artifacts/saju-app/src/lib/ziwei/annualPeriods.ts b/artifacts/saju-app/src/lib/ziwei/annualPeriods.ts
+index 28f7dfb..b812cb9 100644
+--- a/artifacts/saju-app/src/lib/ziwei/annualPeriods.ts
++++ b/artifacts/saju-app/src/lib/ziwei/annualPeriods.ts
+@@ -1,8 +1,5 @@
+-// 流年(유년) — 해당 연도의 지지와 같은 지지를 가진 궁이 그 해의 流年宮이다(유파 무관 공통 규칙).
+-// 주의(알려진 단순화): 정밀 만세력은 입춘(立春) 절입 시각을 연 경계로 쓰지만, 이 구현은
+-// 달력 연도를 그대로 쓴다(1984=甲子년 기준 (year-1984) mod 12). 입춘 근접 시점(1~2월) 생일의
+-// 경계 케이스는 2차 확장에서 sajuEngine.ts의 절기 계산과는 별도로 자미두수 자체 절기 처리를
+-// 붙일 때 정교화한다 — 지금 당장은 사주 엔진을 참조하지 않는다는 원칙을 우선한다.
++// Annual year labels are lunar years, spanning lunar new year to the next lunar new year.
++import { ziweiLunarYearRange } from "./calendarPolicy";
+ import { BRANCHES, type AnnualPeriod, type Branch, type PalaceName } from "./types";
+ 
+ function mod12(n: number): number {
+@@ -19,6 +16,6 @@ export function computeAnnualPeriods(
+ ): AnnualPeriod[] {
+   return years.map((year) => {
+     const branch = yearToBranch(year);
+-    return { year, palace: palaceOfBranch[branch], branch };
++    return { year, palace: palaceOfBranch[branch], branch, ...ziweiLunarYearRange(year) };
+   });
+ }
+diff --git a/artifacts/saju-app/src/lib/ziwei/calendarPolicy.ts b/artifacts/saju-app/src/lib/ziwei/calendarPolicy.ts
+new file mode 100644
+index 0000000..768e64e
+--- /dev/null
++++ b/artifacts/saju-app/src/lib/ziwei/calendarPolicy.ts
+@@ -0,0 +1,17 @@
++import { solarToLunarChecked, lunarToSolarChecked } from "../calendarConversion";
++
++/** Ziwei uses the original civil date in Korea, lunar-new-year and midnight boundaries. */
++export function ziweiQueryLunarYear(at: Date = new Date()): number {
++  if (!Number.isFinite(at.getTime())) throw new RangeError("유효한 조회 일시가 필요합니다.");
++  const local = new Date(at.getTime() + 9 * 3600000);
++  return solarToLunarChecked(local.getUTCFullYear(), local.getUTCMonth() + 1, local.getUTCDate()).lunar.year;
++}
++export function ziweiInclusiveAge(birthLunarYear: number, queryLunarYear: number): number {
++  return queryLunarYear - birthLunarYear + 1;
++}
++export function ziweiLunarYearRange(year: number) {
++  const start = lunarToSolarChecked(year, 1, 1, false).solar;
++  const end = lunarToSolarChecked(year + 1, 1, 1, false).solar;
++  const civil = (d: typeof start) => `${d.year}-${String(d.month).padStart(2, "0")}-${String(d.day).padStart(2, "0")}T00:00:00+09:00`;
++  return { basis: "lunar-year-inclusive-age" as const, startCivilInclusive: civil(start), endCivilExclusive: civil(end) };
++}
+diff --git a/artifacts/saju-app/src/lib/ziwei/lunarConvert.ts b/artifacts/saju-app/src/lib/ziwei/lunarConvert.ts
+index 98e6380..200fa29 100644
+--- a/artifacts/saju-app/src/lib/ziwei/lunarConvert.ts
++++ b/artifacts/saju-app/src/lib/ziwei/lunarConvert.ts
+@@ -42,13 +42,14 @@ export function toLunarBirth(
+           return { lunar: { year, month, day, isLeapMonth }, gapja: r.gapja };
+         })();
+ 
++  const yearIndex = ((result.lunar.year - 1984) % 60 + 60) % 60;
+   return {
+     year: result.lunar.year,
+     month: result.lunar.month,
+     day: result.lunar.day,
+     isLeapMonth: result.lunar.isLeapMonth,
+     hourBranch: hourToBranch(hour),
+-    yearStem: hanjaToStem(result.gapja.yearPillarHanja),
+-    yearBranch: hanjaToBranch(result.gapja.yearPillarHanja),
++    yearStem: STEMS[yearIndex % 10],
++    yearBranch: BRANCHES[yearIndex % 12],
+   };
+ }
+diff --git a/artifacts/saju-app/src/lib/ziwei/reports/comprehensiveReport.ts b/artifacts/saju-app/src/lib/ziwei/reports/comprehensiveReport.ts
+index 7ed05ce..4aea4ca 100644
+--- a/artifacts/saju-app/src/lib/ziwei/reports/comprehensiveReport.ts
++++ b/artifacts/saju-app/src/lib/ziwei/reports/comprehensiveReport.ts
+@@ -1,3 +1,4 @@
++import { ziweiQueryLunarYear, ziweiInclusiveAge } from "../calendarPolicy";
+ // 종합 리포트 — 이미 완료된 6개 주제(타고난 성향/재물/커리어/연애/배우자/결혼시기)의 fact
+ // 생성기와 evidence 추출을 그대로 재사용한다. 새 계산 로직·새 채점 기준은 만들지 않는다(대표
+ // 지시). 5개 축(핵심 성향/일·재물/연애·배우자/현재 삶의 중심축/앞으로의 주요 시기)으로
+@@ -192,7 +193,7 @@ const THEME_PALACE_LABEL: Partial<Record<PalaceName, string>> = {
+   福德宮: "내면의 안정과 취향을 채우는 것",
+ };
+ 
+-function buildCurrentFocusSection(chart: ZiweiChart, marriageTiming: MarriageTimingReport): ComprehensiveSection {
++function buildCurrentFocusSection(chart: ZiweiChart, marriageTiming: MarriageTimingReport, at: Date): ComprehensiveSection {
+   const facts: InterpretationFact[] = [];
+   const evidence: EvidenceItem[] = [];
+ 
+@@ -210,7 +211,7 @@ function buildCurrentFocusSection(chart: ZiweiChart, marriageTiming: MarriageTim
+     evidence.push({ type: "palace", value: chart.shenGong.palace, source: "natal" });
+   }
+ 
+-  const age = new Date().getFullYear() - chart.birth.year;
++  const age = ziweiInclusiveAge(chart.lunarBirth.year, ziweiQueryLunarYear(at));
+   const majorPeriod = chart.majorPeriods.find((p) => age >= p.ageRange[0] && age <= p.ageRange[1]);
+   const majorLabel = majorPeriod ? THEME_PALACE_LABEL[majorPeriod.palace] : undefined;
+   if (majorPeriod && majorLabel) {
+@@ -225,7 +226,7 @@ function buildCurrentFocusSection(chart: ZiweiChart, marriageTiming: MarriageTim
+     evidence.push({ type: "period", value: `大限=${majorPeriod.palace}`, source: "major" });
+   }
+ 
+-  const currentYear = spouseReportTimingYears()[0];
++  const currentYear = spouseReportTimingYears(at)[0];
+   const activeAxes = (["activationYears", "stabilityYears", "formalizationYears", "volatilityYears"] as const)
+     .filter((key) => marriageTiming.highlights[key].includes(currentYear));
+   if (activeAxes.length > 0) {
+@@ -264,12 +265,12 @@ function buildUpcomingTimingSection(marriageTiming: MarriageTimingReport): Compr
+   return { key: "upcomingTiming", title: "앞으로의 주요 시기", text, facts, evidence: facts.flatMap((f) => f.evidence) };
+ }
+ 
+-export function buildComprehensiveReport(chart: ZiweiChart, ruleSet: RuleSet, personName: string): ComprehensiveReport {
++export function buildComprehensiveReport(chart: ZiweiChart, ruleSet: RuleSet, personName: string, at: Date = new Date()): ComprehensiveReport {
+   const natureEvidence = extractNatureEvidence(chart);
+   const wealthEvidence = extractWealthEvidence(chart);
+   const careerEvidence = extractCareerEvidence(chart);
+   const spouseEvidence = extractSpouseEvidence(chart);
+-  const marriageTiming = buildMarriageTimingReport(chart, ruleSet, personName);
++  const marriageTiming = buildMarriageTimingReport(chart, ruleSet, personName, at);
+ 
+   // ── 핵심 성향(nature 계열만 — 배우자상 절대 섞지 않음) ──
+   const natureFactsAll = [
+@@ -321,7 +322,7 @@ export function buildComprehensiveReport(chart: ZiweiChart, ruleSet: RuleSet, pe
+     true,
+   );
+ 
+-  const currentFocus = buildCurrentFocusSection(chart, marriageTiming);
++  const currentFocus = buildCurrentFocusSection(chart, marriageTiming, at);
+   const upcomingTiming = buildUpcomingTimingSection(marriageTiming);
+ 
+   const sections: ComprehensiveSection[] = [
+diff --git a/artifacts/saju-app/src/lib/ziwei/reports/marriageTimingReport.ts b/artifacts/saju-app/src/lib/ziwei/reports/marriageTimingReport.ts
+index 770ab13..b81d24c 100644
+--- a/artifacts/saju-app/src/lib/ziwei/reports/marriageTimingReport.ts
++++ b/artifacts/saju-app/src/lib/ziwei/reports/marriageTimingReport.ts
+@@ -290,11 +290,11 @@ export interface MarriageTimingReport {
+   yearCards: MarriageTimingYearCard[];
+ }
+ 
+-export function buildMarriageTimingReport(chart: ZiweiChart, ruleSet: RuleSet, personName: string): MarriageTimingReport {
++export function buildMarriageTimingReport(chart: ZiweiChart, ruleSet: RuleSet, personName: string, at: Date = new Date()): MarriageTimingReport {
+   const spouseEvidence = extractSpouseEvidence(chart);
+   const natalBaseline = buildNatalBaseline(spouseEvidence);
+ 
+-  const years = spouseReportTimingYears();
++  const years = spouseReportTimingYears(at);
+   const signals = computeRelationshipTimingSignals(chart, ruleSet, years);
+   const highlights = computeTimingHighlights(signals);
+ 
+diff --git a/artifacts/saju-app/src/lib/ziwei/reports/spouseReport.ts b/artifacts/saju-app/src/lib/ziwei/reports/spouseReport.ts
+index a8f63ea..4882383 100644
+--- a/artifacts/saju-app/src/lib/ziwei/reports/spouseReport.ts
++++ b/artifacts/saju-app/src/lib/ziwei/reports/spouseReport.ts
+@@ -1,3 +1,4 @@
++import { ziweiQueryLunarYear } from "../calendarPolicy";
+ // 배우자(夫妻宮) 주제 리포트 — 계산 엔진(engine)이 만든 canonical payload + evidence를
+ // interpretationFacts.ts의 semantic fact 레이어를 거쳐 사람이 읽는 문장으로 합성한다.
+ // (재설계, 2026-09-08 대표 지시) 카테고리별 canned text를 그대로 나열하던 이전 방식을 폐기하고,
+@@ -104,8 +105,8 @@ export interface SpouseTimingSection {
+ /** buildZiweiChart(..., annualYears) 호출 시 넘겨야 하는 연도 범위 — 이 리포트의 결혼 활성
+  * 시기 섹션이 다루는 범위와 반드시 같아야 한다(다르면 chart.annualPeriods에 해당 연도가 없어
+  * timingEngine이 에러를 던진다). */
+-export function spouseReportTimingYears(): number[] {
+-  const currentYear = new Date().getFullYear();
++export function spouseReportTimingYears(at: Date = new Date()): number[] {
++  const currentYear = ziweiQueryLunarYear(at);
+   return Array.from({ length: 15 }, (_, i) => currentYear + i);
+ }
+ 
+@@ -113,7 +114,7 @@ function buildTimingSection(chart: ZiweiChart): SpouseTimingSection {
+   const years = spouseReportTimingYears();
+   const signals = computeRelationshipTimingSignals(chart, zhongzhouV1, years);
+   const highlights: TimingHighlights = computeTimingHighlights(signals);
+-  return { title: "결혼 활성 시기(연도별 신호)", signals, highlights };
++  return { title: "결혼 활성 시기(음력년별 신호 · 설부터 다음 설 직전)", signals, highlights };
+ }
+ 
+ export interface SpouseReport {
+diff --git a/artifacts/saju-app/src/lib/ziwei/timingEngine.ts b/artifacts/saju-app/src/lib/ziwei/timingEngine.ts
+index d973d68..0188b09 100644
+--- a/artifacts/saju-app/src/lib/ziwei/timingEngine.ts
++++ b/artifacts/saju-app/src/lib/ziwei/timingEngine.ts
+@@ -1,3 +1,4 @@
++import { ziweiInclusiveAge } from "./calendarPolicy";
+ // 시기(timing) 신호 산출 — 원국(canonical payload)과 완전히 분리된 계산 레이어다. 이 파일은
+ // "2027년에 결혼한다" 같은 문장을 생성하지 않는다. 활성도/안정도/공식화신호/변동성을 각각
+ // weighted score + evidence로만 산출한다("활성도가 높음 ≠ 결혼하기 좋은 해" 원칙 유지 — 대표 지시).
+@@ -90,7 +91,7 @@ function timingSignalForYear(chart: ZiweiChart, ruleSet: RuleSet, year: number):
+   const natalSpouseBranch = spouseEvidence.spousePalace.branch;
+   const sanfangBranches = new Set(spouseEvidence.sanfangSizhengPalaces.map((p) => p.branch));
+ 
+-  const age = year - chart.birth.year;
++  const age = ziweiInclusiveAge(chart.lunarBirth.year, year);
+   const majorPeriod = chart.majorPeriods.find((p) => age >= p.ageRange[0] && age <= p.ageRange[1]);
+   const annualPeriod = chart.annualPeriods.find((p) => p.year === year);
+   if (!majorPeriod) throw new Error(`대한 구간을 찾을 수 없습니다(year=${year}, age=${age}).`);
+diff --git a/artifacts/saju-app/src/lib/ziwei/types.ts b/artifacts/saju-app/src/lib/ziwei/types.ts
+index fddcdf4..9905d2c 100644
+--- a/artifacts/saju-app/src/lib/ziwei/types.ts
++++ b/artifacts/saju-app/src/lib/ziwei/types.ts
+@@ -57,7 +57,7 @@ export interface ZiweiBirthInput {
+   year: number;
+   month: number;
+   day: number;
+-  hour: number; // 0~23, 진태양시 보정된 시각(호출부 책임)
++  hour: number; // 0~23, original civil hour; midnight day boundary
+   minute?: number;
+   birthplace?: string;
+ }
+@@ -75,7 +75,11 @@ export interface MajorPeriod {
+ }
+ 
+ export interface AnnualPeriod {
++  /** Lunar-year label, not Gregorian Jan–Dec. */
+   year: number;
++  basis?: "lunar-year-inclusive-age";
++  startCivilInclusive?: string;
++  endCivilExclusive?: string;
+   palace: PalaceName;
+   branch: Branch;
+ }
+diff --git a/chatgpt-plugin/package-lock.json b/chatgpt-plugin/package-lock.json
+index 85fb2fb..b845669 100644
+--- a/chatgpt-plugin/package-lock.json
++++ b/chatgpt-plugin/package-lock.json
+@@ -1,12 +1,12 @@
+ {
+   "name": "soyeon-three-charts",
+-  "version": "0.2.1",
++  "version": "0.4.0",
+   "lockfileVersion": 3,
+   "requires": true,
+   "packages": {
+     "": {
+       "name": "soyeon-three-charts",
+-      "version": "0.2.1",
++      "version": "0.4.0",
+       "dependencies": {
+         "@fullstackfamily/manseryeok": "1.0.8",
+         "astronomy-engine": "2.1.19"
+diff --git a/chatgpt-plugin/package.json b/chatgpt-plugin/package.json
+index 9b42fd0..ac672c1 100644
+--- a/chatgpt-plugin/package.json
++++ b/chatgpt-plugin/package.json
+@@ -8,7 +8,7 @@
+     "test": "node --test tests/*.test.mjs",
+     "validate": "node scripts/validate-artifact.mjs"
+   },
+-  "version": "0.2.1",
++  "version": "0.4.0",
+   "dependencies": {
+     "@fullstackfamily/manseryeok": "1.0.8",
+     "astronomy-engine": "2.1.19"
+diff --git a/chatgpt-plugin/src/calculation.ts b/chatgpt-plugin/src/calculation.ts
+index 3b35256..88e78fa 100644
+--- a/chatgpt-plugin/src/calculation.ts
++++ b/chatgpt-plugin/src/calculation.ts
+@@ -1,3 +1,5 @@
++import { calculateDaewoonStart, calculateDaewoon, selectDaewoonAt } from "app/luckCycles.ts";
++import { ziweiQueryLunarYear, ziweiInclusiveAge } from "app/ziwei/calendarPolicy.ts";
+ import { resolveLocalDateTime } from "app/western/time.ts";
+ import { calculateProfileFromBirth } from "app/sajuEngine.ts";
+ import { computePersonPipelineSnapshot } from "app/personPipelineSnapshot.ts";
+@@ -188,6 +190,7 @@ export function normalizeInput(raw: any) {
+   return { birthInput, location, dstFold: raw.dstFold };
+ }
+ export function calculateThreeCharts(raw: unknown) {
++  const queryInstant = new Date();
+   const { birthInput, location, dstFold } = normalizeInput(raw);
+   const profile = calculateProfileFromBirth(birthInput);
+   const pad = (n: number) => String(n).padStart(2, "0");
+@@ -226,13 +229,13 @@ export function calculateThreeCharts(raw: unknown) {
+     "WESTERN_EPHEMERIS_HOUSES_NOT_INDEPENDENTLY_VALIDATED",
+   ];
+   try {
+-    existing = buildExistingPersonalReports(person);
++    existing = buildExistingPersonalReports(person, queryInstant);
+   } catch {
+-    const pipeline = computePersonPipelineSnapshot(person);
++    const pipeline = computePersonPipelineSnapshot(person, { at: queryInstant });
+     const ziweiChart = buildZiweiChart(
+       birthInput,
+       zhongzhouV1,
+-      spouseReportTimingYears(),
++      spouseReportTimingYears(queryInstant),
+     );
+     existing = {
+       saju: pipeline ? buildSajuSummarySections(pipeline, [], []) : [],
+@@ -295,13 +298,17 @@ export function calculateThreeCharts(raw: unknown) {
+         ? "calculated"
+         : "partial",
+     algorithm: "existing-saju-app",
+-    engineVersion: "0.2.1",
++    engineVersion: "0.4.0",
+     timeAudit: {
+       saju: profile.timeAudit,
++      daewoon: { ...calculateDaewoonStart(birthInput, profile.computedPillars), periodBoundary: "start-inclusive-end-exclusive", currentPeriod: selectDaewoonAt(calculateDaewoon(birthInput, profile.computedPillars), queryInstant) ?? null },
+       ziwei: {
+         basis: "original-civil",
+         longitudeCorrectionApplied: false,
+         ruleSet: zhongzhouV1,
++        yearBoundary: "lunar-new-year", dayBoundary: "civil-midnight", ageBasis: "lunar-year-inclusive",
++        queryLunarYear: ziweiQueryLunarYear(queryInstant), inclusiveAge: ziweiInclusiveAge(existing.ziweiChart.lunarBirth.year, ziweiQueryLunarYear(queryInstant)),
++        annualTableBasis: "lunar-year-start-inclusive-next-new-year-exclusive",
+       },
+       western: { basis: "original-civil-to-utc", ...resolved },
+       validation: {
+@@ -333,6 +340,6 @@ export function calculateThreeCharts(raw: unknown) {
+     western,
+     integrated,
+     instructions:
+-      "미검증 경고가 있는 점수·용신·유파·천문력 항목은 검증 완료 또는 확정 해석으로 쓰지 않는다. 시진 경계 경고가 있으면 원본 날짜를 함께 이월해 ±5분 민감도 재계산을 수행하고 바뀐 항목만 비교한다. 계산값과 근거를 우선한다. 사주·자미두수·서양점성술을 각각 설명한 뒤 통합한다. 일치·차이·누락을 구분하고, 없는 계산값이나 사건·시기를 만들지 않는다. 출생정보는 서버에서 저장하지 않는다. 기존 앱의 자동 계산 기준이며 앱에서 수동 수정한 개인 설정은 포함하지 않는다.",
++      "대운은 표시된 실제 시작 일시 이상·다음 시작 일시 미만 구간으로 읽고, 자미 연간 표의 연도는 설부터 다음 설 직전까지의 음력년이다. 시작 일시의 세부 자릿수는 사건 예측 정확도를 보장하지 않는다. 미검증 경고가 있는 점수·용신·유파·천문력 항목은 검증 완료 또는 확정 해석으로 쓰지 않는다. 시진 경계 경고가 있으면 원본 날짜를 함께 이월해 ±5분 민감도 재계산을 수행하고 바뀐 항목만 비교한다. 계산값과 근거를 우선한다. 사주·자미두수·서양점성술을 각각 설명한 뒤 통합한다. 일치·차이·누락을 구분하고, 없는 계산값이나 사건·시기를 만들지 않는다. 출생정보는 서버에서 저장하지 않는다. 기존 앱의 자동 계산 기준이며 앱에서 수동 수정한 개인 설정은 포함하지 않는다.",
+   };
+ }
+diff --git a/chatgpt-plugin/src/worker.ts b/chatgpt-plugin/src/worker.ts
+index 4aa0230..e38c38f 100644
+--- a/chatgpt-plugin/src/worker.ts
++++ b/chatgpt-plugin/src/worker.ts
+@@ -3,7 +3,7 @@ import {
+   resolveBirthplace,
+   InputError,
+ } from "./calculation";
+-const VERSION = "0.2.1";
++const VERSION = "0.4.0";
+ const birthSchema = {
+   type: "object",
+   additionalProperties: false,
+diff --git a/chatgpt-plugin/tests/calculation-guards.test.mjs b/chatgpt-plugin/tests/calculation-guards.test.mjs
+index 453fb1c..78ceeb3 100644
+--- a/chatgpt-plugin/tests/calculation-guards.test.mjs
++++ b/chatgpt-plugin/tests/calculation-guards.test.mjs
+@@ -65,7 +65,7 @@ test("MCP authentication boundary unchanged", async () =>
+   assert.equal((await rpc("three_charts_status", {}, false)).status, 401));
+ test("candidate identity is visible without birth data", async () => {
+   const r = await rpc("three_charts_status");
+-  assert.equal(r.body.result.structuredContent.version, "0.2.1");
++  assert.equal(r.body.result.structuredContent.version, "0.4.0");
+ });
+ test("real bundled API preserves existing keys and exposes per-system audit in text and structured response", async () => {
+   const r = await rpc("calculate_three_charts", birth);
+@@ -200,3 +200,36 @@ for (const [title, patch, code] of [
+     assert.equal(r.body.result.isError, true);
+     assert.equal(r.body.result.structuredContent.error.code, code);
+   });
++
++const base = birth;
++const calculate = async args => (await rpc("calculate_three_charts", args)).body.result;
++
++test("approved solar-term policy crosses physical lichun while preserving the original UTC clock", async () => {
++  const before = (await calculate({ ...base, birthDate:"2000-02-04", birthTime:"21:39" })).structuredContent;
++  const after = (await calculate({ ...base, birthDate:"2000-02-04", birthTime:"21:42" })).structuredContent;
++  assert.equal(before.saju.pillars.year.hangul,"기묘");
++  assert.equal(after.saju.pillars.year.hangul,"경진");
++  assert.equal(after.timeAudit.western.utcInstant,"2000-02-04T12:42:00.000Z");
++  assert.equal(after.timeAudit.saju.solarTerm.basis,"original-civil-fixed-utc9");
++  assert.ok(!after.warnings.includes("SOLAR_TERM_INSTANT_NOT_SUPPORTED"));
++});
++test("continuous daewoon audit exposes actual start and half-open current period", async () => {
++  const r = (await calculate(base)).structuredContent;
++  const a = r.timeAudit.daewoon;
++  assert.equal(a.basis,"civil-instant-three-days-per-year");
++  assert.equal(a.ageYears,a.elapsedDays/3);
++  assert.equal(a.periodBoundary,"start-inclusive-end-exclusive");
++  assert.ok(a.currentPeriod.startInstantUtc);
++  assert.ok(a.currentPeriod.endInstantUtcExclusive);
++  assert.match(a.display,/년 .*개월 후/);
++});
++test("Ziwei annual API labels lunar-new-year intervals and inclusive lunar age", async () => {
++  const r = (await calculate(base)).structuredContent;
++  assert.equal(r.timeAudit.ziwei.yearBoundary,"lunar-new-year");
++  assert.equal(r.timeAudit.ziwei.ageBasis,"lunar-year-inclusive");
++  assert.equal(r.timeAudit.ziwei.inclusiveAge,r.timeAudit.ziwei.queryLunarYear-r.ziwei.chart.lunarBirth.year+1);
++  for(const p of r.ziwei.chart.annualPeriods){
++    assert.equal(p.basis,"lunar-year-inclusive-age");
++    assert.ok(Date.parse(p.endCivilExclusive)>Date.parse(p.startCivilInclusive));
++  }
++});

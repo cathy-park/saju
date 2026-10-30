@@ -56,3 +56,6 @@ attached_assets/*.zip
 
 .vercel
 .env*
+
+# Local guard-run output (synthetic details stay outside commits)
+/unit-test-results.json

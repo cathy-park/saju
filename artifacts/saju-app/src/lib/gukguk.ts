@@ -35,7 +35,7 @@ export const YANGIN_BRANCH: Record<string, string> = {
   갑: "묘", 병: "오", 무: "오", 경: "유", 임: "자",
 };
 
-// 격국명 매핑 (십성 → 격국명)
+// 격국명 레거시 매핑. 비겁 판정에는 반드시 resolveGukgukName()의 월지 검증을 사용한다.
 export const TG_TO_GUKGUK: Record<TenGod, string> = {
   비견: "건록격",
   겁재: "양인격",
@@ -48,6 +48,27 @@ export const TG_TO_GUKGUK: Record<TenGod, string> = {
   편인: "편인격",
   정인: "정인격",
 };
+
+// 건록 월지. 이 표와 기존 양간 양인표를 사용하는 규칙 버전을 명시한다.
+export const GEONROK_BRANCH: Record<string, string> = {
+  갑: "인", 을: "묘", 병: "사", 정: "오", 무: "사",
+  기: "오", 경: "신", 신: "유", 임: "해", 계: "자",
+};
+export const GUKGUK_RULE_VERSION = "strict-transparent-month-guard/v3";
+
+/** 십성 이름과 월령격은 동일하지 않다. 비겁은 월지 조건을 먼저 검증한다. */
+export function resolveGukgukName(
+  dayStem: string,
+  monthBranch: string,
+  tenGod: TenGod,
+): string | null {
+  if (tenGod === "비견" || tenGod === "겁재") {
+    if (YANGIN_BRANCH[dayStem] === monthBranch) return "양인격";
+    if (GEONROK_BRANCH[dayStem] === monthBranch) return "건록격";
+    return null;
+  }
+  return TG_TO_GUKGUK[tenGod] ?? null;
+}
 
 // 격국 설명
 export const GUKGUK_DESC: Record<string, string> = {
@@ -91,6 +112,7 @@ export interface GukgukResult {
   heavenStemsNonDay?: string[];  // 일간 제외한 천간 (연/월/시)
   matchedTransparentStems?: string[]; // 투출로 매칭된 지장간들
   explanation?: string[];        // 사람이 읽는 근거 문장들
+  ruleVersion?: string;
 }
 
 /**
@@ -110,7 +132,11 @@ export function determineGukguk(
   if (!hiddenStems || hiddenStems.length === 0) return null;
 
   // 格局 투출 체크는 연간·월간·시간만 봐야 함 (일간 제외)
-  const heavenStemsNonDay = allStems.filter((s) => s !== dayStem);
+  // Callers use different pillar orders. Remove one day stem occurrence,
+  // preserving equal stems exposed by other pillars.
+  const heavenStemsNonDay = [...allStems];
+  const dayIndex = heavenStemsNonDay.indexOf(dayStem);
+  if (dayIndex >= 0) heavenStemsNonDay.splice(dayIndex, 1);
 
   // 1. 透出 확인: 지장간(초기→중기→정기) 중 연간·월간·시간에 있는지 확인
   //    여러 개 투출 시 정기(본기) 우선 → reversed(본기→중기→초기) 순서로 체크
@@ -136,12 +162,10 @@ export function determineGukguk(
   const tg = getTenGod(dayStem, targetStem);
   if (!tg) return null;
 
-  // 4. 비견이면 건록격 vs 양인격 구분
-  let gukgukName = TG_TO_GUKGUK[tg];
-  if (tg === "비견") {
-    const yanginBr = YANGIN_BRANCH[dayStem];
-    gukgukName = yanginBr === monthBranch ? "양인격" : "건록격";
-  }
+  // 비겁의 투출만으로 건록/양인격을 확정하지 않는다.
+  // 월지 조건이 맞지 않으면 strict 내격은 보류하고 월령 후보와 구분한다.
+  const gukgukName = resolveGukgukName(dayStem, monthBranch, tg);
+  if (!gukgukName) return null;
 
   const tone = GUKGUK_TONE[gukgukName] ?? "중";
 
@@ -153,6 +177,7 @@ export function determineGukguk(
   ];
 
   return {
+    ruleVersion: GUKGUK_RULE_VERSION,
     name: gukgukName,
     description: GUKGUK_DESC[gukgukName] ?? "",
     tone,

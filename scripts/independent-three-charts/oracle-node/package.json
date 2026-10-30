@@ -1,0 +1,7 @@
+{
+  "name": "three-chart-verification-oracles",
+  "private": true,
+  "dependencies": {
+    "iztro": "2.6.3"
+  }
+}

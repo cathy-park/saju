@@ -1,0 +1,39 @@
+diff --git a/artifacts/saju-app/src/lib/interpretSchema.ts b/artifacts/saju-app/src/lib/interpretSchema.ts
+index 2ac7717..963316f 100644
+--- a/artifacts/saju-app/src/lib/interpretSchema.ts
++++ b/artifacts/saju-app/src/lib/interpretSchema.ts
+@@ -230,8 +230,10 @@ export function computeStrengthResult(
+   // 식상·재성 약화는 마찬가지로 6) 설기(leakagePenalty)가 전담 — 위 득지와 동일한 이유로
+   // 여기서는 중복 반영하지 않는다.
+   let stemContrib = 0;
+-  for (const s of allStems) {
+-    if (s === dayStem) continue;
++  const supportingStems = [...allStems];
++  const dayIndex = supportingStems.indexOf(dayStem);
++  if (dayIndex >= 0) supportingStems.splice(dayIndex, 1);
++  for (const s of supportingStems) {
+     const sEl = STEM_ELEMENT[s] as FiveElKey | undefined;
+     if (!sEl) continue;
+     stemContrib +=
+@@ -543,7 +545,7 @@ export function computeYongshinFull(
+     // 태강 — 재성 or 식상 (whichever is scarcer)
+     const oc = counts[outputEl] ?? 0;
+     const wc = counts[wealthEl] ?? 0;
+-    if (wc >= oc) {
++    if (wc <= oc) {
+       return { primary: wealthEl, secondary: outputEl, confidence: "high", tenGodGroup: "재성" };
+     }
+     return { primary: outputEl, secondary: wealthEl, confidence: "high", tenGodGroup: "식상" };
+diff --git a/artifacts/saju-app/src/lib/sajuPipeline.ts b/artifacts/saju-app/src/lib/sajuPipeline.ts
+index 9b8533e..749a46a 100644
+--- a/artifacts/saju-app/src/lib/sajuPipeline.ts
++++ b/artifacts/saju-app/src/lib/sajuPipeline.ts
+@@ -119,7 +119,7 @@ function augmentWithJijanggan(
+   const result: FiveElementCount = { ...base };
+   for (const b of allBranches) {
+     const hiddens = _JIJANGGAN_AUG[b] ?? [];
+-    for (let j = 0; j < hiddens.length; j++) {
++    for (let j = 0; j < hiddens.length - 1; j++) {
+       const w = _JZG_AUG_W[Math.min(j, _JZG_AUG_W.length - 1)];
+       if (w === 0) continue;
+       const el = _STEM_TO_EL_AUG[hiddens[j]];

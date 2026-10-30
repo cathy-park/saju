@@ -1,0 +1,103 @@
+{
+  "cases": 10000,
+  "changed": 30,
+  "maxAgeDifference": 9,
+  "samples": [
+    {
+      "birth": {
+        "name": "synthetic",
+        "gender": "여",
+        "calendarType": "solar",
+        "year": 1903,
+        "month": 12,
+        "day": 27,
+        "hour": 2,
+        "minute": 26,
+        "timeUnknown": false,
+        "longitude": 127
+      },
+      "baselineStartAge": 3,
+      "candidateStartAge": 4
+    },
+    {
+      "birth": {
+        "name": "synthetic",
+        "gender": "남",
+        "calendarType": "solar",
+        "year": 1904,
+        "month": 11,
+        "day": 26,
+        "hour": 21,
+        "minute": 15,
+        "timeUnknown": false,
+        "longitude": 127
+      },
+      "baselineStartAge": 3,
+      "candidateStartAge": 4
+    },
+    {
+      "birth": {
+        "name": "synthetic",
+        "gender": "남",
+        "calendarType": "solar",
+        "year": 1922,
+        "month": 6,
+        "day": 15,
+        "hour": 7,
+        "minute": 49,
+        "timeUnknown": false,
+        "longitude": 127
+      },
+      "baselineStartAge": 7,
+      "candidateStartAge": 8
+    },
+    {
+      "birth": {
+        "name": "synthetic",
+        "gender": "남",
+        "calendarType": "solar",
+        "year": 1923,
+        "month": 12,
+        "day": 7,
+        "hour": 19,
+        "minute": 25,
+        "timeUnknown": false,
+        "longitude": 127
+      },
+      "baselineStartAge": 10,
+      "candidateStartAge": 9
+    },
+    {
+      "birth": {
+        "name": "synthetic",
+        "gender": "여",
+        "calendarType": "solar",
+        "year": 1925,
+        "month": 3,
+        "day": 16,
+        "hour": 16,
+        "minute": 16,
+        "timeUnknown": false,
+        "longitude": 127
+      },
+      "baselineStartAge": 6,
+      "candidateStartAge": 7
+    },
+    {
+      "birth": {
+        "name": "synthetic",
+        "gender": "여",
+        "calendarType": "solar",
+        "year": 1932,
+        "month": 4,
+        "day": 28,
+        "hour": 8,
+        "minute": 56,
+        "timeUnknown": false,
+        "longitude": 127
+      },
+      "baselineStartAge": 8,
+      "candidateStartAge": 7
+    }
+  ]
+}

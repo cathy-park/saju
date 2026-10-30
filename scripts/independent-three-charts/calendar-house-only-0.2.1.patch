@@ -1,0 +1,322 @@
+diff --git a/artifacts/saju-app/src/lib/__tests__/calendarHouseHotfix.test.ts b/artifacts/saju-app/src/lib/__tests__/calendarHouseHotfix.test.ts
+new file mode 100644
+index 0000000..158c7d3
+--- /dev/null
++++ b/artifacts/saju-app/src/lib/__tests__/calendarHouseHotfix.test.ts
+@@ -0,0 +1,55 @@
++import { describe, it, expect } from 'vitest';
++import { lunarToSolarChecked, solarToLunarChecked, calculateSajuChecked } from '../calendarConversion';
++import { calculateProfileFromBirth } from '../sajuEngine';
++import { buildZiweiChart } from '../ziwei/buildZiweiChart';
++import { zhongzhouV1 } from '../ziwei/ruleSets/zhongzhouV1';
++import { calculateNatalChart } from '../western/natalChart';
++const base = { name: 'synthetic', gender: '여' as const, calendarType: 'solar' as const, year: 1956, month: 12, day: 31, hour: 12, minute: 0, timeUnknown: false, longitude: 127 };
++
++describe('calendar and polar-house hotfix only', () => {
++  it.each([
++    [[1998, 11, 15], { year: 1999, month: 1, day: 2 }],
++    [[2000, 12, 15], { year: 2001, month: 1, day: 9 }],
++    [[2019, 12, 30], { year: 2020, month: 1, day: 24 }],
++  ] as const)('recovers a late lunar source row %j', (input, expected) => {
++    expect(lunarToSolarChecked(...input, false).solar).toEqual(expected);
++    expect(calculateProfileFromBirth({ ...base, calendarType: 'lunar', year: input[0], month: input[1], day: input[2] }).solarDate).toEqual(expected);
++  });
++  it('repairs only the publicly corroborated missing row in both directions and systems', () => {
++    const row = solarToLunarChecked(1956, 12, 31);
++    expect(row.lunar).toEqual({ year: 1956, month: 11, day: 30, isLeapMonth: false });
++    expect(row.gapja.dayPillarHanja).toBe('壬申');
++    expect(row.julianDay).toBe(2435839);
++    expect(lunarToSolarChecked(1956, 11, 30).solar).toEqual(row.solar);
++    const profile = calculateProfileFromBirth(base);
++    expect(profile.computedPillars.day.hangul).toBe('임신');
++    expect(profile.timeAudit?.warnings).toContain('CALENDAR_SOURCE_ROW_REPAIRED_1956_12_31');
++    expect(buildZiweiChart(base, zhongzhouV1).lunarBirth.day).toBe(30);
++  });
++  it('uses the same-day-stem library hour rule at every hour', () => {
++    const stems = ['갑','을','병','정','무','기','경','신','임','계'];
++    const branches = ['자','축','인','묘','진','사','오','미','신','유','술','해'];
++    for (let hour=0; hour<24; hour++) {
++      const b = hour===23 ? 0 : Math.floor((hour+1)/2);
++      const r = calculateSajuChecked(1956,12,31,hour,0,{ applyTimeCorrection:false });
++      expect(r.hourPillar).toBe(stems[(6+b)%10]+branches[b]);
++    }
++    expect(calculateSajuChecked(1956,12,31).hourPillar).toBeNull();
++  });
++  it('handles longitude rollover into the repaired date while preserving the original date', () => {
++    const p = calculateProfileFromBirth({ ...base, year:1957, month:1, day:1, hour:0, minute:5 });
++    expect(p.solarDate).toEqual({year:1957,month:1,day:1});
++    expect(p.timeAudit?.effectiveSolarDateTime?.day).toBe(31);
++    expect(p.computedPillars.day.hangul).toBe('임신');
++  });
++  it('does not create other invalid dates or change leap-month policy', () => {
++    expect(() => solarToLunarChecked(1956, 12, 32)).toThrow();
++    expect(() => lunarToSolarChecked(2050,12,30)).toThrow();
++    expect(() => calculateProfileFromBirth({...base,calendarType:'lunar',leapMonth:true})).toThrow();
++  });
++  it('rejects polar Placidus without changing normal-latitude charts', () => {
++    const input={localDateTime:'1900-04-15T12:34:00',timezone:'UTC',latitude:67,longitude:-74};
++    expect(calculateNatalChart(input).ok).toBe(false);
++    expect(calculateNatalChart({...input,latitude:37.5}).ok).toBe(true);
++  });
++});
+diff --git a/artifacts/saju-app/src/lib/calendarConversion.ts b/artifacts/saju-app/src/lib/calendarConversion.ts
+new file mode 100644
+index 0000000..c7bba46
+--- /dev/null
++++ b/artifacts/saju-app/src/lib/calendarConversion.ts
+@@ -0,0 +1,102 @@
++import { lunarToSolar, solarToLunar, calculateSaju } from "@fullstackfamily/manseryeok";
++
++export const isKnownCalendarSourceGap = (year: number, month: number, day: number) =>
++  year === 1956 && month === 12 && day === 31;
++
++/** One documented missing source row, not a generic invalid-date fallback.
++ * HKO 1956 calendar: solar 1956-12-31 = ordinary lunar 1956-11-30.
++ * Independent Korean calendar agrees. Existing adjacent rows confirm the
++ * lunar transition, year/month pillars, daily cycle and integer Julian day.
++ * https://www.hko.gov.hk/en/gts/time/calendar/pdf/files/1956e.pdf
++ */
++export function solarToLunarChecked(year: number, month: number, day: number): ReturnType<typeof solarToLunar> {
++  if (!isKnownCalendarSourceGap(year, month, day)) return solarToLunar(year, month, day);
++  const before = solarToLunar(1956, 12, 30);
++  const after = solarToLunar(1957, 1, 1);
++  if (before.lunar.year !== 1956 || before.lunar.month !== 11 || before.lunar.day !== 29 || before.lunar.isLeapMonth
++    || after.lunar.year !== 1956 || after.lunar.month !== 12 || after.lunar.day !== 1 || after.lunar.isLeapMonth
++    || before.gapja.dayPillar !== "신미" || after.gapja.dayPillar !== "계유"
++    || before.gapja.yearPillar !== after.gapja.yearPillar || before.gapja.monthPillar !== after.gapja.monthPillar
++    || after.julianDay - before.julianDay !== 2) {
++    throw new Error("달력 원본 자료가 변경되어 누락 행 보완을 재검토해야 합니다.");
++  }
++  return {
++    solar: { year, month, day },
++    lunar: { year: 1956, month: 11, day: 30, isLeapMonth: false },
++    gapja: { ...before.gapja, dayPillar: "임신", dayPillarHanja: "壬申" },
++    julianDay: before.julianDay + 1,
++  };
++}
++
++/** Reuse the dependency's hour calculation for an existing same-day-stem
++ * anchor; replace only the verified missing row's calendar pillars.
++ */
++export function calculateSajuChecked(...args: Parameters<typeof calculateSaju>): ReturnType<typeof calculateSaju> {
++  const [year, month, day, hour, minute, options] = args;
++  if (!isKnownCalendarSourceGap(year, month, day)) return calculateSaju(...args);
++  const row = solarToLunarChecked(year, month, day);
++  const anchor = calculateSaju(1956, 12, 21, hour, minute, options);
++  if (anchor.dayPillar[0] !== row.gapja.dayPillar[0]) throw new Error("시주 계산 기준 일간이 일치하지 않습니다.");
++  return { ...anchor, ...row.gapja, gapja: row.gapja };
++}
++
++/**
++ * manseryeok 1.0.8 searches only the solar year with the same number as the
++ * requested lunar year. Late lunar months can fall in the following solar
++ * January/February. Search existing source rows; never synthesize missing rows.
++ */
++export function lunarToSolarChecked(
++  year: number,
++  month: number,
++  day: number,
++  leap = false,
++): ReturnType<typeof lunarToSolar> {
++  if (
++    ![year, month, day].every(Number.isInteger) ||
++    year < 1900 ||
++    year > 2050 ||
++    month < 1 ||
++    month > 12 ||
++    day < 1 ||
++    day > 30
++  ) {
++    throw new RangeError("지원 범위의 유효한 음력 날짜가 필요합니다.");
++  }
++  if (year === 1956 && month === 11 && day === 30 && !leap) {
++    const row = solarToLunarChecked(1956, 12, 31);
++    return { lunar: { year, month, day, isLeapMonth: false }, solar: row.solar, gapja: row.gapja };
++  }
++  try {
++    return lunarToSolar(year, month, day, leap);
++  } catch (originalError) {
++    if (year >= 2050) throw originalError;
++    const start = Date.UTC(year + 1, 0, 1);
++    for (let offset = 0; offset < 60; offset++) {
++      const date = new Date(start + offset * 86400000);
++      let row;
++      try {
++        row = solarToLunar(
++          date.getUTCFullYear(),
++          date.getUTCMonth() + 1,
++          date.getUTCDate(),
++        );
++      } catch {
++        continue;
++      }
++      const lunar = row.lunar;
++      if (
++        lunar.year === year &&
++        lunar.month === month &&
++        lunar.day === day &&
++        lunar.isLeapMonth === leap
++      ) {
++        return {
++          lunar: { year, month, day, isLeapMonth: leap },
++          solar: row.solar,
++          gapja: row.gapja,
++        };
++      }
++    }
++    throw originalError;
++  }
++}
+diff --git a/artifacts/saju-app/src/lib/luckCycles.ts b/artifacts/saju-app/src/lib/luckCycles.ts
+index 15b2aec..c093020 100644
+--- a/artifacts/saju-app/src/lib/luckCycles.ts
++++ b/artifacts/saju-app/src/lib/luckCycles.ts
+@@ -1,6 +1,7 @@
++import { lunarToSolarChecked as lunarToSolar } from "./calendarConversion";
+ import type { BirthInput, ComputedPillars } from "./sajuEngine";
+ import { equationOfTimeMins } from "./sajuEngine";
+-import { lunarToSolar } from "@fullstackfamily/manseryeok";
++
+ 
+ export const STEMS = ["갑", "을", "병", "정", "무", "기", "경", "신", "임", "계"];
+ export const BRANCHES = ["자", "축", "인", "묘", "진", "사", "오", "미", "신", "유", "술", "해"];
+diff --git a/artifacts/saju-app/src/lib/sajuEngine.ts b/artifacts/saju-app/src/lib/sajuEngine.ts
+index 0ed877e..1e7ce14 100644
+--- a/artifacts/saju-app/src/lib/sajuEngine.ts
++++ b/artifacts/saju-app/src/lib/sajuEngine.ts
+@@ -1,7 +1,5 @@
++import { lunarToSolarChecked as lunarToSolar, solarToLunarChecked as solarToLunar, calculateSajuChecked as calculateSaju, isKnownCalendarSourceGap } from "./calendarConversion";
+ import {
+-  calculateSaju,
+-  solarToLunar,
+-  lunarToSolar,
+   type SajuResult,
+   type SajuOptions,
+ } from "@fullstackfamily/manseryeok";
+@@ -213,6 +211,7 @@ export function calculateProfileFromBirth(input: BirthInput, timeOpts?: TimeCorr
+   // 원본 출생시각은 보존하고 보정의 단계/한계를 별도 노출한다.
+   const effectiveTime = libraryInput ? { hour: libraryInput.hour, minute: libraryInput.minute } : null;
+   const warnings: string[] = ["SOLAR_TERM_INSTANT_NOT_SUPPORTED", "SAJU_FIXED_UTC9_TIMEZONE_NOT_VERIFIED"];
++  if (isKnownCalendarSourceGap(solarYear, solarMonth, solarDay) || (libraryInput && isKnownCalendarSourceGap(libraryInput.year, libraryInput.month, libraryInput.day))) warnings.push("CALENDAR_SOURCE_ROW_REPAIRED_1956_12_31");
+   if (!input.timeUnknown && localMeridianOn && input.longitude == null) warnings.push("DEFAULT_LONGITUDE_USED");
+   if (trueSolarTimeOn) warnings.push("EQUATION_OF_TIME_APPROXIMATION");
+   if (trueSolarTimeOn && !localMeridianOn) warnings.push("EOT_WITHOUT_LONGITUDE_NOT_TRUE_SOLAR_TIME");
+diff --git a/artifacts/saju-app/src/lib/western/houses.ts b/artifacts/saju-app/src/lib/western/houses.ts
+index 793b922..00c3d0a 100644
+--- a/artifacts/saju-app/src/lib/western/houses.ts
++++ b/artifacts/saju-app/src/lib/western/houses.ts
+@@ -11,6 +11,7 @@ function longitudeOfRa(ra: number, epsilon: number): number {
+   return norm360(Math.atan2(Math.sin(ra * D2R), Math.cos(ra * D2R) * Math.cos(epsilon)) * R2D);
+ }
+ export function calculatePlacidusCusps(ascendant: number, midheaven: number, latitude: number, obliquity: number): number[] | null {
++  if (Math.abs(latitude) >= 90 - obliquity) return null;
+   const epsilon = obliquity * D2R;
+   const phi = latitude * D2R;
+   const mc = norm360(midheaven);
+diff --git a/artifacts/saju-app/src/lib/ziwei/lunarConvert.ts b/artifacts/saju-app/src/lib/ziwei/lunarConvert.ts
+index 40790ad..98e6380 100644
+--- a/artifacts/saju-app/src/lib/ziwei/lunarConvert.ts
++++ b/artifacts/saju-app/src/lib/ziwei/lunarConvert.ts
+@@ -1,9 +1,10 @@
++import { lunarToSolarChecked as lunarToSolar, solarToLunarChecked as solarToLunar } from "../calendarConversion";
+ // 양력→음력/간지 변환. @fullstackfamily/manseryeok(기존 프로젝트에 이미 설치돼 있고 sajuEngine.ts가
+ // 쓰는 것과 동일 라이브러리)를 얇게 감싸기만 한다 — 이 파일이 sajuEngine.ts를 import하지는 않는다
+ // (라이브러리만 공유, 사주 엔진 코드/상태는 전혀 공유하지 않음). 1989-02-16 실행 결과가
+ // 己巳年丙寅月丁未日/음력 1989-01-11로, windada.com 실계산 결과와 정확히 일치함을 확인했다
+ // (2026-09-07, ruleSets/zhongzhouV1.ts 주석 참고).
+-import { solarToLunar, lunarToSolar } from "@fullstackfamily/manseryeok";
++
+ import { BRANCHES, STEMS, type Branch, type LunarBirth, type Stem } from "./types";
+ 
+ /** 0~23시를 12지지 시진(2시간 단위, 23:00~00:59=子)으로 변환. */
+diff --git a/chatgpt-plugin/package-lock.json b/chatgpt-plugin/package-lock.json
+index f28d963..85fb2fb 100644
+--- a/chatgpt-plugin/package-lock.json
++++ b/chatgpt-plugin/package-lock.json
+@@ -1,12 +1,12 @@
+ {
+   "name": "soyeon-three-charts",
+-  "version": "0.2.0-candidate",
++  "version": "0.2.1",
+   "lockfileVersion": 3,
+   "requires": true,
+   "packages": {
+     "": {
+       "name": "soyeon-three-charts",
+-      "version": "0.2.0-candidate",
++      "version": "0.2.1",
+       "dependencies": {
+         "@fullstackfamily/manseryeok": "1.0.8",
+         "astronomy-engine": "2.1.19"
+diff --git a/chatgpt-plugin/package.json b/chatgpt-plugin/package.json
+index 734f95e..9b42fd0 100644
+--- a/chatgpt-plugin/package.json
++++ b/chatgpt-plugin/package.json
+@@ -8,7 +8,7 @@
+     "test": "node --test tests/*.test.mjs",
+     "validate": "node scripts/validate-artifact.mjs"
+   },
+-  "version": "0.2.0-candidate",
++  "version": "0.2.1",
+   "dependencies": {
+     "@fullstackfamily/manseryeok": "1.0.8",
+     "astronomy-engine": "2.1.19"
+diff --git a/chatgpt-plugin/src/calculation.ts b/chatgpt-plugin/src/calculation.ts
+index 53a7ab4..3b35256 100644
+--- a/chatgpt-plugin/src/calculation.ts
++++ b/chatgpt-plugin/src/calculation.ts
+@@ -295,7 +295,7 @@ export function calculateThreeCharts(raw: unknown) {
+         ? "calculated"
+         : "partial",
+     algorithm: "existing-saju-app",
+-    engineVersion: "0.2.0-candidate",
++    engineVersion: "0.2.1",
+     timeAudit: {
+       saju: profile.timeAudit,
+       ziwei: {
+diff --git a/chatgpt-plugin/src/worker.ts b/chatgpt-plugin/src/worker.ts
+index 9bbaa5b..4aa0230 100644
+--- a/chatgpt-plugin/src/worker.ts
++++ b/chatgpt-plugin/src/worker.ts
+@@ -3,7 +3,7 @@ import {
+   resolveBirthplace,
+   InputError,
+ } from "./calculation";
+-const VERSION = "0.2.0-candidate";
++const VERSION = "0.2.1";
+ const birthSchema = {
+   type: "object",
+   additionalProperties: false,
+diff --git a/chatgpt-plugin/tests/calculation-guards.test.mjs b/chatgpt-plugin/tests/calculation-guards.test.mjs
+index fffa07c..453fb1c 100644
+--- a/chatgpt-plugin/tests/calculation-guards.test.mjs
++++ b/chatgpt-plugin/tests/calculation-guards.test.mjs
+@@ -65,7 +65,7 @@ test("MCP authentication boundary unchanged", async () =>
+   assert.equal((await rpc("three_charts_status", {}, false)).status, 401));
+ test("candidate identity is visible without birth data", async () => {
+   const r = await rpc("three_charts_status");
+-  assert.equal(r.body.result.structuredContent.version, "0.2.0-candidate");
++  assert.equal(r.body.result.structuredContent.version, "0.2.1");
+ });
+ test("real bundled API preserves existing keys and exposes per-system audit in text and structured response", async () => {
+   const r = await rpc("calculate_three_charts", birth);
+@@ -132,6 +132,19 @@ test("ordinary lunar API input uses converted solar date and original civil cloc
+   assert.deepEqual(value.solarDate, { year: 2000, month: 6, day: 15 });
+   assert.equal(value.timeAudit.western.utcInstant, "2000-06-15T10:29:00.000Z");
+ });
++
++test("late lunar dates cross the solar year without changing time policies", async () => {
++  const r = await rpc("calculate_three_charts", { ...birth, calendar: "lunar", birthDate: "2000-12-15", birthTime: "12:00" });
++  assert.equal(r.body.result.isError, false);
++  assert.deepEqual(r.body.result.structuredContent.solarDate, { year: 2001, month: 1, day: 9 });
++  assert.equal(r.body.result.structuredContent.timeAudit.western.utcInstant, "2001-01-09T03:00:00.000Z");
++});
++
++test("known repaired calendar date still respects historical timezone limitations", async () => {
++  const r = await rpc("calculate_three_charts", { ...birth, birthDate: "1956-12-31", birthTime: "12:00" });
++  assert.equal(r.body.result.isError, true);
++  assert.equal(r.body.result.structuredContent.error.code, "SAJU_ZIWEI_TIMEZONE_UNSUPPORTED");
++});
+ for (const [title, patch, code] of [
+   ["invalid solar date", { birthDate: "2001-02-29" }, "INVALID_DATE"],
+   ["invalid hour", { birthTime: "24:00" }, "TIME_REQUIRED"],

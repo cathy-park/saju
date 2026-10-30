@@ -1,23 +1,30 @@
+import { lunarToSolarChecked as lunarToSolar } from "./calendarConversion";
 import {
   calculateSaju,
   solarToLunar,
-  lunarToSolar,
   type SajuResult,
   type SajuOptions,
 } from "@fullstackfamily/manseryeok";
+import { shiftSolarDateTime, hourBoundaryDistance, type TimeCalculationAudit } from "./timeCalculationAudit";
 
 // ── 균시차 (Equation of Time) ──────────────────────────────────────────────
 // Returns the difference in MINUTES between Apparent Solar Time and Mean Solar
-// Time for a given calendar date (Spencer 1971 approximation, accurate ±30 sec).
+// Time for a given calendar date using the existing approximate formula.
+// No sub-minute accuracy guarantee is asserted; boundary cases need sensitivity tests.
 // Positive value → sun is ahead of mean time (TST > LMT).
-// Range: approx −16 min (Nov) to +14 min (Feb).
-export function equationOfTimeMins(year: number, month: number, day: number): number {
-  // Day-of-year (1 = Jan 1)
-  const start = Date.UTC(year, 0, 1);
-  const cur   = Date.UTC(year, month - 1, day);
-  const N = Math.round((cur - start) / 86400000) + 1;
-  const B = (2 * Math.PI / 365) * (N - 81);
-  return 9.87 * Math.sin(2 * B) - 7.53 * Math.cos(B) - 1.5 * Math.sin(B);
+// Sign convention: apparent minus mean solar time (February negative, November positive).
+export function equationOfTimeMins(year: number, month: number, day: number, hour = 12, minute = 0): number {
+  // USNO approximate solar coordinates at the original UTC+9 civil instant.
+  // Date-only callers default to KST noon. This remains an approximation.
+  const D = Date.UTC(year, month - 1, day, hour - 9, minute) / 86400000 + 2440587.5 - 2451545;
+  const norm = (n: number) => ((n % 360) + 360) % 360;
+  const rad = Math.PI / 180;
+  const g = norm(357.529 + 0.98560028 * D) * rad;
+  const q = norm(280.459 + 0.98564736 * D);
+  const L = (q + 1.915 * Math.sin(g) + 0.020 * Math.sin(2 * g)) * rad;
+  const epsilon = (23.439 - 0.00000036 * D) * rad;
+  const ra = norm(Math.atan2(Math.cos(epsilon) * Math.sin(L), Math.cos(L)) / rad);
+  return (norm(q - ra + 180) - 180) * 4;
 }
 
 export interface BirthInput {
@@ -32,6 +39,7 @@ export interface BirthInput {
   birthplace?: string;
   timeUnknown: boolean;
   longitude?: number;
+  leapMonth?: boolean;
   relationshipStatus?: "미혼" | "연애중" | "기혼";
 }
 
@@ -72,6 +80,7 @@ export interface SajuProfile {
   rawResult: SajuResult;
   isTimeCorrected: boolean;
   correctedTime?: { hour: number; minute: number };
+  timeAudit?: TimeCalculationAudit;
 }
 
 const STEM_ELEMENTS: Record<string, keyof FiveElementCount> = {
@@ -119,6 +128,12 @@ export interface TimeCorrectOpts {
 }
 
 export function calculateProfileFromBirth(input: BirthInput, timeOpts?: TimeCorrectOpts): SajuProfile {
+  if (!["solar", "lunar"].includes(input.calendarType) || !["남", "여"].includes(input.gender)) throw new RangeError("유효한 달력과 성별이 필요합니다.");
+  if (!Number.isInteger(input.year) || input.year < 1900 || input.year > 2050) throw new RangeError("지원 연도는 1900~2050년입니다.");
+  if (input.leapMonth) throw new RangeError("음력 윤달은 양력으로 변환해 입력해 주세요.");
+  if (input.longitude != null && (!Number.isFinite(input.longitude) || Math.abs(input.longitude) > 180)) throw new RangeError("유효한 경도가 필요합니다.");
+  if (!input.timeUnknown && (input.hour == null || input.minute == null)) throw new RangeError("출생 시각과 분이 필요합니다.");
+  if (input.calendarType === "solar") shiftSolarDateTime(input.year, input.month, input.day, input.timeUnknown ? 0 : input.hour!, input.timeUnknown ? 0 : input.minute!, 0);
   let solarYear = input.year;
   let solarMonth = input.month;
   let solarDay = input.day;
@@ -167,23 +182,22 @@ export function calculateProfileFromBirth(input: BirthInput, timeOpts?: TimeCorr
   // Equation of Time (균시차) offset in minutes — applied when trueSolarTimeOn.
   let eotOffsetMins = 0;
   if (trueSolarTimeOn) {
-    eotOffsetMins = Math.round(equationOfTimeMins(solarYear, solarMonth, solarDay));
+    eotOffsetMins = Math.round(equationOfTimeMins(solarYear, solarMonth, solarDay, input.hour, input.minute));
   }
 
-  let rawResult: SajuResult;
-
-  if (input.timeUnknown) {
-    rawResult = calculateSaju(solarYear, solarMonth, solarDay, undefined, undefined, options);
-  } else {
-    // Apply EoT correction to hour/minute before calling library.
-    let calcHour   = input.hour   ?? 0;
-    let calcMinute = (input.minute ?? 0) + eotOffsetMins;
-    // Normalise minutes into valid range (handles cross-hour and cross-day)
-    while (calcMinute < 0)   { calcMinute += 60; calcHour -= 1; }
-    while (calcMinute >= 60) { calcMinute -= 60; calcHour += 1; }
-    calcHour = ((calcHour % 24) + 24) % 24;
-    rawResult = calculateSaju(solarYear, solarMonth, solarDay, calcHour, calcMinute, options);
-  }
+  // The dependency only normalizes a single negative minute/hour and discards
+  // date rollover. Apply both offsets here, then call its uncorrected calculator.
+  const longitudeOffsetMins = !input.timeUnknown && localMeridianOn
+    ? -Math.round((135 - (input.longitude ?? 127)) * 4) : 0;
+  const libraryInput = input.timeUnknown ? null : shiftSolarDateTime(
+    solarYear, solarMonth, solarDay, input.hour!, input.minute!, eotOffsetMins + longitudeOffsetMins,
+  );
+  const rawResult: SajuResult = input.timeUnknown
+    ? calculateSaju(solarYear, solarMonth, solarDay, undefined, undefined, { ...options, applyTimeCorrection: false })
+    : calculateSaju(libraryInput!.year, libraryInput!.month, libraryInput!.day, libraryInput!.hour, libraryInput!.minute, { ...options, applyTimeCorrection: false });
+  // Preserve legacy fields: these describe the longitude correction only.
+  rawResult.isTimeCorrected = longitudeOffsetMins !== 0;
+  if (rawResult.isTimeCorrected) rawResult.correctedTime = { hour: libraryInput!.hour, minute: libraryInput!.minute };
 
   const computedPillars: ComputedPillars = {
     year: { hangul: rawResult.yearPillar, hanja: rawResult.yearPillarHanja },
@@ -201,6 +215,35 @@ export function calculateProfileFromBirth(input: BirthInput, timeOpts?: TimeCorr
 
   const fiveElementDistribution = countFiveElements(computedPillars);
 
+  // 원본 출생시각은 보존하고 보정의 단계/한계를 별도 노출한다.
+  const effectiveTime = libraryInput ? { hour: libraryInput.hour, minute: libraryInput.minute } : null;
+  const warnings: string[] = ["SOLAR_TERM_INSTANT_NOT_SUPPORTED", "SAJU_FIXED_UTC9_TIMEZONE_NOT_VERIFIED"];
+  if (!input.timeUnknown && localMeridianOn && input.longitude == null) warnings.push("DEFAULT_LONGITUDE_USED");
+  if (trueSolarTimeOn) warnings.push("EQUATION_OF_TIME_APPROXIMATION");
+  if (trueSolarTimeOn && !localMeridianOn) warnings.push("EOT_WITHOUT_LONGITUDE_NOT_TRUE_SOLAR_TIME");
+  if (!input.timeUnknown && localMeridianOn && !effectiveTime) warnings.push("CORRECTED_TIME_UNAVAILABLE");
+  const boundary = effectiveTime ? hourBoundaryDistance(effectiveTime.hour, effectiveTime.minute) : null;
+  if (boundary !== null && boundary <= 5) warnings.push("HOUR_BRANCH_BOUNDARY_WITHIN_5_MINUTES");
+  const timeAudit: TimeCalculationAudit = {
+    schemaVersion: "time-calculation-audit/v1",
+    basis: input.timeUnknown ? "unknown" : trueSolarTimeOn
+      ? (localMeridianOn ? "apparent-solar-approximate" : "equation-only")
+      : (localMeridianOn ? "local-mean" : "civil"),
+    originalSolarDate: { year: solarYear, month: solarMonth, day: solarDay },
+    originalTime: input.timeUnknown ? null : { hour: input.hour ?? 0, minute: input.minute ?? 0 },
+    longitude: input.longitude ?? 127,
+    longitudeSource: input.longitude == null ? "legacy-default" : "input",
+    equationOfTimeMinutesApplied: eotOffsetMins,
+    libraryInput,
+    effectiveTime,
+    effectiveSolarDateTime: libraryInput,
+    longitudeMinutesApplied: longitudeOffsetMins,
+    hourBoundaryDistanceMinutes: boundary,
+    timezoneVerification: "not-performed-by-this-wrapper",
+    longitudeDateRolloverVerification: "wrapper-calendar-arithmetic",
+    warnings,
+  };
+
   return {
     computedPillars,
     fiveElementDistribution,
@@ -209,6 +252,7 @@ export function calculateProfileFromBirth(input: BirthInput, timeOpts?: TimeCorr
     rawResult,
     isTimeCorrected: rawResult.isTimeCorrected,
     correctedTime: rawResult.correctedTime,
+    timeAudit,
   };
 }
 

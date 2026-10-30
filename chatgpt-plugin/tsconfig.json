@@ -1,0 +1,18 @@
+{
+  "extends": "../tsconfig.base.json",
+  "include": [
+    "src/**/*.ts",
+    "../artifacts/saju-app/node_modules/vite/client.d.ts"
+  ],
+  "compilerOptions": {
+    "noEmit": true,
+    "lib": ["esnext", "dom", "dom.iterable"],
+    "allowImportingTsExtensions": true,
+    "typeRoots": ["../artifacts/saju-app/node_modules/@types"],
+    "types": ["node"],
+    "paths": {
+      "app/*": ["../artifacts/saju-app/src/lib/*"],
+      "@/*": ["../artifacts/saju-app/src/*"]
+    }
+  }
+}

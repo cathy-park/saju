@@ -12,8 +12,7 @@
 import { getTenGod, type TenGod } from "./tenGods";
 import {
   JIJANGGAN,
-  YANGIN_BRANCH,
-  TG_TO_GUKGUK,
+  resolveGukgukName,
   GUKGUK_DESC,
   GUKGUK_TONE,
   GUKGUK_COLOR,
@@ -52,13 +51,14 @@ export function determineLatentGukguk(
   const tg = getTenGod(dayStem, ilgiStem);
   if (!tg) return null;
 
-  let gukgukName = TG_TO_GUKGUK[tg];
-  if (tg === "비견") {
-    const yanginBr = YANGIN_BRANCH[dayStem];
-    gukgukName = yanginBr === monthBranch ? "양인격" : "건록격";
-  }
+  const gukgukName = resolveGukgukName(dayStem, monthBranch, tg);
+  if (!gukgukName) return null;
 
-  const heavenStemsNonDay = allStems.filter((s) => s !== dayStem);
+  // Callers use different pillar orders. Remove one day stem occurrence,
+  // preserving equal stems exposed by other pillars.
+  const heavenStemsNonDay = [...allStems];
+  const dayIndex = heavenStemsNonDay.indexOf(dayStem);
+  if (dayIndex >= 0) heavenStemsNonDay.splice(dayIndex, 1);
   const isTransparent = heavenStemsNonDay.includes(ilgiStem);
   const tone = GUKGUK_TONE[gukgukName] ?? "중";
 
