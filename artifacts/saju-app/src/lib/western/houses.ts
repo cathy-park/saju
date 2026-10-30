@@ -11,6 +11,8 @@ function longitudeOfRa(ra: number, epsilon: number): number {
   return norm360(Math.atan2(Math.sin(ra * D2R), Math.cos(ra * D2R) * Math.cos(epsilon)) * R2D);
 }
 export function calculatePlacidusCusps(ascendant: number, midheaven: number, latitude: number, obliquity: number): number[] | null {
+  // Placidus is undefined beyond the polar circle; do not accept a partial solver result.
+  if (Math.abs(latitude) >= 90 - obliquity) return null;
   const epsilon = obliquity * D2R;
   const phi = latitude * D2R;
   const mc = norm360(midheaven);

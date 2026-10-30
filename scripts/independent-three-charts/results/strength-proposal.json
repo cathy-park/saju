@@ -1,0 +1,591 @@
+{
+  "scope": "documented implementation invariants; not empirical fortune validation",
+  "baselineExamples": {
+    "onePeer": {
+      "score": 4.27,
+      "level": "태강",
+      "dayMasterState": "strong",
+      "reason": {
+        "deukryeong": {
+          "score": 3,
+          "note": "월지 인"
+        },
+        "deukji": {
+          "score": 1.5,
+          "note": "지지(통근/지장간/충 보정 포함)"
+        },
+        "deukse": {
+          "score": 0,
+          "note": "천간(일간 제외)"
+        },
+        "adjustments": [
+          "설기(洩氣·식상·재성): −0.23"
+        ]
+      },
+      "description": "일간 기운이 매우 강합니다",
+      "explanation": [
+        "득령: 월지(인) 기운이 일간(목)을 돕습니다",
+        "득지: 지지 통근/지장간 보정으로 일간을 지지합니다",
+        "득세: 천간 영향이 크지 않습니다",
+        "설기: 식상·재성 구조로 일간 기운이 일부 소모·유출됩니다(−0.23)"
+      ],
+      "strengthDebug": {
+        "dayStem": "갑",
+        "deukryeong": 3,
+        "branchContrib": 1.5,
+        "stemContrib": 0,
+        "leakagePenalty": 0.23,
+        "yinAdjustment": 0,
+        "finalScore": 4.27,
+        "finalLevel": "태강"
+      }
+    },
+    "noPeer": {
+      "score": 4.27,
+      "level": "태강",
+      "dayMasterState": "strong",
+      "reason": {
+        "deukryeong": {
+          "score": 3,
+          "note": "월지 인"
+        },
+        "deukji": {
+          "score": 1.5,
+          "note": "지지(통근/지장간/충 보정 포함)"
+        },
+        "deukse": {
+          "score": 0,
+          "note": "천간(일간 제외)"
+        },
+        "adjustments": [
+          "설기(洩氣·식상·재성): −0.23"
+        ]
+      },
+      "description": "일간 기운이 매우 강합니다",
+      "explanation": [
+        "득령: 월지(인) 기운이 일간(목)을 돕습니다",
+        "득지: 지지 통근/지장간 보정으로 일간을 지지합니다",
+        "득세: 천간 영향이 크지 않습니다",
+        "설기: 식상·재성 구조로 일간 기운이 일부 소모·유출됩니다(−0.23)"
+      ],
+      "strengthDebug": {
+        "dayStem": "갑",
+        "deukryeong": 3,
+        "branchContrib": 1.5,
+        "stemContrib": 0,
+        "leakagePenalty": 0.23,
+        "yinAdjustment": 0,
+        "finalScore": 4.27,
+        "finalLevel": "태강"
+      }
+    },
+    "scarcerWealth": {
+      "primary": "화",
+      "secondary": "토",
+      "confidence": "high",
+      "tenGodGroup": "식상"
+    },
+    "scarcerOutput": {
+      "primary": "토",
+      "secondary": "화",
+      "confidence": "high",
+      "tenGodGroup": "재성"
+    },
+    "twoStemMain": {
+      "fiveElements": {
+        "목": 1,
+        "화": 0,
+        "토": 0,
+        "금": 0,
+        "수": 1
+      },
+      "tenGodGroups": {
+        "비겁": 1,
+        "식상": 0,
+        "재성": 0,
+        "관성": 0,
+        "인성": 1
+      },
+      "strengthScore": 4,
+      "strengthLevel": "태강",
+      "strengthResult": {
+        "score": 4,
+        "level": "태강",
+        "dayMasterState": "strong",
+        "reason": {
+          "deukryeong": {
+            "score": 2.5,
+            "note": "월지 자"
+          },
+          "deukji": {
+            "score": 1.5,
+            "note": "지지(통근/지장간/충 보정 포함)"
+          },
+          "deukse": {
+            "score": 0,
+            "note": "천간(일간 제외)"
+          },
+          "adjustments": []
+        },
+        "description": "일간 기운이 매우 강합니다",
+        "explanation": [
+          "득령: 월지(자) 기운이 일간(목)을 돕습니다",
+          "득지: 지지 통근/지장간 보정으로 일간을 지지합니다",
+          "득세: 천간 영향이 크지 않습니다"
+        ],
+        "strengthDebug": {
+          "dayStem": "갑",
+          "deukryeong": 2.5,
+          "branchContrib": 1.5,
+          "stemContrib": 0,
+          "leakagePenalty": 0,
+          "yinAdjustment": 0,
+          "finalScore": 4,
+          "finalLevel": "태강"
+        }
+      },
+      "yongshinResult": {
+        "primary": "토",
+        "secondary": "화",
+        "confidence": "high",
+        "tenGodGroup": "재성"
+      },
+      "dayMasterElement": "목"
+    }
+  },
+  "candidateExamples": {
+    "onePeer": {
+      "score": 5.27,
+      "level": "극신강",
+      "dayMasterState": "strong",
+      "reason": {
+        "deukryeong": {
+          "score": 3,
+          "note": "월지 인"
+        },
+        "deukji": {
+          "score": 1.5,
+          "note": "지지(통근/지장간/충 보정 포함)"
+        },
+        "deukse": {
+          "score": 1,
+          "note": "천간(일간 제외)"
+        },
+        "adjustments": [
+          "설기(洩氣·식상·재성): −0.23"
+        ]
+      },
+      "description": "일간 기운이 극도로 강합니다",
+      "explanation": [
+        "득령: 월지(인) 기운이 일간(목)을 돕습니다",
+        "득지: 지지 통근/지장간 보정으로 일간을 지지합니다",
+        "득세: 천간에서 비겁·인성의 지지가 있습니다",
+        "설기: 식상·재성 구조로 일간 기운이 일부 소모·유출됩니다(−0.23)"
+      ],
+      "strengthDebug": {
+        "dayStem": "갑",
+        "deukryeong": 3,
+        "branchContrib": 1.5,
+        "stemContrib": 1,
+        "leakagePenalty": 0.23,
+        "yinAdjustment": 0,
+        "finalScore": 5.27,
+        "finalLevel": "극신강"
+      }
+    },
+    "noPeer": {
+      "score": 4.27,
+      "level": "태강",
+      "dayMasterState": "strong",
+      "reason": {
+        "deukryeong": {
+          "score": 3,
+          "note": "월지 인"
+        },
+        "deukji": {
+          "score": 1.5,
+          "note": "지지(통근/지장간/충 보정 포함)"
+        },
+        "deukse": {
+          "score": 0,
+          "note": "천간(일간 제외)"
+        },
+        "adjustments": [
+          "설기(洩氣·식상·재성): −0.23"
+        ]
+      },
+      "description": "일간 기운이 매우 강합니다",
+      "explanation": [
+        "득령: 월지(인) 기운이 일간(목)을 돕습니다",
+        "득지: 지지 통근/지장간 보정으로 일간을 지지합니다",
+        "득세: 천간 영향이 크지 않습니다",
+        "설기: 식상·재성 구조로 일간 기운이 일부 소모·유출됩니다(−0.23)"
+      ],
+      "strengthDebug": {
+        "dayStem": "갑",
+        "deukryeong": 3,
+        "branchContrib": 1.5,
+        "stemContrib": 0,
+        "leakagePenalty": 0.23,
+        "yinAdjustment": 0,
+        "finalScore": 4.27,
+        "finalLevel": "태강"
+      }
+    },
+    "scarcerWealth": {
+      "primary": "토",
+      "secondary": "화",
+      "confidence": "high",
+      "tenGodGroup": "재성"
+    },
+    "scarcerOutput": {
+      "primary": "화",
+      "secondary": "토",
+      "confidence": "high",
+      "tenGodGroup": "식상"
+    },
+    "twoStemMain": {
+      "fiveElements": {
+        "목": 1,
+        "화": 0,
+        "토": 0,
+        "금": 0,
+        "수": 1
+      },
+      "tenGodGroups": {
+        "비겁": 1,
+        "식상": 0,
+        "재성": 0,
+        "관성": 0,
+        "인성": 1
+      },
+      "strengthScore": 4,
+      "strengthLevel": "태강",
+      "strengthResult": {
+        "score": 4,
+        "level": "태강",
+        "dayMasterState": "strong",
+        "reason": {
+          "deukryeong": {
+            "score": 2.5,
+            "note": "월지 자"
+          },
+          "deukji": {
+            "score": 1.5,
+            "note": "지지(통근/지장간/충 보정 포함)"
+          },
+          "deukse": {
+            "score": 0,
+            "note": "천간(일간 제외)"
+          },
+          "adjustments": []
+        },
+        "description": "일간 기운이 매우 강합니다",
+        "explanation": [
+          "득령: 월지(자) 기운이 일간(목)을 돕습니다",
+          "득지: 지지 통근/지장간 보정으로 일간을 지지합니다",
+          "득세: 천간 영향이 크지 않습니다"
+        ],
+        "strengthDebug": {
+          "dayStem": "갑",
+          "deukryeong": 2.5,
+          "branchContrib": 1.5,
+          "stemContrib": 0,
+          "leakagePenalty": 0,
+          "yinAdjustment": 0,
+          "finalScore": 4,
+          "finalLevel": "태강"
+        }
+      },
+      "yongshinResult": {
+        "primary": "토",
+        "secondary": "화",
+        "confidence": "high",
+        "tenGodGroup": "재성"
+      },
+      "dayMasterElement": "목"
+    }
+  },
+  "impact": {
+    "cases": 10000,
+    "scoreChanged": 2931,
+    "levelChanged": 1373,
+    "primaryYongshinChanged": 1859,
+    "secondaryYongshinChanged": 2021,
+    "maxAbsoluteScoreChange": 3.01,
+    "examples": [
+      {
+        "birth": {
+          "name": "synthetic",
+          "gender": "여",
+          "calendarType": "solar",
+          "year": 1901,
+          "month": 1,
+          "day": 11,
+          "hour": 2,
+          "minute": 14,
+          "timeUnknown": false,
+          "longitude": 127
+        },
+        "baseline": {
+          "score": 4.23,
+          "level": "태강",
+          "yongshin": {
+            "primary": "금",
+            "secondary": "수",
+            "confidence": "high",
+            "tenGodGroup": "식상"
+          }
+        },
+        "candidate": {
+          "score": 5.23,
+          "level": "극신강",
+          "yongshin": {
+            "primary": "목",
+            "secondary": "수",
+            "confidence": "high",
+            "tenGodGroup": "관성"
+          }
+        }
+      },
+      {
+        "birth": {
+          "name": "synthetic",
+          "gender": "여",
+          "calendarType": "solar",
+          "year": 1901,
+          "month": 1,
+          "day": 21,
+          "hour": 4,
+          "minute": 28,
+          "timeUnknown": false,
+          "longitude": 127
+        },
+        "baseline": {
+          "score": 2.04,
+          "level": "신강",
+          "yongshin": {
+            "primary": "금",
+            "secondary": "수",
+            "confidence": "high",
+            "tenGodGroup": "식상"
+          }
+        },
+        "candidate": {
+          "score": 3.04,
+          "level": "태강",
+          "yongshin": {
+            "primary": "금",
+            "secondary": "수",
+            "confidence": "high",
+            "tenGodGroup": "식상"
+          }
+        }
+      },
+      {
+        "birth": {
+          "name": "synthetic",
+          "gender": "여",
+          "calendarType": "solar",
+          "year": 1901,
+          "month": 1,
+          "day": 31,
+          "hour": 6,
+          "minute": 42,
+          "timeUnknown": false,
+          "longitude": 127
+        },
+        "baseline": {
+          "score": 2.14,
+          "level": "신강",
+          "yongshin": {
+            "primary": "금",
+            "secondary": "수",
+            "confidence": "high",
+            "tenGodGroup": "식상"
+          }
+        },
+        "candidate": {
+          "score": 3.14,
+          "level": "태강",
+          "yongshin": {
+            "primary": "수",
+            "secondary": "금",
+            "confidence": "high",
+            "tenGodGroup": "재성"
+          }
+        }
+      },
+      {
+        "birth": {
+          "name": "synthetic",
+          "gender": "여",
+          "calendarType": "solar",
+          "year": 1901,
+          "month": 4,
+          "day": 21,
+          "hour": 22,
+          "minute": 34,
+          "timeUnknown": false,
+          "longitude": 127
+        },
+        "baseline": {
+          "score": 3.52,
+          "level": "태강",
+          "yongshin": {
+            "primary": "수",
+            "secondary": "금",
+            "confidence": "high",
+            "tenGodGroup": "재성"
+          }
+        },
+        "candidate": {
+          "score": 3.52,
+          "level": "태강",
+          "yongshin": {
+            "primary": "금",
+            "secondary": "수",
+            "confidence": "high",
+            "tenGodGroup": "식상"
+          }
+        }
+      },
+      {
+        "birth": {
+          "name": "synthetic",
+          "gender": "여",
+          "calendarType": "solar",
+          "year": 1901,
+          "month": 5,
+          "day": 31,
+          "hour": 6,
+          "minute": 30,
+          "timeUnknown": false,
+          "longitude": 127
+        },
+        "baseline": {
+          "score": 3.05,
+          "level": "태강",
+          "yongshin": {
+            "primary": "금",
+            "secondary": "수",
+            "confidence": "high",
+            "tenGodGroup": "식상"
+          }
+        },
+        "candidate": {
+          "score": 3.05,
+          "level": "태강",
+          "yongshin": {
+            "primary": "수",
+            "secondary": "금",
+            "confidence": "high",
+            "tenGodGroup": "재성"
+          }
+        }
+      },
+      {
+        "birth": {
+          "name": "synthetic",
+          "gender": "남",
+          "calendarType": "solar",
+          "year": 1901,
+          "month": 6,
+          "day": 15,
+          "hour": 9,
+          "minute": 51,
+          "timeUnknown": false,
+          "longitude": 127
+        },
+        "baseline": {
+          "score": -3.2,
+          "level": "태약",
+          "yongshin": {
+            "primary": "수",
+            "secondary": "목",
+            "confidence": "high",
+            "tenGodGroup": "인성"
+          }
+        },
+        "candidate": {
+          "score": -2.2,
+          "level": "신약",
+          "yongshin": {
+            "primary": "수",
+            "secondary": "목",
+            "confidence": "high",
+            "tenGodGroup": "인성/비겁"
+          }
+        }
+      },
+      {
+        "birth": {
+          "name": "synthetic",
+          "gender": "남",
+          "calendarType": "solar",
+          "year": 1901,
+          "month": 6,
+          "day": 25,
+          "hour": 11,
+          "minute": 5,
+          "timeUnknown": false,
+          "longitude": 127
+        },
+        "baseline": {
+          "score": -5.2,
+          "level": "극신약",
+          "yongshin": {
+            "primary": "수",
+            "secondary": "목",
+            "confidence": "high",
+            "tenGodGroup": "인성"
+          }
+        },
+        "candidate": {
+          "score": -4.2,
+          "level": "태약",
+          "yongshin": {
+            "primary": "수",
+            "secondary": "목",
+            "confidence": "high",
+            "tenGodGroup": "인성"
+          }
+        }
+      },
+      {
+        "birth": {
+          "name": "synthetic",
+          "gender": "여",
+          "calendarType": "solar",
+          "year": 1901,
+          "month": 7,
+          "day": 10,
+          "hour": 14,
+          "minute": 26,
+          "timeUnknown": false,
+          "longitude": 127
+        },
+        "baseline": {
+          "score": 3.2,
+          "level": "태강",
+          "yongshin": {
+            "primary": "금",
+            "secondary": "수",
+            "confidence": "high",
+            "tenGodGroup": "식상"
+          }
+        },
+        "candidate": {
+          "score": 3.2,
+          "level": "태강",
+          "yongshin": {
+            "primary": "수",
+            "secondary": "금",
+            "confidence": "high",
+            "tenGodGroup": "재성"
+          }
+        }
+      }
+    ]
+  }
+}

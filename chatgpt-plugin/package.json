@@ -8,7 +8,7 @@
     "test": "node --test tests/*.test.mjs",
     "validate": "node scripts/validate-artifact.mjs"
   },
-  "version": "0.2.0-candidate",
+  "version": "0.3.0-audit-candidate",
   "dependencies": {
     "@fullstackfamily/manseryeok": "1.0.8",
     "astronomy-engine": "2.1.19"

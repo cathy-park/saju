@@ -1,7 +1,7 @@
+import { lunarToSolarChecked as lunarToSolar } from "./calendarConversion";
 import {
   calculateSaju,
   solarToLunar,
-  lunarToSolar,
   type SajuResult,
   type SajuOptions,
 } from "@fullstackfamily/manseryeok";
@@ -13,13 +13,18 @@ import { shiftSolarDateTime, hourBoundaryDistance, type TimeCalculationAudit } f
 // No sub-minute accuracy guarantee is asserted; boundary cases need sensitivity tests.
 // Positive value → sun is ahead of mean time (TST > LMT).
 // Sign convention: apparent minus mean solar time (February negative, November positive).
-export function equationOfTimeMins(year: number, month: number, day: number): number {
-  // Day-of-year (1 = Jan 1)
-  const start = Date.UTC(year, 0, 1);
-  const cur   = Date.UTC(year, month - 1, day);
-  const N = Math.round((cur - start) / 86400000) + 1;
-  const B = (2 * Math.PI / 365) * (N - 81);
-  return 9.87 * Math.sin(2 * B) - 7.53 * Math.cos(B) - 1.5 * Math.sin(B);
+export function equationOfTimeMins(year: number, month: number, day: number, hour = 12, minute = 0): number {
+  // USNO approximate solar coordinates at the original UTC+9 civil instant.
+  // Date-only callers default to KST noon. This remains an approximation.
+  const D = Date.UTC(year, month - 1, day, hour - 9, minute) / 86400000 + 2440587.5 - 2451545;
+  const norm = (n: number) => ((n % 360) + 360) % 360;
+  const rad = Math.PI / 180;
+  const g = norm(357.529 + 0.98560028 * D) * rad;
+  const q = norm(280.459 + 0.98564736 * D);
+  const L = (q + 1.915 * Math.sin(g) + 0.020 * Math.sin(2 * g)) * rad;
+  const epsilon = (23.439 - 0.00000036 * D) * rad;
+  const ra = norm(Math.atan2(Math.cos(epsilon) * Math.sin(L), Math.cos(L)) / rad);
+  return (norm(q - ra + 180) - 180) * 4;
 }
 
 export interface BirthInput {
@@ -177,7 +182,7 @@ export function calculateProfileFromBirth(input: BirthInput, timeOpts?: TimeCorr
   // Equation of Time (균시차) offset in minutes — applied when trueSolarTimeOn.
   let eotOffsetMins = 0;
   if (trueSolarTimeOn) {
-    eotOffsetMins = Math.round(equationOfTimeMins(solarYear, solarMonth, solarDay));
+    eotOffsetMins = Math.round(equationOfTimeMins(solarYear, solarMonth, solarDay, input.hour, input.minute));
   }
 
   // The dependency only normalizes a single negative minute/hour and discards

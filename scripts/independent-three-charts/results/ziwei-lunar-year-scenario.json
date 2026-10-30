@@ -1,0 +1,75 @@
+{
+  "version": "iztro@2.6.3",
+  "policies": {
+    "yearDivide": "normal (lunar-year)",
+    "dayDivide": "current (midnight)",
+    "fixLeap": false
+  },
+  "strategies": {
+    "default": {
+      "cases": 8640,
+      "mismatchedCases": {
+        "ming": 0,
+        "shen": 0,
+        "bureau": 0,
+        "major": 0,
+        "minor": 0,
+        "mutagens": 0,
+        "decadals": 0
+      },
+      "samples": {}
+    }
+  },
+  "night": [
+    {
+      "dayDivide": "current",
+      "time": 0,
+      "lunar": "二〇〇〇年五月十四",
+      "ming": "午",
+      "ziwei": "巳"
+    },
+    {
+      "dayDivide": "current",
+      "time": 12,
+      "lunar": "二〇〇〇年五月十四",
+      "ming": "午",
+      "ziwei": "巳"
+    },
+    {
+      "dayDivide": "forward",
+      "time": 0,
+      "lunar": "二〇〇〇年五月十四",
+      "ming": "午",
+      "ziwei": "巳"
+    },
+    {
+      "dayDivide": "forward",
+      "time": 12,
+      "lunar": "二〇〇〇年五月十四",
+      "ming": "午",
+      "ziwei": "午"
+    }
+  ],
+  "annualSamples": [
+    {
+      "date": "2024-1-1",
+      "yearlyBranch": "卯",
+      "yearlyIndex": 1
+    },
+    {
+      "date": "2024-2-4",
+      "yearlyBranch": "卯",
+      "yearlyIndex": 1
+    },
+    {
+      "date": "2024-2-10",
+      "yearlyBranch": "辰",
+      "yearlyIndex": 2
+    },
+    {
+      "date": "2024-6-15",
+      "yearlyBranch": "辰",
+      "yearlyIndex": 2
+    }
+  ]
+}

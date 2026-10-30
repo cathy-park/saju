@@ -1,0 +1,140 @@
+{
+  "horizons": [
+    {
+      "body": "sun",
+      "jd": 2451545,
+      "date": "2000-01-01T12:00:00.000Z",
+      "referenceLongitude": 280.3689092,
+      "referenceLatitude": 0.0002381,
+      "longitudeErrorArcsec": 0.6140166532532021,
+      "latitudeErrorArcsec": 0.8531261852640776
+    },
+    {
+      "body": "sun",
+      "jd": 2460389.5,
+      "date": "2024-03-20T00:00:00.000Z",
+      "referenceLongitude": 359.8713785,
+      "referenceLatitude": 0.0001122,
+      "longitudeErrorArcsec": 0.02661441130840103,
+      "latitudeErrorArcsec": 0.1717409247374815
+    },
+    {
+      "body": "moon",
+      "jd": 2451545,
+      "date": "2000-01-01T12:00:00.000Z",
+      "referenceLongitude": 223.323786,
+      "referenceLatitude": 5.1707422,
+      "longitudeErrorArcsec": 0.3784589070164657,
+      "latitudeErrorArcsec": 0.1696696481552351
+    },
+    {
+      "body": "moon",
+      "jd": 2460389.5,
+      "date": "2024-03-20T00:00:00.000Z",
+      "referenceLongitude": 122.2517701,
+      "referenceLatitude": 5.0489089,
+      "longitudeErrorArcsec": 0.4328733477905189,
+      "latitudeErrorArcsec": 0.2265719538961264
+    },
+    {
+      "body": "mercury",
+      "jd": 2451545,
+      "date": "2000-01-01T12:00:00.000Z",
+      "referenceLongitude": 271.8892699,
+      "referenceLatitude": -0.994819,
+      "longitudeErrorArcsec": 1.2882007332336798,
+      "latitudeErrorArcsec": 0.8914569320112697
+    },
+    {
+      "body": "mercury",
+      "jd": 2460389.5,
+      "date": "2024-03-20T00:00:00.000Z",
+      "referenceLongitude": 17.2524459,
+      "referenceLatitude": 1.4503304,
+      "longitudeErrorArcsec": 3.3377717797975492,
+      "latitudeErrorArcsec": 0.4459354289911843
+    }
+  ],
+  "hko": [
+    {
+      "longitude": 0,
+      "publishedUTC": "2024-03-20T03:06:00Z",
+      "engineUTC": "2024-03-20T03:06:28.030Z",
+      "absoluteDifferenceSeconds": 28.03,
+      "publishedResolutionSeconds": 60
+    },
+    {
+      "longitude": 90,
+      "publishedUTC": "2024-06-20T20:51:00Z",
+      "engineUTC": "2024-06-20T20:51:02.495Z",
+      "absoluteDifferenceSeconds": 2.495,
+      "publishedResolutionSeconds": 60
+    },
+    {
+      "longitude": 180,
+      "publishedUTC": "2024-09-22T12:44:00Z",
+      "engineUTC": "2024-09-22T12:43:59.738Z",
+      "absoluteDifferenceSeconds": 0.262,
+      "publishedResolutionSeconds": 60
+    },
+    {
+      "longitude": 270,
+      "publishedUTC": "2024-12-21T09:21:00Z",
+      "engineUTC": "2024-12-21T09:20:23.109Z",
+      "absoluteDifferenceSeconds": 36.891,
+      "publishedResolutionSeconds": 60
+    }
+  ],
+  "midnight": [
+    {
+      "day": 15,
+      "hour": 22,
+      "minute": 59,
+      "dayPillar": "갑진",
+      "hourPillar": "을해",
+      "lunarDay": 14,
+      "hourBranch": "亥"
+    },
+    {
+      "day": 15,
+      "hour": 23,
+      "minute": 0,
+      "dayPillar": "갑진",
+      "hourPillar": "갑자",
+      "lunarDay": 14,
+      "hourBranch": "子"
+    },
+    {
+      "day": 15,
+      "hour": 23,
+      "minute": 59,
+      "dayPillar": "갑진",
+      "hourPillar": "갑자",
+      "lunarDay": 14,
+      "hourBranch": "子"
+    },
+    {
+      "day": 16,
+      "hour": 0,
+      "minute": 0,
+      "dayPillar": "을사",
+      "hourPillar": "병자",
+      "lunarDay": 15,
+      "hourBranch": "子"
+    }
+  ],
+  "eotIntraday": {
+    "cases": 12780,
+    "maxRawErrorMinutes": 0.2742134791742501,
+    "maxRoundedErrorMinutes": 0.7601785826291234,
+    "maxInstantRawErrorMinutes": 0.03962766283905239,
+    "maxInstantRoundedErrorMinutes": 0.5319288025707465,
+    "worst": {
+      "year": 1950,
+      "month": 12,
+      "day": 28,
+      "kstHour": 0,
+      "referenceMinutes": -0.9736354854339879
+    }
+  }
+}

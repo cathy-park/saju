@@ -65,7 +65,7 @@ test("MCP authentication boundary unchanged", async () =>
   assert.equal((await rpc("three_charts_status", {}, false)).status, 401));
 test("candidate identity is visible without birth data", async () => {
   const r = await rpc("three_charts_status");
-  assert.equal(r.body.result.structuredContent.version, "0.2.0-candidate");
+  assert.equal(r.body.result.structuredContent.version, "0.3.0-audit-candidate");
 });
 test("real bundled API preserves existing keys and exposes per-system audit in text and structured response", async () => {
   const r = await rpc("calculate_three_charts", birth);
@@ -131,6 +131,20 @@ test("ordinary lunar API input uses converted solar date and original civil cloc
   assert.equal(r.body.result.isError, false);
   assert.deepEqual(value.solarDate, { year: 2000, month: 6, day: 15 });
   assert.equal(value.timeAudit.western.utcInstant, "2000-06-15T10:29:00.000Z");
+});
+
+test("late lunar months cross the solar year through the real bundled API", async () => {
+  const r = await rpc("calculate_three_charts", {
+    ...birth,
+    calendar: "lunar",
+    birthDate: "2000-12-15",
+    birthTime: "12:00",
+  });
+  const value = r.body.result.structuredContent;
+  assert.equal(r.body.result.isError, false);
+  assert.deepEqual(value.solarDate, { year: 2001, month: 1, day: 9 });
+  assert.equal(value.timeAudit.western.utcInstant, "2001-01-09T03:00:00.000Z");
+  assert.equal(value.ziwei.chart.lunarBirth.day, 15);
 });
 for (const [title, patch, code] of [
   ["invalid solar date", { birthDate: "2001-02-29" }, "INVALID_DATE"],

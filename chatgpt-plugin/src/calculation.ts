@@ -295,7 +295,7 @@ export function calculateThreeCharts(raw: unknown) {
         ? "calculated"
         : "partial",
     algorithm: "existing-saju-app",
-    engineVersion: "0.2.0-candidate",
+    engineVersion: "0.3.0-audit-candidate",
     timeAudit: {
       saju: profile.timeAudit,
       ziwei: {

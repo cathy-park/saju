@@ -3,7 +3,7 @@ import {
   resolveBirthplace,
   InputError,
 } from "./calculation";
-const VERSION = "0.2.0-candidate";
+const VERSION = "0.3.0-audit-candidate";
 const birthSchema = {
   type: "object",
   additionalProperties: false,

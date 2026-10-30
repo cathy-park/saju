@@ -1,6 +1,8 @@
+import { SearchSunLongitude } from "astronomy-engine";
+import { lunarToSolarChecked as lunarToSolar } from "./calendarConversion";
 import type { BirthInput, ComputedPillars } from "./sajuEngine";
 import { equationOfTimeMins } from "./sajuEngine";
-import { lunarToSolar } from "@fullstackfamily/manseryeok";
+
 
 export const STEMS = ["갑", "을", "병", "정", "무", "기", "경", "신", "임", "계"];
 export const BRANCHES = ["자", "축", "인", "묘", "진", "사", "오", "미", "신", "유", "술", "해"];
@@ -9,21 +11,8 @@ const BRANCHES_HANJA = ["子", "丑", "寅", "卯", "辰", "巳", "午", "未", 
 
 const YANG_STEMS = new Set(["갑", "병", "무", "경", "임"]);
 
-// ── Solar term calculator for accurate 대운수 ─────────────────────
-// Computes sun's ecliptic longitude (degrees) for a given Date (UTC)
-// Uses simplified VSOP87 — accurate to ~0.01° for years 1900–2100
-function sunLongitudeDeg(date: Date): number {
-  const JD = date.getTime() / 86400000 + 2440587.5;
-  const T = (JD - 2451545.0) / 36525;
-  const L0 = 280.46646 + 36000.76983 * T + 0.0003032 * T * T;
-  const M = (((357.52911 + 35999.05029 * T - 0.0001537 * T * T) % 360) + 360) % 360;
-  const Mrad = M * Math.PI / 180;
-  const C = Math.sin(Mrad) * (1.9146 - 0.004817 * T - 0.000014 * T * T)
-          + Math.sin(2 * Mrad) * (0.019993 - 0.000101 * T)
-          + Math.sin(3 * Mrad) * 0.00029;
-  return ((L0 + C) % 360 + 360) % 360;
-}
-
+// Solar-term instants use the existing Astronomy Engine apparent solar longitude.
+// Independent Swiss/HKO comparisons and numerical limits are recorded in the audit.
 // 12 month-boundary 절기 (節) — solar longitudes where month pillar changes
 // 소한(285)→축, 입춘(315)→인, 경칩(345)→묘, 청명(15)→진,
 // 입하(45)→사,  망종(75)→오,  소서(105)→미, 입추(135)→신,
@@ -34,22 +23,18 @@ const JULGGI_LONS = [285, 315, 345, 15, 45, 75, 105, 135, 165, 195, 225, 255] as
 // FIXED: use Jan 1 (lon ≈ 280°) as reference instead of March equinox (lon ≈ 0°).
 // The old March-equinox reference caused 소한/입춘/경칩 (285°/315°/345°) to always
 // resolve to the NEXT year, inflating 대운수 to 10 for early-year births.
+const solarTermCache = new Map<string, number>();
+
 function findSolarTermDate(year: number, targetLon: number): Date {
-  // Compute actual sun longitude on Jan 1 of the target year (KST noon = UTC 03:00)
-  const jan1 = new Date(Date.UTC(year, 0, 1, 12));
-  const jan1Lon = sunLongitudeDeg(jan1);
-  // Forward distance from jan1Lon to targetLon (always positive, 0–360)
-  const daysFromJan1 = ((targetLon - jan1Lon + 360) % 360) / 360 * 365.25;
-  let d = new Date(jan1.getTime() + daysFromJan1 * 86400000);
-  // Newton-Raphson refinement (converges in ~5 iterations)
-  for (let i = 0; i < 12; i++) {
-    const lon = sunLongitudeDeg(d);
-    let diff = targetLon - lon;
-    if (diff > 180) diff -= 360;
-    if (diff < -180) diff += 360;
-    d = new Date(d.getTime() + (diff / 360) * 365.25 * 86400000);
-  }
-  return d;
+  const key = `${year}:${targetLon}`;
+  const cached = solarTermCache.get(key);
+  if (cached !== undefined) return new Date(cached);
+  const result = SearchSunLongitude(targetLon, new Date(Date.UTC(year, 0, 1)), 370);
+  if (!result) throw new RangeError("Solar term search did not converge");
+  const instant = result.date.getTime();
+  if (solarTermCache.size >= 4096) solarTermCache.delete(solarTermCache.keys().next().value!);
+  solarTermCache.set(key, instant);
+  return new Date(instant);
 }
 
 export interface DaewoonSuOpts {
@@ -134,7 +119,7 @@ export function calculateDaewoonSu(birthInput: BirthInput, pillars: ComputedPill
     // 균시차(Equation of Time) 보정 — 옵션 활성화 시
     if (useExact && !birthInput.timeUnknown && (opts?.trueSolarTimeOn ?? false)) {
       // 균시차 보정은 양력 날짜 기준으로 계산
-      mKST += Math.round(equationOfTimeMins(solarYear, solarMonth, solarDay));
+      mKST += Math.round(equationOfTimeMins(solarYear, solarMonth, solarDay, hKST, mKST));
     }
     while (mKST < 0)   { mKST += 60; hKST -= 1; }
     while (mKST >= 60) { mKST -= 60; hKST += 1; }

@@ -1,0 +1,69 @@
+{
+  "policy": "normal lunar-year inclusive age versus current year difference, mid-year dates",
+  "rows": [
+    {
+      "year": 2005,
+      "engineYearDifferenceAge": 5,
+      "engineSelectedBranch": null,
+      "lunarYearInclusiveAgeScenario": 6,
+      "scenarioSelectedBranch": "子",
+      "independentSelectedBranch": "子"
+    },
+    {
+      "year": 2006,
+      "engineYearDifferenceAge": 6,
+      "engineSelectedBranch": "子",
+      "lunarYearInclusiveAgeScenario": 7,
+      "scenarioSelectedBranch": "子",
+      "independentSelectedBranch": "子"
+    },
+    {
+      "year": 2015,
+      "engineYearDifferenceAge": 15,
+      "engineSelectedBranch": "子",
+      "lunarYearInclusiveAgeScenario": 16,
+      "scenarioSelectedBranch": "亥",
+      "independentSelectedBranch": "亥"
+    },
+    {
+      "year": 2016,
+      "engineYearDifferenceAge": 16,
+      "engineSelectedBranch": "亥",
+      "lunarYearInclusiveAgeScenario": 17,
+      "scenarioSelectedBranch": "亥",
+      "independentSelectedBranch": "亥"
+    },
+    {
+      "year": 2025,
+      "engineYearDifferenceAge": 25,
+      "engineSelectedBranch": "亥",
+      "lunarYearInclusiveAgeScenario": 26,
+      "scenarioSelectedBranch": "戌",
+      "independentSelectedBranch": "戌"
+    },
+    {
+      "year": 2026,
+      "engineYearDifferenceAge": 26,
+      "engineSelectedBranch": "戌",
+      "lunarYearInclusiveAgeScenario": 27,
+      "scenarioSelectedBranch": "戌",
+      "independentSelectedBranch": "戌"
+    },
+    {
+      "year": 2035,
+      "engineYearDifferenceAge": 35,
+      "engineSelectedBranch": "戌",
+      "lunarYearInclusiveAgeScenario": 36,
+      "scenarioSelectedBranch": "酉",
+      "independentSelectedBranch": "酉"
+    },
+    {
+      "year": 2036,
+      "engineYearDifferenceAge": 36,
+      "engineSelectedBranch": "酉",
+      "lunarYearInclusiveAgeScenario": 37,
+      "scenarioSelectedBranch": "酉",
+      "independentSelectedBranch": "酉"
+    }
+  ]
+}

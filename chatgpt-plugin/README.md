@@ -4,6 +4,8 @@
 
 ## 재현
 
+추가 독립 검증과 미배포 수치 수정 후보는 [독립 검증 보고서](../docs/three-charts-independent-verification-20261030.md)에 정리했다. 이 체크아웃의 `0.3.0-audit-candidate`는 운영에 반영하지 않았다. 운영은 위의 `0.2.0-candidate` / 저장 버전 2다. 최신 후보는 계산 모듈 87개를 생성하며, 아래 86개 기록은 기존 운영 버전 2의 이력이다. 신강·용신 모형 제안과 자미두수 연 경계 시나리오는 기본 후보에 적용하지 않았다.
+
 Node 22, pnpm 9.15.0에서 저장소 루트의 `pnpm install --frozen-lockfile`을 먼저 실행한다. 이어 루트에서 `pnpm exec tsc -p chatgpt-plugin/tsconfig.json`으로 어댑터까지 검사한다.
 
 이 디렉터리에서 다음 순서로 실행한다.

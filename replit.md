@@ -168,3 +168,7 @@ Utility scripts package. Run scripts via `pnpm --filter @workspace/scripts run <
 ### 승인된 기존 Sites 서버 반영
 
 대표가 기존 서버 업데이트와 단기 권한 발급을 승인한 뒤 기존 원격 소스 HEAD를 대조했다. 공식 helper로 소스 커밋 `016ccb53c57ad01c1616a10a2beba157325286cc`와 동일 번들을 반영해 저장 버전 2가 succeeded 상태다. 실제 플러그인에서 `0.2.0-candidate`, timeAudit, 날짜 이월/±5분 경계/오류 정책/기존 응답 키 보존을 확인했다. 기존 17개와 신규 15개를 합친 서버 시험 32개가 통과했다. 소유자 전용 접근과 endpoint/DB/인증 설정은 유지했고, 롤백 버전 1을 보존했다. Vercel Production과 GitHub main은 변경하지 않았다. 독립 천문·유파 검증 범위는 위 제한을 그대로 따른다.
+
+### 추가 독립 검증 — 운영 미반영
+
+[독립 검증 보고서](docs/three-charts-independent-verification-20261030.md)에 Swiss 실데이터/NASA/HKO/별도 음력·자미두수 구현과의 대조, 불일치, 유파·연 경계·나이 정책을 기록했다. 양력 55,152일 대조에서 자료 누락 1일과 음력 연말 역변환 문제를 확인했다. 신강·용신 제안은 별도 patch이며 기본 코드에는 적용하지 않았다. 수치 후보 `0.3.0-audit-candidate`는 격리 검증용이며 운영은 `0.2.0-candidate` 그대로다. 이번 추가 검증은 새 Sites 배포·소스 push·접근 권한 발급을 포함하지 않았다.

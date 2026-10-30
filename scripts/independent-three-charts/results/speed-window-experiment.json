@@ -1,0 +1,162 @@
+[
+  {
+    "minutes": 720,
+    "stationSignMismatches": 3,
+    "maxStationSpeedError": 0.0007590929564836339,
+    "maxPlanetSpeedError": {
+      "sun": 3.1182612737490345e-05,
+      "moon": 0.004532562907790805,
+      "mercury": 0.0013267532108007796,
+      "venus": 0.00028957512389959916,
+      "mars": 3.495264093271661e-05,
+      "jupiter": 1.4467429427674622e-05,
+      "saturn": 0.0010829789662754608,
+      "uranus": 1.656650056902414e-05,
+      "neptune": 2.276308738050764e-05,
+      "pluto": 1.533251088159729e-05
+    },
+    "mismatchSamples": [
+      {
+        "body": "neptune",
+        "iso": "2024-07-02T10:30:33.728041Z",
+        "offset": -10,
+        "engineSpeed": -1.6206225268433627e-06,
+        "referenceSpeed": 3.68261389525267e-06
+      },
+      {
+        "body": "pluto",
+        "iso": "2024-05-02T17:37:02.497635Z",
+        "offset": -10,
+        "engineSpeed": -2.0882539502053987e-06,
+        "referenceSpeed": 3.4049123808466507e-06
+      },
+      {
+        "body": "pluto",
+        "iso": "2024-10-12T00:41:51.040051Z",
+        "offset": 10,
+        "engineSpeed": -8.986793773146928e-06,
+        "referenceSpeed": 3.2237793941052773e-06
+      }
+    ]
+  },
+  {
+    "minutes": 180,
+    "stationSignMismatches": 3,
+    "maxStationSpeedError": 0.0005201015709866853,
+    "maxPlanetSpeedError": {
+      "sun": 3.004158751473973e-05,
+      "moon": 0.0004005506384068269,
+      "mercury": 0.0005049001098180739,
+      "venus": 0.00013449003031817952,
+      "mars": 3.5289933238801755e-05,
+      "jupiter": 1.4817230469140602e-05,
+      "saturn": 0.0010825015266907045,
+      "uranus": 1.643023018204964e-05,
+      "neptune": 2.2220361850212866e-05,
+      "pluto": 1.4972921403403477e-05
+    },
+    "mismatchSamples": [
+      {
+        "body": "neptune",
+        "iso": "2024-07-02T10:30:33.728041Z",
+        "offset": -10,
+        "engineSpeed": -1.5690761756559368e-06,
+        "referenceSpeed": 3.68261389525267e-06
+      },
+      {
+        "body": "pluto",
+        "iso": "2024-05-02T17:37:02.497635Z",
+        "offset": -10,
+        "engineSpeed": -2.245976475023781e-06,
+        "referenceSpeed": 3.4049123808466507e-06
+      },
+      {
+        "body": "pluto",
+        "iso": "2024-10-12T00:41:51.040051Z",
+        "offset": 10,
+        "engineSpeed": -8.975576747616287e-06,
+        "referenceSpeed": 3.2237793941052773e-06
+      }
+    ]
+  },
+  {
+    "minutes": 60,
+    "stationSignMismatches": 3,
+    "maxStationSpeedError": 0.0005119921296904296,
+    "maxPlanetSpeedError": {
+      "sun": 2.997393179549057e-05,
+      "moon": 0.00023680152566285528,
+      "mercury": 0.0005321497334174197,
+      "venus": 0.00012529879748379713,
+      "mars": 3.5309993736065085e-05,
+      "jupiter": 1.483792624845312e-05,
+      "saturn": 0.0010824732639154733,
+      "uranus": 1.642212431052009e-05,
+      "neptune": 2.2188170171556776e-05,
+      "pluto": 1.495158238396313e-05
+    },
+    "mismatchSamples": [
+      {
+        "body": "neptune",
+        "iso": "2024-07-02T10:30:33.728041Z",
+        "offset": -10,
+        "engineSpeed": -1.5660093595215585e-06,
+        "referenceSpeed": 3.68261389525267e-06
+      },
+      {
+        "body": "pluto",
+        "iso": "2024-05-02T17:37:02.497635Z",
+        "offset": -10,
+        "engineSpeed": -2.2553438157046912e-06,
+        "referenceSpeed": 3.4049123808466507e-06
+      },
+      {
+        "body": "pluto",
+        "iso": "2024-10-12T00:41:51.040051Z",
+        "offset": 10,
+        "engineSpeed": -8.97490645002108e-06,
+        "referenceSpeed": 3.2237793941052773e-06
+      }
+    ]
+  },
+  {
+    "minutes": 1,
+    "stationSignMismatches": 3,
+    "maxStationSpeedError": 0.0005109790817409022,
+    "maxPlanetSpeedError": {
+      "sun": 2.9964983049746152e-05,
+      "moon": 0.00021681079567947847,
+      "mercury": 0.0005355563283595544,
+      "venus": 0.00012416313589236339,
+      "mars": 3.530809880385394e-05,
+      "jupiter": 1.4840555825009621e-05,
+      "saturn": 0.0010824694406271207,
+      "uranus": 1.6421006314157934e-05,
+      "neptune": 2.2184051183739284e-05,
+      "pluto": 1.4948927568928655e-05
+    },
+    "mismatchSamples": [
+      {
+        "body": "neptune",
+        "iso": "2024-07-02T10:30:33.728041Z",
+        "offset": -10,
+        "engineSpeed": -1.565590537211392e-06,
+        "referenceSpeed": 3.68261389525267e-06
+      },
+      {
+        "body": "pluto",
+        "iso": "2024-05-02T17:37:02.497635Z",
+        "offset": -10,
+        "engineSpeed": -2.256524567201268e-06,
+        "referenceSpeed": 3.4049123808466507e-06
+      },
+      {
+        "body": "pluto",
+        "iso": "2024-10-12T00:41:51.040051Z",
+        "offset": 10,
+        "engineSpeed": -8.974816410045605e-06,
+        "referenceSpeed": 3.2237793941052773e-06
+      }
+    ]
+  }
+]
